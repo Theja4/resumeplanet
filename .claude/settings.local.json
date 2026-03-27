@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Bash(mv resumeai/* .)",
+      "Bash(mv resumeai/.* .)",
+      "Bash(rm -rf resumeai)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
