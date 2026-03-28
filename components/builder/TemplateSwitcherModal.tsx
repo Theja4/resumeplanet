@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { X, Check } from 'lucide-react'
-import { getAllTemplates, getTemplateComponent } from '@/components/templates/registry'
+import { getAllTemplates } from '@/components/templates/registry'
 import type { ResumeData, TemplateId, TemplateProps } from '@/types'
 
 interface Props {

@@ -158,7 +158,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setIsLoading(false)
     }
     load()
-  }, [resumeId, userId])
+  }, [resumeId, userId, supabase, router])
 
   // ── Preview scale ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -380,7 +380,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           <aside className="w-72 bg-white border-r border-gray-200 overflow-y-auto shrink-0">
             {activeMode === 'tailor' ? (
               <TailorPanel
-                resumeData={resumeData}
                 analysis={tailorAnalysis}
                 isTailoring={isTailoring}
                 jobDescription={jobDescription}
@@ -492,13 +491,9 @@ export default function BuilderPage() {
   const resumeId = params.resumeId as string
   const [profileState, setProfileState] = useState<Profile | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
   const router = useRouter()
   const supabase = createClient()
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-  }, [])
 
   useEffect(() => {
     async function checkAuth() {
@@ -510,7 +505,7 @@ export default function BuilderPage() {
       setAuthChecked(true)
     }
     checkAuth()
-  }, [])
+  }, [supabase, router])
 
   if (!authChecked || !profileState) {
     return (

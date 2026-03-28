@@ -1,7 +1,7 @@
 'use client'
 
 import { Loader2 } from 'lucide-react'
-import type { ResumeData, TailorAnalysis } from '@/types'
+import type { TailorAnalysis } from '@/types'
 
 const SECTION_LABELS: Record<string, string> = {
   contact: 'Contact Info',
@@ -26,7 +26,6 @@ function scoreRingColor(score: number) {
 }
 
 interface Props {
-  resumeData: ResumeData
   analysis: TailorAnalysis | null
   isTailoring: boolean
   jobDescription: string
@@ -36,7 +35,6 @@ interface Props {
 }
 
 export default function TailorPanel({
-  resumeData,
   analysis,
   isTailoring,
   jobDescription,
