@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import type { ComponentType } from 'react'
 import {
@@ -381,6 +382,28 @@ function PreviewLayout({
               >
                 Upgrade for downloads
               </a>
+            )}
+          </div>
+
+          {/* Open in Builder */}
+          <div className="px-4 py-4 border-b border-gray-100">
+            {selectedResumeId ? (
+              <Link
+                href={`/dashboard/builder/${selectedResumeId}?template=${selectedTemplateId}`}
+                className="block w-full py-2 text-sm font-medium text-center bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Open in Builder
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard/resumes"
+                className="block w-full py-2 text-sm font-medium text-center text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+              >
+                Open in Builder
+              </Link>
+            )}
+            {!selectedResumeId && (
+              <p className="mt-1.5 text-xs text-gray-400 text-center">Upload a resume first</p>
             )}
           </div>
 

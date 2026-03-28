@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, BarChart2, Layout, Save, X, Plus, Trash2 } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, BarChart2, Layout, Save, X, Plus, Trash2, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -437,6 +438,15 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
             className="gap-1.5"
           >
             <Layout size={14} /> Fill Template
+          </Button>
+          <Button
+            size="sm"
+            className="gap-1.5"
+            asChild
+          >
+            <Link href={`/dashboard/builder/${resume.id}`}>
+              <PenLine size={14} /> Open Builder
+            </Link>
           </Button>
         </div>
       </div>

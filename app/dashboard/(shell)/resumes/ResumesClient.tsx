@@ -36,7 +36,7 @@ export default function ResumesClient({
 
   function handleUploadSuccess(newResume: Resume) {
     setResumes((prev) => [newResume, ...prev])
-    router.refresh()
+    router.push(`/dashboard/builder/${newResume.id}`)
   }
 
   async function handleDelete(id: string) {
