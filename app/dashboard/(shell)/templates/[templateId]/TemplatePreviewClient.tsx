@@ -10,11 +10,11 @@ import {
   type TemplateRegistryEntry,
 } from '@/components/templates/registry'
 import TemplateSkeleton from '@/components/templates/TemplateSkeleton'
-import { updateResumeData } from '@/app/dashboard/resumes/actions'
+import { updateResumeData } from '@/app/dashboard/(shell)/resumes/actions'
 import { generateDOCX } from '@/lib/docxGenerator'
 import type { ResumeData, Resume, TemplateId, Profile, TemplateProps } from '@/types'
 import { useProGate } from '@/lib/hooks/useProGate'
-import { ProGateModal } from '@/components/shared/ProGateModal'
+import ProGateModal from '@/components/shared/ProGateModal'
 
 interface Props {
   initialTemplateId: TemplateId

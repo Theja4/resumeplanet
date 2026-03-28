@@ -100,7 +100,11 @@ export default function ResumesClient({
       {/* Ad banner — free users only */}
       {resumes.length > 0 && <AdBanner size="rectangle" className="mt-6" />}
 
-      <PaywallModal />
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature="unlimited resume uploads"
+      />
     </div>
   )
 }

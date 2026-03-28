@@ -1,140 +1,109 @@
-'use client'
-
-import { useState } from 'react'
-import { usePlan } from '@/lib/context/PlanContext'
-import { Check, X } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { Check, X, CheckCircle2, Zap, TrendingUp, FileText } from 'lucide-react'
+import Link from 'next/link'
+import UpgradeButton from '@/components/shared/UpgradeButton'
+import ManageSubscriptionButton from './ManageSubscriptionButton'
+import type { Profile, Order } from '@/types'
 
 // ─── Plan feature comparison ───────────────────────────────────────────────────
 
-const FEATURES = [
-  { label: 'Resume uploads', free: '1 resume', pro: 'Unlimited' },
-  { label: 'ATS scans', free: '3 / day', pro: 'Unlimited' },
-  { label: 'ATS analysis tier', free: 'Basic', pro: 'Advanced AI' },
-  { label: 'AI resume optimisation', free: false, pro: true },
-  { label: 'Score breakdown & keyword analysis', free: false, pro: true },
-  { label: 'Resume templates', free: false, pro: true },
-  { label: 'Download optimised resume', free: false, pro: true },
-  { label: 'Priority support', free: false, pro: true },
-  { label: 'Ad-free experience', free: false, pro: true },
+const FEATURES: {
+  label: string
+  free: string | boolean
+  pro: string | boolean
+  professional: string | boolean
+}[] = [
+  { label: 'Resume uploads',            free: '1 resume',     pro: 'Unlimited',    professional: 'Unlimited' },
+  { label: 'ATS scans',                 free: '3 / day',      pro: 'Unlimited',    professional: 'Unlimited' },
+  { label: 'ATS analysis tier',         free: 'Basic',        pro: 'Advanced AI',  professional: 'Advanced AI' },
+  { label: 'AI resume optimisation',    free: false,          pro: true,           professional: true },
+  { label: 'Score breakdown & keywords',free: false,          pro: true,           professional: true },
+  { label: 'Resume templates',          free: false,          pro: true,           professional: true },
+  { label: 'Download optimised resume', free: false,          pro: true,           professional: true },
+  { label: 'Professional rewrite',      free: false,          pro: false,          professional: true },
+  { label: '48 hr turnaround',          free: false,          pro: false,          professional: true },
+  { label: 'Priority support',          free: false,          pro: true,           professional: true },
 ]
 
 function FeatureCell({ value }: { value: string | boolean }) {
-  if (value === true) return <Check className="h-5 w-5 text-green-500 mx-auto" />
+  if (value === true)  return <Check className="h-5 w-5 text-green-500 mx-auto" />
   if (value === false) return <X className="h-5 w-5 text-gray-300 mx-auto" />
   return <span className="text-sm text-gray-700">{value}</span>
 }
 
-// ─── Upgrade button ────────────────────────────────────────────────────────────
+// ─── Status helpers ────────────────────────────────────────────────────────────
 
-function UpgradeButton() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleUpgrade() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' })
-      const json = await res.json()
-      if (json.url) {
-        window.location.href = json.url
-      } else {
-        setError(json.error ?? 'Failed to start checkout. Please try again.')
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div>
-      {error && (
-        <p className="mb-3 text-sm text-red-600 text-center">{error}</p>
-      )}
-      <button
-        onClick={handleUpgrade}
-        disabled={loading}
-        className="w-full py-3 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            Redirecting to checkout…
-          </>
-        ) : (
-          'Upgrade to Pro — $12/mo'
-        )}
-      </button>
-    </div>
-  )
+const STATUS_STYLES: Record<string, string> = {
+  pending:     'bg-gray-100 text-gray-600',
+  paid:        'bg-blue-100 text-blue-700',
+  in_progress: 'bg-amber-100 text-amber-700',
+  delivered:   'bg-green-100 text-green-700',
 }
 
-// ─── Manage subscription button ────────────────────────────────────────────────
+const STATUS_LABELS: Record<string, string> = {
+  pending:     'Pending payment',
+  paid:        'Paid — In queue',
+  in_progress: 'In progress',
+  delivered:   'Delivered',
+}
 
-function ManageButton() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleManage() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' })
-      const json = await res.json()
-      if (json.url) {
-        window.location.href = json.url
-      } else {
-        setError(json.error ?? 'Failed to open portal. Please try again.')
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div>
-      {error && (
-        <p className="mb-3 text-sm text-red-600 text-center">{error}</p>
-      )}
-      <button
-        onClick={handleManage}
-        disabled={loading}
-        className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            Opening portal…
-          </>
-        ) : (
-          'Manage Subscription'
-        )}
-      </button>
-    </div>
-  )
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
-export default function BillingPage() {
-  const { isPro, profile } = usePlan()
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>
+}) {
+  const params = await searchParams
+  const upgraded = params.upgraded === 'true'
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const [profileResult, resumeCountResult, ordersResult] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['paid', 'in_progress', 'delivered'])
+      .order('created_at', { ascending: false })
+      .limit(10),
+  ])
+
+  const profile = profileResult.data as Profile | null
+  if (!profile) redirect('/auth/login')
+
+  const isPro = profile.plan === 'pro'
+  const resumeCount = resumeCountResult.count ?? 0
+  const paidOrders = (ordersResult.data ?? []) as Order[]
+
+  const FREE_ATS_LIMIT = 3
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8 pb-12">
+      {/* Upgrade success banner */}
+      {upgraded && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+          <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-green-800">You&apos;re now on Pro!</p>
+            <p className="text-xs text-green-700 mt-0.5">All Pro features are unlocked. Enjoy unlimited scans and AI-powered tools.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Billing &amp; Plan</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage your ResumAI subscription.</p>
+        <p className="mt-1 text-sm text-gray-500">Manage your ResumAI subscription and orders.</p>
       </div>
 
       {/* Current plan badge */}
@@ -146,62 +115,190 @@ export default function BillingPage() {
           <p className={`text-xl font-bold mt-0.5 ${isPro ? 'text-indigo-700' : 'text-gray-800'}`}>
             {isPro ? 'Pro' : 'Free'}
           </p>
-          {profile?.subscription_status && isPro && (
+          {profile.subscription_status && isPro && (
             <p className="text-xs text-gray-500 mt-1 capitalize">
               Status: {profile.subscription_status}
             </p>
           )}
         </div>
-        <div
-          className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide ${
-            isPro ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
-          }`}
-        >
+        <div className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide ${
+          isPro ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
+        }`}>
           {isPro ? 'Active' : 'Free tier'}
         </div>
       </div>
 
-      {/* Plan comparison table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-3 border-b border-gray-200">
-          <div className="px-4 py-4" />
-          <div className="px-4 py-4 text-center border-l border-gray-100">
-            <p className="text-sm font-semibold text-gray-700">Free</p>
-            <p className="text-lg font-bold text-gray-900 mt-1">$0</p>
-            <p className="text-xs text-gray-400">forever</p>
+      {/* Usage stats */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
+        <h2 className="text-sm font-semibold text-gray-700">Usage this period</h2>
+
+        {/* ATS scans */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-sm text-gray-700">
+              <TrendingUp size={14} className="text-gray-400" />
+              ATS scans today
+            </div>
+            <span className="text-sm text-gray-500">
+              {isPro ? (
+                <span className="text-indigo-600 font-medium">Unlimited</span>
+              ) : (
+                `${profile.ats_scans_today} / ${FREE_ATS_LIMIT}`
+              )}
+            </span>
           </div>
-          <div className="px-4 py-4 text-center border-l border-gray-100 bg-indigo-50">
-            <p className="text-sm font-semibold text-indigo-700">Pro</p>
-            <p className="text-lg font-bold text-indigo-900 mt-1">$12</p>
-            <p className="text-xs text-indigo-400">per month</p>
-          </div>
+          {!isPro && (
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  profile.ats_scans_today >= FREE_ATS_LIMIT ? 'bg-red-400' : 'bg-indigo-500'
+                }`}
+                style={{ width: `${Math.min(100, (profile.ats_scans_today / FREE_ATS_LIMIT) * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
 
-        {FEATURES.map((feature, i) => (
-          <div
-            key={i}
-            className={`grid grid-cols-3 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-          >
-            <div className="px-4 py-3 text-sm text-gray-700">{feature.label}</div>
-            <div className="px-4 py-3 text-center border-l border-gray-100">
-              <FeatureCell value={feature.free} />
+        {/* Resumes */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-sm text-gray-700">
+              <FileText size={14} className="text-gray-400" />
+              Resumes created
             </div>
-            <div className="px-4 py-3 text-center border-l border-gray-100">
-              <FeatureCell value={feature.pro} />
-            </div>
+            <span className="text-sm text-gray-500">
+              {isPro ? (
+                <span className="text-indigo-600 font-medium">{resumeCount} (Unlimited)</span>
+              ) : (
+                `${resumeCount} / 1`
+              )}
+            </span>
           </div>
-        ))}
+          {!isPro && (
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  resumeCount >= 1 ? 'bg-red-400' : 'bg-indigo-500'
+                }`}
+                style={{ width: `${Math.min(100, resumeCount * 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Pro features */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-700">
+          <Zap size={14} className="text-gray-400" />
+          AI optimisation
+          <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
+            isPro ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {isPro ? 'Enabled' : 'Pro only'}
+          </span>
+        </div>
       </div>
 
-      {/* CTA */}
-      <div className="max-w-sm mx-auto">
-        {isPro ? <ManageButton /> : <UpgradeButton />}
+      {/* Plan comparison table */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Compare plans</h2>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="grid grid-cols-4 border-b border-gray-200">
+            <div className="px-4 py-4" />
+            <div className="px-4 py-4 text-center border-l border-gray-100">
+              <p className="text-sm font-semibold text-gray-700">Free</p>
+              <p className="text-lg font-bold text-gray-900 mt-1">$0</p>
+              <p className="text-xs text-gray-400">forever</p>
+            </div>
+            <div className="px-4 py-4 text-center border-l border-gray-100 bg-indigo-50">
+              <p className="text-sm font-semibold text-indigo-700">Pro</p>
+              <p className="text-lg font-bold text-indigo-900 mt-1">$12</p>
+              <p className="text-xs text-indigo-400">per month</p>
+            </div>
+            <div className="px-4 py-4 text-center border-l border-gray-100 bg-amber-50">
+              <p className="text-sm font-semibold text-amber-700">Professional</p>
+              <p className="text-lg font-bold text-amber-900 mt-1">$29.99</p>
+              <p className="text-xs text-amber-400">one-time</p>
+            </div>
+          </div>
+
+          {FEATURES.map((feature, i) => (
+            <div
+              key={i}
+              className={`grid grid-cols-4 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+            >
+              <div className="px-4 py-3 text-sm text-gray-700">{feature.label}</div>
+              <div className="px-4 py-3 text-center border-l border-gray-100">
+                <FeatureCell value={feature.free} />
+              </div>
+              <div className="px-4 py-3 text-center border-l border-gray-100">
+                <FeatureCell value={feature.pro} />
+              </div>
+              <div className="px-4 py-3 text-center border-l border-gray-100">
+                <FeatureCell value={feature.professional} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* CTAs */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {isPro ? (
+          <ManageSubscriptionButton />
+        ) : (
+          <UpgradeButton label="Upgrade to Pro — $12/mo" />
+        )}
+        <Link
+          href="/dashboard/orders/new"
+          className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
+        >
+          Order Professional Rewrite — $29.99
+        </Link>
       </div>
 
       {isPro && (
         <p className="text-center text-xs text-gray-400">
           You can cancel anytime from the customer portal. Your access continues until the end of the billing period.
         </p>
+      )}
+
+      {/* Billing history */}
+      {paidOrders.length > 0 && (
+        <div>
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Order history</h2>
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Service</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Amount</th>
+                  <th className="px-5 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {paidOrders.map((order, i) => (
+                  <tr key={order.id} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                    <td className="px-5 py-4 text-gray-500">{formatDate(order.created_at)}</td>
+                    <td className="px-5 py-4 font-medium text-gray-900">Professional Rewrite{order.job_title ? ` — ${order.job_title}` : ''}</td>
+                    <td className="px-5 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[order.status] ?? STATUS_STYLES.pending}`}>
+                        {STATUS_LABELS[order.status] ?? order.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-gray-700">$29.99</td>
+                    <td className="px-5 py-4">
+                      <Link href={`/dashboard/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-800 font-medium text-xs">
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -23,6 +23,8 @@ export interface ExperienceItem {
   startDate: string
   endDate: string
   bullets: string[]
+  bulletVisibility?: boolean[]
+  summary?: string
 }
 
 export interface EducationItem {
@@ -177,6 +179,7 @@ export interface TemplateProps {
   data: ResumeData
   isEditing?: boolean
   onFieldChange?: (path: string, value: string) => void
+  sectionOrder?: string[]
 }
 
 export interface TemplateConfig {
@@ -214,4 +217,49 @@ export interface TailorAnalysis {
   matchScore: number
   missingKeywords: string[]
   suggestions: { sectionId: string; hint: string }[]
+}
+
+// ─── Builder Visibility ───────────────────────────────────────────────────────
+
+export interface BuilderVisibility {
+  /** Top-level section visibility — key = section id */
+  sections: Record<string, boolean>
+  /** Sub-item visibility within complex sections — index matches array index in ResumeData */
+  items: {
+    experience: boolean[]
+    education: boolean[]
+    projects: boolean[]
+    certifications: boolean[]
+  }
+  /** Section order — array of section ids determines render order in template */
+  sectionOrder: string[]
+}
+
+export const DEFAULT_VISIBILITY: BuilderVisibility = {
+  sections: {
+    contact: true,
+    summary: true,
+    skills: true,
+    languages: true,
+    experience: true,
+    education: true,
+    projects: true,
+    certifications: true,
+    volunteer: true,
+    interests: true,
+    awards: true,
+    publications: true,
+    references: true,
+  },
+  items: {
+    experience: [],
+    education: [],
+    projects: [],
+    certifications: [],
+  },
+  sectionOrder: [
+    'contact', 'summary', 'experience', 'education', 'skills',
+    'projects', 'certifications', 'volunteer', 'languages',
+    'interests', 'awards', 'publications', 'references',
+  ],
 }

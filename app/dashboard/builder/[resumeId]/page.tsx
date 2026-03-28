@@ -1,24 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutGrid,
   ChevronDown,
-  User,
-  AlignLeft,
-  Briefcase,
-  GraduationCap,
-  Zap,
-  Code,
-  Award,
-  Heart,
-  Globe,
-  Star,
-  Trophy,
-  BookOpen,
-  Users,
   Loader2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -27,77 +14,14 @@ import { PlanProvider } from '@/lib/context/PlanContext'
 import ProGateModal from '@/components/shared/ProGateModal'
 import TemplateSwitcherModal from '@/components/builder/TemplateSwitcherModal'
 import TailorPanel from '@/components/builder/TailorPanel'
-import ContactEditor from '@/components/builder/ContactEditor'
-import SummaryEditor from '@/components/builder/SummaryEditor'
-import ExperienceEditor from '@/components/builder/ExperienceEditor'
-import EducationEditor from '@/components/builder/EducationEditor'
-import SkillsEditor from '@/components/builder/SkillsEditor'
-import ProjectsEditor from '@/components/builder/ProjectsEditor'
-import CertificationsEditor from '@/components/builder/CertificationsEditor'
-import VolunteerEditor from '@/components/builder/VolunteerEditor'
-import LanguagesEditor from '@/components/builder/LanguagesEditor'
-import InterestsEditor from '@/components/builder/InterestsEditor'
-import AwardsEditor from '@/components/builder/AwardsEditor'
-import PublicationsEditor from '@/components/builder/PublicationsEditor'
-import ReferencesEditor from '@/components/builder/ReferencesEditor'
+import SectionList from '@/components/builder/SectionList'
+import { getVisibleResumeData, getOrderedSections } from '@/lib/visibilityUtils'
+import type { BuilderVisibility } from '@/types'
+import { DEFAULT_VISIBILITY } from '@/types'
 import { getTemplateComponent } from '@/components/templates/registry'
 import { generateDOCX } from '@/lib/docxGenerator'
 import type { ResumeData, TemplateId, BuilderMode, TailorAnalysis, TemplateProps, Profile } from '@/types'
 
-// ─── Section config ───────────────────────────────────────────────────────────
-
-const SECTIONS = [
-  { id: 'contact', label: 'Contact Info', Icon: User },
-  { id: 'summary', label: 'Summary', Icon: AlignLeft },
-  { id: 'experience', label: 'Work Experience', Icon: Briefcase },
-  { id: 'education', label: 'Education', Icon: GraduationCap },
-  { id: 'skills', label: 'Skills', Icon: Zap },
-  { id: 'projects', label: 'Projects', Icon: Code },
-  { id: 'certifications', label: 'Certificates', Icon: Award },
-  { id: 'volunteer', label: 'Volunteer Work', Icon: Heart },
-  { id: 'languages', label: 'Languages', Icon: Globe },
-  { id: 'interests', label: 'Interests', Icon: Star },
-  { id: 'awards', label: 'Awards', Icon: Trophy },
-  { id: 'publications', label: 'Publications', Icon: BookOpen },
-  { id: 'references', label: 'References', Icon: Users },
-] as const
-
-type SectionId = typeof SECTIONS[number]['id']
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const EDITORS: Record<SectionId, React.ComponentType<any>> = {
-  contact: ContactEditor,
-  summary: SummaryEditor,
-  experience: ExperienceEditor,
-  education: EducationEditor,
-  skills: SkillsEditor,
-  projects: ProjectsEditor,
-  certifications: CertificationsEditor,
-  volunteer: VolunteerEditor,
-  languages: LanguagesEditor,
-  interests: InterestsEditor,
-  awards: AwardsEditor,
-  publications: PublicationsEditor,
-  references: ReferencesEditor,
-}
-
-function sectionHasData(sectionId: SectionId, data: ResumeData): boolean {
-  switch (sectionId) {
-    case 'contact': return !!(data.name || data.email || data.phone)
-    case 'summary': return !!data.summary
-    case 'experience': return data.experience.length > 0
-    case 'education': return data.education.length > 0
-    case 'skills': return data.skills.length > 0
-    case 'projects': return data.projects.length > 0
-    case 'certifications': return data.certifications.length > 0
-    case 'volunteer': return data.volunteer.length > 0
-    case 'languages': return data.languages.length > 0
-    case 'interests': return data.interests.length > 0
-    case 'awards': return data.awards.length > 0
-    case 'publications': return data.publications.length > 0
-    case 'references': return data.references.length > 0
-  }
-}
 
 // ─── Inner builder (needs PlanContext) ────────────────────────────────────────
 
@@ -121,7 +45,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     (searchParams.get('template') as TemplateId) ?? 'modern-minimal'
   )
   const [activeMode, setActiveMode] = useState<BuilderMode>('builder')
-  const [expandedSection, setExpandedSection] = useState<SectionId | null>('contact')
+  const [expandedSection, setExpandedSection] = useState<string | null>('contact')
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
@@ -131,9 +55,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [previewScale, setPreviewScale] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
+  const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
 
-  const saveTimerRef = useRef<NodeJS.Timeout>()
+  const saveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const userId = profile.id
+
+  // SESSION 4C — Run in Supabase SQL editor:
+  // ALTER TABLE resumes ADD COLUMN IF NOT EXISTS builder_visibility jsonb DEFAULT '{}';
 
   // ── Load resume on mount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -155,6 +84,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setResumeData(data)
       setSavedData(data)
       setResumeTitle(resume.title ?? '')
+      // Load saved visibility, merging with defaults to handle new fields
+      const savedVis = (resume as Record<string, unknown>).builder_visibility as Partial<BuilderVisibility> | null
+      if (savedVis && Object.keys(savedVis).length > 0) {
+        const merged: BuilderVisibility = {
+          ...DEFAULT_VISIBILITY,
+          ...savedVis,
+          sections: { ...DEFAULT_VISIBILITY.sections, ...(savedVis.sections ?? {}) },
+          items: {
+            ...DEFAULT_VISIBILITY.items,
+            ...(savedVis.items ?? {}),
+          },
+          sectionOrder: savedVis.sectionOrder ?? DEFAULT_VISIBILITY.sectionOrder,
+        }
+        setVisibility(merged)
+        setSavedVisibility(merged)
+      }
       setIsLoading(false)
     }
     load()
@@ -178,22 +123,30 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setIsSaving(true)
       const { error } = await supabase
         .from('resumes')
-        .update({ parsed_data: resumeData, updated_at: new Date().toISOString() })
+        .update({
+          parsed_data: resumeData,
+          builder_visibility: visibility,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', resumeId)
         .eq('user_id', userId)
       if (error) {
-        console.error('Auto-save failed:', error)
+        console.error('Auto-save failed:', error.message, error.code, error.details)
         setIsSaving(false)
         return
       }
       setSavedData(resumeData)
+      setSavedVisibility(visibility)
       setIsSaving(false)
     }, 500)
     return () => clearTimeout(saveTimerRef.current)
-  }, [resumeData, supabase, resumeId, userId])
+  }, [resumeData, visibility, supabase, resumeId, userId])
 
   const hasUnsavedChanges =
-    !!resumeData && JSON.stringify(resumeData) !== JSON.stringify(savedData)
+    !!resumeData && (
+      JSON.stringify(resumeData) !== JSON.stringify(savedData) ||
+      JSON.stringify(visibility) !== JSON.stringify(savedVisibility)
+    )
 
   // ── beforeunload guard ──────────────────────────────────────────────────────
   // Browsers do not await async beforeunload handlers, so we rely on the
@@ -247,13 +200,18 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   function handleApplySuggestion(sectionId: string) {
     setActiveMode('builder')
-    setExpandedSection(sectionId as SectionId)
+    setExpandedSection(sectionId)
     setSectionHints(prev => new Set(prev).add(sectionId))
   }
 
+  const visibleData = useMemo(
+    () => resumeData ? getVisibleResumeData(resumeData, visibility) : null,
+    [resumeData, visibility]
+  )
+
   async function handleDownloadDOCX() {
-    if (!requirePro('docx_download') || !resumeData) return
-    await generateDOCX(resumeData, `${resumeTitle || 'resume'}.docx`)
+    if (!requirePro('docx_download') || !resumeData || !visibleData) return
+    await generateDOCX(visibleData, `${resumeTitle || 'resume'}.docx`)
     setIsDownloadOpen(false)
   }
 
@@ -271,7 +229,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     <>
       <style>{`
         @media print {
-          body > *:not(#builder-print-wrapper) { display: none !important; }
+          @page { size: A4; margin: 0; }
+          body * { visibility: hidden; }
+          #builder-print-wrapper,
+          #builder-print-wrapper * { visibility: visible; }
           #builder-print-wrapper {
             position: fixed;
             top: 0; left: 0;
@@ -388,43 +349,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 onApplySuggestion={handleApplySuggestion}
               />
             ) : (
-              <div className="py-2">
-                {SECTIONS.map(({ id, label, Icon }) => {
-                  const hasData = sectionHasData(id, resumeData)
-                  const isExpanded = expandedSection === id
-                  const hasHint = sectionHints.has(id)
-                  const Editor = EDITORS[id]
-
-                  return (
-                    <div key={id} className="border-b border-gray-100 last:border-b-0">
-                      <button
-                        onClick={() => setExpandedSection(isExpanded ? null : id)}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
-                      >
-                        <span className="text-gray-300 text-xs select-none">⠿</span>
-                        <Icon size={14} className="text-gray-500 shrink-0" />
-                        <span className="flex-1 text-sm font-medium text-gray-700">{label}</span>
-                        {hasHint && (
-                          <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-                        )}
-                        <span
-                          className={`text-xs font-medium shrink-0 ${
-                            hasData ? 'text-indigo-600' : 'text-gray-400'
-                          }`}
-                        >
-                          {hasData ? 'EDIT' : '+ ADD'}
-                        </span>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="border-t border-gray-100 bg-gray-50">
-                          <Editor data={resumeData} onChange={handleDataChange} />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              <SectionList
+                resumeData={resumeData}
+                visibility={visibility}
+                expandedSection={expandedSection}
+                sectionHints={sectionHints}
+                onDataChange={handleDataChange}
+                onVisibilityChange={setVisibility}
+                onExpandSection={(id) => setExpandedSection(id)}
+              />
             )}
           </aside>
 
@@ -439,9 +372,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               }}
             >
               <TemplateComponent
-                data={resumeData}
+                data={visibleData ?? resumeData}
                 isEditing={false}
                 onFieldChange={() => {}}
+                sectionOrder={getOrderedSections(visibility)}
               />
             </div>
           </main>
