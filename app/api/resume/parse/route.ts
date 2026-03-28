@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { extractPDFItems, type ExtractedPage, type TextItem } from '@/lib/pdfExtractor'
-import { parseResumeFromPages } from '@/lib/resumeParser'
 import { parseResume } from '@/lib/parsers'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 
@@ -100,36 +98,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Extract text and parse ─────────────────────────────────────────────────
-  let rawText: string = ''
+  // ── Parse ──────────────────────────────────────────────────────────────────
   let parsedData: ResumeData
 
   try {
-    if (file.type === 'application/pdf') {
-      const pages = await extractPDFItems(buffer)
-
-      // Scanned PDF detection: very little extractable text
-      rawText = pages.flatMap((p: ExtractedPage) => p.items).map((i: TextItem) => i.text).join(' ')
-      if (rawText.trim().length < 100) {
-        await supabase.storage.from('resumes').remove([storagePath])
-        return NextResponse.json<APIResponse<never>>(
-          { success: false, error: 'SCANNED_PDF' },
-          { status: 400 }
-        )
-      }
-
-      parsedData = await parseResumeFromPages(pages)
-    } else {
-      // DOCX: mammoth → flat text → text parser
-      const mammoth = await import('mammoth')
-      const result = await mammoth.extractRawText({ buffer })
-      rawText = result.value
-      parsedData = await parseResume(Buffer.from(rawText), file.type)
-    }
+    parsedData = await parseResume(buffer, file.type)
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
-    console.error('Text extraction / parse error:', errMsg)
     await supabase.storage.from('resumes').remove([storagePath])
+    if (errMsg === 'SCANNED_PDF') {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'SCANNED_PDF' },
+        { status: 400 }
+      )
+    }
+    console.error('Parse error:', errMsg)
     return NextResponse.json(
       { success: false, error: 'PARSE_FAILED', detail: errMsg },
       { status: 500 }
@@ -142,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .insert({
       user_id: user.id,
       title: originalFilename,
-      raw_text: rawText,
+      raw_text: '',
       parsed_data: parsedData,
       original_file_url: storagePath,
     })
