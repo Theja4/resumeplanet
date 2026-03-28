@@ -150,6 +150,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         return
       }
 
+      // TODO: validate shape
       const data = resume.parsed_data as ResumeData
       setResumeData(data)
       setSavedData(data)
@@ -169,39 +170,42 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return () => window.removeEventListener('resize', updateScale)
   }, [])
 
-  // ── Auto-save ───────────────────────────────────────────────────────────────
+  // ── Auto-save (debounced 500ms) ─────────────────────────────────────────────
   useEffect(() => {
     if (!resumeData) return
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       setIsSaving(true)
-      await supabase
+      const { error } = await supabase
         .from('resumes')
         .update({ parsed_data: resumeData, updated_at: new Date().toISOString() })
         .eq('id', resumeId)
         .eq('user_id', userId)
+      if (error) {
+        console.error('Auto-save failed:', error)
+        setIsSaving(false)
+        return
+      }
       setSavedData(resumeData)
       setIsSaving(false)
-    }, 2000)
+    }, 500)
     return () => clearTimeout(saveTimerRef.current)
-  }, [resumeData])
-
-  // ── beforeunload guard ──────────────────────────────────────────────────────
-  useEffect(() => {
-    async function handleUnload() {
-      if (!resumeData || JSON.stringify(resumeData) === JSON.stringify(savedData)) return
-      await supabase
-        .from('resumes')
-        .update({ parsed_data: resumeData, updated_at: new Date().toISOString() })
-        .eq('id', resumeId)
-        .eq('user_id', userId)
-    }
-    window.addEventListener('beforeunload', handleUnload)
-    return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [resumeData, savedData])
+  }, [resumeData, supabase, resumeId, userId])
 
   const hasUnsavedChanges =
     !!resumeData && JSON.stringify(resumeData) !== JSON.stringify(savedData)
+
+  // ── beforeunload guard ──────────────────────────────────────────────────────
+  // Browsers do not await async beforeunload handlers, so we rely on the
+  // 500ms debounce above to keep data fresh. On unload, just cancel any
+  // pending timer to avoid a redundant in-flight save after the tab closes.
+  useEffect(() => {
+    function handleUnload() {
+      clearTimeout(saveTimerRef.current)
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [resumeId, userId, supabase, hasUnsavedChanges])
 
   function handleDataChange(updated: ResumeData) {
     setResumeData(updated)
@@ -228,6 +232,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeText, jobDescription }),
       })
+      if (!res.ok) {
+        console.error('Tailor analysis failed:', res.status)
+        return
+      }
       const json = await res.json()
       if (json.success) {
         setTailorAnalysis(json.data)
@@ -504,16 +512,16 @@ export default function BuilderPage() {
     checkAuth()
   }, [])
 
-  if (isMobile) {
-    return <MobileFallback resumeId={resumeId} />
-  }
-
   if (!authChecked || !profileState) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="animate-spin text-indigo-600" size={32} />
       </div>
     )
+  }
+
+  if (isMobile) {
+    return <MobileFallback resumeId={resumeId} />
   }
 
   return (
