@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { parseResume } from '@/lib/parsers'
+import { ParseError } from '@/lib/parsers/types'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -104,14 +105,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     parsedData = await parseResume(buffer, file.type)
   } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err)
     await supabase.storage.from('resumes').remove([storagePath])
-    if (errMsg === 'SCANNED_PDF') {
+    if (err instanceof ParseError) {
       return NextResponse.json<APIResponse<never>>(
-        { success: false, error: 'SCANNED_PDF' },
+        { success: false, error: err.code },
         { status: 400 }
       )
     }
+    const errMsg = err instanceof Error ? err.message : String(err)
     console.error('Parse error:', errMsg)
     return NextResponse.json(
       { success: false, error: 'PARSE_FAILED', detail: errMsg },

@@ -1,5 +1,6 @@
 import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
+import { ParseError } from './types'
 import { extractPDFItems } from '@/lib/pdfExtractor'
 import { parseResumeFromPages, parseResumeText } from '@/lib/resumeParser'
 
@@ -10,7 +11,7 @@ const pdfjsParser: ResumeParser = {
       // Scanned PDF detection
       const rawText = pages.flatMap((p: { items: { text: string }[] }) => p.items).map((i: { text: string }) => i.text).join(' ')
       if (rawText.trim().length < 100) {
-        throw new Error('SCANNED_PDF')
+        throw new ParseError('SCANNED_PDF')
       }
       return parseResumeFromPages(pages)
     }
