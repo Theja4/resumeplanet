@@ -13,6 +13,8 @@ import TemplateSkeleton from '@/components/templates/TemplateSkeleton'
 import { updateResumeData } from '@/app/dashboard/resumes/actions'
 import { generateDOCX } from '@/lib/docxGenerator'
 import type { ResumeData, Resume, TemplateId, Profile, TemplateProps } from '@/types'
+import { useProGate } from '@/lib/hooks/useProGate'
+import { ProGateModal } from '@/components/shared/ProGateModal'
 
 interface Props {
   initialTemplateId: TemplateId
@@ -48,7 +50,7 @@ export default function TemplatePreviewClient({
   profile,
 }: Props) {
   const searchParams = useSearchParams()
-  const isPro = profile?.plan === 'pro'
+  const { isPro, requirePro, blockedFeature, clearBlockedFeature } = useProGate()
   const allTemplates = getAllTemplates()
 
   const initialResumeId = searchParams.get('resumeId') ?? initialResumes[0]?.id ?? ''
@@ -145,6 +147,7 @@ export default function TemplatePreviewClient({
 
   // ── DOCX download ──────────────────────────────────────────────────────────
   function handleDOCX() {
+    if (!requirePro('docx_download')) return
     const data = editedData ?? displayData
     if (!data) return
     const name = data.name || 'resume'
@@ -194,32 +197,36 @@ export default function TemplatePreviewClient({
             handleFieldChange={handleFieldChange}
           />
         </div>
+        <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
       </>
     )
   }
 
   return (
-    <PreviewLayout
-      allTemplates={allTemplates}
-      selectedTemplateId={selectedTemplateId}
-      setSelectedTemplateId={setSelectedTemplateId}
-      initialResumes={initialResumes}
-      selectedResumeId={selectedResumeId}
-      setSelectedResumeId={setSelectedResumeId}
-      isPro={isPro}
-      isEditing={isEditing}
-      setIsEditing={setIsEditing}
-      editedData={editedData}
-      isSaving={isSaving}
-      saveMessage={saveMessage}
-      handleSave={handleSave}
-      handlePDF={handlePDF}
-      handleDOCX={handleDOCX}
-      isLoadingTemplate={isLoadingTemplate}
-      activeData={activeData}
-      TemplateComponent={TemplateComponent}
-      handleFieldChange={handleFieldChange}
-    />
+    <>
+      <PreviewLayout
+        allTemplates={allTemplates}
+        selectedTemplateId={selectedTemplateId}
+        setSelectedTemplateId={setSelectedTemplateId}
+        initialResumes={initialResumes}
+        selectedResumeId={selectedResumeId}
+        setSelectedResumeId={setSelectedResumeId}
+        isPro={isPro}
+        isEditing={isEditing}
+        setIsEditing={setIsEditing}
+        editedData={editedData}
+        isSaving={isSaving}
+        saveMessage={saveMessage}
+        handleSave={handleSave}
+        handlePDF={handlePDF}
+        handleDOCX={handleDOCX}
+        isLoadingTemplate={isLoadingTemplate}
+        activeData={activeData}
+        TemplateComponent={TemplateComponent}
+        handleFieldChange={handleFieldChange}
+      />
+      <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
+    </>
   )
 }
 
