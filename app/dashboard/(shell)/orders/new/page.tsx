@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import type { Resume } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 const STEPS = ['Resume', 'Job Details', 'Notes', 'Review']
 
@@ -45,8 +45,8 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 }
 
 export default function NewOrderPage() {
-  const router = useRouter()
   const supabase = createClient()
+  const { openOrderCheckout } = usePaddleCheckout()
 
   const [step, setStep] = useState(1)
   const [resumes, setResumes] = useState<Resume[]>([])
@@ -80,31 +80,23 @@ export default function NewOrderPage() {
   async function handleSubmit() {
     setIsSubmitting(true)
     setError(null)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'order',
-          resumeId: selectedResumeId,
-          jobTitle,
-          jobDescription: jobDescription || null,
-          additionalNotes: additionalNotes || null,
-          industry,
-          yearsExp,
-        }),
-      })
-      const json = await res.json()
-      if (json.success && json.data?.checkoutUrl) {
-        window.location.href = json.data.checkoutUrl
-      } else {
-        setError(json.error ?? 'Failed to start checkout. Please try again.')
+    await openOrderCheckout({
+      resumeId: selectedResumeId,
+      jobTitle,
+      jobDescription: jobDescription || null,
+      additionalNotes: additionalNotes || null,
+      industry,
+      yearsExp,
+      onSuccess: () => {
+        // Paddle overlay opens automatically over the page
+        // Don't navigate yet — webhook updates the order status
         setIsSubmitting(false)
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-      setIsSubmitting(false)
-    }
+      },
+      onError: (err) => {
+        setError(err)
+        setIsSubmitting(false)
+      },
+    })
   }
 
   return (
@@ -327,7 +319,7 @@ export default function NewOrderPage() {
           >
             {isSubmitting ? (
               <span className="flex items-center justify-center gap-2">
-                <Loader2 size={18} className="animate-spin" /> Redirecting to Stripe…
+                <Loader2 size={18} className="animate-spin" /> Opening payment…
               </span>
             ) : (
               'Proceed to payment →'
