@@ -110,6 +110,14 @@ The existing success banner ("You're now on Pro!") continues to show as soon as 
 
 ---
 
+## Cancellation Behaviour
+
+Cancellation via the Paddle customer portal ends the subscription at the **end of the current billing period** — access continues until then and no refund is issued. This is handled by `subscription.canceled` in the webhook, which sets `plan = 'free'` and `subscription_interval = null` only when Paddle fires the event (at period end).
+
+The existing copy on the billing page ("You can cancel anytime from the customer portal. Your access continues until the end of the billing period.") already communicates this. No change needed to the cancellation flow.
+
+---
+
 ## Out of Scope
 
 - Changing the feature comparison table
