@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { CheckCircle, XCircle } from 'lucide-react'
-import type { DiscountType } from '@/lib/pricing'
 
 export interface PromoValidationResult {
   valid: boolean
-  couponId?: string
-  stripePromoCodeId?: string
-  discountType?: DiscountType
+  discountId?: string
+  discountCode?: string
+  discountType?: string
   discountValue?: number
   displayLabel?: string
   errorMessage?: string
@@ -40,7 +39,7 @@ export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
     setResult(null)
 
     try {
-      const res = await fetch('/api/stripe/validate-promo', {
+      const res = await fetch('/api/paddle/validate-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: target }),

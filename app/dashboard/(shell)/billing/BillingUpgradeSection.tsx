@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   PRO_PLAN,
   getActivePromotion,
@@ -10,39 +9,23 @@ import {
 import PricingToggle from '@/components/shared/PricingToggle'
 import PricingCard from '@/components/shared/PricingCard'
 import PromoCodeInput, { type PromoValidationResult } from '@/components/shared/PromoCodeInput'
+import UpgradeButton from '@/components/shared/UpgradeButton'
 
 interface Props {
   autoFillPromo?: string
 }
 
 export default function BillingUpgradeSection({ autoFillPromo }: Props) {
-  const router = useRouter()
   const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
-  const [appliedCouponId, setAppliedCouponId] = useState<string | undefined>(undefined)
+  const [appliedDiscountId, setAppliedDiscountId] = useState<string | undefined>(undefined)
   const activePromo: PromoConfig | null = getActivePromotion()
 
-  async function handleUpgrade() {
-    const effectiveCouponId = appliedCouponId ??
-      (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
-
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'subscription',
-        priceId: selectedPriceId,
-        couponId: effectiveCouponId,
-      }),
-    })
-    const json = await res.json()
-    if (json.data?.checkoutUrl) {
-      window.location.href = json.data.checkoutUrl
-    }
-  }
-
   function handlePromoApply(result: PromoValidationResult) {
-    setAppliedCouponId(result.valid ? result.couponId : undefined)
+    setAppliedDiscountId(result.valid ? result.discountId : undefined)
   }
+
+  const effectiveDiscountId = appliedDiscountId ??
+    (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
 
   return (
     <div className="space-y-5">
@@ -61,8 +44,11 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
         selectedPriceId={selectedPriceId}
         activePromo={activePromo}
         isCurrentPlan={false}
-        onUpgrade={handleUpgrade}
+        onUpgrade={() => {}}
       />
+
+      {/* Upgrade button */}
+      <UpgradeButton priceId={selectedPriceId} couponId={effectiveDiscountId} />
 
       {/* Promo code input */}
       <div>
