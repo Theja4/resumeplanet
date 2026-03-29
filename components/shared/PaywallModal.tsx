@@ -9,6 +9,7 @@ import {
   formatPriceDisplay,
 } from '@/lib/pricing'
 import PriceDisplay from './PriceDisplay'
+import UpgradeButton from './UpgradeButton'
 
 interface PaywallModalProps {
   isOpen: boolean
@@ -18,41 +19,12 @@ interface PaywallModalProps {
 }
 
 export default function PaywallModal({ isOpen, onClose, feature, reason: _reason }: PaywallModalProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   if (!isOpen) return null
 
   const activePromo = getActivePromotion()
   const priceOption = PRO_PLAN.defaultPrice
   const display = getEffectiveDisplay(priceOption, activePromo)
   const formatted = formatPriceDisplay(display, priceOption)
-
-  async function handleUpgrade() {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'subscription',
-          priceId: priceOption.id,
-        }),
-      })
-      const json = await res.json()
-      const url = json.data?.checkoutUrl
-      if (url) {
-        window.location.href = url
-      } else {
-        setError(json.error ?? 'Something went wrong. Please try again.')
-        setLoading(false)
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-      setLoading(false)
-    }
-  }
 
   const ctaLabel = formatted.hasDiscount
     ? `Upgrade — ${formatted.main}/mo (was ${formatted.actual})`
@@ -108,17 +80,10 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
             <p className="text-xs text-gray-400 mt-1">Cancel anytime</p>
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600 text-center mb-3">{error}</p>
-          )}
-
-          <button
-            onClick={handleUpgrade}
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Redirecting to checkout…' : ctaLabel}
-          </button>
+          <UpgradeButton
+            label={ctaLabel}
+            couponId={activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined}
+          />
 
           <button
             onClick={onClose}

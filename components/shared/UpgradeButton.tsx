@@ -1,99 +1,72 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { PRO_PLAN, getActivePromotion, getEffectiveDisplay, formatPriceDisplay } from '@/lib/pricing'
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
+import { PRO_PLAN } from '@/lib/pricing'
 
-interface UpgradeButtonProps {
+interface Props {
   label?: string
-  variant?: 'button' | 'banner' | 'inline'
+  priceId?: string
+  couponId?: string
+  variant?: 'button' | 'link'
   className?: string
+  onSuccess?: () => void
 }
 
 export default function UpgradeButton({
+  label,
+  priceId,
+  couponId,
   variant = 'button',
-  className,
-  label: labelProp,
-}: UpgradeButtonProps) {
-  const [loading, setLoading] = useState(false)
+  className = '',
+  onSuccess,
+}: Props) {
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { openSubscriptionCheckout } = usePaddleCheckout()
 
-  const activePromo = getActivePromotion()
-  const priceOption = PRO_PLAN.defaultPrice
-  const display = getEffectiveDisplay(priceOption, activePromo)
-  const formatted = formatPriceDisplay(display, priceOption)
-
-  const label = labelProp ?? `Upgrade to Pro — ${formatted.main}/mo`
-
-  async function handleClick() {
-    setLoading(true)
+  const handleClick = async () => {
+    setIsLoading(true)
     setError(null)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'subscription', priceId: priceOption.id }),
-      })
-      const json = await res.json()
-      const url = json.data?.checkoutUrl
-      if (url) {
-        window.location.href = url
-      } else {
-        setError('Something went wrong. Please try again.')
-        setLoading(false)
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-      setLoading(false)
-    }
+    await openSubscriptionCheckout({
+      priceId: priceId ?? PRO_PLAN.defaultPrice.paddlePriceId,
+      couponId,
+      onSuccess: () => {
+        setIsLoading(false)
+        onSuccess?.()
+      },
+      onError: (err) => {
+        setIsLoading(false)
+        setError(err)
+      },
+    })
   }
 
-  if (variant === 'banner') {
-    return (
-      <div className={cn('bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-center justify-between gap-4', className)}>
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-indigo-600 shrink-0" />
-          <span className="text-sm text-indigo-800 font-medium">{label}</span>
-        </div>
-        <button
-          onClick={handleClick}
-          disabled={loading}
-          className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-        >
-          {loading ? 'Loading…' : `Upgrade — ${formatted.main}/mo`}
-        </button>
-      </div>
-    )
-  }
+  const displayLabel = isLoading ? 'Opening checkout…' : (label ?? 'Upgrade to Pro')
 
-  if (variant === 'inline') {
+  if (variant === 'link') {
     return (
       <button
         onClick={handleClick}
-        disabled={loading}
-        className={cn('text-indigo-600 hover:text-indigo-800 text-sm font-medium underline-offset-2 hover:underline transition-colors disabled:opacity-50', className)}
+        disabled={isLoading}
+        className={`text-indigo-600 hover:text-indigo-700 font-medium text-sm disabled:opacity-50 ${className}`}
       >
-        {loading ? 'Loading…' : label}
+        {displayLabel}
+        {error && <span className="block text-red-500 text-xs mt-1">{error}</span>}
       </button>
     )
   }
 
-  // Default 'button' variant
   return (
     <div>
-      {error && <p className="text-sm text-red-600 mb-2 text-center">{error}</p>}
       <button
         onClick={handleClick}
-        disabled={loading}
-        className={cn(
-          'flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-          className
-        )}
+        disabled={isLoading}
+        className={`w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       >
-        <Sparkles size={16} />
-        {loading ? 'Redirecting to checkout…' : label}
+        {displayLabel}
       </button>
+      {error && <p className="text-red-500 text-xs mt-2 text-center">{error}</p>}
     </div>
   )
 }
