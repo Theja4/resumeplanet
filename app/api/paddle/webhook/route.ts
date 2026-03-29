@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { paddle } from '@/lib/paddle'
+import { PRO_PLAN } from '@/lib/pricing'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
+  if (!priceId) return null
+  const option = PRO_PLAN.getPriceByPaddleId(priceId)
+  if (option?.interval === 'month') return 'monthly'
+  if (option?.interval === 'year') return 'annual'
+  return null
+}
 
 // Service role client for webhook (bypasses RLS)
 function createServiceClient() {
@@ -110,6 +120,9 @@ async function handleSubscriptionFromTransaction(transaction: any, supabase: any
     .single()
   if (profile?.plan === 'pro') return
 
+  const priceId = transaction.items?.[0]?.price?.id ?? null
+  const subscriptionInterval = resolveInterval(priceId)
+
   await supabase
     .from('profiles')
     .update({
@@ -117,10 +130,11 @@ async function handleSubscriptionFromTransaction(transaction: any, supabase: any
       paddle_subscription_id: transaction.subscriptionId ?? null,
       paddle_customer_id: transaction.customerId ?? null,
       subscription_status: 'active',
+      subscription_interval: subscriptionInterval,
     })
     .eq('id', userId)
 
-  console.log(`User ${userId} upgraded to Pro (via transaction)`)
+  console.log(`User ${userId} upgraded to Pro (via transaction), interval: ${subscriptionInterval}`)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,6 +150,9 @@ async function handleSubscriptionActivated(subscription: any, supabase: any) {
     .single()
   if (profile?.plan === 'pro') return
 
+  const priceId = subscription.items?.[0]?.price?.id ?? null
+  const subscriptionInterval = resolveInterval(priceId)
+
   await supabase
     .from('profiles')
     .update({
@@ -143,21 +160,25 @@ async function handleSubscriptionActivated(subscription: any, supabase: any) {
       paddle_subscription_id: subscription.id,
       paddle_customer_id: subscription.customerId,
       subscription_status: 'active',
+      subscription_interval: subscriptionInterval,
     })
     .eq('id', userId)
 
-  console.log(`User ${userId} subscription activated`)
+  console.log(`User ${userId} subscription activated, interval: ${subscriptionInterval}`)
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleSubscriptionUpdated(subscription: any, supabase: any) {
   const isActive = ['active', 'trialing'].includes(subscription.status)
+  const priceId = subscription.items?.[0]?.price?.id ?? null
+  const subscriptionInterval = isActive ? resolveInterval(priceId) : null
 
   await supabase
     .from('profiles')
     .update({
       subscription_status: subscription.status,
       plan: isActive ? 'pro' : 'free',
+      subscription_interval: subscriptionInterval,
     })
     .eq('paddle_subscription_id', subscription.id)
 }
@@ -170,6 +191,7 @@ async function handleSubscriptionCanceled(subscription: any, supabase: any) {
       plan: 'free',
       subscription_status: 'cancelled',
       paddle_subscription_id: null,
+      subscription_interval: null,
     })
     .eq('paddle_subscription_id', subscription.id)
 
