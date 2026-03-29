@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   paddle,
-  PADDLE_PRODUCTS,
   PADDLE_PRICES,
   isValidPaddlePriceId,
   getOrCreatePaddleCustomer,
@@ -82,7 +81,7 @@ export async function POST(request: NextRequest) {
     return ok({
       orderId: order.id,
       mode: 'order',
-      productId: PADDLE_PRODUCTS.professional,
+      priceId: PADDLE_PRICES.professionalOrder,
       customerEmail: profile.email,
       customData: {
         orderId: order.id,

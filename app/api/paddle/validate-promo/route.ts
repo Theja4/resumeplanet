@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { paddle } from '@/lib/paddle'
+import { createClient } from '@/lib/supabase/server'
 import type { Discount } from '@paddle/paddle-node-sdk'
 
 export async function POST(request: NextRequest) {
@@ -8,6 +9,12 @@ export async function POST(request: NextRequest) {
     body = await request.json()
   } catch {
     return NextResponse.json({ valid: false, errorMessage: 'Invalid request' })
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ valid: false, errorMessage: 'Unauthorized' }, { status: 401 })
   }
 
   const code = ((body.code as string) ?? '').trim().toUpperCase()

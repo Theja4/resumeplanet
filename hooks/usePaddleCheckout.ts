@@ -30,13 +30,13 @@ export function usePaddleCheckout() {
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Checkout failed')
 
-      const { orderId, productId, customerEmail, customData } = json.data
+      const { orderId, priceId, customerEmail, customData } = json.data
 
       const paddle = getPaddle()
       if (!paddle) throw new Error('Paddle not initialized')
 
       paddle.Checkout.open({
-        items: [{ priceId: productId, quantity: 1 }],
+        items: [{ priceId, quantity: 1 }],
         customer: { email: customerEmail },
         customData,
         settings: {

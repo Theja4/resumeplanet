@@ -31,6 +31,7 @@ export const PADDLE_PRICES = {
   proMonthly: process.env.PADDLE_PRO_PRICE_MONTHLY ?? '',
   proAnnual: process.env.PADDLE_PRO_PRICE_ANNUAL ?? '',
   proWeekly: process.env.PADDLE_PRO_PRICE_WEEKLY ?? '',
+  professionalOrder: process.env.PADDLE_PROFESSIONAL_ORDER_PRICE_ID ?? '',
 }
 
 export const PADDLE_PRODUCTS = {

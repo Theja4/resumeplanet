@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionCanceled(event.data, supabase)
         break
       }
-      case 'subscription.payment.failed': {
+      case 'transaction.payment_failed': {
         await handlePaymentFailed(event.data, supabase)
         break
       }
@@ -128,6 +128,14 @@ async function handleSubscriptionActivated(subscription: any, supabase: any) {
   const userId = subscription.customData?.userId
   if (!userId) return
 
+  // Idempotency: skip if already upgraded
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan')
+    .eq('id', userId)
+    .single()
+  if (profile?.plan === 'pro') return
+
   await supabase
     .from('profiles')
     .update({
@@ -169,10 +177,12 @@ async function handleSubscriptionCanceled(subscription: any, supabase: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handlePaymentFailed(subscription: any, supabase: any) {
+async function handlePaymentFailed(transaction: any, supabase: any) {
   // Don't downgrade immediately — Paddle retries
+  const subscriptionId = transaction.subscriptionId
+  if (!subscriptionId) return
   await supabase
     .from('profiles')
     .update({ subscription_status: 'past_due' })
-    .eq('paddle_subscription_id', subscription.id)
+    .eq('paddle_subscription_id', subscriptionId)
 }
