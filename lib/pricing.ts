@@ -11,7 +11,7 @@
 //   Upgrade buttons
 //   Exit intent modal
 //   Promo banners
-//   Stripe checkout (price IDs)
+//   Paddle checkout (price IDs)
 //   Plan enforcement (scan limits etc)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -36,7 +36,7 @@ export interface PriceDisplay {
 
 export interface PriceOption {
   id: string
-  stripePriceId: string
+  paddlePriceId: string
   interval: BillingInterval
   intervalCount: number
   display: PriceDisplay
@@ -56,8 +56,8 @@ export interface PromoConfig {
   id: string
   name: string
 
-  stripeCouponId: string
-  stripePromoCode?: string
+  paddleDiscountId: string
+  paddleDiscountCode?: string
 
   discountType: DiscountType
   discountValue: number
@@ -131,7 +131,7 @@ export const PRO_PLAN = {
   prices: [
     {
       id: 'monthly',
-      stripePriceId: process.env.STRIPE_PRO_PRICE_MONTHLY ?? '',
+      paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY ?? '',
       interval: 'month' as BillingInterval,
       intervalCount: 1,
       display: {
@@ -149,7 +149,7 @@ export const PRO_PLAN = {
     },
     {
       id: 'annual',
-      stripePriceId: process.env.STRIPE_PRO_PRICE_ANNUAL ?? '',
+      paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL ?? '',
       interval: 'year' as BillingInterval,
       intervalCount: 1,
       display: {
@@ -167,7 +167,7 @@ export const PRO_PLAN = {
     },
     {
       id: 'weekly',
-      stripePriceId: process.env.STRIPE_PRO_PRICE_WEEKLY ?? '',
+      paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY ?? '',
       interval: 'week' as BillingInterval,
       intervalCount: 1,
       display: {
@@ -204,8 +204,8 @@ export const PRO_PLAN = {
   getPriceById(id: string) {
     return this.prices.find(p => p.id === id)
   },
-  getPriceByStripeId(sid: string) {
-    return this.prices.find(p => p.stripePriceId === sid)
+  getPriceByPaddleId(pid: string) {
+    return this.prices.find(p => p.paddlePriceId === pid)
   },
 }
 
@@ -242,8 +242,8 @@ export const PROMOTIONS: PromoConfig[] = [
   {
     id: 'diwali-2026',
     name: 'Diwali Special 2026',
-    stripeCouponId: process.env.STRIPE_COUPON_DIWALI_2026 ?? '',
-    stripePromoCode: 'DIWALI50',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_DIWALI_2026 ?? '',
+    paddleDiscountCode: 'DIWALI50',
     discountType: 'percent',
     discountValue: 50,
     appliesTo: 'monthly',
@@ -274,8 +274,8 @@ export const PROMOTIONS: PromoConfig[] = [
   {
     id: 'newyear-2027',
     name: 'New Year 2027',
-    stripeCouponId: process.env.STRIPE_COUPON_NEWYEAR_2027 ?? '',
-    stripePromoCode: 'NEWYEAR2027',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_NEWYEAR_2027 ?? '',
+    paddleDiscountCode: 'NEWYEAR2027',
     discountType: 'percent',
     discountValue: 30,
     appliesTo: 'annual',
@@ -304,8 +304,8 @@ export const PROMOTIONS: PromoConfig[] = [
   {
     id: 'exit-default',
     name: 'Default Exit Offer',
-    stripeCouponId: process.env.STRIPE_COUPON_EXIT_DEFAULT ?? '',
-    stripePromoCode: undefined,
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_EXIT_DEFAULT ?? '',
+    paddleDiscountCode: undefined,
     discountType: 'fixed',
     discountValue: 6,
     appliesTo: 'monthly',
@@ -415,6 +415,6 @@ export const PLANS = {
   PRO: 'pro' as PlanId,
 }
 
-export function isValidStripePriceId(id: string): boolean {
-  return PRO_PLAN.prices.some(p => p.stripePriceId === id && p.stripePriceId !== '')
+export function isValidPricingPriceId(id: string): boolean {
+  return PRO_PLAN.prices.some(p => p.paddlePriceId === id && p.paddlePriceId !== '')
 }

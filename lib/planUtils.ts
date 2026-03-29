@@ -1,4 +1,5 @@
 import type { Profile } from '@/types'
+import { FREE_PLAN } from '@/lib/pricing'
 
 // Model strings duplicated here to avoid importing lib/claude (which instantiates
 // the Anthropic client and cannot be bundled into client components).
@@ -23,7 +24,7 @@ export function canOptimiseResume(profile: Profile | null): boolean {
 
 export function getRemainingFreeScans(profile: Profile | null): number {
   if (isPro(profile)) return Infinity
-  return Math.max(0, 3 - (profile?.ats_scans_today ?? 0))
+  return Math.max(0, FREE_PLAN.limits.atsScansPerDay - (profile?.ats_scans_today ?? 0))
 }
 
 export function getATSModel(profile: Profile | null): string {

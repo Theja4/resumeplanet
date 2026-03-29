@@ -23,7 +23,7 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
 
   async function handleUpgrade() {
     const effectiveCouponId = appliedCouponId ??
-      (activePromo?.isAutoApply ? activePromo.stripeCouponId : undefined)
+      (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
 
     const res = await fetch('/api/stripe/checkout', {
       method: 'POST',

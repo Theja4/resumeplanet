@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
 
     // Validate + resolve price option
     const priceOption = PRO_PLAN.getPriceById(priceId) ?? PRO_PLAN.defaultPrice
-    if (!priceOption.stripePriceId) {
-      return err('Pro plan not configured — missing Stripe price ID', 500)
+    if (!priceOption.paddlePriceId) {
+      return err('Pro plan not configured — missing Paddle price ID', 500)
     }
 
     const customerId = await getOrCreateStripeCustomer(
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     const activePromo = getActivePromotion()
     const effectiveCouponId: string | undefined =
       couponId ||
-      (activePromo?.isAutoApply ? activePromo.stripeCouponId : undefined) ||
+      (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined) ||
       undefined
 
     // Build session params
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     const sessionParams: any = {
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: priceOption.stripePriceId, quantity: 1 }],
+      line_items: [{ price: priceOption.paddlePriceId, quantity: 1 }],
       success_url: `${appUrl}/dashboard/billing?upgraded=true`,
       cancel_url: `${appUrl}/dashboard/billing`,
       metadata: { userId: user.id, mode: 'subscription' },

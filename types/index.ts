@@ -6,8 +6,8 @@ export interface Profile {
   full_name: string | null
   avatar_url: string | null
   plan: 'free' | 'pro'
-  stripe_customer_id: string | null
-  stripe_subscription_id: string | null
+  paddle_customer_id: string | null
+  paddle_subscription_id: string | null
   subscription_status: string | null
   ats_scans_today: number
   ats_scans_reset_at: string
@@ -147,8 +147,7 @@ export interface Order {
   id: string
   user_id: string
   resume_id: string | null
-  stripe_payment_intent_id: string | null
-  stripe_session_id: string | null
+  paddle_transaction_id: string | null
   amount: number
   status: 'pending' | 'paid' | 'in_progress' | 'delivered'
   job_title: string | null

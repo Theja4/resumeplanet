@@ -51,11 +51,11 @@ export default function PricingSection({ activePromo }: Props) {
       </div>
 
       {/* Active promo note */}
-      {activePromo?.isBanner && activePromo.stripePromoCode && (
+      {activePromo?.isBanner && activePromo.paddleDiscountCode && (
         <p className="text-center text-sm text-gray-500 mt-6">
           🎉 <span className="font-medium">{activePromo.badge}</span> active — use code{' '}
           <span className="font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">
-            {activePromo.stripePromoCode}
+            {activePromo.paddleDiscountCode}
           </span>{' '}
           at checkout
         </p>

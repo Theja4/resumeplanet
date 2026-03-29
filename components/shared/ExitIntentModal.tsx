@@ -74,7 +74,7 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
         body: JSON.stringify({
           mode: 'subscription',
           priceId: PRO_PLAN.defaultPrice.id,
-          couponId: promo.stripeCouponId,
+          couponId: promo.paddleDiscountId,
         }),
       })
       const json = await res.json()

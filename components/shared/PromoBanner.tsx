@@ -30,7 +30,7 @@ export default function PromoBanner({ promo }: Props) {
           body: JSON.stringify({
             mode: 'subscription',
             priceId: PRO_PLAN.getPriceById(promo.appliesTo)?.id ?? PRO_PLAN.defaultPrice.id,
-            couponId: promo.stripeCouponId,
+            couponId: promo.paddleDiscountId,
           }),
         })
         const json = await res.json()
@@ -41,7 +41,7 @@ export default function PromoBanner({ promo }: Props) {
         window.location.href = `/dashboard/billing?promo=${promo.id}`
       }
     } else {
-      window.location.href = `/dashboard/billing?promo=${promo.stripePromoCode ?? promo.id}`
+      window.location.href = `/dashboard/billing?promo=${promo.paddleDiscountCode ?? promo.id}`
     }
   }
 
@@ -59,9 +59,9 @@ export default function PromoBanner({ promo }: Props) {
       <span className="font-medium">{promo.headline}</span>
       <span className="opacity-80">—</span>
       <span className="hidden sm:inline">{promo.subheadline}</span>
-      {promo.stripePromoCode && (
+      {promo.paddleDiscountCode && (
         <span className="font-mono bg-white/20 px-2 py-0.5 rounded text-xs tracking-wider">
-          {promo.stripePromoCode}
+          {promo.paddleDiscountCode}
         </span>
       )}
       <button

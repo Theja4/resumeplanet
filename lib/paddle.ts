@@ -1,0 +1,87 @@
+import { Paddle, Environment } from '@paddle/paddle-node-sdk'
+
+let _paddle: Paddle | null = null
+
+function getPaddleInstance(): Paddle {
+  if (!_paddle) {
+    if (!process.env.PADDLE_API_KEY) {
+      throw new Error('PADDLE_API_KEY is not set')
+    }
+    _paddle = new Paddle(process.env.PADDLE_API_KEY, {
+      environment:
+        process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+          ? Environment.production
+          : Environment.sandbox,
+    })
+  }
+  return _paddle
+}
+
+// Lazy proxy — safe to import at module level without PADDLE_API_KEY set
+export const paddle = new Proxy({} as Paddle, {
+  get(_target, prop) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (getPaddleInstance() as any)[prop]
+  },
+})
+
+// ── Price / Product ID constants ──────────────────────────────────────────────
+
+export const PADDLE_PRICES = {
+  proMonthly: process.env.PADDLE_PRO_PRICE_MONTHLY ?? '',
+  proAnnual: process.env.PADDLE_PRO_PRICE_ANNUAL ?? '',
+  proWeekly: process.env.PADDLE_PRO_PRICE_WEEKLY ?? '',
+}
+
+export const PADDLE_PRODUCTS = {
+  professional: process.env.PADDLE_PROFESSIONAL_PRODUCT_ID ?? '',
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+
+export function isValidPaddlePriceId(id: string): boolean {
+  return Object.values(PADDLE_PRICES).some((v) => v !== '' && v === id)
+}
+
+// ── Customer helper ───────────────────────────────────────────────────────────
+
+export async function getOrCreatePaddleCustomer(
+  userId: string,
+  email: string,
+  name: string | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any
+): Promise<string> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('paddle_customer_id')
+    .eq('id', userId)
+    .single()
+
+  if (profile?.paddle_customer_id) {
+    return profile.paddle_customer_id
+  }
+
+  const customer = await paddle.customers.create({
+    email,
+    name: name ?? undefined,
+    customData: { supabase_user_id: userId },
+  })
+
+  await supabase
+    .from('profiles')
+    .update({ paddle_customer_id: customer.id })
+    .eq('id', userId)
+
+  return customer.id
+}
+
+// ── Webhook verification ──────────────────────────────────────────────────────
+
+export function verifyPaddleWebhook(
+  rawBody: string,
+  signature: string,
+  secret: string
+) {
+  return paddle.webhooks.unmarshal(rawBody, secret, signature)
+}
