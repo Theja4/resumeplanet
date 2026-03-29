@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
 import PromoBanner from '@/components/shared/PromoBanner'
+import PaddleProvider from '@/components/providers/PaddleProvider'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +33,10 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {bannerPromo && <PromoBanner promo={bannerPromo} />}
-        {children}
+        <PaddleProvider>
+          {bannerPromo && <PromoBanner promo={bannerPromo} />}
+          {children}
+        </PaddleProvider>
       </body>
     </html>
   );
