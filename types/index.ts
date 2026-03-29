@@ -9,6 +9,7 @@ export interface Profile {
   paddle_customer_id: string | null
   paddle_subscription_id: string | null
   subscription_status: string | null
+  subscription_interval: 'monthly' | 'annual' | null
   ats_scans_today: number
   ats_scans_reset_at: string
   created_at: string
