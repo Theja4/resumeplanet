@@ -283,3 +283,102 @@ The promotion activates automatically on `startDate` and deactivates after `endD
    ```
 
 4. **Deploy.** The toggle appears on the pricing page automatically.
+
+## 8. Paddle Setup
+
+Paddle acts as Merchant of Record — they handle all international VAT, GST, and sales tax automatically. This is the right choice for an Indian founder selling globally.
+
+### Why Paddle instead of Stripe?
+- No need to register for GST/VAT in every country
+- Paddle handles tax compliance in 180+ countries
+- Simple pricing: flat % fee, no hidden costs
+
+### Create Paddle account
+1. Sign up at paddle.com — start in Sandbox mode
+2. Complete identity verification (required for payouts)
+
+### Create products
+In Paddle dashboard → Catalog → Products:
+
+**Pro Subscription:**
+- Product name: "ResumAI Pro"
+- Add price: $12.00/month recurring → copy `pri_...` → `PADDLE_PRO_PRICE_MONTHLY`
+- Add price: $99.00/year recurring → copy `pri_...` → `PADDLE_PRO_PRICE_ANNUAL`
+
+**Professional Resume Writing:**
+- Product name: "Professional Resume Writing"
+- Add price: $29.99 one-time → copy product ID `pro_...` → `PADDLE_PROFESSIONAL_PRODUCT_ID`
+
+### Get API keys
+Paddle dashboard → Developer → Authentication:
+- API key → `PADDLE_API_KEY`
+- Client-side token → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`
+
+### Set up webhook (local testing)
+Use ngrok to expose your local server:
+```bash
+ngrok http 3000
+```
+
+In Paddle dashboard → Developer → Notifications → New destination:
+- URL: `https://your-ngrok-url.ngrok.io/api/paddle/webhook`
+- Subscribe to events:
+  - `transaction.completed`
+  - `subscription.activated`
+  - `subscription.updated`
+  - `subscription.canceled`
+  - `subscription.payment.failed`
+- Copy signing secret → `PADDLE_WEBHOOK_SECRET`
+
+### Test the integration
+Test card: `4242 4242 4242 4242` (any future expiry, any CVC)
+
+**Test order flow:**
+1. Go to `/dashboard/orders/new`
+2. Fill in all steps and click "Proceed to payment"
+3. Paddle overlay opens over the app (no page redirect)
+4. Complete payment with test card
+5. Check Supabase: `orders.status` should change to `'paid'`
+
+**Test subscription flow:**
+1. Go to `/dashboard/billing` as a free user
+2. Click "Upgrade to Pro"
+3. Paddle overlay opens
+4. Subscribe with test card
+5. Check Supabase: `profiles.plan` should change to `'pro'`
+
+### For production
+1. Switch Paddle account to live mode
+2. Update env vars to production keys
+3. Set `NEXT_PUBLIC_PADDLE_ENVIRONMENT=production`
+4. Update webhook URL to your production domain
+
+## 9. Running a Promotion
+
+To activate a promotion (e.g. a discount code campaign):
+
+1. Paddle dashboard → Catalog → Discounts → New discount
+2. Set: type (percentage or flat), amount, redemption code
+3. Set recurrence and expiry if needed
+4. Copy the discount ID (e.g. `dsc_...`)
+5. In `lib/pricing.ts`, find the matching PROMOTIONS entry and set `paddleDiscountId`
+6. Set the env var (e.g. `PADDLE_DISCOUNT_EXIT_DEFAULT=dsc_...`)
+7. Deploy — promotion activates on `startDate` automatically
+
+## 10. Adding a New Billing Interval
+
+1. Create new price in Paddle dashboard (same Pro product)
+2. Copy the `pri_...` ID
+3. In `.env.local`, add e.g. `PADDLE_PRO_PRICE_WEEKLY=pri_...`
+4. In `lib/pricing.ts`, add to `PRO_PLAN.prices` array:
+   ```typescript
+   {
+     id: 'weekly',
+     label: 'Weekly',
+     paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY ?? '',
+     interval: 'week',
+     intervalCount: 1,
+     display: { displayPrice: 4, billingPeriod: 'week' },
+   }
+   ```
+5. It will appear automatically in PricingToggle

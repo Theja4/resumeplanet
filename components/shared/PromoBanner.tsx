@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { PRO_PLAN } from '@/lib/pricing'
 import type { PromoConfig } from '@/lib/pricing'
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   promo: PromoConfig
@@ -14,6 +15,7 @@ export default function PromoBanner({ promo }: Props) {
     if (typeof window === 'undefined') return false
     return !!sessionStorage.getItem(`promo-banner-dismissed-${promo.id}`)
   })
+  const { openSubscriptionCheckout } = usePaddleCheckout()
 
   function handleDismiss() {
     const key = `promo-banner-dismissed-${promo.id}`
@@ -23,23 +25,14 @@ export default function PromoBanner({ promo }: Props) {
 
   async function handleClaimClick() {
     if (promo.isAutoApply) {
-      try {
-        const res = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'subscription',
-            priceId: PRO_PLAN.getPriceById(promo.appliesTo)?.id ?? PRO_PLAN.defaultPrice.id,
-            couponId: promo.paddleDiscountId,
-          }),
-        })
-        const json = await res.json()
-        const url = json.data?.checkoutUrl
-        if (url) window.location.href = url
-      } catch {
-        // Fall back to billing page
-        window.location.href = `/dashboard/billing?promo=${promo.id}`
-      }
+      const priceOption = PRO_PLAN.getPriceById(promo.appliesTo) ?? PRO_PLAN.defaultPrice
+      await openSubscriptionCheckout({
+        priceId: priceOption.paddlePriceId,
+        couponId: promo.paddleDiscountId,
+        onError: () => {
+          window.location.href = `/dashboard/billing?promo=${promo.id}`
+        },
+      })
     } else {
       window.location.href = `/dashboard/billing?promo=${promo.paddleDiscountCode ?? promo.id}`
     }

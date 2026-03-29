@@ -9,6 +9,7 @@ import {
   type PromoConfig,
 } from '@/lib/pricing'
 import PriceDisplay from './PriceDisplay'
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   promo: PromoConfig
@@ -20,6 +21,7 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
   const [hasShown, setHasShown] = useState(false)
   const [timeLeft, setTimeLeft] = useState(promo.exitIntentTimerSeconds)
   const [isLoading, setIsLoading] = useState(false)
+  const { openSubscriptionCheckout } = usePaddleCheckout()
 
   const showModal = useCallback(() => {
     const key = `exit-intent-${promo.id}`
@@ -67,25 +69,12 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
 
   async function handleClaim() {
     setIsLoading(true)
-    try {
-      const res = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'subscription',
-          priceId: PRO_PLAN.defaultPrice.id,
-          couponId: promo.paddleDiscountId,
-        }),
-      })
-      const json = await res.json()
-      if (json.data?.checkoutUrl) {
-        window.location.href = json.data.checkoutUrl
-      } else {
-        setIsLoading(false)
-      }
-    } catch {
-      setIsLoading(false)
-    }
+    await openSubscriptionCheckout({
+      priceId: PRO_PLAN.defaultPrice.paddlePriceId,
+      couponId: promo.paddleDiscountId,
+      onSuccess: () => setIsLoading(false),
+      onError: () => setIsLoading(false),
+    })
   }
 
   // Build price display for the promo's override
