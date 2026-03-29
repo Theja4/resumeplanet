@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ShoppingBag, Plus } from 'lucide-react'
 import type { Order } from '@/types'
+import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-gray-100 text-gray-600',
@@ -55,7 +56,7 @@ export default async function OrdersPage() {
           <ShoppingBag size={40} className="mx-auto text-gray-300 mb-4" />
           <h2 className="text-lg font-semibold text-gray-700">No orders yet</h2>
           <p className="text-sm text-gray-400 mt-2 max-w-sm mx-auto">
-            Have a professional recruiter rewrite your resume in 48 hours for $29.99.
+            Have a professional recruiter rewrite your resume in 48 hours for ${PROFESSIONAL_ORDER.display.displayPrice}.
           </p>
           <Link
             href="/dashboard/orders/new"
@@ -86,7 +87,7 @@ export default async function OrdersPage() {
                       {STATUS_LABELS[order.status] ?? order.status}
                     </span>
                   </td>
-                  <td className="px-5 py-4 text-gray-700">$29.99</td>
+                  <td className="px-5 py-4 text-gray-700">${PROFESSIONAL_ORDER.display.displayPrice}</td>
                   <td className="px-5 py-4">
                     <Link href={`/dashboard/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-800 font-medium text-xs">
                       View order →

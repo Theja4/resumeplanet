@@ -2,6 +2,13 @@
 
 import { useState } from 'react'
 import { X, Check, Sparkles } from 'lucide-react'
+import {
+  PRO_PLAN,
+  getActivePromotion,
+  getEffectiveDisplay,
+  formatPriceDisplay,
+} from '@/lib/pricing'
+import PriceDisplay from './PriceDisplay'
 
 interface PaywallModalProps {
   isOpen: boolean
@@ -10,46 +17,46 @@ interface PaywallModalProps {
   reason?: string
 }
 
-async function startCheckout(): Promise<string | null> {
-  try {
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'subscription' }),
-    })
-    const json = await res.json()
-    return json.data?.checkoutUrl ?? null
-  } catch {
-    return null
-  }
-}
-
-const PRO_BENEFITS = [
-  'Unlimited ATS scans',
-  'Advanced AI analysis (Claude Opus)',
-  'All 5 resume templates + download',
-  'Resume auto-optimiser',
-  'Ad-free experience',
-  'Full resume builder',
-]
-
 export default function PaywallModal({ isOpen, onClose, feature, reason: _reason }: PaywallModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   if (!isOpen) return null
 
+  const activePromo = getActivePromotion()
+  const priceOption = PRO_PLAN.defaultPrice
+  const display = getEffectiveDisplay(priceOption, activePromo)
+  const formatted = formatPriceDisplay(display, priceOption)
+
   async function handleUpgrade() {
     setLoading(true)
     setError(null)
-    const url = await startCheckout()
-    if (url) {
-      window.location.href = url
-    } else {
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'subscription',
+          priceId: priceOption.id,
+        }),
+      })
+      const json = await res.json()
+      const url = json.data?.checkoutUrl
+      if (url) {
+        window.location.href = url
+      } else {
+        setError(json.error ?? 'Something went wrong. Please try again.')
+        setLoading(false)
+      }
+    } catch {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
   }
+
+  const ctaLabel = formatted.hasDiscount
+    ? `Upgrade — ${formatted.main}/mo (was ${formatted.actual})`
+    : `Upgrade to Pro — ${formatted.main}/mo`
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -71,8 +78,17 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
 
         {/* Bottom section */}
         <div className="p-8">
+          {/* Promo badge */}
+          {activePromo && (
+            <div className="text-center mb-4">
+              <span className="inline-block bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
+                {activePromo.badge}
+              </span>
+            </div>
+          )}
+
           <ul className="space-y-2.5 mb-6">
-            {PRO_BENEFITS.map(benefit => (
+            {PRO_PLAN.features.map(benefit => (
               <li key={benefit} className="flex items-center gap-3">
                 <Check size={16} className="text-green-500 shrink-0" />
                 <span className="text-sm text-gray-700">{benefit}</span>
@@ -81,7 +97,14 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
           </ul>
 
           <div className="text-center mb-6">
-            <p className="text-3xl font-bold text-gray-900">$12 <span className="text-lg font-normal text-gray-500">/ month</span></p>
+            <PriceDisplay
+              display={formatted}
+              size="lg"
+              showInterval={true}
+              showPerMonth={false}
+              showSavings={false}
+              className="items-center"
+            />
             <p className="text-xs text-gray-400 mt-1">Cancel anytime</p>
           </div>
 
@@ -94,7 +117,7 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
             disabled={loading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Redirecting to checkout…' : 'Upgrade to Pro →'}
+            {loading ? 'Redirecting to checkout…' : ctaLabel}
           </button>
 
           <button

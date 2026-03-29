@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PRO_PLAN, getActivePromotion, getEffectiveDisplay, formatPriceDisplay } from '@/lib/pricing'
 
 interface UpgradeButtonProps {
   label?: string
@@ -11,12 +12,19 @@ interface UpgradeButtonProps {
 }
 
 export default function UpgradeButton({
-  label = 'Upgrade to Pro',
   variant = 'button',
   className,
+  label: labelProp,
 }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const activePromo = getActivePromotion()
+  const priceOption = PRO_PLAN.defaultPrice
+  const display = getEffectiveDisplay(priceOption, activePromo)
+  const formatted = formatPriceDisplay(display, priceOption)
+
+  const label = labelProp ?? `Upgrade to Pro — ${formatted.main}/mo`
 
   async function handleClick() {
     setLoading(true)
@@ -25,7 +33,7 @@ export default function UpgradeButton({
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'subscription' }),
+        body: JSON.stringify({ mode: 'subscription', priceId: priceOption.id }),
       })
       const json = await res.json()
       const url = json.data?.checkoutUrl
@@ -53,7 +61,7 @@ export default function UpgradeButton({
           disabled={loading}
           className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
         >
-          {loading ? 'Loading…' : 'Upgrade — $12/mo'}
+          {loading ? 'Loading…' : `Upgrade — ${formatted.main}/mo`}
         </button>
       </div>
     )

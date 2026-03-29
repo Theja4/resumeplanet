@@ -1,16 +1,29 @@
 import Stripe from 'stripe'
 
-// Singleton Stripe client — never instantiated client-side
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-03-25.dahlia' as Stripe.LatestApiVersion,
-  typescript: true,
+let _stripe: Stripe | null = null
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is not set')
+    }
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2026-03-25.dahlia' as Stripe.LatestApiVersion,
+      typescript: true,
+    })
+  }
+  return _stripe
+}
+
+export { getStripe }
+// Keep backward compat — routes that use `stripe.xxx` can use this
+export const stripe = new Proxy({} as Stripe, {
+  get(_target, prop) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (getStripe() as any)[prop]
+  },
 })
 
-export const PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID ?? ''
-export const PROFESSIONAL_ORDER_AMOUNT = 2999 // $29.99 in cents
-
-// Helper: get or create a Stripe customer for a user
-// supabaseClient should be the server Supabase client (already authenticated)
 export async function getOrCreateStripeCustomer(
   userId: string,
   email: string,
@@ -42,14 +55,16 @@ export async function getOrCreateStripeCustomer(
   return customer.id
 }
 
-// Helper: verify and construct webhook event from raw payload
 export function constructWebhookEvent(
   payload: Buffer,
   signature: string
 ): Stripe.Event {
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not set')
+  }
   return stripe.webhooks.constructEvent(
     payload,
     signature,
-    process.env.STRIPE_WEBHOOK_SECRET!
+    process.env.STRIPE_WEBHOOK_SECRET
   )
 }

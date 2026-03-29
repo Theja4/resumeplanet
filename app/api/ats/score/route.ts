@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeJSON } from '@/lib/claude'
 import { getATSModel, getRemainingFreeScans, isPro } from '@/lib/planUtils'
+import { FREE_PLAN } from '@/lib/pricing'
 import type { ATSResult, ATSScanTier, APIResponse, Profile } from '@/types'
 
 const BASIC_SYSTEM = `You are an ATS resume analyst. Analyse the resume against the job description provided. If no job description given, analyse against general ATS best practices. Return ONLY valid JSON.`
@@ -131,12 +132,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    if ((profile?.ats_scans_today ?? 0) >= 3) {
+    if ((profile?.ats_scans_today ?? 0) >= FREE_PLAN.limits.atsScansPerDay) {
       return NextResponse.json(
         {
           success: false,
           error: 'FREE_LIMIT_REACHED',
-          scansUsed: 3,
+          scansUsed: FREE_PLAN.limits.atsScansPerDay,
           resetAt: profile?.ats_scans_reset_at,
         },
         { status: 429 }

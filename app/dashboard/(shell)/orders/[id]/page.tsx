@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Check, Clock, AlertCircle } from 'lucide-react'
 import type { Order } from '@/types'
+import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -126,7 +127,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
                 : '—'
             } />
             <Detail label="Ordered" value={formatDate(o.created_at)} />
-            <Detail label="Amount" value="$29.99" />
+            <Detail label="Amount" value={`$${PROFESSIONAL_ORDER.display.displayPrice}`} />
             <Detail label="Payment" value={
               <span className={o.status !== 'pending' ? 'text-green-600' : 'text-gray-500'}>
                 {o.status !== 'pending' ? 'Confirmed' : 'Pending'}

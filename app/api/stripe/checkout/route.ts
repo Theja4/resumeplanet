@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   stripe,
-  PRO_PRICE_ID,
-  PROFESSIONAL_ORDER_AMOUNT,
   getOrCreateStripeCustomer,
 } from '@/lib/stripe'
+import { PRO_PLAN, PROFESSIONAL_ORDER, getActivePromotion } from '@/lib/pricing'
 
 function ok(data: Record<string, unknown>) {
   return NextResponse.json({ success: true, data })
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         resume_id: resumeId,
-        amount: PROFESSIONAL_ORDER_AMOUNT,
+        amount: PROFESSIONAL_ORDER.amountCents,
         status: 'pending',
         job_title: jobTitle,
         job_description: jobDescription ?? null,
@@ -74,7 +73,7 @@ export async function POST(request: NextRequest) {
             name: 'Professional Resume Writing',
             description: `Expert resume writer · 48-hour delivery · Role: ${jobTitle}`,
           },
-          unit_amount: PROFESSIONAL_ORDER_AMOUNT,
+          unit_amount: PROFESSIONAL_ORDER.amountCents,
         },
         quantity: 1,
       }],
@@ -99,10 +98,16 @@ export async function POST(request: NextRequest) {
 
   // ── Subscription checkout ─────────────────────────────────────────────────
   if (mode === 'subscription') {
-    if (!PRO_PRICE_ID) return err('Pro plan not configured', 500)
-
     if (profile.plan === 'pro' && profile.subscription_status === 'active') {
       return err('Already subscribed to Pro')
+    }
+
+    const { priceId, couponId } = body
+
+    // Validate + resolve price option
+    const priceOption = PRO_PLAN.getPriceById(priceId) ?? PRO_PLAN.defaultPrice
+    if (!priceOption.stripePriceId) {
+      return err('Pro plan not configured — missing Stripe price ID', 500)
     }
 
     const customerId = await getOrCreateStripeCustomer(
@@ -112,17 +117,33 @@ export async function POST(request: NextRequest) {
       supabase
     )
 
-    const session = await stripe.checkout.sessions.create({
+    // Resolve coupon: explicit > auto-apply promo
+    const activePromo = getActivePromotion()
+    const effectiveCouponId: string | undefined =
+      couponId ||
+      (activePromo?.isAutoApply ? activePromo.stripeCouponId : undefined) ||
+      undefined
+
+    // Build session params
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sessionParams: any = {
       mode: 'subscription',
       customer: customerId,
-      line_items: [{ price: PRO_PRICE_ID, quantity: 1 }],
+      line_items: [{ price: priceOption.stripePriceId, quantity: 1 }],
       success_url: `${appUrl}/dashboard/billing?upgraded=true`,
       cancel_url: `${appUrl}/dashboard/billing`,
       metadata: { userId: user.id, mode: 'subscription' },
       subscription_data: { metadata: { userId: user.id } },
-      allow_promotion_codes: true,
-    })
+    }
 
+    if (effectiveCouponId) {
+      // Stripe disallows allow_promotion_codes when discounts is set
+      sessionParams.discounts = [{ coupon: effectiveCouponId }]
+    } else {
+      sessionParams.allow_promotion_codes = true
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams)
     return ok({ checkoutUrl: session.url! })
   }
 

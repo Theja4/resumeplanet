@@ -196,3 +196,90 @@ For production, set this to your deployed domain (e.g. `https://resumai.com`).
 | Success | `4242 4242 4242 4242` |
 | Requires authentication | `4000 0025 0000 3155` |
 | Declined | `4000 0000 0000 9995` |
+
+---
+
+## 8. Running a promotion
+
+### Create the coupon in Stripe
+
+1. Go to **Stripe dashboard → Customers → Coupons → Create coupon**
+2. Set `percent_off` or `amount_off`, duration (`once` / `repeating` / `forever`), and any redemption limits
+3. Copy the **Coupon ID** (starts with `coupon_...` or a random string)
+
+### Optionally create a promo code
+
+1. On the coupon page → **Add promotion code**
+2. Set a human-readable code string, e.g. `DIWALI50`
+3. Set redemption limits if needed
+
+### Add to pricing.ts
+
+Add an entry to `PROMOTIONS[]` in `/lib/pricing.ts`:
+
+```ts
+{
+  id: 'my-promo',
+  name: 'My Promo',
+  stripeCouponId: process.env.STRIPE_COUPON_MY_PROMO ?? '',
+  stripePromoCode: 'MYCODE',        // the code string from Stripe
+  discountType: 'percent',
+  discountValue: 20,
+  appliesTo: 'monthly',             // 'all' | price option id
+  overrideDisplay: { displayPrice: 9.60, actualPrice: 12 },
+  label: 'My Promo',
+  badge: '20% OFF',
+  headline: 'Special offer',
+  subheadline: '20% off your first month.',
+  ctaLabel: 'Claim 20% off →',
+  disclaimerText: 'First month only. Renews at $12/mo.',
+  startDate: '2026-11-01',          // ISO date, or omit for always-on
+  endDate:   '2026-11-05',
+  isExitIntent: true,
+  isBanner: true,
+  isAutoApply: true,
+  exitIntentTimerSeconds: 600,
+  bannerBgColor: 'bg-purple-600',
+  bannerTextColor: 'text-white',
+},
+```
+
+### Add the env var
+
+```
+STRIPE_COUPON_MY_PROMO=coupon_xxx
+```
+
+### Deploy
+
+The promotion activates automatically on `startDate` and deactivates after `endDate`. No code changes needed.
+
+---
+
+## 9. Adding a new billing interval
+
+1. **Create the price in Stripe**: Products → ResumAI Pro → **Add price** → set interval (week / month / year) → copy the Price ID
+
+2. **Add the env var**:
+   ```
+   STRIPE_PRO_PRICE_INTERVAL=price_xxx
+   ```
+
+3. **Add to `PRO_PLAN.prices[]`** in `/lib/pricing.ts`:
+   ```ts
+   {
+     id: 'quarterly',
+     stripePriceId: process.env.STRIPE_PRO_PRICE_QUARTERLY ?? '',
+     interval: 'month',
+     intervalCount: 3,
+     display: { displayPrice: 29, actualPrice: 36, currency: 'USD', currencySymbol: '$' },
+     label: 'Quarterly',
+     badge: 'Save 20%',
+     isDefault: false,
+     isHidden: false,
+     perMonthEquivalent: 9.67,
+     savingsNote: 'Save $7 vs monthly',
+   },
+   ```
+
+4. **Deploy.** The toggle appears on the pricing page automatically.

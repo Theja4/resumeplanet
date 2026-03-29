@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import type { Resume } from '@/types'
+import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 
 const STEPS = ['Resume', 'Job Details', 'Notes', 'Review']
 
@@ -312,7 +313,7 @@ export default function NewOrderPage() {
 
           {/* Price */}
           <div className="text-center mb-6">
-            <p className="text-4xl font-bold text-gray-900">$29.99</p>
+            <p className="text-4xl font-bold text-gray-900">${PROFESSIONAL_ORDER.display.displayPrice}</p>
             <p className="text-sm text-gray-400 mt-1">One-time payment · No subscription</p>
             <p className="text-sm text-amber-600 font-medium mt-1">⏱ 48-hour delivery</p>
           </div>
