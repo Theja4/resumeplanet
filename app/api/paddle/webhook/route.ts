@@ -147,12 +147,13 @@ async function handleSubscriptionActivated(subscription: any, supabase: any) {
   const userId = subscription.customData?.userId
   if (!userId) return
 
-  // Idempotency: skip if already upgraded
   const { data: profile } = await supabase
     .from('profiles')
     .select('plan')
     .eq('id', userId)
     .single()
+  // Idempotency: skip if already Pro. Note: plan changes (monthly→annual) are
+  // handled by handleSubscriptionUpdated, not this handler.
   if (profile?.plan === 'pro') return
 
   const priceId = subscription.items?.[0]?.price?.id ?? null
