@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
-export default function ManageSubscriptionButton() {
+interface Props {
+  label?: string
+}
+
+export default function ManageSubscriptionButton({ label = 'Manage Subscription' }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +46,7 @@ export default function ManageSubscriptionButton() {
             Opening portal…
           </>
         ) : (
-          'Manage Subscription'
+          label
         )}
       </button>
     </div>
