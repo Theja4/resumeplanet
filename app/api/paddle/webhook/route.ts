@@ -7,8 +7,13 @@ import { PRO_PLAN } from '@/lib/pricing'
 function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
   if (!priceId) return null
   const option = PRO_PLAN.getPriceByPaddleId(priceId)
-  if (option?.interval === 'month') return 'monthly'
-  if (option?.interval === 'year') return 'annual'
+  if (!option) {
+    console.warn(`resolveInterval: unknown Paddle price ID "${priceId}" — subscription_interval will be null`)
+    return null
+  }
+  // 'week' interval is intentionally excluded (hidden price, not sold to end users)
+  if (option.interval === 'month') return 'monthly'
+  if (option.interval === 'year') return 'annual'
   return null
 }
 
