@@ -94,7 +94,8 @@ export default async function BillingPage({
     : profile.subscription_interval === 'annual' ? 'pro-annual'
     : 'pro-monthly'
 
-  const hasProOrder = paidOrders.length > 0
+  const hasProfessionalOrder = paidOrders.length > 0
+  const annualPrice = PRO_PLAN.getPriceById('annual')
 
   const FREE_ATS_LIMIT = FREE_PLAN.limits.atsScansPerDay
   const exitPromo = getActiveExitIntentPromo()
@@ -272,11 +273,13 @@ export default async function BillingPage({
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-indigo-800">Switch to Annual — Save 31%</p>
-                <p className="text-xs text-indigo-600 mt-1">
-                  ${PRO_PLAN.prices.find(p => p.id === 'annual')!.display.displayPrice}/year
-                  {' · '}${PRO_PLAN.prices.find(p => p.id === 'annual')!.perMonthEquivalent ?? 8.25}/mo
-                  {' · '}{PRO_PLAN.prices.find(p => p.id === 'annual')!.savingsNote}
-                </p>
+                {annualPrice && (
+                  <p className="text-xs text-indigo-600 mt-1">
+                    ${annualPrice.display.displayPrice}/year
+                    {' · '}${annualPrice.perMonthEquivalent}/mo
+                    {' · '}{annualPrice.savingsNote}
+                  </p>
+                )}
               </div>
               <ManageSubscriptionButton label="Switch plan →" />
             </div>
@@ -288,7 +291,7 @@ export default async function BillingPage({
               href="/dashboard/orders/new"
               className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
             >
-              {hasProOrder
+              {hasProfessionalOrder
                 ? "You've ordered Professional Rewrite — order another"
                 : `Order Professional Rewrite — $${PROFESSIONAL_ORDER.display.displayPrice}`}
             </Link>
