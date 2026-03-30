@@ -100,11 +100,12 @@ export async function POST(request: NextRequest) {
     const priceId = body.priceId as string | undefined
     const couponId = body.couponId as string | undefined
 
-    // Validate + resolve price
+    // Resolve: plan ID like 'annual'/'monthly' → paddlePriceId, or pass-through if already a pri_...
+    const resolvedFromPlan = PRO_PLAN.getPriceById(priceId ?? '')?.paddlePriceId
     const validPriceId =
-      priceId && isValidPaddlePriceId(priceId)
-        ? priceId
-        : PADDLE_PRICES.proMonthly
+      resolvedFromPlan ||
+      (priceId && isValidPaddlePriceId(priceId) ? priceId : '') ||
+      PADDLE_PRICES.proMonthly
 
     if (!validPriceId) {
       return err('Pro plan not configured — missing Paddle price ID', 500)

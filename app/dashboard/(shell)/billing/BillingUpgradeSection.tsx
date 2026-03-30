@@ -9,7 +9,7 @@ import {
 import PricingToggle from '@/components/shared/PricingToggle'
 import PricingCard from '@/components/shared/PricingCard'
 import PromoCodeInput, { type PromoValidationResult } from '@/components/shared/PromoCodeInput'
-import UpgradeButton from '@/components/shared/UpgradeButton'
+import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   autoFillPromo?: string
@@ -18,7 +18,10 @@ interface Props {
 export default function BillingUpgradeSection({ autoFillPromo }: Props) {
   const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
   const [appliedDiscountId, setAppliedDiscountId] = useState<string | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(false)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const activePromo: PromoConfig | null = getActivePromotion()
+  const { openSubscriptionCheckout } = usePaddleCheckout()
 
   function handlePromoApply(result: PromoValidationResult) {
     setAppliedDiscountId(result.valid ? result.discountId : undefined)
@@ -26,6 +29,21 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
 
   const effectiveDiscountId = appliedDiscountId ??
     (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
+
+  async function handleUpgrade() {
+    setIsLoading(true)
+    setCheckoutError(null)
+    await openSubscriptionCheckout({
+      priceId: selectedPriceId,
+      couponId: effectiveDiscountId,
+      onSuccess: () => setIsLoading(false),
+      onError: (err) => {
+        setIsLoading(false)
+        setCheckoutError(err)
+        console.error('Checkout error:', err)
+      },
+    })
+  }
 
   return (
     <div className="space-y-5">
@@ -38,17 +56,18 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
         />
       </div>
 
-      {/* Pricing card */}
+      {/* Pricing card — button wired to Paddle checkout */}
       <PricingCard
         variant="pro"
         selectedPriceId={selectedPriceId}
         activePromo={activePromo}
         isCurrentPlan={false}
-        onUpgrade={() => {}}
+        onUpgrade={handleUpgrade}
+        isUpgrading={isLoading}
       />
-
-      {/* Upgrade button */}
-      <UpgradeButton priceId={selectedPriceId} couponId={effectiveDiscountId} />
+      {checkoutError && (
+        <p className="text-sm text-red-600 text-center">{checkoutError}</p>
+      )}
 
       {/* Promo code input */}
       <div>

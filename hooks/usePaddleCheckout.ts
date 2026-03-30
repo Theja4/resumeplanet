@@ -81,10 +81,8 @@ export function usePaddleCheckout() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const checkoutParams: any = {
         items: [{ priceId, quantity: 1 }],
-        customer: {
-          id: customerId,
-          email: customerEmail,
-        },
+        // Pass id if customer already exists in Paddle, email only for new customers
+        customer: customerId ? { id: customerId } : { email: customerEmail },
         customData,
         settings: {
           displayMode: 'overlay',

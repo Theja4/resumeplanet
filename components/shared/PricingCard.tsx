@@ -15,6 +15,7 @@ interface Props {
   activePromo: PromoConfig | null
   isCurrentPlan?: boolean
   onUpgrade?: () => void
+  isUpgrading?: boolean
 }
 
 export default function PricingCard({
@@ -23,6 +24,7 @@ export default function PricingCard({
   activePromo,
   isCurrentPlan = false,
   onUpgrade,
+  isUpgrading = false,
 }: Props) {
   if (variant === 'free') {
     return (
@@ -117,9 +119,10 @@ export default function PricingCard({
         ) : (
           <button
             onClick={onUpgrade}
-            className="w-full py-3 bg-white text-indigo-600 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors"
+            disabled={isUpgrading}
+            className="w-full py-3 bg-white text-indigo-600 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Upgrade to Pro
+            {isUpgrading ? 'Opening checkout…' : 'Upgrade to Pro'}
           </button>
         )}
       </div>
