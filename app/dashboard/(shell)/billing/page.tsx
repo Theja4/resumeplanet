@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ManageSubscriptionButton from './ManageSubscriptionButton'
 import BillingUpgradeSection from './BillingUpgradeSection'
 import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
+import UpgradePoller from '@/components/shared/UpgradePoller'
 import { FREE_PLAN, PRO_PLAN, PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
 import type { Profile, Order } from '@/types'
 
@@ -88,6 +89,13 @@ export default async function BillingPage({
   const resumeCount = resumeCountResult.count ?? 0
   const paidOrders = (ordersResult.data ?? []) as Order[]
 
+  const subscriptionTier =
+    !isPro ? 'free'
+    : profile.subscription_interval === 'annual' ? 'pro-annual'
+    : 'pro-monthly'
+
+  const hasProOrder = paidOrders.length > 0
+
   const FREE_ATS_LIMIT = FREE_PLAN.limits.atsScansPerDay
   const exitPromo = getActiveExitIntentPromo()
 
@@ -104,6 +112,7 @@ export default async function BillingPage({
             </div>
           </div>
         )}
+        <UpgradePoller upgraded={upgraded} isPro={isPro} />
 
         {/* Header */}
         <div>
@@ -247,17 +256,54 @@ export default async function BillingPage({
         </div>
 
         {/* CTAs */}
-        {isPro ? (
-          <ManageSubscriptionButton />
-        ) : (
-          <BillingUpgradeSection autoFillPromo={promoCode} />
-        )}
-        <Link
-          href="/dashboard/orders/new"
-          className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
-        >
-          Order Professional Rewrite — ${PROFESSIONAL_ORDER.display.displayPrice}
-        </Link>
+        <div className="space-y-4">
+          {/* Free: full upgrade section */}
+          {subscriptionTier === 'free' && (
+            <BillingUpgradeSection autoFillPromo={promoCode} />
+          )}
+
+          {/* Pro: manage subscription button */}
+          {subscriptionTier !== 'free' && (
+            <ManageSubscriptionButton />
+          )}
+
+          {/* Monthly Pro: annual upsell */}
+          {subscriptionTier === 'pro-monthly' && (
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-indigo-800">Switch to Annual — Save 31%</p>
+                <p className="text-xs text-indigo-600 mt-1">
+                  ${PRO_PLAN.prices.find(p => p.id === 'annual')!.display.displayPrice}/year
+                  {' · '}${PRO_PLAN.prices.find(p => p.id === 'annual')!.perMonthEquivalent ?? 8.25}/mo
+                  {' · '}{PRO_PLAN.prices.find(p => p.id === 'annual')!.savingsNote}
+                </p>
+              </div>
+              <ManageSubscriptionButton label="Switch plan →" />
+            </div>
+          )}
+
+          {/* Pro: professional rewrite CTA */}
+          {subscriptionTier !== 'free' && (
+            <Link
+              href="/dashboard/orders/new"
+              className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
+            >
+              {hasProOrder
+                ? "You've ordered Professional Rewrite — order another"
+                : `Order Professional Rewrite — $${PROFESSIONAL_ORDER.display.displayPrice}`}
+            </Link>
+          )}
+
+          {/* Free: professional rewrite CTA */}
+          {subscriptionTier === 'free' && (
+            <Link
+              href="/dashboard/orders/new"
+              className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
+            >
+              Order Professional Rewrite — ${PROFESSIONAL_ORDER.display.displayPrice}
+            </Link>
+          )}
+        </div>
 
         {isPro && (
           <p className="text-center text-xs text-gray-400">
