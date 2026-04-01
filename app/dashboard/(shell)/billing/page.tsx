@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Check, X, CheckCircle2, Zap, TrendingUp, FileText } from 'lucide-react'
+import { CheckCircle2, Zap, TrendingUp, FileText } from 'lucide-react'
 import Link from 'next/link'
 import ManageSubscriptionButton from './ManageSubscriptionButton'
 import BillingUpgradeSection from './BillingUpgradeSection'
@@ -8,32 +8,6 @@ import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
 import UpgradePoller from '@/components/shared/UpgradePoller'
 import { FREE_PLAN, PRO_PLAN, PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
 import type { Profile, Order } from '@/types'
-
-// ─── Plan feature comparison ───────────────────────────────────────────────────
-
-const FEATURES: {
-  label: string
-  free: string | boolean
-  pro: string | boolean
-  professional: string | boolean
-}[] = [
-  { label: 'Resume uploads',            free: '1 resume',     pro: 'Unlimited',    professional: 'Unlimited' },
-  { label: 'ATS scans',                 free: '3 / day',      pro: 'Unlimited',    professional: 'Unlimited' },
-  { label: 'ATS analysis tier',         free: 'Basic',        pro: 'Advanced AI',  professional: 'Advanced AI' },
-  { label: 'AI resume optimisation',    free: false,          pro: true,           professional: true },
-  { label: 'Score breakdown & keywords',free: false,          pro: true,           professional: true },
-  { label: 'Resume templates',          free: false,          pro: true,           professional: true },
-  { label: 'Download optimised resume', free: false,          pro: true,           professional: true },
-  { label: 'Professional rewrite',      free: false,          pro: false,          professional: true },
-  { label: '48 hr turnaround',          free: false,          pro: false,          professional: true },
-  { label: 'Priority support',          free: false,          pro: true,           professional: true },
-]
-
-function FeatureCell({ value }: { value: string | boolean }) {
-  if (value === true)  return <Check className="h-5 w-5 text-green-500 mx-auto" />
-  if (value === false) return <X className="h-5 w-5 text-gray-300 mx-auto" />
-  return <span className="text-sm text-gray-700">{value}</span>
-}
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -94,7 +68,6 @@ export default async function BillingPage({
     : profile.subscription_interval === 'annual' ? 'pro-annual'
     : 'pro-monthly'
 
-  const hasProfessionalOrder = paidOrders.length > 0
   const annualPrice = PRO_PLAN.getPriceById('annual')
 
   const FREE_ATS_LIMIT = FREE_PLAN.limits.atsScansPerDay
@@ -215,100 +188,33 @@ export default async function BillingPage({
           </div>
         </div>
 
-        {/* Plan comparison table */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Compare plans</h2>
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-            <div className="grid grid-cols-4 border-b border-gray-200">
-              <div className="px-4 py-4" />
-              <div className="px-4 py-4 text-center border-l border-gray-100">
-                <p className="text-sm font-semibold text-gray-700">Free</p>
-                <p className="text-lg font-bold text-gray-900 mt-1">$0</p>
-                <p className="text-xs text-gray-400">forever</p>
-              </div>
-              <div className="px-4 py-4 text-center border-l border-gray-100 bg-indigo-50">
-                <p className="text-sm font-semibold text-indigo-700">Pro</p>
-                <p className="text-lg font-bold text-indigo-900 mt-1">${PRO_PLAN.defaultPrice.display.displayPrice}</p>
-                <p className="text-xs text-indigo-400">per month</p>
-              </div>
-              <div className="px-4 py-4 text-center border-l border-gray-100 bg-amber-50">
-                <p className="text-sm font-semibold text-amber-700">Professional</p>
-                <p className="text-lg font-bold text-amber-900 mt-1">${PROFESSIONAL_ORDER.display.displayPrice}</p>
-                <p className="text-xs text-amber-400">one-time</p>
-              </div>
-            </div>
-
-            {FEATURES.map((feature, i) => (
-              <div
-                key={i}
-                className={`grid grid-cols-4 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-              >
-                <div className="px-4 py-3 text-sm text-gray-700">{feature.label}</div>
-                <div className="px-4 py-3 text-center border-l border-gray-100">
-                  <FeatureCell value={feature.free} />
-                </div>
-                <div className="px-4 py-3 text-center border-l border-gray-100">
-                  <FeatureCell value={feature.pro} />
-                </div>
-                <div className="px-4 py-3 text-center border-l border-gray-100">
-                  <FeatureCell value={feature.professional} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CTAs */}
+        {/* Plans */}
         <div className="space-y-4">
-          {/* Free: full upgrade section */}
-          {subscriptionTier === 'free' && (
-            <BillingUpgradeSection autoFillPromo={promoCode} />
-          )}
-
-          {/* Pro: manage subscription button */}
-          {subscriptionTier !== 'free' && (
-            <ManageSubscriptionButton />
-          )}
-
-          {/* Monthly Pro: annual upsell */}
-          {subscriptionTier === 'pro-monthly' && (
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-indigo-800">Switch to Annual — Save 31%</p>
-                {annualPrice && (
-                  <p className="text-xs text-indigo-600 mt-1">
-                    ${annualPrice.display.displayPrice}/year
-                    {' · '}${annualPrice.perMonthEquivalent}/mo
-                    {' · '}{annualPrice.savingsNote}
-                  </p>
-                )}
-              </div>
-              <ManageSubscriptionButton label="Switch plan →" />
-            </div>
-          )}
-
-          {/* Pro: professional rewrite CTA */}
-          {subscriptionTier !== 'free' && (
-            <Link
-              href="/dashboard/orders/new"
-              className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
-            >
-              {hasProfessionalOrder
-                ? "You've ordered Professional Rewrite — order another"
-                : `Order Professional Rewrite — $${PROFESSIONAL_ORDER.display.displayPrice}`}
-            </Link>
-          )}
-
-          {/* Free: professional rewrite CTA */}
-          {subscriptionTier === 'free' && (
-            <Link
-              href="/dashboard/orders/new"
-              className="flex items-center justify-center gap-2 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 text-sm font-semibold py-3 px-6 rounded-xl transition-colors"
-            >
-              Order Professional Rewrite — ${PROFESSIONAL_ORDER.display.displayPrice}
-            </Link>
-          )}
+          <h2 className="text-sm font-semibold text-gray-700">Plans</h2>
+          <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} />
         </div>
+
+        {/* Pro: manage subscription button */}
+        {subscriptionTier !== 'free' && (
+          <ManageSubscriptionButton />
+        )}
+
+        {/* Monthly Pro: annual upsell */}
+        {subscriptionTier === 'pro-monthly' && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-indigo-800">Switch to Annual — Save 31%</p>
+              {annualPrice && (
+                <p className="text-xs text-indigo-600 mt-1">
+                  ${annualPrice.display.displayPrice}/year
+                  {' · '}${annualPrice.perMonthEquivalent}/mo
+                  {' · '}{annualPrice.savingsNote}
+                </p>
+              )}
+            </div>
+            <ManageSubscriptionButton label="Switch plan →" />
+          </div>
+        )}
 
         {isPro && (
           <p className="text-center text-xs text-gray-400">
