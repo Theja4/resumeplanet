@@ -49,14 +49,16 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Interval toggle */}
-      <div className="flex justify-center">
-        <PricingToggle
-          selectedPriceId={selectedPriceId}
-          onChange={setSelectedPriceId}
-          activePromo={activePromo}
-        />
-      </div>
+      {/* Interval toggle — only relevant when upgrading from free */}
+      {!isPro && (
+        <div className="flex justify-center">
+          <PricingToggle
+            selectedPriceId={selectedPriceId}
+            onChange={setSelectedPriceId}
+            activePromo={activePromo}
+          />
+        </div>
+      )}
 
       {/* 3-column card grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
