@@ -17,6 +17,7 @@ interface Props {
   isCurrentPlan?: boolean
   onUpgrade?: () => void
   isUpgrading?: boolean
+  delay?: string
 }
 
 export default function PricingCard({
@@ -26,10 +27,19 @@ export default function PricingCard({
   isCurrentPlan = false,
   onUpgrade,
   isUpgrading = false,
+  delay = '0ms',
 }: Props) {
   if (variant === 'free') {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col h-full">
+      <div
+        className="bg-white rounded-2xl border border-gray-200 p-7 flex flex-col h-full relative overflow-hidden opacity-0 [animation:card-enter_0.5s_ease_forwards]"
+        style={{ animationDelay: delay }}
+      >
+        {/* Shimmer */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+          <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-gray-200/50 to-transparent [animation:shimmer-sweep_5s_ease-in-out_2s_infinite]" />
+        </div>
+
         <div className="flex items-center justify-between mb-5">
           <span className="text-lg font-bold text-gray-900">Free</span>
           <span className="text-xs font-semibold uppercase tracking-wider bg-gray-100 text-gray-500 px-3 py-1 rounded-full">
@@ -73,15 +83,24 @@ export default function PricingCard({
     const formatted = formatPriceDisplay(display, priceOption)
 
     const promoBadge =
+      !isCurrentPlan &&
       activePromo?.overrideDisplay &&
       (activePromo.appliesTo === 'all' || activePromo.appliesTo === priceOption.id)
         ? activePromo.badge
         : null
 
     return (
-      <div className="bg-[#026d32] rounded-2xl p-6 flex flex-col h-full relative text-white">
+      <div
+        className="bg-[#026d32] rounded-2xl p-7 flex flex-col h-full relative overflow-hidden text-white opacity-0 [animation:card-enter_0.5s_ease_forwards]"
+        style={{ animationDelay: delay }}
+      >
+        {/* Shimmer */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+          <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent [animation:shimmer-sweep_5s_ease-in-out_2.5s_infinite]" />
+        </div>
+
         {promoBadge && (
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
             <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">
               {promoBadge}
             </span>
@@ -120,9 +139,7 @@ export default function PricingCard({
               {isUpgrading ? (
                 'Opening checkout…'
               ) : (
-                <>
-                  Upgrade to Pro <ArrowRight size={14} />
-                </>
+                <>Upgrade to Pro <ArrowRight size={14} /></>
               )}
             </button>
           )}
@@ -143,7 +160,15 @@ export default function PricingCard({
 
   // Professional Rewrite
   return (
-    <div className="bg-white rounded-2xl border border-amber-200 p-6 flex flex-col h-full">
+    <div
+      className="bg-white rounded-2xl border border-amber-200 p-7 flex flex-col h-full relative overflow-hidden opacity-0 [animation:card-enter_0.5s_ease_forwards]"
+      style={{ animationDelay: delay }}
+    >
+      {/* Shimmer */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+        <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent [animation:shimmer-sweep_5s_ease-in-out_3s_infinite]" />
+      </div>
+
       <div className="flex items-center justify-between mb-5">
         <span className="text-lg font-bold text-gray-900">Professional</span>
         <span className="text-xs font-semibold uppercase tracking-wider bg-amber-100 text-amber-700 px-3 py-1 rounded-full">

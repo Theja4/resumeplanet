@@ -71,7 +71,7 @@ export default async function PricingPage({
 
   return (
     <ExitIntentProvider isPro={isPro} exitPromo={exitPromo}>
-      <div className="max-w-3xl mx-auto space-y-8 pb-12">
+      <div className="max-w-4xl mx-auto space-y-8 pb-12">
         {/* Upgrade success banner */}
         {upgraded && (
           <>
@@ -108,18 +108,7 @@ export default async function PricingPage({
           </div>
         </div>
 
-        {/* Plans */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">Plans</h2>
-          <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} />
-        </div>
-
-        {/* Pro: manage subscription button */}
-        {subscriptionTier !== 'free' && (
-          <ManageSubscriptionButton />
-        )}
-
-        {/* Monthly Pro: annual upsell */}
+        {/* Monthly Pro: annual upsell — shown ABOVE cards */}
         {subscriptionTier === 'pro-monthly' && (
           <div className="rounded-xl border border-green-200 bg-green-50 p-5 flex items-start justify-between gap-4">
             <div>
@@ -133,10 +122,21 @@ export default async function PricingPage({
               )}
             </div>
             <ManageSubscriptionButton
-            label="Switch plan →"
-            className="px-4 py-2 bg-[#026d32] text-white text-sm font-semibold rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center justify-center gap-2"
-          />
+              label="Switch plan →"
+              className="px-4 py-2 bg-[#026d32] text-white text-sm font-semibold rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+            />
           </div>
+        )}
+
+        {/* Plans */}
+        <div className="space-y-4">
+          <h2 className="text-sm font-semibold text-gray-700">Plans</h2>
+          <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} />
+        </div>
+
+        {/* Pro: manage subscription button */}
+        {subscriptionTier !== 'free' && (
+          <ManageSubscriptionButton />
         )}
 
         {isPro && (

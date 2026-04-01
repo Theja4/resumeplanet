@@ -61,11 +61,12 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
       )}
 
       {/* 3-column card grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
         <PricingCard
           variant="free"
           activePromo={activePromo}
           isCurrentPlan={!isPro}
+          delay="0ms"
         />
         <PricingCard
           variant="pro"
@@ -74,10 +75,12 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
           isCurrentPlan={isPro}
           onUpgrade={isPro ? undefined : handleUpgrade}
           isUpgrading={isLoading}
+          delay="120ms"
         />
         <PricingCard
           variant="professional"
           activePromo={activePromo}
+          delay="240ms"
         />
       </div>
 

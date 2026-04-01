@@ -376,3 +376,13 @@
 .gradient-glow-hero {
     background: radial-gradient(circle at top left, rgba(163, 255, 179, 0.25) 0%, transparent 60%);
 }
+
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer-sweep {
+  0%        { transform: translateX(-100%) skewX(-15deg); }
+  20%, 100% { transform: translateX(380%)  skewX(-15deg); }
+}
