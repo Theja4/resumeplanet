@@ -35,12 +35,7 @@ export default function PricingCard({
         className="bg-white rounded-2xl border border-gray-200 p-7 flex flex-col h-full relative overflow-hidden opacity-0 [animation:card-enter_0.5s_ease_forwards]"
         style={{ animationDelay: delay }}
       >
-        {/* Shimmer */}
-        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-          <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-gray-200/50 to-transparent [animation:shimmer-sweep_5s_ease-in-out_2s_infinite]" />
-        </div>
-
-        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-5">
           <span className="text-lg font-bold text-gray-900">Free</span>
           <span className="text-xs font-semibold uppercase tracking-wider bg-gray-100 text-gray-500 px-3 py-1 rounded-full">
             FREE
@@ -164,11 +159,6 @@ export default function PricingCard({
       className="bg-white rounded-2xl border border-amber-200 p-7 flex flex-col h-full relative overflow-hidden opacity-0 [animation:card-enter_0.5s_ease_forwards]"
       style={{ animationDelay: delay }}
     >
-      {/* Shimmer */}
-      <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-        <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-amber-100/60 to-transparent [animation:shimmer-sweep_5s_ease-in-out_3s_infinite]" />
-      </div>
-
       <div className="flex items-center justify-between mb-5">
         <span className="text-lg font-bold text-gray-900">Professional</span>
         <span className="text-xs font-semibold uppercase tracking-wider bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
