@@ -33,7 +33,7 @@ export default function PricingToggle({ selectedPriceId, onChange, activePromo }
             className={cn(
               'relative px-5 py-2 rounded-full text-sm transition-all font-medium',
               isSelected
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-[#026d32] text-white shadow-sm'
                 : 'text-gray-600 hover:bg-gray-200'
             )}
           >
