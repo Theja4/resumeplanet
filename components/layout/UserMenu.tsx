@@ -46,7 +46,7 @@ export default function UserMenu({ profile }: UserMenuProps) {
           <Link href="/dashboard">Profile</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/dashboard/billing">Billing</Link>
+          <Link href="/dashboard/pricing">Pricing</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

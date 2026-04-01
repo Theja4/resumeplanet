@@ -20,6 +20,72 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
   const currentTitle = data.experience[0]?.title ?? ''
 
   function renderSection(id: string) {
+    if (id.startsWith('custom_')) {
+      const custom = data.customSections?.find(c => c.id === id)
+      if (!custom) return null
+
+      if (custom.type === 'text' && custom.text && custom.text.trim()) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 leading-relaxed break-words" as="p" />
+          </>
+        )
+      }
+      
+      if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            <div>
+              {custom.tags.map((tag, i) => (
+                <span key={i} className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full mr-1 mb-1">
+                  <EditableText value={tag} path={`custom_${id}.tags.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-xs text-red-700" />
+                </span>
+              ))}
+            </div>
+          </>
+        )
+      }
+
+      if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            <div className="space-y-0">
+              {custom.items.map((exp, ei) => (
+                <div key={ei} className="relative border-l-2 border-red-100 ml-2 pl-5 pb-5">
+                  <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-red-500" />
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <EditableText value={exp.title} path={`custom_${id}.items.${ei}.title`} isEditing={isEditing} onFieldChange={onFieldChange} className="font-semibold text-gray-900 break-words" />
+                      {exp.company && (
+                        <EditableText value={`${exp.company}${exp.location ? ` · ${exp.location}` : ''}`} path={`custom_${id}.items.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-500 break-words" as="p" />
+                      )}
+                    </div>
+                    {(exp.startDate || exp.endDate) && (
+                      <span className="text-xs text-gray-400 shrink-0 ml-4">{exp.startDate}{exp.endDate ? ` – ${exp.endDate}` : ''}</span>
+                    )}
+                  </div>
+                  {exp.bullets.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {exp.bullets.map((b, bi) => (
+                        <li key={bi} className="flex gap-2">
+                          <span className="text-red-300 shrink-0">–</span>
+                          <EditableText value={b} path={`custom_${id}.items.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 break-words" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )
+      }
+      return null
+    }
+
     switch (id) {
       case 'summary':
         return data.summary ? (

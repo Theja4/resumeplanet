@@ -384,7 +384,7 @@ function PreviewLayout({
               </div>
             ) : (
               <a
-                href="/dashboard/billing"
+                href="/dashboard/pricing"
                 className="block w-full py-2 text-sm font-medium text-center text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
               >
                 Upgrade for downloads

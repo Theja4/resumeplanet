@@ -31,7 +31,7 @@ function formatDate(d: string) {
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
-export default async function BillingPage({
+export default async function PricingPage({
   searchParams,
 }: {
   searchParams: Promise<{ upgraded?: string; promo?: string }>
@@ -85,12 +85,6 @@ export default async function BillingPage({
             <UpgradePoller upgraded={upgraded} isPro={isPro} />
           </>
         )}
-
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Billing &amp; Plan</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage your ResumAI subscription and orders.</p>
-        </div>
 
         {/* Current plan badge */}
         <div className={`rounded-xl border p-5 flex items-center justify-between ${
@@ -151,7 +145,7 @@ export default async function BillingPage({
           </p>
         )}
 
-        {/* Billing history */}
+        {/* Order history */}
         {paidOrders.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Order history</h2>

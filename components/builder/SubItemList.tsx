@@ -17,7 +17,7 @@ import EducationItemEditor from './EducationItemEditor'
 import ProjectItemEditor from './ProjectItemEditor'
 import CertificationItemEditor from './CertificationItemEditor'
 
-type ComplexSectionId = 'experience' | 'education' | 'projects' | 'certifications'
+type ComplexSectionId = 'experience' | 'education' | 'projects' | 'certifications' | string
 
 interface Props {
   sectionId: ComplexSectionId
@@ -28,34 +28,34 @@ interface Props {
 }
 
 function getItems(data: ResumeData, sectionId: ComplexSectionId) {
-  return data[sectionId] as (ExperienceItem | EducationItem | ProjectItem | CertificationItem)[]
+  if (sectionId.startsWith('custom_')) {
+    const custom = data.customSections?.find(c => c.id === sectionId)
+    return (custom?.items || []) as (ExperienceItem | EducationItem | ProjectItem | CertificationItem)[]
+  }
+  return data[sectionId as keyof ResumeData] as (ExperienceItem | EducationItem | ProjectItem | CertificationItem)[]
 }
 
-function getItemLabel(item: ExperienceItem | EducationItem | ProjectItem | CertificationItem, sectionId: ComplexSectionId): string {
-  switch (sectionId) {
-    case 'experience': return (item as ExperienceItem).company || (item as ExperienceItem).title || 'Untitled'
-    case 'education':  return (item as EducationItem).institution || 'Untitled'
-    case 'projects':   return (item as ProjectItem).name || 'Untitled'
-    case 'certifications': return (item as CertificationItem).name || 'Untitled'
-  }
+function getItemLabel(item: any, sectionId: ComplexSectionId): string {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') return item.company || item.title || 'Untitled'
+  if (sectionId === 'education') return item.institution || 'Untitled'
+  if (sectionId === 'projects') return item.name || 'Untitled'
+  if (sectionId === 'certifications') return item.name || 'Untitled'
+  return 'Untitled'
 }
 
-function getItemSublabel(item: ExperienceItem | EducationItem | ProjectItem | CertificationItem, sectionId: ComplexSectionId): string {
-  switch (sectionId) {
-    case 'experience': return (item as ExperienceItem).title || ''
-    case 'education':  return (item as EducationItem).degree || ''
-    case 'projects':   return (item as ProjectItem).description?.slice(0, 40) || ''
-    case 'certifications': return (item as CertificationItem).issuer || ''
-  }
+function getItemSublabel(item: any, sectionId: ComplexSectionId): string {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') return item.title || ''
+  if (sectionId === 'education') return item.degree || ''
+  if (sectionId === 'projects') return item.description?.slice(0, 40) || ''
+  if (sectionId === 'certifications') return item.issuer || ''
+  return ''
 }
 
-function makeEmptyItem(sectionId: ComplexSectionId): ExperienceItem | EducationItem | ProjectItem | CertificationItem {
-  switch (sectionId) {
-    case 'experience': return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
-    case 'education':  return { institution: '', degree: '', field: '', graduationDate: '', gpa: '' }
-    case 'projects':   return { name: '', description: '', technologies: [] }
-    case 'certifications': return { name: '', issuer: '', date: '' }
-  }
+function makeEmptyItem(sectionId: ComplexSectionId): any {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
+  if (sectionId === 'education') return { institution: '', degree: '', field: '', graduationDate: '', gpa: '' }
+  if (sectionId === 'projects') return { name: '', description: '', technologies: [] }
+  if (sectionId === 'certifications') return { name: '', issuer: '', date: '' }
 }
 
 // Sortable wrapper for a single sub-item card
@@ -120,10 +120,19 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
 
   const items = getItems(resumeData, sectionId)
   const itemIds = items.map((_, i) => `${sectionId}-${i}`)
-  const itemVisibility = visibility.items[sectionId]
+  const itemVisibility = visibility.items[sectionId] || []
 
   function updateItems(newItems: typeof items) {
-    onDataChange({ ...resumeData, [sectionId]: newItems })
+    if (sectionId.startsWith('custom_')) {
+      const customSections = [...(resumeData.customSections || [])]
+      const idx = customSections.findIndex(c => c.id === sectionId)
+      if (idx !== -1) {
+        customSections[idx] = { ...customSections[idx], items: newItems as ExperienceItem[] }
+        onDataChange({ ...resumeData, customSections })
+      }
+    } else {
+      onDataChange({ ...resumeData, [sectionId as keyof ResumeData]: newItems })
+    }
   }
 
   function updateItemVisibility(newVis: boolean[]) {
@@ -254,7 +263,7 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
 
       {/* Item editor */}
       <div className="p-4 overflow-y-auto">
-        {sectionId === 'experience' && (
+        {(sectionId === 'experience' || sectionId.startsWith('custom_')) && (
           <ExperienceItemEditor
             item={item as ExperienceItem}
             onChange={updated => updateItem(editingIndex, updated)}

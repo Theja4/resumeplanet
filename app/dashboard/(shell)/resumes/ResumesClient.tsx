@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { FileText } from 'lucide-react'
 import UploadZone from '@/components/resumes/UploadZone'
 import ResumeCard from '@/components/resumes/ResumeCard'
@@ -23,11 +23,20 @@ export default function ResumesClient({
   plan,
 }: ResumesClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [resumes, setResumes] = useState<Resume[]>(initialResumes)
   const [showPaywall, setShowPaywall] = useState(false)
 
+  useEffect(() => {
+    if (searchParams.get('status') === 'limit-reached') {
+      setShowPaywall(true)
+      // Clean up the URL to prevent showing the popup again on refresh
+      router.replace('/dashboard/resumes')
+    }
+  }, [searchParams, router])
+
   function handleUploadAttempt() {
-    if (plan === 'free' && resumes.length >= 1) {
+    if (plan === 'free' && resumes.length >= 3) {
       setShowPaywall(true)
       return false
     }
@@ -50,33 +59,34 @@ export default function ResumesClient({
   }
 
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-7xl mx-auto space-y-12">
+      {/* Editorial Header - Only visible on desktop if needed, otherwise rely on the layout header */}
+      <div className="flex justify-between items-end mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Resumes</h1>
-          <p className="mt-0.5 text-sm text-gray-500">
-            {resumes.length === 0
-              ? 'Upload a resume to get started'
-              : `${resumes.length} resume${resumes.length !== 1 ? 's' : ''}`}
+          <h3 className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-1">
+            Your Library
+          </h3>
+          <p className="text-4xl font-black text-on-surface tracking-tight">
+            Recent Resumes
           </p>
         </div>
       </div>
 
-      {/* Upload zone — blocked for free plan with 1+ resumes */}
+      {/* Hero Upload Section */}
       <div
         onClick={() => {
-          if (plan === 'free' && resumes.length >= 1) {
+          if (plan === 'free' && resumes.length >= 3) {
             setShowPaywall(true)
           }
         }}
       >
         <UploadZone
           onUploadSuccess={handleUploadSuccess}
-          disabled={plan === 'free' && resumes.length >= 1}
+          disabled={plan === 'free' && resumes.length >= 3}
         />
       </div>
 
-      {/* Resume grid */}
+      {/* Resume Grid */}
       {resumes.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -84,26 +94,51 @@ export default function ResumesClient({
           description="Upload your first resume to get started. We support PDF and DOCX files up to 5MB."
         />
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {resumes.map((resume) => (
-            <ResumeCard
-              key={resume.id}
-              resume={resume}
-              latestScore={latestScores[resume.id]}
-              onDelete={() => handleDelete(resume.id)}
-              onRename={(title) => handleRename(resume.id, title)}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {resumes.map((resume, index) => (
+            <div key={resume.id} className="contents">
+              <ResumeCard
+                resume={resume}
+                latestScore={latestScores[resume.id]}
+                onDelete={() => handleDelete(resume.id)}
+                onRename={(title) => handleRename(resume.id, title)}
+              />
+              {/* Insert Asymmetric CTA Card after the second item */}
+              {index === 1 && (
+                <div key="cta-card" className="group bg-primary-container p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-lg shadow-primary/5">
+                  <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+                  <div className="relative z-10">
+                    <span className="bg-white/40 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-on-primary-container mb-4 inline-block">
+                      Pro Tip
+                    </span>
+                    <h4 className="text-xl font-extrabold text-on-primary-container leading-tight mb-4">
+                      Tailor your resume for every job application.
+                    </h4>
+                    <p className="text-on-primary-fixed-variant/70 text-sm font-medium mb-6">
+                      Our AI analysis shows tailored resumes have a 4.5x higher interview rate.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => router.push('/dashboard/ats-checker')}
+                    className="w-full py-3 bg-on-primary-container text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity active:scale-95 shadow-md shadow-primary/20"
+                  >
+                    Try AI Tailoring
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
 
       {/* Ad banner — free users only */}
-      {resumes.length > 0 && <AdBanner size="rectangle" className="mt-6" />}
+      {resumes.length > 0 && <AdBanner size="rectangle" className="mt-12 opacity-80" />}
 
       <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
         feature="unlimited resume uploads"
+        reason={<span>Free users can <strong>save up to 3 resumes</strong>. Please remove an existing resume or upgrade to Pro to create more.</span>}
       />
     </div>
   )

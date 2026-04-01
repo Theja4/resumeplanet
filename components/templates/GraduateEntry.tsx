@@ -18,6 +18,89 @@ const DEFAULT_SECTION_ORDER = [
 
 export default function GraduateEntry({ data, isEditing, onFieldChange, sectionOrder }: TemplateProps) {
   function renderSection(id: string) {
+    if (id.startsWith('custom_')) {
+      const custom = data.customSections?.find(c => c.id === id)
+      if (!custom) return null
+
+      if (custom.type === 'text' && custom.text && custom.text.trim()) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 leading-relaxed break-words" as="p" />
+          </>
+        )
+      }
+      
+      if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            {custom.tags.length > 8 ? (
+              <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
+                {custom.tags.map((tag, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
+                    <EditableText value={tag} path={`custom_${id}.tags.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 break-words" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700">
+                <span>
+                  {custom.tags.map((tag, i) => (
+                    <React.Fragment key={i}>
+                      <EditableText value={tag} path={`custom_${id}.tags.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700" />
+                      {i < (custom.tags?.length || 0) - 1 && <span className="text-gray-400">, </span>}
+                    </React.Fragment>
+                  ))}
+                </span>
+              </p>
+            )}
+          </>
+        )
+      }
+
+      if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
+        return (
+          <>
+            <SectionHeading title={custom.title} />
+            <div className="space-y-4">
+              {custom.items.map((exp, ei) => (
+                <div key={ei}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <EditableText value={exp.title} path={`custom_${id}.items.${ei}.title`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm font-semibold text-gray-900 break-words" />
+                      {exp.company && (
+                        <>
+                          <span className="text-sm text-gray-500"> · </span>
+                          <EditableText value={exp.company} path={`custom_${id}.items.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-600 break-words" />
+                        </>
+                      )}
+                    </div>
+                    {(exp.startDate || exp.endDate) && (
+                      <span className="text-xs text-gray-400 shrink-0 ml-4">{exp.startDate}{exp.endDate ? ` – ${exp.endDate}` : ''}</span>
+                    )}
+                  </div>
+                  {exp.location && <p className="text-xs text-gray-400">{exp.location}</p>}
+                  {exp.bullets.length > 0 && (
+                    <ul className="mt-1 space-y-1">
+                      {exp.bullets.map((b, bi) => (
+                        <li key={bi} className="flex gap-1.5">
+                          <span className="text-emerald-500 shrink-0 mt-0.5">›</span>
+                          <EditableText value={b} path={`custom_${id}.items.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 break-words" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )
+      }
+      return null
+    }
+
     switch (id) {
       case 'summary':
         return data.summary ? (

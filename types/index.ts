@@ -60,6 +60,17 @@ export interface PublicationItem {
   date: string
 }
 
+export type CustomSectionType = 'text' | 'tags' | 'complex'
+
+export interface CustomSection {
+  id: string
+  title: string
+  type: CustomSectionType
+  text?: string
+  tags?: string[]
+  items?: ExperienceItem[]
+}
+
 export interface ResumeData {
   name: string
   email: string
@@ -79,6 +90,7 @@ export interface ResumeData {
   awards: AwardItem[]
   publications: PublicationItem[]
   references: string[]
+  customSections?: CustomSection[]
 }
 
 export interface Resume {
@@ -180,6 +192,7 @@ export interface TemplateProps {
   isEditing?: boolean
   onFieldChange?: (path: string, value: string) => void
   sectionOrder?: string[]
+  density?: 'compressed' | 'relaxed'
 }
 
 export interface TemplateConfig {
@@ -226,13 +239,12 @@ export interface BuilderVisibility {
   sections: Record<string, boolean>
   /** Sub-item visibility within complex sections — index matches array index in ResumeData */
   items: {
-    experience: boolean[]
-    education: boolean[]
-    projects: boolean[]
-    certifications: boolean[]
+    [key: string]: boolean[] | undefined
   }
   /** Section order — array of section ids determines render order in template */
   sectionOrder: string[]
+  /** Layout spacing property enabling smooth fluid transition between compressed/relaxed templates */
+  density?: 'compressed' | 'relaxed'
 }
 
 export const DEFAULT_VISIBILITY: BuilderVisibility = {
@@ -262,4 +274,27 @@ export const DEFAULT_VISIBILITY: BuilderVisibility = {
     'projects', 'certifications', 'volunteer', 'languages',
     'interests', 'awards', 'publications', 'references',
   ],
+  density: 'relaxed',
+}
+
+export const EMPTY_RESUME_DATA: ResumeData = {
+  name: '',
+  email: '',
+  phone: '',
+  location: '',
+  linkedin: '',
+  website: '',
+  summary: '',
+  experience: [],
+  education: [],
+  skills: [],
+  certifications: [],
+  projects: [],
+  languages: [],
+  volunteer: [],
+  interests: [],
+  awards: [],
+  publications: [],
+  references: [],
+  customSections: [],
 }

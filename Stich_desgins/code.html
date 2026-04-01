@@ -1,0 +1,330 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-fixed-variant": "#005224",
+              "on-surface-variant": "#3f493f",
+              "inverse-on-surface": "#f0f1f2",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed": "#f7e0b5",
+              "surface-container": "#edeeef",
+              "on-background": "#191c1d",
+              "inverse-primary": "#80da92",
+              "tertiary-container": "#ffe8bd",
+              "surface-container-lowest": "#ffffff",
+              "surface": "#f8f9fa",
+              "on-primary": "#ffffff",
+              "primary-fixed": "#9bf7ac",
+              "inverse-surface": "#2e3132",
+              "outline-variant": "#becabc",
+              "on-tertiary": "#ffffff",
+              "surface-dim": "#d9dadb",
+              "surface-tint": "#026d32",
+              "on-secondary-container": "#4b6c4f",
+              "surface-container-high": "#e7e8e9",
+              "error-container": "#ffdad6",
+              "on-secondary-fixed-variant": "#2e4e33",
+              "on-secondary-fixed": "#01210b",
+              "surface-bright": "#f8f9fa",
+              "secondary-container": "#c6ecc8",
+              "secondary": "#45664a",
+              "on-tertiary-container": "#786745",
+              "secondary-fixed-dim": "#abd0ad",
+              "on-surface": "#191c1d",
+              "background": "#f8f9fa",
+              "on-tertiary-fixed": "#251a01",
+              "on-primary-container": "#19793c",
+              "error": "#ba1a1a",
+              "secondary-fixed": "#c6ecc8",
+              "primary": "#026d32",
+              "surface-container-low": "#f3f4f5",
+              "primary-fixed-dim": "#80da92",
+              "on-tertiary-fixed-variant": "#534525",
+              "surface-container-highest": "#e1e3e4",
+              "tertiary-fixed-dim": "#d9c49b",
+              "outline": "#6f7a6e",
+              "primary-container": "#a3ffb3",
+              "on-error-container": "#93000a",
+              "tertiary": "#6c5c3b",
+              "surface-variant": "#e1e3e4",
+              "on-primary-fixed": "#00210a",
+              "on-error": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Plus Jakarta Sans"],
+              "body": ["Plus Jakarta Sans"],
+              "label": ["Plus Jakarta Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .optic-glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .signature-gradient {
+            background: linear-gradient(135deg, #A3FFB3 0%, #80da92 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-900 flex flex-col py-6 px-4 z-20">
+<div class="flex items-center gap-3 px-2 mb-10">
+<div class="w-8 h-8 signature-gradient rounded-lg flex items-center justify-center">
+<span class="text-on-primary-container font-black text-xl" style="">R</span>
+</div>
+<span class="text-xl font-bold text-emerald-900 dark:text-emerald-50" style="">Rezoomed</span>
+</div>
+<button class="mb-8 w-full bg-primary-container text-on-primary-container py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95" style="">
+<span class="material-symbols-outlined text-xl" style="">add</span>
+<span class="" style="">Create New Resume</span>
+</button>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors group" href="#" style="">
+<span class="material-symbols-outlined" style="">dashboard</span>
+<span class="font-medium tracking-tight" style="">Dashboard</span>
+</a>
+<!-- Active State: Resumes -->
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-white shadow-sm text-emerald-700 dark:text-emerald-400 font-semibold border-r-4 border-emerald-500 transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="font-variation-settings: &quot;FILL&quot; 1;">description</span>
+<span class="font-medium tracking-tight" style="">Resumes</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">style</span>
+<span class="font-medium tracking-tight" style="">Templates</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">bar_chart</span>
+<span class="font-medium tracking-tight" style="">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 dark:text-slate-400 hover:text-emerald-600 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors" href="#" style="">
+<span class="material-symbols-outlined" style="">settings</span>
+<span class="font-medium tracking-tight" style="">Settings</span>
+</a>
+</nav>
+<div class="mt-auto pt-6 border-t border-slate-200/60 space-y-1">
+<div class="px-4 py-4 mb-4 bg-primary/5 rounded-2xl">
+<div class="flex items-center gap-3 mb-2">
+<img alt="User profile avatar" class="w-10 h-10 rounded-full bg-primary-fixed-dim" data-alt="clean professional avatar of a person with friendly expression and minimalist aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwQ2uSI5NEvS_cK72dGlWoEDpcL_0BHlzIMGiZES5OekKxHt0zSfo9FQC1Hcmf_hIQuP3faT99nWhWC8109_kpmbDBdAGjFsi6cgDlV1YlN9U3cOMn_Y2FYWZ--uVszGmZinX6PIbXn0FWzuizFOonUZD0pdNIVyvQ5loZxFwwZYihMXr6ryg7WwEQhLxjIuM27znFyQVh6a8AgavNeLd-ryTXrs3Li6J-Sxift8W6TH9w2eC1ehsmsSdReF1VwssZzpVH-BAlEuU" style="">
+<div>
+<p class="text-sm font-bold text-emerald-900" style="">Theja K.</p>
+<p class="text-xs text-emerald-700/70 font-medium" style="">Premium Plan</p>
+</div>
+</div>
+<div class="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-3/4"></div>
+</div>
+<p class="text-[10px] mt-2 text-emerald-800/60 font-semibold uppercase tracking-wider" style="">12/15 Resumes Used</p>
+</div>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-emerald-600 transition-colors" href="#" style="">
+<span class="material-symbols-outlined text-lg" style="">help</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-emerald-600 transition-colors" href="#" style="">
+<span class="material-symbols-outlined text-lg" style="">logout</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 right-0 left-64 h-16 z-10 bg-white/70 backdrop-blur-md flex justify-between items-center px-8 w-full border-b border-slate-100">
+<div class="flex items-center gap-4">
+<h1 class="text-xl font-bold tracking-tight text-on-surface" style="">My Resumes</h1>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<button class="p-2 text-slate-400 hover:text-primary transition-colors relative" style="">
+<span class="material-symbols-outlined" style="">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="p-2 text-slate-400 hover:text-primary transition-colors" style="">
+<span class="material-symbols-outlined" style="">dark_mode</span>
+</button>
+<div class="h-8 w-px bg-slate-100"></div>
+<img alt="User profile" class="w-8 h-8 rounded-full border-2 border-white shadow-sm" data-alt="close up headshot of person for profile identification" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC51HtKjQInuumwTdin9Y0oi__g1Tbtr9kebO9f--3ps1ga3z4CIUuTPHpZn7X-6D-DIcBXJeuyA9CBAI245GLAsWP-H7ePpMjKsmwb-aMzLdU7rOYy-ZtDshJSzhrw6C8PofwJqmJA8hlBhjmmQd8N-9RP03UvmDlL_EwJYO4FR6gy-HmO_1QNI2RdclcaBmm6TQ96fRcyRZnML3rcACQLCPZJG4HwOkwYtSKsgtU25p5JsmULEiM2R7ByS7_fdqSD-xSh-BhCNGc" style="">
+</div>
+</div>
+</header>
+<!-- Main Canvas Content -->
+<main class="ml-64 pt-24 px-10 pb-12 min-h-screen">
+<div class="max-w-7xl mx-auto space-y-12">
+<!-- Hero Upload Section -->
+<section class="relative group">
+<div class="absolute -inset-1 bg-gradient-to-r from-primary-container to-secondary-container rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+<div class="relative bg-surface-container-lowest p-10 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-slate-100 hover:border-primary/40 transition-all">
+<div class="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: &quot;wght&quot; 300;">cloud_upload</span>
+</div>
+<h2 class="text-2xl font-extrabold text-on-surface mb-2 tracking-tight" style="">Upload Your Resume</h2>
+<p class="text-on-surface-variant text-center max-w-md mb-8" style="">Drag and drop your PDF or DOCX file here to start optimizing. We'll automatically parse your skills and experience.</p>
+<div class="flex gap-4">
+<button class="px-8 py-3 signature-gradient text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all" style="">Select File</button>
+</div>
+<div class="mt-8 flex items-center gap-6 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+<span class="" style="">Supported: PDF, DOCX, TXT</span>
+<span class="w-1 h-1 bg-slate-300 rounded-full"></span>
+<span class="" style="">Max size: 5MB</span>
+</div>
+</div>
+</section>
+<!-- Resumes List Section -->
+<section>
+<div class="flex justify-between items-end mb-8">
+<div>
+<h3 class="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-1" style="">Your Library</h3>
+<p class="text-3xl font-black text-on-surface" style="">Recent Resumes</p>
+</div>
+<div class="flex bg-surface-container-low p-1 rounded-xl">
+<button class="p-2 bg-white shadow-sm rounded-lg text-primary" style="">
+<span class="material-symbols-outlined" style="">grid_view</span>
+</button>
+<button class="p-2 text-slate-400 hover:text-on-surface-variant transition-colors" style="">
+<span class="material-symbols-outlined" style="">list</span>
+</button>
+</div>
+</div>
+<!-- Bento-ish Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<!-- Resume Card 1 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl transition-all hover:scale-[1.02] relative">
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 hover:text-primary" style=""><span class="material-symbols-outlined" style="">more_vert</span></button>
+</div>
+<div class="flex items-start gap-5 mb-6">
+<div class="w-16 h-20 bg-slate-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden relative">
+<div class="absolute inset-0 opacity-10" data-alt="faint texture of a printed resume document with professional layout" style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuCD3JJ25rk3jLKusvWRdoR4J32_0ApopQ55VHMnh7FXSmj7mhfKOBBYzvs0KWKsqtdzP5Z5XvWv_aCeLn_uXUKP8XF81wrB-JMKYQZJv6KBgzjRu6nVqYdb5xQ-TxpFPgxb358QRfuqUl98-_yi9DH7GbHUNB3rh_Gl2EWn-s4K95Ry9Q_331-zIQXRoBXFyiWsyD5F-cTAfXFBGaHCLgw0UBuMPipSXDcCmW2l7S6NvDiLtYpY_OgFZOH3mswh6vT9Og8cXoaCwvY&quot;); background-size: cover;"></div>
+<span class="material-symbols-outlined text-primary text-3xl" style="">picture_as_pdf</span>
+</div>
+<div class="overflow-hidden">
+<h4 class="font-bold text-on-surface text-lg truncate leading-tight mb-1" style="">Theja_Verizon_Resume.pdf</h4>
+<p class="text-xs text-on-surface-variant font-medium" style="">Modified 2 hours ago</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter" style="">84 ATS Score</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-2.5 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors" style="">
+<span class="material-symbols-outlined text-sm" style="">analytics</span> ATS Check
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all" style="">
+<span class="material-symbols-outlined text-sm" style="">edit</span> Edit
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-surface-container-low text-on-surface-variant text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors col-span-2" style="">
+<span class="material-symbols-outlined text-sm" style="">description</span> Fill Template
+                            </button>
+</div>
+</div>
+<!-- Resume Card 2 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl transition-all hover:scale-[1.02] relative">
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 hover:text-primary" style=""><span class="material-symbols-outlined" style="">more_vert</span></button>
+</div>
+<div class="flex items-start gap-5 mb-6">
+<div class="w-16 h-20 bg-slate-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden relative">
+<div class="absolute inset-0 opacity-10" data-alt="faint texture of a printed resume document with professional layout" style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuAoJb_aMY-kRg9aXZwBxGM9_R74veBsXZ0M3FGzdW1fl2L4WzbOsDbhTTK6hcax5v8Dv6Uozegch3yxGscJLOzVfPD4ijs0PLwfLui282Qw7ULkz4VZi4SuGwpVwzxBNdZ8LqfRPNIpdAKErtZKWqrRzs_KkR358FhB_TMGIyr31NKpz_cWUVZ1dTPEkNpFzWx_2ucCqhDIqY6usgldOzivkqFxCX356e52M6jt5ZBHfMLK0LHfWe3q2-QFOaynmCSWjDdzOzzzspg&quot;); background-size: cover;"></div>
+<span class="material-symbols-outlined text-primary text-3xl" style="">picture_as_pdf</span>
+</div>
+<div class="overflow-hidden">
+<h4 class="font-bold text-on-surface text-lg truncate leading-tight mb-1" style="">Theja_PM_Resume.pdf</h4>
+<p class="text-xs text-on-surface-variant font-medium" style="">Modified 3 days ago</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter" style="">62 ATS Score</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-2.5 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors" style="">
+<span class="material-symbols-outlined text-sm" style="">analytics</span> ATS Check
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all" style="">
+<span class="material-symbols-outlined text-sm" style="">edit</span> Edit
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-surface-container-low text-on-surface-variant text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors col-span-2" style="">
+<span class="material-symbols-outlined text-sm" style="">description</span> Fill Template
+                            </button>
+</div>
+</div>
+<!-- Asymmetric CTA Card -->
+<div class="group bg-primary-container p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
+<div class="relative z-10">
+<span class="bg-white/40 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-on-primary-container mb-4 inline-block" style="">Pro Tip</span>
+<h4 class="text-xl font-extrabold text-on-primary-container leading-tight mb-4" style="">Tailor your resume for every job application.</h4>
+<p class="text-on-primary-fixed-variant/70 text-sm font-medium mb-6" style="">Our AI analysis shows tailored resumes have a 4.5x higher interview rate.</p>
+</div>
+<button class="w-full py-3 bg-on-primary-container text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity" style="">
+                            Try AI Tailoring
+                        </button>
+</div>
+<!-- Resume Card 3 -->
+<div class="group bg-surface-container-lowest p-6 rounded-2xl transition-all hover:scale-[1.02] relative">
+<div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1 hover:text-primary" style=""><span class="material-symbols-outlined" style="">more_vert</span></button>
+</div>
+<div class="flex items-start gap-5 mb-6">
+<div class="w-16 h-20 bg-slate-50 rounded-lg flex-shrink-0 flex items-center justify-center border border-slate-100 overflow-hidden relative">
+<div class="absolute inset-0 opacity-10" data-alt="faint texture of a printed resume document with professional layout" style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuB252SZ-aIelIO3gm1KKMwAB_gNfv0_EvelqJR_wbtv-ytP2M90edxkhrVQgkS0nFqRZob2u1-FPBuLQz0tZ9q8VZH3X79F9UqX1hs5zUrpvscxC090CAKTrT4RX7GX_aPzVjFSP0qcGizCSK5RGEWofjNpjmCuCl2EwaNTIDEpgz7hy_WttGPH-8fSpNhocA3_I1tnzGu5GhPyBuVDiNX_653q7rZGmcr7C6V336ZzykDShqjvEQ3t2pNAMPT33kM3gExNBCqIw5Y&quot;); background-size: cover;"></div>
+<span class="material-symbols-outlined text-primary text-3xl" style="">picture_as_pdf</span>
+</div>
+<div class="overflow-hidden">
+<h4 class="font-bold text-on-surface text-lg truncate leading-tight mb-1" style="">General_Dev_Role.pdf</h4>
+<p class="text-xs text-on-surface-variant font-medium" style="">Modified 1 week ago</p>
+<div class="mt-2 flex items-center gap-2">
+<span class="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter" style="">Unscored</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="flex items-center justify-center gap-2 py-2.5 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors" style="">
+<span class="material-symbols-outlined text-sm" style="">analytics</span> ATS Check
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all" style="">
+<span class="material-symbols-outlined text-sm" style="">edit</span> Edit
+                            </button>
+<button class="flex items-center justify-center gap-2 py-2.5 bg-surface-container-low text-on-surface-variant text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors col-span-2" style="">
+<span class="material-symbols-outlined text-sm" style="">description</span> Fill Template
+                            </button>
+</div>
+</div>
+<!-- Add New Card -->
+</div>
+</section>
+<!-- Bottom Stats Grid -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" style="">Total Scans</p>
+<p class="text-3xl font-black text-on-surface" style="">128</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" style="">Avg Score</p>
+<p class="text-3xl font-black text-primary" style="">76%</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" style="">Job Matches</p>
+<p class="text-3xl font-black text-on-surface" style="">42</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-2xl">
+<p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2" style="">Downloads</p>
+<p class="text-3xl font-black text-on-surface" style="">15</p>
+</div>
+</section>
+</div>
+</main>
+<!-- Contextual Floating Action -->
+</body></html>

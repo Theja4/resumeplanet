@@ -30,11 +30,11 @@ export default function PromoBanner({ promo }: Props) {
         priceId: priceOption.paddlePriceId,
         couponId: promo.paddleDiscountId,
         onError: () => {
-          window.location.href = `/dashboard/billing?promo=${promo.id}`
+          window.location.href = `/dashboard/pricing?promo=${promo.id}`
         },
       })
     } else {
-      window.location.href = `/dashboard/billing?promo=${promo.paddleDiscountCode ?? promo.id}`
+      window.location.href = `/dashboard/pricing?promo=${promo.paddleDiscountCode ?? promo.id}`
     }
   }
 

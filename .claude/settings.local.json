@@ -59,7 +59,13 @@
       "Bash(brew --version)",
       "Bash(git merge:*)",
       "Bash(cat:*)",
-      "Bash(grep -r stripe /Users/thejach/Downloads/ResumePlanet/app /Users/thejach/Downloads/ResumePlanet/components /Users/thejach/Downloads/ResumePlanet/hooks --include=*.ts --include=*.tsx -l)"
+      "Bash(grep -r stripe /Users/thejach/Downloads/ResumePlanet/app /Users/thejach/Downloads/ResumePlanet/components /Users/thejach/Downloads/ResumePlanet/hooks --include=*.ts --include=*.tsx -l)",
+      "Bash(git diff:*)",
+      "Bash(find /Users/thejach/Downloads/ResumePlanet -type f -path */app/dashboard/\\\\\\(shell\\\\\\)/page.tsx)",
+      "Bash(find /Users/thejach/Downloads/ResumePlanet/app/api -type f -name *.ts)",
+      "Bash(cat \"/Users/thejach/Downloads/ResumePlanet/app/dashboard/\\(shell\\)/ats-checker/ATSCheckerClient.tsx\")",
+      "Bash(npx eslint:*)",
+      "Bash(cp:*)"
     ]
   }
 }

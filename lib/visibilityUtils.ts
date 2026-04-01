@@ -1,4 +1,18 @@
-import type { ResumeData, BuilderVisibility } from '@/types'
+import type { ResumeData, BuilderVisibility, ExperienceItem } from '@/types'
+
+/**
+ * Helper to filter bullets within an ExperienceItem based on its internal bulletVisibility array.
+ */
+function filterBullets(item: ExperienceItem): ExperienceItem {
+  const bulletVis = item.bulletVisibility ?? []
+  return {
+    ...item,
+    bullets: item.bullets.filter((_, bi) => bulletVis[bi] !== false),
+    bulletVisibility: undefined,
+    // We also strip internal summary if used for AI purposes but not for preview
+    summary: undefined,
+  }
+}
 
 /**
  * Returns a copy of resumeData filtered by visibility state.
@@ -19,47 +33,56 @@ export function getVisibleResumeData(
     linkedin: data.linkedin,
     website: data.website,
 
-    summary: v.sections.summary !== false ? data.summary : '',
+    summary: v.sections['summary'] !== false ? data.summary : '',
 
-    skills: v.sections.skills !== false ? data.skills : [],
+    skills: v.sections['skills'] !== false ? data.skills : [],
 
-    languages: v.sections.languages !== false ? data.languages : [],
+    languages: v.sections['languages'] !== false ? data.languages : [],
 
-    interests: v.sections.interests !== false ? data.interests : [],
+    interests: v.sections['interests'] !== false ? data.interests : [],
 
-    volunteer: v.sections.volunteer !== false ? data.volunteer : [],
+    volunteer: v.sections['volunteer'] !== false
+      ? data.volunteer
+          .filter((_, i) => (v.items['volunteer'] || [])[i] !== false)
+          .map(filterBullets)
+      : [],
 
-    awards: v.sections.awards !== false ? data.awards : [],
+    awards: v.sections['awards'] !== false ? data.awards : [],
 
-    publications: v.sections.publications !== false ? data.publications : [],
+    publications: v.sections['publications'] !== false ? data.publications : [],
 
-    references: v.sections.references !== false ? data.references : [],
+    references: v.sections['references'] !== false ? data.references : [],
 
-    experience: v.sections.experience !== false
+    experience: v.sections['experience'] !== false
       ? data.experience
-          .filter((_, i) => v.items.experience[i] !== false)
-          .map(exp => {
-            const bulletVis = exp.bulletVisibility ?? []
-            return {
-              ...exp,
-              bullets: exp.bullets.filter((_, bi) => bulletVis[bi] !== false),
-              bulletVisibility: undefined,
-              summary: undefined,
-            }
-          })
+          .filter((_, i) => (v.items['experience'] || [])[i] !== false)
+          .map(filterBullets)
       : [],
 
-    education: v.sections.education !== false
-      ? data.education.filter((_, i) => v.items.education[i] !== false)
+    education: v.sections['education'] !== false
+      ? data.education.filter((_, i) => (v.items['education'] || [])[i] !== false)
       : [],
 
-    projects: v.sections.projects !== false
-      ? data.projects.filter((_, i) => v.items.projects[i] !== false)
+    projects: v.sections['projects'] !== false
+      ? data.projects.filter((_, i) => (v.items['projects'] || [])[i] !== false)
       : [],
 
-    certifications: v.sections.certifications !== false
-      ? data.certifications.filter((_, i) => v.items.certifications[i] !== false)
+    certifications: v.sections['certifications'] !== false
+      ? data.certifications.filter((_, i) => (v.items['certifications'] || [])[i] !== false)
       : [],
+
+    customSections: data.customSections?.filter(c => v.sections[c.id] !== false).map(c => {
+      if (c.type === 'complex' && c.items) {
+        const itemVis = v.items[c.id] || []
+        return {
+          ...c,
+          items: c.items
+            .filter((_, i) => itemVis[i] !== false)
+            .map(filterBullets)
+        }
+      }
+      return c
+    })
   }
 }
 
@@ -68,7 +91,7 @@ export function getVisibleResumeData(
  * Pass the result as sectionOrder prop to template components.
  */
 export function getOrderedSections(visibility: BuilderVisibility): string[] {
-  return visibility.sectionOrder.filter(
+  return (visibility.sectionOrder || []).filter(
     id => visibility.sections[id] !== false
   )
 }

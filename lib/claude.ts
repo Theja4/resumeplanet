@@ -1,11 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
-
-export const CLAUDE_STANDARD = 'claude-sonnet-4-6'
-export const CLAUDE_PREMIUM = 'claude-opus-4-6'
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+// lib/claude.ts - Refactored for OpenRouter support
+export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'qwen/qwen3.6-plus-preview:free'
+export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'anthropic/claude-3.5-sonnet'
 
 export async function callClaude(options: {
   model: string
@@ -14,26 +9,62 @@ export async function callClaude(options: {
   maxTokens?: number
   timeoutMs?: number
 }): Promise<string> {
-  const { model, system, prompt, maxTokens = 4096, timeoutMs = 30000 } = options
+  const { model, system, prompt, maxTokens = 4096, timeoutMs = 90000 } = options
 
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('CLAUDE_TIMEOUT')), timeoutMs)
-  )
+  const OPENROUTER_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
+  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
 
-  const claudePromise = client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const message = await Promise.race([claudePromise, timeoutPromise])
-
-  const firstBlock = message.content[0]
-  if (firstBlock.type !== 'text') {
-    throw new Error('Unexpected content block type from Claude')
+  if (!OPENROUTER_KEY) {
+    throw new Error('OPENROUTER_API_KEY_MISSING')
   }
-  return firstBlock.text
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: prompt },
+    ],
+    max_tokens: Number(maxTokens),
+  }
+
+  try {
+    console.log(`[OpenRouter] Sending request to ${OPENROUTER_URL}/chat/completions`)
+    const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENROUTER_KEY}`,
+        'HTTP-Referer': 'https://resumeplanet.ai',
+        'X-Title': 'ResumePlanet',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('OpenRouter Error:', errorText)
+      throw new Error(`OPENROUTER_API_ERROR: ${response.status} ${errorText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) {
+      throw new Error('OPENROUTER_EMPTY_RESPONSE')
+    }
+
+    return content
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      throw new Error('CLAUDE_TIMEOUT')
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export async function callClaudeJSON<T>(options: {

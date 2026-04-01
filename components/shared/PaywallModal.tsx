@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Check, Sparkles } from 'lucide-react'
+import { X, CheckCircle2, Sparkles, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react'
 import {
   PRO_PLAN,
   getActivePromotion,
@@ -15,10 +15,10 @@ interface PaywallModalProps {
   isOpen: boolean
   onClose: () => void
   feature: string
-  reason?: string
+  reason?: React.ReactNode
 }
 
-export default function PaywallModal({ isOpen, onClose, feature, reason: _reason }: PaywallModalProps) {
+export default function PaywallModal({ isOpen, onClose, feature, reason }: PaywallModalProps) {
   if (!isOpen) return null
 
   const activePromo = getActivePromotion()
@@ -27,70 +27,109 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
   const formatted = formatPriceDisplay(display, priceOption)
 
   const ctaLabel = formatted.hasDiscount
-    ? `Upgrade — ${formatted.main}/mo (was ${formatted.actual})`
+    ? `Claim Offer — ${formatted.main}/mo`
     : `Upgrade to Pro — ${formatted.main}/mo`
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl overflow-hidden">
-        {/* Top gradient section */}
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 text-center relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-indigo-200 hover:text-white transition-colors"
-          >
-            <X size={20} />
-          </button>
-          <div className="flex justify-center mb-3">
-            <Sparkles size={40} className="text-white" />
-          </div>
-          <h2 className="text-2xl font-bold text-white">Upgrade to Pro</h2>
-          <p className="text-indigo-100 mt-1 text-sm">Unlock {feature}</p>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
+      {/* Modal Backdrop Overlay */}
+      <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40" onClick={onClose}></div>
+      
+      {/* Main Modal Container */}
+      <div className="relative z-50 w-full max-w-lg bg-white rounded-xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] overflow-hidden font-body text-zinc-900">
+        
+        {/* Status Top Banner */}
+        <div className="bg-[#a3ffb3]/40 px-6 py-2 flex justify-center items-center gap-2">
+          <ShieldCheck size={16} className="text-[#026d32]" />
+          <span className="text-xs font-bold tracking-[0.05em] uppercase text-[#19793c] leading-none">
+            Pro Feature Limit Reached
+          </span>
         </div>
-
-        {/* Bottom section */}
-        <div className="p-8">
-          {/* Promo badge */}
-          {activePromo && (
-            <div className="text-center mb-4">
-              <span className="inline-block bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
-                {activePromo.badge}
-              </span>
-            </div>
-          )}
-
-          <ul className="space-y-2.5 mb-6">
-            {PRO_PLAN.features.map(benefit => (
-              <li key={benefit} className="flex items-center gap-3">
-                <Check size={16} className="text-green-500 shrink-0" />
-                <span className="text-sm text-gray-700">{benefit}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="text-center mb-6">
-            <PriceDisplay
-              display={formatted}
-              size="lg"
-              showInterval={true}
-              showPerMonth={false}
-              showSavings={false}
-              className="items-center"
-            />
-            <p className="text-xs text-gray-400 mt-1">Cancel anytime</p>
-          </div>
-
-          <UpgradeButton
-            label={ctaLabel}
-            couponId={activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined}
-          />
-
-          <button
+        
+        {/* Content Area */}
+        <div className="p-8 md:p-10 relative bg-white">
+          {/* Close Button */}
+          <button 
             onClick={onClose}
-            className="w-full mt-3 text-sm text-gray-400 hover:text-gray-600 transition-colors py-2"
+            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-800 transition-colors"
           >
-            Maybe later
+            <X size={24} />
           </button>
+          
+          {/* Brand text */}
+          <div className="mb-8">
+            <span className="text-zinc-900 font-extrabold text-lg tracking-tighter">Rezoomed</span>
+          </div>
+          
+          {/* Header Section */}
+          <div className="space-y-4 mb-8">
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 leading-[1.1]">
+              Upgrade to <br />
+              <span className="text-[#80da92]">Unlimited Pro</span>
+            </h1>
+            <p className="text-zinc-600 text-lg font-medium max-w-sm">
+              Unlock {feature} and take your career to the next level.
+            </p>
+            {reason && (
+              <div className="bg-red-50 border border-red-100 rounded-lg px-4 py-3 flex items-start gap-3">
+                <div className="p-1 rounded-md bg-red-100 text-red-700 shrink-0">
+                  <AlertCircle size={16} />
+                </div>
+                <p className="text-red-900 text-sm font-medium leading-relaxed">
+                  {reason}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Pricing Section (Asymmetric Bento Style) */}
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 mb-8">
+            <div className="sm:col-span-3 bg-zinc-50 rounded-xl p-6 flex flex-col justify-center">
+              <PriceDisplay
+                display={formatted}
+                size="lg"
+                showInterval={true}
+                showPerMonth={false}
+                showSavings={false}
+                className="items-baseline"
+              />
+              <p className="mt-2 text-zinc-600 text-sm font-semibold leading-snug">
+                Cancel anytime. 
+                <span className="block text-xs text-zinc-400 font-normal">7-day money back guarantee</span>
+              </p>
+            </div>
+            
+            <div className="sm:col-span-2 space-y-4 py-2">
+              {PRO_PLAN.features.slice(0, 3).map((benefit, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <CheckCircle2 size={20} className="text-[#026d32] shrink-0" />
+                  <span className="text-sm font-medium text-zinc-900 leading-tight">{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* CTA Section */}
+          <div className="space-y-4 text-center sm:text-left relative z-20">
+            <UpgradeButton
+              label={ctaLabel}
+              couponId={activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined}
+              className="!bg-[#a3ffb3] !hover:bg-[#9bf7ac] !text-[#19793c] !py-4 !px-8 !font-bold !text-lg !rounded-full !shadow-none !border-none !inline-flex !items-center !justify-center !gap-2 !w-full"
+            />
+            
+            <div className="flex justify-center">
+              <button 
+                onClick={onClose}
+                className="text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
+              >
+                Maybe later, keep free version
+              </button>
+            </div>
+          </div>
+          
+          {/* Background Aesthetic Texture */}
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-[#a3ffb3]/20 rounded-full blur-[80px] pointer-events-none"></div>
+          <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#80da92]/10 rounded-full blur-[80px] pointer-events-none"></div>
         </div>
       </div>
     </div>
@@ -101,9 +140,11 @@ export default function PaywallModal({ isOpen, onClose, feature, reason: _reason
 export function usePaywall() {
   const [isOpen, setIsOpen] = useState(false)
   const [feature, setFeature] = useState('')
+  const [reason, setReason] = useState<React.ReactNode>('')
 
-  function showPaywall(featureName: string) {
+  function showPaywall(featureName: string, reasonText?: React.ReactNode) {
     setFeature(featureName)
+    if (reasonText) setReason(reasonText)
     setIsOpen(true)
   }
 
@@ -117,6 +158,7 @@ export function usePaywall() {
         isOpen={isOpen}
         onClose={hidePaywall}
         feature={feature}
+        reason={reason}
       />
     )
   }

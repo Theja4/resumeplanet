@@ -177,7 +177,10 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
   const isActive = state === 'uploading' || state === 'parsing'
 
   return (
-    <div className="w-full">
+    <section className="relative group w-full mb-12">
+      {/* Background glow effect */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-primary-container/20 to-secondary-container/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+      
       <div
         onDragOver={(e) => {
           e.preventDefault()
@@ -185,15 +188,15 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
+        className={`
+          relative bg-surface-container-lowest p-10 rounded-3xl flex flex-col items-center justify-center 
+          transition-all border-2 border-dashed 
+          ${isDragging ? 'border-primary/40 bg-primary/5' : 'border-outline-variant/20 hover:border-primary/30'}
+          ${disabled || isActive ? 'cursor-default' : 'cursor-pointer'}
+        `}
         onClick={() => {
           if (!disabled && !isActive) inputRef.current?.click()
         }}
-        className={`
-          relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed
-          px-6 py-10 transition-colors
-          ${disabled || isActive ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}
-          ${isDragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-gray-50 hover:border-indigo-300 hover:bg-indigo-50/40'}
-        `}
       >
         <input
           ref={inputRef}
@@ -205,66 +208,63 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         />
 
         {state === 'done' ? (
-          <CheckCircle2 size={32} className="text-green-500 mb-3" />
+          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+            <CheckCircle2 size={40} className="text-green-500" />
+          </div>
         ) : (
-          <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${isDragging ? 'bg-indigo-100' : 'bg-white border border-gray-200'}`}>
+          <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110">
             {state === 'parsing' ? (
-              <FileText size={22} className="text-indigo-500" />
+              <FileText size={36} className="text-primary animate-pulse" />
             ) : (
-              <Upload size={22} className="text-gray-400" />
+              <Upload size={36} className={`text-primary ${isDragging ? 'scale-110' : ''}`} />
             )}
           </div>
         )}
 
-        {state === 'idle' && (
-          <>
-            <p className="text-sm font-medium text-gray-700">
-              Drop your resume here, or <span className="text-indigo-600">browse</span>
-            </p>
-            <p className="mt-1 text-xs text-gray-400">PDF or DOCX · max 5MB</p>
-          </>
+        <h2 className="text-2xl font-extrabold text-on-surface mb-2 tracking-tight">
+          {state === 'parsing' ? 'Analyzing with AI…' : 'Upload Your Resume'}
+        </h2>
+        
+        <p className="text-on-surface-variant text-center max-w-md mb-8">
+          {state === 'parsing' 
+            ? "We're extracting your skills and experience to build your professional profile."
+            : "Drag and drop your PDF or DOCX file here to start optimizing. We'll automatically parse your data."}
+        </p>
+
+        {(state === 'idle' || state === 'error') && (
+          <button 
+            className="px-10 py-3.5 bg-[var(--signature-gradient)] text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+            disabled={disabled}
+          >
+            <Upload size={18} />
+            Select File
+          </button>
         )}
 
-        {state === 'uploading' && (
-          <p className="text-sm font-medium text-gray-700">Uploading…</p>
-        )}
-
-        {state === 'parsing' && (
-          <p className="text-sm font-medium text-indigo-600">Analysing with AI…</p>
-        )}
-
-        {state === 'done' && (
-          <p className="text-sm font-medium text-green-600">Resume parsed successfully!</p>
-        )}
-      </div>
-
-      {/* Progress bar */}
-      {(state === 'uploading' || state === 'parsing' || state === 'done') && (
-        <div className="mt-3">
-          <Progress value={progress} className="h-1.5" />
-          <p className="mt-1 text-right text-xs text-gray-400">{progress}%</p>
-        </div>
-      )}
-
-      {/* Error message */}
-      {state === 'error' && errorMessage && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-4 py-3">
-          <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm text-red-700">{errorMessage}</p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setState('idle')
-                setErrorMessage(null)
-              }}
-              className="mt-1 text-xs text-red-600 underline"
-            >
-              Try again
-            </button>
+        {/* Progress bar for active states */}
+        {isActive && (
+          <div className="w-full max-w-md mt-4 space-y-2">
+            <Progress value={progress} className="h-2 bg-surface-container" />
+            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+              <span>{state === 'uploading' ? 'Uploading' : 'AI Processing'}</span>
+              <span>{progress}%</span>
+            </div>
           </div>
+        )}
+
+        {state === 'error' && (
+          <div className="mt-6 flex items-center gap-2 text-error font-semibold text-sm">
+            <AlertCircle size={16} />
+            {errorMessage || 'Upload failed'}
+          </div>
+        )}
+
+        <div className="mt-10 flex items-center gap-6 text-[11px] font-bold text-outline uppercase tracking-widest opacity-60">
+          <span>Supported: PDF, DOCX</span>
+          <span className="w-1 h-1 bg-outline rounded-full"></span>
+          <span>Max size: 5MB</span>
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   )
 }

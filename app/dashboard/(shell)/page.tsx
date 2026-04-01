@@ -3,6 +3,7 @@ import Link from 'next/link'
 import AdBanner from '@/components/shared/AdBanner'
 import { getRemainingFreeScans } from '@/lib/planUtils'
 import type { Profile } from '@/types'
+import { Upload, ClipboardCheck, LayoutDashboard, Rocket } from 'lucide-react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -20,113 +21,122 @@ export default async function DashboardPage() {
       .select('score')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(5),
+      .limit(1),
   ])
 
   const profile = profileResult.data as Profile | null
   const resumeCount = resumesResult.count ?? 0
-  const recentScores = scoresResult.data ?? []
-  const avgScore =
-    recentScores.length > 0
-      ? Math.round(recentScores.reduce((sum, s) => sum + s.score, 0) / recentScores.length)
-      : null
+  const lastScore = (scoresResult.data && scoresResult.data.length > 0) ? scoresResult.data[0].score : null
 
   const isPro = profile?.plan === 'pro'
-  const scansLeft = getRemainingFreeScans(profile)
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome back, {firstName}</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {isPro ? 'Pro plan — full access enabled.' : `Free plan · ${scansLeft} ATS scan${scansLeft !== 1 ? 's' : ''} remaining today.`}
-        </p>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Resumes</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{resumeCount}</p>
-          <Link href="/dashboard/resumes" className="mt-2 inline-block text-xs text-indigo-600 hover:underline">
-            Manage →
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Avg ATS Score</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">
-            {avgScore !== null ? `${avgScore}` : '—'}
-          </p>
-          <Link href="/dashboard/ats-checker" className="mt-2 inline-block text-xs text-indigo-600 hover:underline">
-            Run scan →
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Plan</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2 capitalize">{profile?.plan ?? 'Free'}</p>
-          {!isPro && (
-            <Link href="/dashboard/billing" className="mt-2 inline-block text-xs text-indigo-600 hover:underline">
-              Upgrade →
-            </Link>
-          )}
+    <div className="space-y-8 max-w-6xl mx-auto w-full">
+      {/* Welcome Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <span className="text-primary font-bold text-sm tracking-widest uppercase">System Operational</span>
+          <h2 className="text-4xl font-extrabold tracking-tighter text-on-surface mt-1">Welcome back, {firstName}</h2>
         </div>
       </div>
 
-      {/* Quick actions */}
+      {/* Stats Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Resumes */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 shadow-sm group hover:shadow-md transition-shadow">
+          <p className="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Total Resumes</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-on-surface">{resumeCount}</span>
+            <span className="text-xs text-primary font-bold">+1 this week</span>
+          </div>
+        </div>
+
+        {/* Last ATS Score */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 shadow-sm group hover:shadow-md transition-shadow">
+          <p className="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Last ATS Score</p>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-black text-on-surface">{lastScore !== null ? `${lastScore}%` : '—'}</span>
+            <span className="text-xs text-on-surface-variant">
+              {lastScore !== null && lastScore >= 80 ? 'Top 15%' : lastScore !== null ? 'Keep improving' : 'Run your first scan'}
+            </span>
+          </div>
+        </div>
+
+        {/* Your Plan Card */}
+        <div className="bg-primary p-6 rounded-xl shadow-lg shadow-primary/20 group relative overflow-hidden text-white/90">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-all"></div>
+          <p className="text-xs font-bold text-primary-container uppercase tracking-widest">Your Plan</p>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-2xl font-black text-white capitalize">{profile?.plan ?? 'Free'}</span>
+            {!isPro && (
+              <Link
+                href="/dashboard/pricing"
+                className="px-3 py-1 bg-white text-primary text-xs font-bold rounded-lg hover:scale-105 active:scale-95 transition-transform"
+              >
+                Upgrade
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions Bento */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link
-            href="/dashboard/resumes"
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-5 py-4 hover:border-indigo-300 hover:shadow-sm transition-all"
-          >
-            <span className="text-2xl">📄</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">Upload Resume</p>
-              <p className="text-xs text-gray-500">Add a new PDF or DOCX</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/ats-checker"
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-5 py-4 hover:border-indigo-300 hover:shadow-sm transition-all"
-          >
-            <span className="text-2xl">🎯</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">Check ATS Score</p>
-              <p className="text-xs text-gray-500">Analyse against a job description</p>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/templates"
-            className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 px-5 py-4 hover:border-indigo-300 hover:shadow-sm transition-all"
-          >
-            <span className="text-2xl">✨</span>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">Resume Templates</p>
-              <p className="text-xs text-gray-500">{isPro ? 'Browse all templates' : 'Pro templates available'}</p>
-            </div>
-          </Link>
-          {!isPro && (
-            <Link
-              href="/dashboard/billing"
-              className="flex items-center gap-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-200 px-5 py-4 hover:border-indigo-400 hover:shadow-sm transition-all"
-            >
-              <span className="text-2xl">⚡</span>
-              <div>
-                <p className="text-sm font-semibold text-indigo-900">Upgrade to Pro</p>
-                <p className="text-xs text-indigo-600">Unlimited scans + AI optimiser</p>
+        <h3 className="text-lg font-bold text-on-surface mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Action Card 1: Upload */}
+          <Link href="/dashboard/resumes" className="group relative bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="relative z-10 text-left">
+              <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                <Upload size={22} strokeWidth={1.75} />
               </div>
-            </Link>
-          )}
+              <h4 className="text-xl font-bold mb-2">Upload Resume</h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">Instantly analyze your current resume with our advanced AI engine.</p>
+            </div>
+          </Link>
+
+          {/* Action Card 2: ATS */}
+          <Link href="/dashboard/ats-checker" className="group relative bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="relative z-10 text-left">
+              <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                <ClipboardCheck size={22} strokeWidth={1.75} />
+              </div>
+              <h4 className="text-xl font-bold mb-2">Check ATS Score</h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">See how well your document parses through standard recruiting software.</p>
+            </div>
+          </Link>
+
+          {/* Action Card 3: Templates */}
+          <Link href="/dashboard/templates" className="group relative bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="relative z-10 text-left">
+              <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                <LayoutDashboard size={22} strokeWidth={1.75} />
+              </div>
+              <h4 className="text-xl font-bold mb-2">Resume Templates</h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">Choose from dozens of high-conversion, professional layout designs.</p>
+            </div>
+          </Link>
+
+          {/* Action Card 4: Upgrade */}
+          <Link href="/dashboard/pricing" className="group relative bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="relative z-10 text-left">
+              <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                <Rocket size={22} strokeWidth={1.75} />
+              </div>
+              <h4 className="text-xl font-bold mb-2">Upgrade to Pro</h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">Unlock unlimited AI optimization and premium export formats.</p>
+            </div>
+          </Link>
         </div>
       </div>
 
       {/* Ad banner — free users only */}
-      <AdBanner size="leaderboard" className="mx-auto" />
+      {!isPro && <AdBanner size="leaderboard" className="mx-auto" />}
     </div>
   )
 }

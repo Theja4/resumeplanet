@@ -2,9 +2,10 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Eye, EyeOff, Plus, Pencil,
+import { GripVertical, Eye, EyeOff, Plus, Pencil, Trash2,
   User, AlignLeft, Briefcase, GraduationCap, Zap,
   Code, Award, Heart, Globe, Star, Trophy, BookOpen, Users,
+  List, Tags, Component
 } from 'lucide-react'
 import type { ResumeData, BuilderVisibility } from '@/types'
 import ContactEditor from './ContactEditor'
@@ -17,6 +18,8 @@ import AwardsEditor from './AwardsEditor'
 import PublicationsEditor from './PublicationsEditor'
 import ReferencesEditor from './ReferencesEditor'
 import SubItemList from './SubItemList'
+import CustomTextEditor from './CustomTextEditor'
+import CustomTagsEditor from './CustomTagsEditor'
 
 const SECTION_CONFIG: Record<string, { label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   contact:        { label: 'Contact Info',    Icon: User },
@@ -35,6 +38,15 @@ const SECTION_CONFIG: Record<string, { label: string; Icon: React.ComponentType<
 }
 
 function sectionHasData(sectionId: string, data: ResumeData): boolean {
+  if (sectionId.startsWith('custom_')) {
+    const custom = data.customSections?.find(c => c.id === sectionId)
+    if (!custom) return false
+    if (custom.type === 'text') return !!custom.text?.trim()
+    if (custom.type === 'tags') return !!custom.tags && custom.tags.length > 0
+    if (custom.type === 'complex') return !!custom.items && custom.items.length > 0
+    return false
+  }
+
   switch (sectionId) {
     case 'contact':        return !!(data.name || data.email || data.phone)
     case 'summary':        return !!data.summary
@@ -85,9 +97,24 @@ export default function SortableSectionRow({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const config = SECTION_CONFIG[sectionId]
-  if (!config) return null
-  const { label, Icon } = config
+  const isCustom = sectionId.startsWith('custom_')
+  const customConfig = isCustom ? resumeData.customSections?.find(c => c.id === sectionId) : null
+
+  let label = ''
+  let Icon: React.ComponentType<{ size?: number; className?: string }> = Component
+
+  if (isCustom) {
+    if (!customConfig) return null
+    label = customConfig.title
+    if (customConfig.type === 'complex') Icon = List
+    else if (customConfig.type === 'tags') Icon = Tags
+    else if (customConfig.type === 'text') Icon = AlignLeft
+  } else {
+    const config = SECTION_CONFIG[sectionId]
+    if (!config) return null
+    label = config.label
+    Icon = config.Icon
+  }
 
   const isHidden = visibility.sections[sectionId] === false
   const hasData = sectionHasData(sectionId, resumeData)
@@ -99,10 +126,54 @@ export default function SortableSectionRow({
     })
   }
 
-  // For complex sections: use SubItemList; for simple: use existing editors
+  function handleDeleteSection() {
+    if (!isCustom) return
+    if (!window.confirm(`Are you sure you want to delete the "${label}" section and all its contents?`)) return
+    
+    // 1. Remove from data.customSections
+    const newCustom = (resumeData.customSections || []).filter(c => c.id !== sectionId)
+    onDataChange({ ...resumeData, customSections: newCustom })
+
+    // 2. Remove from visibility.sectionOrder
+    const newOrder = visibility.sectionOrder.filter(id => id !== sectionId)
+    
+    // 3. Remove from visibility.sections
+    const newSections = { ...visibility.sections }
+    delete newSections[sectionId]
+
+    // 4. Remove from visibility.items
+    const newItems = { ...visibility.items }
+    delete newItems[sectionId]
+
+    onVisibilityChange({
+      ...visibility,
+      sectionOrder: newOrder,
+      sections: newSections,
+      items: newItems,
+    })
+  }
+
   const isComplex = ['experience', 'education', 'projects', 'certifications'].includes(sectionId)
 
   function renderEditor() {
+    if (isCustom) {
+      if (customConfig?.type === 'complex') {
+        return (
+          <SubItemList
+            sectionId={sectionId as any} // SubItemList will be updated to handle custom IDs
+            resumeData={resumeData}
+            visibility={visibility}
+            onDataChange={onDataChange}
+            onVisibilityChange={onVisibilityChange}
+          />
+        )
+      } else if (customConfig?.type === 'tags') {
+        return <CustomTagsEditor sectionId={sectionId} data={resumeData} onChange={onDataChange} />
+      } else {
+        return <CustomTextEditor sectionId={sectionId} data={resumeData} onChange={onDataChange} />
+      }
+    }
+
     if (isComplex) {
       const sectionKey = sectionId as 'experience' | 'education' | 'projects' | 'certifications'
       return (
@@ -130,70 +201,94 @@ export default function SortableSectionRow({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="border-b border-gray-100 last:border-b-0">
+    <div ref={setNodeRef} style={style} className={`mb-2 last:mb-0 transition-all ${isExpanded ? 'rounded-xl shadow-sm border border-emerald-100/50 bg-surface-container-lowest overflow-hidden' : 'rounded-xl hover:bg-zinc-100'}`}>
       {/* Section row header */}
-      <div className={`flex items-center px-3 py-2.5 hover:bg-gray-50 transition-colors group ${isHidden ? 'opacity-60' : ''}`}>
-        {/* Drag handle */}
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 text-gray-300 hover:text-gray-500 mr-1 shrink-0"
-          tabIndex={-1}
-          aria-label="Drag to reorder"
-        >
-          <GripVertical size={14} />
-        </button>
+      <div className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-all ${isExpanded ? 'text-emerald-700' : 'text-zinc-600'} ${isHidden ? 'opacity-50' : ''}`} onClick={(e) => {
+        // Prevent expand if clicking visibility toggle or drag handle
+        if ((e.target as HTMLElement).closest('button[data-action="prevent-expand"]')) return
+        onExpand()
+      }}>
+        <div className="flex items-center gap-3">
+          {/* Drag handle */}
+          <button
+            {...attributes}
+            {...listeners}
+            data-action="prevent-expand"
+            className={`cursor-grab active:cursor-grabbing p-0.5 select-none transition-colors ${isExpanded ? 'text-emerald-300 hover:text-emerald-500' : 'text-zinc-300 hover:text-zinc-500 group-hover:text-zinc-400'}`}
+            tabIndex={-1}
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={16} />
+          </button>
 
-        {/* Section icon + label — clicking expands */}
-        <button
-          onClick={onExpand}
-          className="flex items-center gap-2 flex-1 text-left min-w-0"
-        >
-          <Icon size={14} className="text-gray-500 shrink-0" />
-          <span className="flex-1 text-sm font-medium text-gray-700 truncate">{label}</span>
-          {hasHint && (
-            <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0" />
-          )}
-        </button>
+          {/* Icon & Label */}
+          <div className="flex items-center gap-2">
+            <Icon size={18} className={isExpanded ? 'text-primary' : ''} />
+            <span className={`text-sm ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+            {hasHint && (
+              <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0 ml-1" />
+            )}
+          </div>
+        </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Visibility toggle */}
           <button
             onClick={toggleVisibility}
-            className="p-1.5 rounded hover:bg-gray-200 transition-colors"
+            data-action="prevent-expand"
+            className="p-1 rounded-md hover:bg-black/5 transition-colors"
             title={isHidden ? 'Show section' : 'Hide section'}
           >
             {isHidden
-              ? <EyeOff size={14} className="text-gray-300" />
-              : <Eye size={14} className="text-gray-400" />
+              ? <EyeOff size={15} className="text-zinc-400" />
+              : <Eye size={15} className="text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
             }
           </button>
 
-          {/* EDIT / + ADD */}
-          <button
-            onClick={onExpand}
-            className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
-              hasData
-                ? 'text-indigo-600 hover:bg-indigo-50'
-                : 'text-gray-400 hover:bg-gray-100'
-            }`}
-          >
-            {hasData ? <><Pencil size={11} /> EDIT</> : <><Plus size={11} /> ADD</>}
-          </button>
+          {/* Delete button (only for custom sections) */}
+          {isCustom && (
+            <button
+              onClick={handleDeleteSection}
+              data-action="prevent-expand"
+              className="p-1 rounded-md hover:bg-red-50 text-zinc-300 hover:text-red-500 transition-colors"
+              title="Delete Section"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+
+          {/* The Optic "Hover Pill" + Chevron */}
+          <div className="flex items-center gap-1.5 ml-1">
+            {!isExpanded && (
+              <span className={`text-[10px] font-bold text-primary uppercase bg-primary-container px-1.5 py-0.5 rounded transition-opacity ${hasData ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                {hasData ? 'Edit' : 'Add'}
+              </span>
+            )}
+            
+            <svg 
+              className={`w-4 h-4 text-zinc-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="2"
+            >
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
         </div>
       </div>
 
       {/* Hidden indicator */}
       {isHidden && !isExpanded && (
-        <div className="px-10 pb-1.5 text-xs text-gray-400 italic">
-          Hidden from resume
+        <div className="px-12 pb-2 text-[11px] text-amber-500 font-medium tracking-tight">
+          Hidden from resume output
         </div>
       )}
 
       {/* Expanded editor */}
       {isExpanded && (
-        <div className="border-t border-gray-100 bg-gray-50">
+        <div className="border-t border-emerald-50 bg-white bg-opacity-50">
           {renderEditor()}
         </div>
       )}
