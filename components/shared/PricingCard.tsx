@@ -42,20 +42,11 @@ export default function PricingCard({
           <span className="text-gray-500 text-sm ml-1">/month</span>
         </div>
 
-        <div className="mb-6">
-          {isCurrentPlan ? (
-            <div className="w-full text-center py-3 text-sm text-gray-500 border border-gray-200 rounded-xl">
-              Current plan
-            </div>
-          ) : (
-            <button
-              onClick={onUpgrade}
-              className="w-full py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
-            >
-              Start for Free <ArrowRight size={14} />
-            </button>
-          )}
-        </div>
+        {isCurrentPlan && (
+          <div className="mb-6 w-full text-center py-3 text-sm text-gray-500 border border-gray-200 rounded-xl">
+            Current plan
+          </div>
+        )}
 
         <p className="text-xs text-gray-400 font-medium mb-3">Free plan includes:</p>
         <ul className="space-y-2.5 flex-1">

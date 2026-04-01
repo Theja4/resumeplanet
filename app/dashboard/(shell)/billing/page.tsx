@@ -1,12 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { CheckCircle2, Zap, TrendingUp, FileText } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import ManageSubscriptionButton from './ManageSubscriptionButton'
 import BillingUpgradeSection from './BillingUpgradeSection'
 import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
 import UpgradePoller from '@/components/shared/UpgradePoller'
-import { FREE_PLAN, PRO_PLAN, PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
+import { PRO_PLAN, PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
 import type { Profile, Order } from '@/types'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
@@ -44,9 +44,8 @@ export default async function BillingPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [profileResult, resumeCountResult, ordersResult] = await Promise.all([
+  const [profileResult, ordersResult] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase
       .from('orders')
       .select('*')
@@ -60,7 +59,6 @@ export default async function BillingPage({
   if (!profile) redirect('/auth/login')
 
   const isPro = profile.plan === 'pro'
-  const resumeCount = resumeCountResult.count ?? 0
   const paidOrders = (ordersResult.data ?? []) as Order[]
 
   const subscriptionTier =
@@ -69,8 +67,6 @@ export default async function BillingPage({
     : 'pro-monthly'
 
   const annualPrice = PRO_PLAN.getPriceById('annual')
-
-  const FREE_ATS_LIMIT = FREE_PLAN.limits.atsScansPerDay
   const exitPromo = getActiveExitIntentPromo()
 
   return (
@@ -98,11 +94,11 @@ export default async function BillingPage({
 
         {/* Current plan badge */}
         <div className={`rounded-xl border p-5 flex items-center justify-between ${
-          isPro ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-200'
+          isPro ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
         }`}>
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Plan</p>
-            <p className={`text-xl font-bold mt-0.5 ${isPro ? 'text-indigo-700' : 'text-gray-800'}`}>
+            <p className={`text-xl font-bold mt-0.5 ${isPro ? 'text-[#026d32]' : 'text-gray-800'}`}>
               {isPro ? 'Pro' : 'Free'}
             </p>
             {profile.subscription_status && isPro && (
@@ -112,79 +108,9 @@ export default async function BillingPage({
             )}
           </div>
           <div className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide ${
-            isPro ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-600'
+            isPro ? 'bg-[#026d32] text-white' : 'bg-gray-200 text-gray-600'
           }`}>
             {isPro ? 'Active' : 'Free tier'}
-          </div>
-        </div>
-
-        {/* Usage stats */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-gray-700">Usage this period</h2>
-
-          {/* ATS scans */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                <TrendingUp size={14} className="text-gray-400" />
-                ATS scans today
-              </div>
-              <span className="text-sm text-gray-500">
-                {isPro ? (
-                  <span className="text-indigo-600 font-medium">Unlimited</span>
-                ) : (
-                  `${profile.ats_scans_today} / ${FREE_ATS_LIMIT}`
-                )}
-              </span>
-            </div>
-            {!isPro && (
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    profile.ats_scans_today >= FREE_ATS_LIMIT ? 'bg-red-400' : 'bg-indigo-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (profile.ats_scans_today / FREE_ATS_LIMIT) * 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Resumes */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                <FileText size={14} className="text-gray-400" />
-                Resumes created
-              </div>
-              <span className="text-sm text-gray-500">
-                {isPro ? (
-                  <span className="text-indigo-600 font-medium">{resumeCount} (Unlimited)</span>
-                ) : (
-                  `${resumeCount} / ${FREE_PLAN.limits.maxResumes}`
-                )}
-              </span>
-            </div>
-            {!isPro && (
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    resumeCount >= FREE_PLAN.limits.maxResumes ? 'bg-red-400' : 'bg-indigo-500'
-                  }`}
-                  style={{ width: `${Math.min(100, (resumeCount / FREE_PLAN.limits.maxResumes) * 100)}%` }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Pro features */}
-          <div className="flex items-center gap-1.5 text-sm text-gray-700">
-            <Zap size={14} className="text-gray-400" />
-            AI optimisation
-            <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${
-              isPro ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-            }`}>
-              {isPro ? 'Enabled' : 'Pro only'}
-            </span>
           </div>
         </div>
 
@@ -212,7 +138,10 @@ export default async function BillingPage({
                 </p>
               )}
             </div>
-            <ManageSubscriptionButton label="Switch plan →" />
+            <ManageSubscriptionButton
+            label="Switch plan →"
+            className="px-4 py-2 bg-[#026d32] text-white text-sm font-semibold rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center justify-center gap-2"
+          />
           </div>
         )}
 
@@ -249,7 +178,7 @@ export default async function BillingPage({
                       </td>
                       <td className="px-5 py-4 text-gray-700">${PROFESSIONAL_ORDER.display.displayPrice}</td>
                       <td className="px-5 py-4">
-                        <Link href={`/dashboard/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-800 font-medium text-xs">
+                        <Link href={`/dashboard/orders/${order.id}`} className="text-[#026d32] hover:text-green-800 font-medium text-xs">
                           View →
                         </Link>
                       </td>

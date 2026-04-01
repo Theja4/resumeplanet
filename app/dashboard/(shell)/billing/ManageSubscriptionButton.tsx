@@ -4,9 +4,10 @@ import { useState } from 'react'
 
 interface Props {
   label?: string
+  className?: string
 }
 
-export default function ManageSubscriptionButton({ label = 'Manage Subscription' }: Props) {
+export default function ManageSubscriptionButton({ label = 'Manage Subscription', className }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,7 +36,7 @@ export default function ManageSubscriptionButton({ label = 'Manage Subscription'
       <button
         onClick={handleManage}
         disabled={loading}
-        className="w-full py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        className={className ?? "w-full py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"}
       >
         {loading ? (
           <>
