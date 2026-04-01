@@ -13,9 +13,10 @@ import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   autoFillPromo?: string
+  isPro: boolean
 }
 
-export default function BillingUpgradeSection({ autoFillPromo }: Props) {
+export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
   const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
   const [appliedDiscountId, setAppliedDiscountId] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +28,8 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
     setAppliedDiscountId(result.valid ? result.discountId : undefined)
   }
 
-  const effectiveDiscountId = appliedDiscountId ??
+  const effectiveDiscountId =
+    appliedDiscountId ??
     (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
 
   async function handleUpgrade() {
@@ -56,27 +58,41 @@ export default function BillingUpgradeSection({ autoFillPromo }: Props) {
         />
       </div>
 
-      {/* Pricing card — button wired to Paddle checkout */}
-      <PricingCard
-        variant="pro"
-        selectedPriceId={selectedPriceId}
-        activePromo={activePromo}
-        isCurrentPlan={false}
-        onUpgrade={handleUpgrade}
-        isUpgrading={isLoading}
-      />
+      {/* 3-column card grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+        <PricingCard
+          variant="free"
+          activePromo={activePromo}
+          isCurrentPlan={!isPro}
+        />
+        <PricingCard
+          variant="pro"
+          selectedPriceId={selectedPriceId}
+          activePromo={activePromo}
+          isCurrentPlan={isPro}
+          onUpgrade={isPro ? undefined : handleUpgrade}
+          isUpgrading={isLoading}
+        />
+        <PricingCard
+          variant="professional"
+          activePromo={activePromo}
+        />
+      </div>
+
       {checkoutError && (
         <p className="text-sm text-red-600 text-center">{checkoutError}</p>
       )}
 
-      {/* Promo code input */}
-      <div>
-        <p className="text-xs font-medium text-gray-500 mb-2">Have a promo code?</p>
-        <PromoCodeInput
-          autoFillCode={autoFillPromo}
-          onApply={handlePromoApply}
-        />
-      </div>
+      {/* Promo code input — only relevant when upgrading from free */}
+      {!isPro && (
+        <div>
+          <p className="text-xs font-medium text-gray-500 mb-2">Have a promo code?</p>
+          <PromoCodeInput
+            autoFillCode={autoFillPromo}
+            onApply={handlePromoApply}
+          />
+        </div>
+      )}
     </div>
   )
 }
