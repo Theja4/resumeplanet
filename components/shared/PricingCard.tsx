@@ -1,4 +1,5 @@
-import { Check, Lock } from 'lucide-react'
+import { Check, Lock, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import {
   FREE_PLAN,
   PRO_PLAN,
@@ -28,42 +29,49 @@ export default function PricingCard({
 }: Props) {
   if (variant === 'free') {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col">
-        <div className="mb-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Free</span>
-          <div className="mt-2">
-            <span className="text-4xl font-bold text-gray-900">$0</span>
-            <span className="text-gray-500 ml-1">/month</span>
-          </div>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col h-full">
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-lg font-bold text-gray-900">Free</span>
+          <span className="text-xs font-semibold uppercase tracking-wider bg-gray-100 text-gray-500 px-3 py-1 rounded-full">
+            FREE
+          </span>
         </div>
 
-        <ul className="space-y-2 mb-6 flex-1">
+        <div className="mb-5">
+          <span className="text-4xl font-bold text-gray-900">$0</span>
+          <span className="text-gray-500 text-sm ml-1">/month</span>
+        </div>
+
+        <div className="mb-6">
+          {isCurrentPlan ? (
+            <div className="w-full text-center py-3 text-sm text-gray-500 border border-gray-200 rounded-xl">
+              Current plan
+            </div>
+          ) : (
+            <button
+              onClick={onUpgrade}
+              className="w-full py-3 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              Start for Free <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+
+        <p className="text-xs text-gray-400 font-medium mb-3">Free plan includes:</p>
+        <ul className="space-y-2.5 flex-1">
           {FREE_PLAN.features.map(f => (
-            <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
-              <Check size={15} className="text-green-500 shrink-0 mt-0.5" />
+            <li key={f} className="flex items-start gap-2.5 text-sm text-gray-700">
+              <Check size={15} className="text-gray-400 shrink-0 mt-0.5" />
               {f}
             </li>
           ))}
           {FREE_PLAN.lockedFeatures.map(f => (
-            <li key={f} className="flex items-start gap-2 text-sm text-gray-400">
+            <li key={f} className="flex items-start gap-2.5 text-sm text-gray-400">
               <Lock size={13} className="shrink-0 mt-0.5" />
               {f}
             </li>
           ))}
         </ul>
-
-        {isCurrentPlan ? (
-          <div className="w-full text-center py-3 text-sm text-gray-500 border border-gray-200 rounded-xl">
-            Current plan
-          </div>
-        ) : (
-          <button
-            onClick={onUpgrade}
-            className="w-full py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Get started free
-          </button>
-        )}
       </div>
     )
   }
@@ -73,14 +81,14 @@ export default function PricingCard({
     const display = getEffectiveDisplay(priceOption, activePromo)
     const formatted = formatPriceDisplay(display, priceOption)
 
-    const promoBadge = activePromo?.overrideDisplay &&
+    const promoBadge =
+      activePromo?.overrideDisplay &&
       (activePromo.appliesTo === 'all' || activePromo.appliesTo === priceOption.id)
-      ? activePromo.badge
-      : null
+        ? activePromo.badge
+        : null
 
     return (
-      <div className="bg-indigo-600 rounded-2xl p-6 flex flex-col relative text-white">
-        {/* Badge */}
+      <div className="bg-[#026d32] rounded-2xl p-6 flex flex-col h-full relative text-white">
         {promoBadge && (
           <div className="absolute -top-3 left-1/2 -translate-x-1/2">
             <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">
@@ -89,74 +97,94 @@ export default function PricingCard({
           </div>
         )}
 
-        <div className="mb-4">
-          <span className="text-xs font-semibold uppercase tracking-wider text-indigo-200">Pro</span>
-          <div className="mt-2">
-            <PriceDisplay
-              display={formatted}
-              size="lg"
-              showInterval={true}
-              showPerMonth={true}
-              showSavings={true}
-              className="text-white [&_span]:text-white [&_p]:text-indigo-200"
-            />
-          </div>
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-lg font-bold text-white">Pro</span>
+          <span className="text-xs font-semibold uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
+            PRO
+          </span>
         </div>
 
-        <ul className="space-y-2 mb-6 flex-1">
+        <div className="mb-5">
+          <PriceDisplay
+            display={formatted}
+            size="lg"
+            showInterval={true}
+            showPerMonth={true}
+            showSavings={true}
+            className="text-white [&_span]:text-white [&_p]:text-green-200"
+          />
+        </div>
+
+        <div className="mb-6">
+          {isCurrentPlan ? (
+            <div className="w-full text-center py-3 text-sm text-green-200 border border-white/30 rounded-xl">
+              Current plan
+            </div>
+          ) : (
+            <button
+              onClick={onUpgrade}
+              disabled={isUpgrading}
+              className="w-full py-3 bg-white text-[#026d32] rounded-xl text-sm font-semibold hover:bg-green-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              {isUpgrading ? (
+                'Opening checkout…'
+              ) : (
+                <>
+                  Upgrade to Pro <ArrowRight size={14} />
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        <p className="text-xs text-green-200 font-medium mb-3">Pro plan includes:</p>
+        <ul className="space-y-2.5 flex-1">
           {PRO_PLAN.features.map(f => (
-            <li key={f} className="flex items-start gap-2 text-sm text-white">
-              <Check size={15} className="text-indigo-200 shrink-0 mt-0.5" />
+            <li key={f} className="flex items-start gap-2.5 text-sm text-white">
+              <Check size={15} className="text-green-300 shrink-0 mt-0.5" />
               {f}
             </li>
           ))}
         </ul>
-
-        {isCurrentPlan ? (
-          <div className="w-full text-center py-3 text-sm text-indigo-200 border border-indigo-400 rounded-xl">
-            Current plan
-          </div>
-        ) : (
-          <button
-            onClick={onUpgrade}
-            disabled={isUpgrading}
-            className="w-full py-3 bg-white text-indigo-600 rounded-xl text-sm font-semibold hover:bg-indigo-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isUpgrading ? 'Opening checkout…' : 'Upgrade to Pro'}
-          </button>
-        )}
       </div>
     )
   }
 
-  // Professional
+  // Professional Rewrite
   return (
-    <div className="bg-white rounded-2xl border border-amber-200 p-6 flex flex-col">
-      <div className="mb-4">
-        <span className="text-xs font-semibold uppercase tracking-wider text-amber-600">Professional</span>
-        <div className="mt-2">
-          <span className="text-4xl font-bold text-gray-900">
-            ${PROFESSIONAL_ORDER.display.displayPrice}
-          </span>
-          <span className="text-gray-500 ml-1">one-time</span>
-        </div>
+    <div className="bg-white rounded-2xl border border-amber-200 p-6 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-5">
+        <span className="text-lg font-bold text-gray-900">Professional</span>
+        <span className="text-xs font-semibold uppercase tracking-wider bg-amber-100 text-amber-700 px-3 py-1 rounded-full">
+          PRO+
+        </span>
       </div>
 
-      <ul className="space-y-2 mb-6 flex-1">
+      <div className="mb-5">
+        <span className="text-4xl font-bold text-gray-900">
+          ${PROFESSIONAL_ORDER.display.displayPrice}
+        </span>
+        <span className="text-gray-500 text-sm ml-1">one-time</span>
+      </div>
+
+      <div className="mb-6">
+        <Link
+          href="/dashboard/orders/new"
+          className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+        >
+          Order Now <ArrowRight size={14} />
+        </Link>
+      </div>
+
+      <p className="text-xs text-gray-400 font-medium mb-3">Rewrite includes:</p>
+      <ul className="space-y-2.5 flex-1">
         {PROFESSIONAL_ORDER.features.map(f => (
-          <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
+          <li key={f} className="flex items-start gap-2.5 text-sm text-gray-700">
             <Check size={15} className="text-amber-500 shrink-0 mt-0.5" />
             {f}
           </li>
         ))}
       </ul>
-
-      <button
-        onClick={onUpgrade}
-        className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold transition-colors"
-      >
-        Order now →
-      </button>
     </div>
   )
 }
