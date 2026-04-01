@@ -46,7 +46,6 @@ export default function PricingSection({ activePromo }: Props) {
         <PricingCard
           variant="professional"
           activePromo={activePromo}
-          onUpgrade={() => router.push('/dashboard/orders/new')}
         />
       </div>
 

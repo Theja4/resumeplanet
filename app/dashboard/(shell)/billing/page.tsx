@@ -201,11 +201,11 @@ export default async function BillingPage({
 
         {/* Monthly Pro: annual upsell */}
         {subscriptionTier === 'pro-monthly' && (
-          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5 flex items-start justify-between gap-4">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-5 flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-indigo-800">Switch to Annual — Save 31%</p>
+              <p className="text-sm font-semibold text-green-800">Switch to Annual — Save 31%</p>
               {annualPrice && (
-                <p className="text-xs text-indigo-600 mt-1">
+                <p className="text-xs text-green-700 mt-1">
                   ${annualPrice.display.displayPrice}/year
                   {' · '}${annualPrice.perMonthEquivalent}/mo
                   {' · '}{annualPrice.savingsNote}
