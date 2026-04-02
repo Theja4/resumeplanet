@@ -891,13 +891,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
                   <div
                     key={`page-${pageIndex}`}
-                    className={`absolute left-0 bg-white border ${
-                      isOverPageLimit && pageIndex === MAX_PAGES - 1 ? 'border-red-300' : 'border-zinc-200/80'
+                    className={`absolute left-0 bg-white ${
+                      isOverPageLimit && pageIndex === MAX_PAGES - 1
+                        ? 'border-red-300'
+                        : 'border-t border-b border-zinc-200/60'
                     }`}
                     style={{
                       top: pageIndex * (PAGE_H + PAGE_GAP),
                       width: '794px',
                       height: `${PAGE_H}px`,
+                      boxShadow: pageIndex < renderedPageCount - 1 ? '0 4px 12px -4px rgba(0,0,0,0.08)' : 'none',
                     }}
                   >
                     {/* Full-page template shell so page styling continues to page bottom */}
@@ -916,7 +919,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       </div>
                     )}
 
-                    <div className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
+                    <div className="absolute top-3 right-3 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
                       Page {pageIndex + 1}
                     </div>
 
