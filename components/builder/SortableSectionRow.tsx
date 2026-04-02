@@ -136,9 +136,10 @@ export default function SortableSectionRow({
     const newCustom = (resumeData.customSections || []).filter(c => c.id !== sectionId)
     onDataChange({ ...resumeData, customSections: newCustom })
 
-    // 2. Remove from visibility.sectionOrder
+    // 2. Remove from visibility.sectionOrder and sidebarSectionOrder
     const newOrder = visibility.sectionOrder.filter(id => id !== sectionId)
-    
+    const newSidebarOrder = (visibility.sidebarSectionOrder || []).filter(id => id !== sectionId)
+
     // 3. Remove from visibility.sections
     const newSections = { ...visibility.sections }
     delete newSections[sectionId]
@@ -150,6 +151,7 @@ export default function SortableSectionRow({
     onVisibilityChange({
       ...visibility,
       sectionOrder: newOrder,
+      sidebarSectionOrder: newSidebarOrder,
       sections: newSections,
       items: newItems,
     })

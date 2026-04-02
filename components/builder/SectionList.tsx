@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, X, List, AlignLeft, Tags, Loader2, User, GripVertical } from 'lucide-react'
+import { X, List, AlignLeft, Tags, Loader2, User, GripVertical } from 'lucide-react'
 import type { CustomSectionType } from '@/types'
 import {
   DndContext, DragOverlay, rectIntersection,
@@ -105,14 +105,34 @@ export default function SectionList({
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     const aId = active.id as string
-    // Determine source from local arrays (more reliable than stale state)
-    const src = localPrimary.includes(aId) ? 'primary' : 'secondary'
-
     setActiveId(null)
 
     if (!over || aId === over.id) return
 
     const oId = over.id as string
+
+    // Single-column: treat all sections as one flat list
+    if (!isSidebarLayout) {
+      const combined = [...localPrimary, ...localSecondary]
+      const from = combined.indexOf(aId)
+      const to = combined.indexOf(oId)
+      if (from === -1 || to === -1) return
+      const reordered = arrayMove(combined, from, to)
+      // Preserve which IDs belong to primary vs secondary, just in new order
+      const primarySet = new Set(localPrimary)
+      const finalPrimary = reordered.filter(id => primarySet.has(id))
+      const secondarySet = new Set(localSecondary)
+      const finalSecondary = reordered.filter(id => secondarySet.has(id))
+      onVisibilityChange({
+        ...visibility,
+        sectionOrder: finalPrimary,
+        sidebarSectionOrder: finalSecondary,
+      })
+      return
+    }
+
+    // Sidebar layout: source determines which column the item came from
+    const src = localPrimary.includes(aId) ? 'primary' : 'secondary'
     const overInPrimary = localPrimary.includes(oId) || oId === 'primary-col'
     const overInSecondary = localSecondary.includes(oId) || oId === 'secondary-col'
 
@@ -120,21 +140,17 @@ export default function SectionList({
     let finalSecondary = [...localSecondary]
 
     if (src === 'primary' && overInPrimary) {
-      // Within primary: live reorder
       const from = localPrimary.indexOf(aId)
       const to = localPrimary.indexOf(oId)
       if (from !== -1 && to !== -1) finalPrimary = arrayMove(localPrimary, from, to)
     } else if (src === 'secondary' && overInSecondary) {
-      // Within secondary: live reorder
       const from = localSecondary.indexOf(aId)
       const to = localSecondary.indexOf(oId)
       if (from !== -1 && to !== -1) finalSecondary = arrayMove(localSecondary, from, to)
     } else if (src === 'primary' && overInSecondary) {
-      // Cross: primary → secondary (append to end)
       finalPrimary = localPrimary.filter(id => id !== aId)
       finalSecondary = [...localSecondary, aId]
     } else if (src === 'secondary' && overInPrimary) {
-      // Cross: secondary → primary (append to end)
       finalSecondary = localSecondary.filter(id => id !== aId)
       finalPrimary = [...localPrimary, aId]
     }
@@ -233,6 +249,7 @@ export default function SectionList({
             collisionDetection={rectIntersection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
           >
             {isSidebarLayout ? (
               <div className="space-y-8 mt-4">
