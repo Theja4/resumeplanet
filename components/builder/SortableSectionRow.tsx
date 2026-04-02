@@ -74,6 +74,7 @@ interface Props {
   onDataChange: (updated: ResumeData) => void
   onVisibilityChange: (updated: BuilderVisibility) => void
   onExpand: () => void
+  isDragDisabled?: boolean
 }
 
 export default function SortableSectionRow({
@@ -85,16 +86,17 @@ export default function SortableSectionRow({
   onDataChange,
   onVisibilityChange,
   onExpand,
+  isDragDisabled,
 }: Props) {
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
-  } = useSortable({ id: sectionId })
+  } = useSortable({ id: sectionId, disabled: isDragDisabled })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   }
 
   const isCustom = sectionId.startsWith('custom_')
@@ -210,16 +212,18 @@ export default function SortableSectionRow({
       }}>
         <div className="flex items-center gap-3">
           {/* Drag handle */}
-          <button
-            {...attributes}
-            {...listeners}
-            data-action="prevent-expand"
-            className={`cursor-grab active:cursor-grabbing p-0.5 select-none transition-colors ${isExpanded ? 'text-emerald-300 hover:text-emerald-500' : 'text-zinc-300 hover:text-zinc-500 group-hover:text-zinc-400'}`}
-            tabIndex={-1}
-            aria-label="Drag to reorder"
-          >
-            <GripVertical size={16} />
-          </button>
+          {!isDragDisabled && (
+            <button
+              {...attributes}
+              {...listeners}
+              data-action="prevent-expand"
+              className={`cursor-grab active:cursor-grabbing p-0.5 select-none transition-colors ${isExpanded ? 'text-emerald-300 hover:text-emerald-500' : 'text-zinc-300 hover:text-zinc-500 group-hover:text-zinc-400'}`}
+              tabIndex={-1}
+              aria-label="Drag to reorder"
+            >
+              <GripVertical size={16} />
+            </button>
+          )}
 
           {/* Icon & Label */}
           <div className="flex items-center gap-2">
