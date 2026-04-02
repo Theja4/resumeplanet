@@ -61,7 +61,7 @@ function SortableBulletRow({
         value={text}
         onChange={e => onChange(e.target.value)}
         rows={2}
-        className={`flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 ${!isVisible ? 'opacity-50 bg-gray-50' : ''}`}
+        className={`flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300 ${!isVisible ? 'opacity-50 bg-gray-50' : ''}`}
         placeholder="Describe what you did and the impact..."
       />
       <button onClick={onToggleVisibility} className="mt-2 text-gray-400 hover:text-gray-600 shrink-0" title={isVisible ? 'Hide bullet' : 'Show bullet'}>
@@ -143,7 +143,7 @@ export default function ExperienceItemEditor({ item, onChange }: Props) {
           onChange={e => onChange({ ...item, summary: e.target.value })}
           rows={2}
           placeholder="Briefly describe your role..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300"
         />
       </div>
 

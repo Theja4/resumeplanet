@@ -412,7 +412,7 @@ export default function UniversalTemplate({
   )
 
   return (
-    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] min-h-[1123px] bg-white flex flex-col shadow-2xl">
+    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] min-h-[1123px] bg-white flex flex-col">
       {headerElement}
       {bodyContent}
     </div>
@@ -461,10 +461,7 @@ function ExperienceItem({ exp, ei, pathPrefix, isEditing, onFieldChange, accent,
         <div>
           <EditableText value={exp.title || exp.name} path={`${pathPrefix}.${ei}.${exp.title ? 'title' : 'name'}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm font-semibold text-gray-900 break-words" />
           {exp.company && (
-            <>
-              <span className="text-sm text-gray-500"> · </span>
-              <EditableText value={exp.company} path={`${pathPrefix}.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-600 break-words" />
-            </>
+            <EditableText value={exp.company} path={`${pathPrefix}.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-600 break-words block" />
           )}
         </div>
         {(exp.startDate || exp.endDate || exp.date) && (
@@ -480,7 +477,7 @@ function ExperienceItem({ exp, ei, pathPrefix, isEditing, onFieldChange, accent,
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.bullets.map((b: string, bi: number) => (
             <li key={bi} className="flex gap-2">
-              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
+              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 text-base ${isCompressed ? 'mt-0' : 'mt-0.5'}`}>•</span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
             </li>
           ))}
@@ -490,7 +487,7 @@ function ExperienceItem({ exp, ei, pathPrefix, isEditing, onFieldChange, accent,
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.highlights.map((b: string, bi: number) => (
             <li key={bi} className="flex gap-2">
-              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
+              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 text-base ${isCompressed ? 'mt-0' : 'mt-0.5'}`}>•</span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.highlights.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
             </li>
           ))}

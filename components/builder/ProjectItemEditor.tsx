@@ -46,7 +46,7 @@ export default function ProjectItemEditor({ item, onChange }: Props) {
         <label className="block text-xs text-gray-500 mb-1">Description</label>
         <textarea value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
           rows={3} placeholder="What does this project do?"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300" />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-2">Technologies</label>

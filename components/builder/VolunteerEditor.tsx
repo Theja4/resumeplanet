@@ -104,7 +104,7 @@ export default function VolunteerEditor({ data, onChange }: EditorProps) {
                         value={bullet}
                         onChange={(e) => updateBullet(i, bi, e.target.value)}
                         rows={2}
-                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
                       />
                       <button onClick={() => removeBullet(i, bi)} className="mt-1 text-gray-300 hover:text-red-500 transition-colors" aria-label="Remove bullet">
                         <X size={13} />

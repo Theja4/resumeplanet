@@ -228,7 +228,7 @@ export default function SortableSectionRow({
           )}
 
           {/* Icon & Label */}
-          <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
             <Icon size={18} className={isExpanded ? 'text-primary' : ''} />
             <span className={`text-sm ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
             {hasHint && (

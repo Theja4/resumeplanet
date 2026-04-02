@@ -4,15 +4,16 @@ import { useEffect, useState } from 'react'
 import { X, List, AlignLeft, Tags, Loader2, User, GripVertical } from 'lucide-react'
 import type { CustomSectionType } from '@/types'
 import {
-  DndContext, DragOverlay, rectIntersection,
+  DndContext, DragOverlay, closestCorners,
   KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
-  type DragStartEvent, type DragEndEvent,
+  type DragStartEvent, type DragEndEvent, type DragOverEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext, sortableKeyboardCoordinates,
   verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
 import type { ResumeData, BuilderVisibility, UniversalConfig } from '@/types'
+import { DEFAULT_VISIBILITY } from '@/types'
 import SortableSectionRow from './SortableSectionRow'
 import ContactEditor from './ContactEditor'
 
@@ -103,6 +104,65 @@ export default function SectionList({
     setActiveId(active.id as string)
   }
 
+  function getContainerForId(id: string, primary: string[], secondary: string[]): 'primary' | 'secondary' | null {
+    if (id === 'primary-col') return 'primary'
+    if (id === 'secondary-col') return 'secondary'
+    if (primary.includes(id)) return 'primary'
+    if (secondary.includes(id)) return 'secondary'
+    return null
+  }
+
+  function moveAcrossColumns(
+    source: 'primary' | 'secondary',
+    target: 'primary' | 'secondary',
+    activeSectionId: string,
+    overId: string,
+    primary: string[],
+    secondary: string[]
+  ) {
+    const srcList = source === 'primary' ? primary : secondary
+    const tgtList = target === 'primary' ? primary : secondary
+
+    const from = srcList.indexOf(activeSectionId)
+    if (from === -1) return { nextPrimary: primary, nextSecondary: secondary }
+
+    const nextSrc = srcList.filter(id => id !== activeSectionId)
+    const rawInsertIndex =
+      overId === 'primary-col' || overId === 'secondary-col'
+        ? tgtList.length
+        : tgtList.indexOf(overId)
+    const insertIndex = rawInsertIndex >= 0 ? rawInsertIndex : tgtList.length
+
+    const targetWithoutActive = tgtList.filter(id => id !== activeSectionId)
+    const nextTgt = [...targetWithoutActive]
+    nextTgt.splice(insertIndex, 0, activeSectionId)
+
+    return source === 'primary'
+      ? { nextPrimary: nextSrc, nextSecondary: nextTgt }
+      : { nextPrimary: nextTgt, nextSecondary: nextSrc }
+  }
+
+  function handleDragOver({ active, over }: DragOverEvent) {
+    if (!over) return
+
+    const aId = active.id as string
+    const oId = over.id as string
+    const source = getContainerForId(aId, localPrimary, localSecondary)
+    const target = getContainerForId(oId, localPrimary, localSecondary)
+    if (!source || !target || source === target) return
+
+    const { nextPrimary, nextSecondary } = moveAcrossColumns(
+      source,
+      target,
+      aId,
+      oId,
+      localPrimary,
+      localSecondary
+    )
+    setLocalPrimary(nextPrimary)
+    setLocalSecondary(nextSecondary)
+  }
+
   function handleDragEnd({ active, over }: DragEndEvent) {
     const aId = active.id as string
     setActiveId(null)
@@ -131,30 +191,33 @@ export default function SectionList({
       return
     }
 
-    // Sidebar layout: source determines which column the item came from
-    const src = localPrimary.includes(aId) ? 'primary' : 'secondary'
-    const overInPrimary = localPrimary.includes(oId) || oId === 'primary-col'
-    const overInSecondary = localSecondary.includes(oId) || oId === 'secondary-col'
+    const src = getContainerForId(aId, localPrimary, localSecondary)
+    const dst = getContainerForId(oId, localPrimary, localSecondary)
+    if (!src || !dst) return
 
     let finalPrimary = [...localPrimary]
     let finalSecondary = [...localSecondary]
 
-    if (src === 'primary' && overInPrimary) {
-      const from = localPrimary.indexOf(aId)
-      const to = localPrimary.indexOf(oId)
-      if (from !== -1 && to !== -1) finalPrimary = arrayMove(localPrimary, from, to)
-    } else if (src === 'secondary' && overInSecondary) {
-      const from = localSecondary.indexOf(aId)
-      const to = localSecondary.indexOf(oId)
-      if (from !== -1 && to !== -1) finalSecondary = arrayMove(localSecondary, from, to)
-    } else if (src === 'primary' && overInSecondary) {
-      finalPrimary = localPrimary.filter(id => id !== aId)
-      finalSecondary = [...localSecondary, aId]
-    } else if (src === 'secondary' && overInPrimary) {
-      finalSecondary = localSecondary.filter(id => id !== aId)
-      finalPrimary = [...localPrimary, aId]
+    if (src === dst) {
+      const list = src === 'primary' ? localPrimary : localSecondary
+      const from = list.indexOf(aId)
+      const to =
+        oId === 'primary-col' || oId === 'secondary-col'
+          ? list.length - 1
+          : list.indexOf(oId)
+      if (from !== -1 && to !== -1 && from !== to) {
+        const moved = arrayMove(list, from, to)
+        if (src === 'primary') finalPrimary = moved
+        else finalSecondary = moved
+      }
+    } else {
+      const moved = moveAcrossColumns(src, dst, aId, oId, localPrimary, localSecondary)
+      finalPrimary = moved.nextPrimary
+      finalSecondary = moved.nextSecondary
     }
 
+    setLocalPrimary(finalPrimary)
+    setLocalSecondary(finalSecondary)
     onVisibilityChange({
       ...visibility,
       sectionOrder: finalPrimary,
@@ -182,6 +245,24 @@ export default function SectionList({
     onExpandSection(id)
   }
 
+  function handleResetOrder() {
+    const customIds = Array.from(new Set([
+      ...localPrimary,
+      ...localSecondary,
+    ])).filter(id => id.startsWith('custom_'))
+
+    const finalPrimary = [...DEFAULT_VISIBILITY.sectionOrder, ...customIds]
+    const finalSecondary = [...DEFAULT_VISIBILITY.sidebarSectionOrder]
+
+    setLocalPrimary(finalPrimary)
+    setLocalSecondary(finalSecondary)
+    onVisibilityChange({
+      ...visibility,
+      sectionOrder: finalPrimary,
+      sidebarSectionOrder: finalSecondary,
+    })
+  }
+
   const renderRows = (items: string[]) =>
     items.map(sectionId => (
       <SortableSectionRow
@@ -199,9 +280,18 @@ export default function SectionList({
 
   return (
     <div className="flex flex-col gap-2 p-4 pt-6 w-full pb-20">
-      <div className="mb-4">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400 px-4 mb-1">Editor Sections</h2>
-        <p className="text-xs text-zinc-500 px-4">Refine your professional narrative</p>
+      <div className="mb-4 px-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold text-zinc-700 mb-0.5">Editor Sections</h2>
+          <p className="text-xs text-zinc-400">Refine your professional narrative</p>
+        </div>
+        <button
+          onClick={handleResetOrder}
+          disabled={isDisabled}
+          className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-zinc-200 rounded-lg text-zinc-500 bg-zinc-50 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Reset Order
+        </button>
       </div>
 
       <div className="relative">
@@ -246,31 +336,14 @@ export default function SectionList({
 
           <DndContext
             sensors={sensors}
-            collisionDetection={rectIntersection}
+            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
             onDragCancel={() => setActiveId(null)}
           >
             {isSidebarLayout ? (
               <div className="space-y-8 mt-4">
-                {/* Secondary Column (Sidebar) */}
-                <div>
-                  <div className="flex items-center gap-2 px-4 mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">Secondary Column</h3>
-                  </div>
-                  <SecondaryCol className="min-h-[60px] border-2 border-dashed border-zinc-100/50 rounded-2xl p-2 bg-zinc-50/30 flex flex-col gap-1.5">
-                    <SortableContext items={localSecondary} strategy={verticalListSortingStrategy}>
-                      {renderRows(localSecondary)}
-                      {localSecondary.length === 0 && (
-                        <div className="h-12 flex items-center justify-center text-[10px] font-bold text-zinc-300 uppercase tracking-widest italic">
-                          Drag sections here
-                        </div>
-                      )}
-                    </SortableContext>
-                  </SecondaryCol>
-                </div>
-
                 {/* Primary Column (Body) */}
                 <div>
                   <div className="flex items-center gap-2 px-4 mb-3">
@@ -287,6 +360,24 @@ export default function SectionList({
                       )}
                     </SortableContext>
                   </PrimaryCol>
+                </div>
+
+                {/* Secondary Column (Sidebar) */}
+                <div>
+                  <div className="flex items-center gap-2 px-4 mb-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">Secondary Column</h3>
+                  </div>
+                  <SecondaryCol className="min-h-[60px] border-2 border-dashed border-zinc-100/50 rounded-2xl p-2 bg-zinc-50/30 flex flex-col gap-1.5">
+                    <SortableContext items={localSecondary} strategy={verticalListSortingStrategy}>
+                      {renderRows(localSecondary)}
+                      {localSecondary.length === 0 && (
+                        <div className="h-12 flex items-center justify-center text-[10px] font-bold text-zinc-300 uppercase tracking-widest italic">
+                          Drag sections here
+                        </div>
+                      )}
+                    </SortableContext>
+                  </SecondaryCol>
                 </div>
               </div>
             ) : (

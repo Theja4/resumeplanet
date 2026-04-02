@@ -17,6 +17,9 @@ import {
   Check,
   Undo2,
   Redo,
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useProGate } from '@/lib/hooks/useProGate'
@@ -64,6 +67,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isTailoring, setIsTailoring] = useState(false)
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [previewScale, setPreviewScale] = useState(1)
+  const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isApplyingFix, setIsApplyingFix] = useState(false)
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
@@ -81,6 +85,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [templateConfig.density])
 
   const [resumeHeight, setResumeHeight] = useState(0)
+  const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
 
   const recomputeResumeHeight = useCallback(() => {
     const el = resumeRef.current
@@ -114,11 +119,38 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return () => window.cancelAnimationFrame(id)
   }, [recomputeResumeHeight, resumeData, visibility, templateConfig])
 
+  // Compute safe page-break point: find the last content element whose bottom
+  // fits fully within CONTENT_H so no line is ever clipped mid-glyph.
+  useEffect(() => {
+    const container = resumeRef.current
+    if (!container || resumeHeight === 0) return
+
+    const CONTENT_LIMIT = 1123 - 50 // PAGE_H - PAGE_BOTTOM_PADDING
+
+    const containerTop = container.getBoundingClientRect().top
+    const elements = container.querySelectorAll('li, p, h1, h2, h3, h4')
+
+    let safe = 0
+    for (const el of Array.from(elements)) {
+      const rect = el.getBoundingClientRect()
+      const bottom = rect.bottom - containerTop
+      if (bottom <= CONTENT_LIMIT && bottom > safe) {
+        safe = bottom
+      }
+    }
+
+    setPageBreakY(safe > 0 ? safe : CONTENT_LIMIT)
+  }, [resumeHeight, resumeData, visibility, templateConfig])
+
+  const ZOOM_STEP = 0.05
+  const effectiveScale = Math.min(1.5, Math.max(0.3, 1.0 + zoomDelta))
+
   const PAGE_H = 1123 // A4 at 96 DPI
-  const PAGE_GAP = 48 // Increased from 28 for visual separation
-  const PAGE_BOTTOM_PADDING = 50 // Buffer zone at bottom of each page
+  const PAGE_GAP = 48 // Gap between pages
+  const PAGE_BOTTOM_PADDING = 50 // Safe zone at bottom of each page
+  const CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING // 1073px — max usable content height per page
   const MAX_PAGES = 2
-  const pageCount = Math.max(1, Math.ceil(resumeHeight / PAGE_H))
+  const pageCount = Math.max(1, Math.ceil(resumeHeight / CONTENT_H))
   const renderedPageCount = Math.min(pageCount, MAX_PAGES)
   const isOverPageLimit = pageCount > MAX_PAGES
 
@@ -224,16 +256,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     load()
   }, [resumeId, userId, supabase, router])
 
-  // ── Preview scale ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    function updateScale() {
-      // Adjusted padding for the new Optic layout
-      setPreviewScale(Math.min(1.0, (window.innerHeight - 100) / 1123))
-    }
-    updateScale()
-    window.addEventListener('resize', updateScale)
-    return () => window.removeEventListener('resize', updateScale)
-  }, [])
+  // previewScale kept for potential future use; default zoom is always 100%
 
   const hasUnsavedChanges =
     !!resumeData && (
@@ -309,6 +332,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         const { error } = await supabase
           .from('resumes')
           .update({
+            title: resumeTitle || 'Untitled Resume',
             parsed_data: resumeData,
             builder_visibility: visibility,
             template_config: templateConfig,
@@ -337,7 +361,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }
 
   // ── Resizable Panels ────────────────────────────────────────────────────────
-  const [leftWidth, setLeftWidth] = useState(360) // Increased from 288 for better breathing room
+  const [leftWidth, setLeftWidth] = useState(420)
   const [rightWidth, setRightWidth] = useState(320) // Matches previous w-80 (20rem = 320px)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
@@ -583,18 +607,93 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   )
 
   function accentToSidebarFill(hex?: string | null): string {
-    if (typeof hex !== 'string') return 'rgba(99, 102, 241, 0.12)'
+    if (typeof hex !== 'string') return '#6366f115'
     const normalized = hex.trim().replace('#', '')
-    if (!normalized) return 'rgba(99, 102, 241, 0.12)'
+    if (!normalized) return '#6366f115'
     const six = normalized.length === 3
       ? normalized.split('').map(ch => ch + ch).join('')
       : normalized
-    const valid = /^[0-9a-fA-F]{6}$/.test(six)
-    if (!valid) return 'rgba(99, 102, 241, 0.12)'
-    const r = parseInt(six.slice(0, 2), 16)
-    const g = parseInt(six.slice(2, 4), 16)
-    const b = parseInt(six.slice(4, 6), 16)
-    return `rgba(${r}, ${g}, ${b}, 0.10)`
+    if (!/^[0-9a-fA-F]{6}$/.test(six)) return '#6366f115'
+    return `#${six}15`
+  }
+
+  async function handleDownloadPDF() {
+    if (isOverPageLimit) {
+      window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
+      return
+    }
+    const printEl = document.getElementById('builder-print-wrapper')
+    if (!printEl) return
+
+    // Temporarily expose element for html2canvas (normally opacity-0, off-screen)
+    const prevStyle = { opacity: printEl.style.opacity, left: printEl.style.left, position: printEl.style.position }
+    printEl.style.opacity = '1'
+    printEl.style.left = '-9999px'
+    printEl.style.position = 'fixed'
+
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const jsPDFModule = await import('jspdf')
+      const jsPDF = jsPDFModule.jsPDF ?? jsPDFModule.default
+
+      const canvas = await html2canvas(printEl, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: 794,
+        height: printEl.scrollHeight,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc) => {
+          // html2canvas 1.x can't parse modern CSS color functions (lab, oklch, color-mix).
+          // Patch every <style> tag in the clone to replace them with safe fallbacks.
+          const unsupportedColor = /\b(?:lab|oklch|lch|oklab|color-mix|color)\([^)]*\)/g
+          for (const el of Array.from(clonedDoc.querySelectorAll('style'))) {
+            if (el.textContent) {
+              el.textContent = el.textContent.replace(unsupportedColor, 'transparent')
+            }
+          }
+          // Ensure the root background is white so no bleed-through
+          clonedDoc.documentElement.style.backgroundColor = '#ffffff'
+          clonedDoc.body.style.backgroundColor = '#ffffff'
+        },
+      })
+
+      const PDF_W = 595.28  // A4 width in pt
+      // Map canvas pixel width → PDF pt width
+      const pxToPt = PDF_W / canvas.width
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+
+      const totalPx = canvas.height
+      // Safe break in canvas pixel space (pageBreakY is in CSS px, canvas is 2× scale)
+      const breakPx = pageBreakY > 0 ? Math.round(pageBreakY * 2) : totalPx
+
+      function addCanvasSlice(srcY: number, srcH: number) {
+        const slice = document.createElement('canvas')
+        slice.width = canvas.width
+        slice.height = srcH
+        slice.getContext('2d')!.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
+        const imgH = srcH * pxToPt
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PDF_W, imgH)
+      }
+
+      // Page 1
+      addCanvasSlice(0, Math.min(breakPx, totalPx))
+
+      // Page 2 (only if content overflows)
+      if (totalPx > breakPx) {
+        pdf.addPage()
+        addCanvasSlice(breakPx, totalPx - breakPx)
+      }
+
+      pdf.save(`${resumeTitle || 'resume'}.pdf`)
+    } finally {
+      printEl.style.opacity = prevStyle.opacity
+      printEl.style.left = prevStyle.left
+      printEl.style.position = prevStyle.position
+    }
+    setIsDownloadOpen(false)
   }
 
   async function handleDownloadDOCX() {
@@ -603,7 +702,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
       return
     }
-    await generateDOCX(visibleData, `${resumeTitle || 'resume'}.docx`)
+    await generateDOCX(
+      visibleData,
+      `${resumeTitle || 'resume'}.docx`,
+      templateConfig,
+      getOrderedSections(visibility),
+      getOrderedSidebarSections(visibility),
+    )
     setIsDownloadOpen(false)
   }
 
@@ -659,12 +764,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         
         {/* ── TopNavBar ── */}
         <header className="fixed top-0 w-full z-50 glass-nav border-b border-outline-variant/10 flex justify-between items-center px-6 py-3">
-          <div className="flex items-center gap-6">
-              <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
+          <div className="flex items-center gap-4">
+            <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             <Link href="/dashboard/resumes" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition-colors text-sm font-medium">
               <ArrowLeft size={16} />
               <span>Back</span>
             </Link>
+            <div className="w-px h-4 bg-zinc-200" />
+            <input
+              type="text"
+              value={resumeTitle}
+              onChange={e => setResumeTitle(e.target.value)}
+              onBlur={async () => {
+                if (resumeId === 'draft') return
+                await supabase
+                  .from('resumes')
+                  .update({ title: resumeTitle || 'Untitled Resume' })
+                  .eq('id', resumeId)
+                  .eq('user_id', userId)
+              }}
+              placeholder="Untitled Resume"
+              className="text-sm font-semibold text-zinc-700 bg-transparent border-none outline-none focus:bg-white focus:px-2 focus:border focus:border-zinc-200 focus:rounded-md focus:shadow-sm transition-all w-48 truncate placeholder:text-zinc-400 placeholder:font-normal"
+            />
           </div>
           
           {/* Builder / Tailor Toggle */}
@@ -693,76 +814,64 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Style button — prominent green glass */}
             <button
               onClick={() => setIsTemplateModalOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100/50 rounded-lg transition-all"
+              className="relative w-28 py-2 text-sm font-bold text-white rounded-xl overflow-hidden group transition-all duration-300 hover:scale-105 active:scale-95 flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 4px 14px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.25)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 22px rgba(16,185,129,0.6), inset 0 1px 0 rgba(255,255,255,0.25)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(16,185,129,0.4), inset 0 1px 0 rgba(255,255,255,0.25)'
+              }}
             >
-              Template
+              {/* shimmer sweep */}
+              <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-500 ease-in-out bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
+              <span className="relative z-10 flex items-center gap-1.5">
+                <Sparkles size={14} />
+                Style
+              </span>
             </button>
 
-            {/* Undo/Redo */}
-            <div className="flex items-center gap-1">
+            {/* Zoom controls */}
+            <div className="flex items-center bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden">
               <button
-                onClick={handleUndo}
-                disabled={!history.canUndo}
-                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Undo (Ctrl+Z)"
+                onClick={() => setZoomDelta(d => Math.max(d - ZOOM_STEP, 0.3 - 1.0))}
+                disabled={effectiveScale <= 0.3}
+                className="px-2.5 py-2 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-all disabled:opacity-30 disabled:cursor-not-allowed border-r border-zinc-200"
+                title="Zoom out"
               >
-                <Undo2 size={16} />
+                <ZoomOut size={15} />
               </button>
+              <span className="px-2.5 text-[11px] font-bold text-zinc-500 tabular-nums select-none">
+                {Math.round(effectiveScale * 100)}%
+              </span>
               <button
-                onClick={handleRedo}
-                disabled={!history.canRedo}
-                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Redo (Ctrl+Shift+Z)"
+                onClick={() => setZoomDelta(d => Math.min(d + ZOOM_STEP, 1.5 - 1.0))}
+                disabled={effectiveScale >= 1.5}
+                className="px-2.5 py-2 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-all disabled:opacity-30 disabled:cursor-not-allowed border-l border-zinc-200"
+                title="Zoom in"
               >
-                <Redo size={16} />
+                <ZoomIn size={15} />
               </button>
-            </div>
-
-            {/* Save Status Indicator */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100/50 text-zinc-500 border border-zinc-200/50 transition-all duration-300">
-              {isSaving ? (
-                <div className="flex items-center gap-2">
-                  <Cloud className="w-4 h-4 animate-pulse opacity-50" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Saving...</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Cloud className="w-4 h-4 fill-emerald-500/20 text-emerald-500" />
-                    <Check className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 text-white bg-emerald-500 rounded-full p-0.5" strokeWidth={4} />
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">All changes saved</span>
-                </div>
-              )}
             </div>
 
             <div className="relative">
               <button
-                onClick={() => {
-                  if (isOverPageLimit) {
-                    window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
-                    return
-                  }
-                  setIsDownloadOpen(!isDownloadOpen)
-                }}
-                className="px-4 py-2 text-sm font-semibold bg-primary-container text-on-primary-container rounded-lg flex items-center gap-2 active:scale-95 transition-all shadow-sm"
+                onClick={() => setIsDownloadOpen(!isDownloadOpen)}
+                className="w-28 py-2 text-sm font-bold bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm"
               >
-                <ChevronDown size={18} />
                 <span>Download</span>
+                <ChevronDown size={14} />
               </button>
               {isDownloadOpen && (
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-lg border border-gray-100 shadow-lg py-1 w-36 z-[100]">
                   <button
-                    onClick={() => {
-                      if (isOverPageLimit) {
-                        window.alert('Print is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
-                        return
-                      }
-                      window.print()
-                      setIsDownloadOpen(false)
-                    }}
+                    onClick={handleDownloadPDF}
                     className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     PDF
@@ -807,7 +916,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           {/* Center Canvas */}
           <section className="flex-1 overflow-y-auto bg-surface-container flex flex-col items-center py-8 px-8 min-w-[500px]">
             {/* Canvas Tools */}
-            <div className="mx-auto flex justify-between items-center mb-6" style={{ width: 794 * previewScale }}>
+            <div className="mx-auto flex justify-between items-center mb-6" style={{ width: 794 * effectiveScale }}>
               <div className="flex items-center gap-1 bg-surface-container-lowest px-2 py-1.5 rounded-full shadow-sm">
                 <button
                   onClick={() => setTemplateConfig({ ...templateConfig, density: 'compressed' })}
@@ -872,35 +981,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               />
             </div>
 
-            {/* Word-like paged preview (paginate first, scale once) */}
+            {/* Word-like paged preview + undo/redo to the right */}
+            <div className="flex items-start gap-3">
             <div
               className="print:hidden relative"
               style={{
-                width: 794 * previewScale,
-                height: ((renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)) * previewScale,
+                width: 794 * effectiveScale,
+                height: ((renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)) * effectiveScale,
               }}
             >
               <div
                 style={{
                   width: '794px',
                   height: `${(renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)}px`,
-                  transform: `scale(${previewScale})`,
+                  transform: `scale(${effectiveScale})`,
                   transformOrigin: 'top left',
                 }}
               >
                 {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
                   <div
                     key={`page-${pageIndex}`}
-                    className={`absolute left-0 bg-white ${
-                      isOverPageLimit && pageIndex === MAX_PAGES - 1
-                        ? 'border-red-300'
-                        : 'border-t border-b border-zinc-200/60'
-                    }`}
+                    className="absolute left-0 bg-white"
                     style={{
                       top: pageIndex * (PAGE_H + PAGE_GAP),
                       width: '794px',
                       height: `${PAGE_H}px`,
-                      boxShadow: pageIndex < renderedPageCount - 1 ? '0 4px 12px -4px rgba(0,0,0,0.08)' : 'none',
+                      boxShadow: isOverPageLimit && pageIndex === MAX_PAGES - 1
+                        ? '0 0 0 2px #fca5a5, 0 4px 24px rgba(0,0,0,0.18)'
+                        : '0 4px 24px rgba(0,0,0,0.18)',
                     }}
                   >
                     {/* Full-page template shell so page styling continues to page bottom */}
@@ -919,15 +1027,26 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       </div>
                     )}
 
-                    <div className="absolute top-3 right-3 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
+                    <div className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
                       Page {pageIndex + 1}
                     </div>
 
-                    <div className="relative overflow-hidden w-full h-full z-10">
+                    <div
+                      className="relative overflow-hidden w-full z-10"
+                      style={(() => {
+                        if (pageIndex === 0) {
+                          // Page 1: clip at pageBreakY, leaving (PAGE_H - pageBreakY) as bottom padding
+                          return { marginTop: 0, height: `${pageBreakY}px` }
+                        }
+                        // Page 2+: top padding mirrors page 1's bottom padding
+                        const topPad = PAGE_H - pageBreakY
+                        return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING}px` }
+                      })()}
+                    >
                       <div
                         style={{
                           width: '794px',
-                          transform: `translateY(-${pageIndex * PAGE_H}px)`,
+                          transform: `translateY(-${pageIndex === 0 ? 0 : pageBreakY}px)`,
                           transformOrigin: 'top left',
                         }}
                       >
@@ -949,6 +1068,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+
+              {/* Undo/Redo — sticky alongside the preview */}
+              <div className="sticky top-8 flex flex-col gap-2">
+                <button
+                  onClick={handleUndo}
+                  disabled={!history.canUndo}
+                  className="w-9 h-9 flex items-center justify-center bg-white border border-zinc-200 rounded-lg shadow-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!history.canRedo}
+                  className="w-9 h-9 flex items-center justify-center bg-white border border-zinc-200 rounded-lg shadow-sm text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                  <Redo size={16} />
+                </button>
               </div>
             </div>
 
