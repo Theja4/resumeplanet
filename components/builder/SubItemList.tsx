@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -25,6 +25,8 @@ interface Props {
   visibility: BuilderVisibility
   onDataChange: (updated: ResumeData) => void
   onVisibilityChange: (updated: BuilderVisibility) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
 function getItems(data: ResumeData, sectionId: ComplexSectionId) {
@@ -109,9 +111,10 @@ function SortableItemCard({
   )
 }
 
-export default function SubItemList({ sectionId, resumeData, visibility, onDataChange, onVisibilityChange }: Props) {
+export default function SubItemList({ sectionId, resumeData, visibility, onDataChange, onVisibilityChange, focusPath, onFocusHandled }: Props) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -121,6 +124,30 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
   const items = getItems(resumeData, sectionId)
   const itemIds = items.map((_, i) => `${sectionId}-${i}`)
   const itemVisibility = visibility.items[sectionId] || []
+
+  useEffect(() => {
+    if (!focusPath || !focusPath.startsWith(`${sectionId}.`)) return
+    const match = focusPath.match(/^[^.]+\.(\d+)/)
+    if (!match) return
+    const timeout = window.setTimeout(() => setEditingIndex(Number(match[1])), 0)
+    return () => window.clearTimeout(timeout)
+  }, [focusPath, sectionId])
+
+  useEffect(() => {
+    if (editingIndex === null || !focusPath || !focusPath.startsWith(`${sectionId}.`) || !rootRef.current) return
+    const id = window.requestAnimationFrame(() => {
+      const root = rootRef.current
+      if (!root) return
+      const escapedPath = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(focusPath) : focusPath
+      const target = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field-path="${escapedPath}"]`) ?? root.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
+      if (target) {
+        target.focus()
+        target.select?.()
+        onFocusHandled?.()
+      }
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [editingIndex, focusPath, sectionId, onFocusHandled])
 
   function updateItems(newItems: typeof items) {
     if (sectionId.startsWith('custom_')) {
@@ -262,28 +289,32 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
       </div>
 
       {/* Item editor */}
-      <div className="p-4 overflow-y-auto">
+      <div ref={rootRef} className="p-4 overflow-y-auto">
         {(sectionId === 'experience' || sectionId.startsWith('custom_')) && (
           <ExperienceItemEditor
             item={item as ExperienceItem}
+            pathPrefix={`${sectionId}.${editingIndex}`}
             onChange={updated => updateItem(editingIndex, updated)}
           />
         )}
         {sectionId === 'education' && (
           <EducationItemEditor
             item={item as EducationItem}
+            pathPrefix={`${sectionId}.${editingIndex}`}
             onChange={updated => updateItem(editingIndex, updated)}
           />
         )}
         {sectionId === 'projects' && (
           <ProjectItemEditor
             item={item as ProjectItem}
+            pathPrefix={`${sectionId}.${editingIndex}`}
             onChange={updated => updateItem(editingIndex, updated)}
           />
         )}
         {sectionId === 'certifications' && (
           <CertificationItemEditor
             item={item as CertificationItem}
+            pathPrefix={`${sectionId}.${editingIndex}`}
             onChange={updated => updateItem(editingIndex, updated)}
           />
         )}

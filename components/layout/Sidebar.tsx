@@ -18,7 +18,7 @@ import {
 const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
   { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
-  { href: '/dashboard/ats-checker', label: 'AI Optimizer', Icon: Sparkles },
+  { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
   { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
   { href: '/dashboard/orders', label: 'Orders', Icon: ShoppingBag },
   { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },

@@ -2,9 +2,9 @@ import React from 'react'
 import EditableText from './EditableText'
 import type { TemplateProps } from '@/types'
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({ title, accent }: { title: string; accent: string }) {
   return (
-    <h2 className="text-xs font-bold uppercase tracking-widest text-sky-600 border-b border-gray-200 pb-1 mt-6 mb-3">
+    <h2 style={{ color: accent }} className="text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 mt-6 mb-3">
       {title}
     </h2>
   )
@@ -16,7 +16,8 @@ const DEFAULT_SECTION_ORDER = [
   'awards', 'publications', 'interests', 'references',
 ]
 
-export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOrder }: TemplateProps) {
+export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOrder, accentColor, fontFamily }: TemplateProps) {
+  const accent = accentColor || '#0EA5E9'
   const isGrouped = data.skills.length > 0 && data.skills[0].includes(': ')
 
   function renderSection(id: string) {
@@ -27,7 +28,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'text' && custom.text && custom.text.trim()) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 leading-relaxed break-words" as="p" />
           </>
         )
@@ -36,7 +37,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <p className="font-mono text-sm text-gray-700">
               <span>
                 {custom.tags.map((tag, i) => (
@@ -54,7 +55,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <div className="space-y-5">
               {custom.items.map((exp, ei) => (
                 <div key={ei}>
@@ -96,7 +97,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'summary':
         return data.summary ? (
           <>
-            <SectionHeading title="Summary" />
+            <SectionHeading title="Summary" accent={accent} />
             <EditableText
               value={data.summary}
               path="summary"
@@ -111,7 +112,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'skills':
         return data.skills.length > 0 ? (
           <>
-            <SectionHeading title="Technical Skills" />
+            <SectionHeading title="Technical Skills" accent={accent} />
             {isGrouped ? (
               <div className="bg-gray-50 rounded p-3 space-y-2">
                 {data.skills.map((group, i) => {
@@ -152,7 +153,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'experience':
         return data.experience.length > 0 ? (
           <>
-            <SectionHeading title="Experience" />
+            <SectionHeading title="Experience" accent={accent} />
             <div className="space-y-5">
               {data.experience.map((exp, ei) => (
                 <div key={ei}>
@@ -212,7 +213,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'projects':
         return data.projects.length > 0 ? (
           <>
-            <SectionHeading title="Projects" />
+            <SectionHeading title="Projects" accent={accent} />
             <div className="space-y-3">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -241,7 +242,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'education':
         return data.education.length > 0 ? (
           <>
-            <SectionHeading title="Education" />
+            <SectionHeading title="Education" accent={accent} />
             <div className="space-y-2">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between items-start">
@@ -272,7 +273,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'certifications':
         return data.certifications.length > 0 ? (
           <>
-            <SectionHeading title="Certifications" />
+            <SectionHeading title="Certifications" accent={accent} />
             <div className="space-y-1">
               {data.certifications.map((c, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -288,7 +289,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'languages':
         return data.languages.length > 0 ? (
           <>
-            <SectionHeading title="Languages" />
+            <SectionHeading title="Languages" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.languages.map((lang, i) => (
@@ -311,7 +312,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'volunteer':
         return data.volunteer.length > 0 ? (
           <>
-            <SectionHeading title="Volunteer Work" />
+            <SectionHeading title="Volunteer Work" accent={accent} />
             <div className="space-y-5">
               {data.volunteer.map((volunteer, vi) => (
                 <div key={vi}>
@@ -368,7 +369,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'awards':
         return data.awards.length > 0 ? (
           <>
-            <SectionHeading title="Awards" />
+            <SectionHeading title="Awards" accent={accent} />
             <div className="space-y-1">
               {data.awards.map((award, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -384,7 +385,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'publications':
         return data.publications.length > 0 ? (
           <>
-            <SectionHeading title="Publications" />
+            <SectionHeading title="Publications" accent={accent} />
             <div className="space-y-1">
               {data.publications.map((pub, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -400,7 +401,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'interests':
         return data.interests.length > 0 ? (
           <>
-            <SectionHeading title="Interests" />
+            <SectionHeading title="Interests" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.interests.map((interest, i) => (
@@ -423,7 +424,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
       case 'references':
         return data.references.length > 0 ? (
           <>
-            <SectionHeading title="References" />
+            <SectionHeading title="References" accent={accent} />
             <div className="space-y-1">
               {data.references.map((ref, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -446,7 +447,7 @@ export default function TechnicalPro({ data, isEditing, onFieldChange, sectionOr
   }
 
   return (
-    <div className="w-[794px] bg-white p-11 min-h-[1123px]">
+    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] bg-white p-11 min-h-[1123px]">
       {/* Header */}
       <div className="mb-2">
         <EditableText

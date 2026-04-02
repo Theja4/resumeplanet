@@ -1,0 +1,43 @@
+<h2>Drag & Drop Redesign — Which approach?</h2>
+<p class="subtitle">Pick the architecture that fits how you want it to feel. We'll fully rewrite SectionList.tsx based on this choice.</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>dnd-kit Multi-Container (Proper Pattern)</h3>
+      <p>Follow dnd-kit's official multi-container sortable example exactly. Two independent <code>SortableContext</code>s share one <code>DndContext</code>. A <code>customCollisionDetection</code> function first checks <code>pointerWithin</code> (are you physically inside a container?), then falls back to <code>rectIntersection</code>. <code>onDragOver</code> moves items between lists live. <code>DragOverlay</code> shows the ghost card. The original dragged item is invisible while dragging.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Battle-tested by the dnd-kit team</li><li>Smooth live reordering in both columns</li><li>Cross-column drops land exactly where you release</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More code — custom collision detection</li><li>Need careful state sync (local ↔ parent)</li></ul></div>
+      </div>
+      <p><strong>Recommended</strong> — most predictable feel</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Replace dnd-kit with @hello-pangea/dnd (DnD classic API)</h3>
+      <p>Drop dnd-kit entirely. Use <code>@hello-pangea/dnd</code> (the maintained fork of <code>react-beautiful-dnd</code>). Wrap both columns in a <code>DragDropContext</code>. Each column is a <code>Droppable</code>. Each section is a <code>Draggable</code>. Cross-column drag is a first-class feature — <code>onDragEnd</code> tells you exactly which droppable the item came from and landed in. No custom collision detection needed.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Extremely simple API for multi-list</li><li>Cross-column drag works out of the box</li><li>No <code>onDragOver</code> complexity</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Adds a new dependency</li><li>Less flexible for custom visuals</li><li>Slightly different drag feel vs dnd-kit</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Keep dnd-kit, Simplify Architecture</h3>
+      <p>Keep dnd-kit but radically simplify: remove <code>DroppableContainer</code> entirely. Use only <code>SortableContext</code> per column with a single flat item list. Track <code>activeId</code> and which container it came from. On <code>dragEnd</code>, look at the <code>over.id</code> to determine destination — no <code>onDragOver</code> at all. Add a <code>DragOverlay</code>. Accept that cross-column drops land at the end of the target list (no position-insertion during drag).</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Smallest amount of code</li><li>No complex state management</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No live reordering during cross-column drag</li><li>Items always land at end of target column</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>

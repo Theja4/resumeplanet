@@ -5,17 +5,19 @@ import type { EducationItem } from '@/types'
 
 interface Props {
   item: EducationItem
+  pathPrefix: string
   onChange: (updated: EducationItem) => void
 }
 
-function InputField({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+function InputField({ label, path, value, onChange, placeholder }: {
+  label: string; path: string; value: string; onChange: (v: string) => void; placeholder?: string
 }) {
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
       <div className="relative">
         <input
+          data-field-path={path}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
@@ -31,17 +33,17 @@ function InputField({ label, value, onChange, placeholder }: {
   )
 }
 
-export default function EducationItemEditor({ item, onChange }: Props) {
+export default function EducationItemEditor({ item, pathPrefix, onChange }: Props) {
   return (
     <div className="space-y-3">
-      <InputField label="Institution" value={item.institution} onChange={v => onChange({ ...item, institution: v })} placeholder="University name" />
+      <InputField label="Institution" path={`${pathPrefix}.institution`} value={item.institution} onChange={v => onChange({ ...item, institution: v })} placeholder="University name" />
       <div className="grid grid-cols-2 gap-2">
-        <InputField label="Degree" value={item.degree} onChange={v => onChange({ ...item, degree: v })} placeholder="Bachelor of Science" />
-        <InputField label="Field of Study" value={item.field} onChange={v => onChange({ ...item, field: v })} placeholder="Computer Science" />
+        <InputField label="Degree" path={`${pathPrefix}.degree`} value={item.degree} onChange={v => onChange({ ...item, degree: v })} placeholder="Bachelor of Science" />
+        <InputField label="Field of Study" path={`${pathPrefix}.field`} value={item.field} onChange={v => onChange({ ...item, field: v })} placeholder="Computer Science" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <InputField label="Graduation Date" value={item.graduationDate} onChange={v => onChange({ ...item, graduationDate: v })} placeholder="May 2024" />
-        <InputField label="GPA (optional)" value={item.gpa} onChange={v => onChange({ ...item, gpa: v })} placeholder="3.8" />
+        <InputField label="Graduation Date" path={`${pathPrefix}.graduationDate`} value={item.graduationDate} onChange={v => onChange({ ...item, graduationDate: v })} placeholder="May 2024" />
+        <InputField label="GPA (optional)" path={`${pathPrefix}.gpa`} value={item.gpa} onChange={v => onChange({ ...item, gpa: v })} placeholder="3.8" />
       </div>
     </div>
   )

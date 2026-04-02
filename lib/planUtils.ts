@@ -1,10 +1,9 @@
 import type { Profile } from '@/types'
 import { FREE_PLAN } from '@/lib/pricing'
 
-// Model strings duplicated here to avoid importing lib/claude (which instantiates
-// the Anthropic client and cannot be bundled into client components).
-const CLAUDE_PREMIUM = 'claude-opus-4-6'
-const CLAUDE_STANDARD = 'claude-sonnet-4-6'
+const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'openrouter/free'
+// Pro: Claude 3.5 Sonnet for advanced ATS analysis
+const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'anthropic/claude-3.5-sonnet'
 
 export function isPro(profile: Profile | null): boolean {
   return profile?.plan === 'pro'

@@ -7,7 +7,9 @@ interface EditableTextProps {
   path: string
   isEditing?: boolean
   onFieldChange?: (path: string, value: string) => void
+  onNavigateToField?: (path: string) => void
   className?: string
+  style?: React.CSSProperties
   as?: React.ElementType
   fallback?: string
 }
@@ -17,7 +19,9 @@ export default function EditableText({
   path,
   isEditing,
   onFieldChange,
+  onNavigateToField,
   className,
+  style,
   as: Tag = 'span',
   fallback,
 }: EditableTextProps) {
@@ -28,8 +32,18 @@ export default function EditableText({
   return (
     <Tag
       className={className}
+      style={isEditing ? style : { ...style, cursor: onNavigateToField ? 'text' : style?.cursor }}
+      data-resume-path={path}
       contentEditable={isEditing || undefined}
       suppressContentEditableWarning
+      onClick={
+        !isEditing && onNavigateToField
+          ? (e: React.MouseEvent<HTMLElement>) => {
+              e.stopPropagation()
+              onNavigateToField(path)
+            }
+          : undefined
+      }
       onBlur={
         isEditing
           ? (e: React.FocusEvent<HTMLElement>) =>

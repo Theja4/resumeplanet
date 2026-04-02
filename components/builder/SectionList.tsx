@@ -41,6 +41,8 @@ interface Props {
   onDataChange: (updated: ResumeData) => void
   onVisibilityChange: (updated: BuilderVisibility) => void
   onExpandSection: (id: string | null) => void
+  focusedFieldPath?: string | null
+  onFocusedFieldHandled?: () => void
   isDisabled?: boolean
 }
 
@@ -63,6 +65,8 @@ export default function SectionList({
   onDataChange,
   onVisibilityChange,
   onExpandSection,
+  focusedFieldPath,
+  onFocusedFieldHandled,
   isDisabled = false,
 }: Props) {
   const sensors = useSensors(
@@ -275,6 +279,8 @@ export default function SectionList({
         onDataChange={onDataChange}
         onVisibilityChange={onVisibilityChange}
         onExpand={() => onExpandSection(expandedSection === sectionId ? null : sectionId)}
+        focusPath={focusedFieldPath}
+        onFocusHandled={onFocusedFieldHandled}
       />
     ))
 
@@ -328,7 +334,7 @@ export default function SectionList({
             {expandedSection === 'contact' && (
               <div className="bg-white border-x border-b border-emerald-200 rounded-b-xl shadow-sm animate-in slide-in-from-top-1 duration-200 overflow-hidden">
                 <div className="bg-emerald-50/30">
-                  <ContactEditor data={resumeData} onChange={onDataChange} />
+                  <ContactEditor data={resumeData} onChange={onDataChange} focusPath={focusedFieldPath} onFocusHandled={onFocusedFieldHandled} />
                 </div>
               </div>
             )}

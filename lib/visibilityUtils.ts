@@ -5,11 +5,11 @@ import type { ResumeData, BuilderVisibility, ExperienceItem } from '@/types'
  */
 function filterBullets(item: ExperienceItem): ExperienceItem {
   const bulletVis = item.bulletVisibility ?? []
+  const bullets = Array.isArray(item.bullets) ? item.bullets : []
   return {
     ...item,
-    bullets: item.bullets.filter((_, bi) => bulletVis[bi] !== false),
+    bullets: bullets.filter((_, bi) => bulletVis[bi] !== false),
     bulletVisibility: undefined,
-    // We also strip internal summary if used for AI purposes but not for preview
     summary: undefined,
   }
 }
@@ -32,6 +32,7 @@ export function getVisibleResumeData(
     location: data.location,
     linkedin: data.linkedin,
     website: data.website,
+    currentRole: data.currentRole,
 
     summary: v.sections['summary'] !== false ? data.summary : '',
 
@@ -92,6 +93,12 @@ export function getVisibleResumeData(
  */
 export function getOrderedSections(visibility: BuilderVisibility): string[] {
   return (visibility.sectionOrder || []).filter(
+    id => visibility.sections[id] !== false
+  )
+}
+
+export function getOrderedSidebarSections(visibility: BuilderVisibility): string[] {
+  return (visibility.sidebarSectionOrder || []).filter(
     id => visibility.sections[id] !== false
   )
 }

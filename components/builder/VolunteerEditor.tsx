@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, ExperienceItem } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
 const EMPTY_ROLE: ExperienceItem = {
@@ -18,8 +21,19 @@ const EMPTY_ROLE: ExperienceItem = {
   bullets: [],
 }
 
-export default function VolunteerEditor({ data, onChange }: EditorProps) {
+export default function VolunteerEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!focusPath || !focusPath.startsWith('volunteer.')) return
+    const match = focusPath.match(/^volunteer\.(\d+)/)
+    if (!match) return
+    const timeout = window.setTimeout(() => setExpandedIndex(Number(match[1])), 0)
+    return () => window.clearTimeout(timeout)
+  }, [focusPath])
+
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
 
   function updateItem(index: number, updated: ExperienceItem) {
     const next = [...data.volunteer]
@@ -58,7 +72,7 @@ export default function VolunteerEditor({ data, onChange }: EditorProps) {
   }
 
   return (
-    <div className="p-4 space-y-2">
+    <div ref={rootRef} className="p-4 space-y-2">
       {data.volunteer.map((role, i) => (
         <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
           <button
@@ -90,6 +104,7 @@ export default function VolunteerEditor({ data, onChange }: EditorProps) {
                   <input
                     type="text"
                     value={(role[key] as string) ?? ''}
+                    data-field-path={`volunteer.${i}.${key}`}
                     onChange={(e) => updateItem(i, { ...role, [key]: e.target.value })}
                     className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
@@ -102,6 +117,7 @@ export default function VolunteerEditor({ data, onChange }: EditorProps) {
                     <div key={bi} className="flex items-start gap-1">
                       <textarea
                         value={bullet}
+                        data-field-path={`volunteer.${i}.bullets.${bi}`}
                         onChange={(e) => updateBullet(i, bi, e.target.value)}
                         rows={2}
                         className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"

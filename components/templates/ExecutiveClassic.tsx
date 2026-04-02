@@ -4,22 +4,23 @@ import type { TemplateProps } from '@/types'
 
 function SidebarLabel({ text }: { text: string }) {
   return (
-    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mt-3 mb-0.5">
+    <p className="text-[10px] font-bold uppercase tracking-widest text-white/60 mt-3 mb-0.5">
       {text}
     </p>
   )
 }
 
 function Divider() {
-  return <div className="border-t border-blue-700 my-4" />
+  return <div className="border-t border-white/20 my-4" />
 }
 
 const DEFAULT_SECTION_ORDER = [
   'summary', 'experience', 'projects', 'volunteer',
 ]
 
-export default function ExecutiveClassic({ data, isEditing, onFieldChange, sectionOrder }: TemplateProps) {
+export default function ExecutiveClassic({ data, isEditing, onFieldChange, sectionOrder, accentColor, fontFamily }: TemplateProps) {
   const currentTitle = data.experience[0]?.title ?? ''
+  const accent = accentColor || '#1e3a5f'
 
   function renderSection(id: string) {
     if (id.startsWith('custom_')) {
@@ -256,9 +257,9 @@ export default function ExecutiveClassic({ data, isEditing, onFieldChange, secti
   }
 
   return (
-    <div className="w-[794px] bg-white flex min-h-[1123px]">
+    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] bg-white flex min-h-[1123px]">
       {/* Left sidebar */}
-      <div className="w-56 bg-[#1e3a5f] text-white p-8 shrink-0 flex flex-col">
+      <div style={{ backgroundColor: accent }} className="w-56 text-white p-8 shrink-0 flex flex-col">
         {/* Name + title */}
         <EditableText
           value={data.name}

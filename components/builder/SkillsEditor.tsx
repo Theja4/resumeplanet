@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, KeyboardEvent } from 'react'
+import { useState, KeyboardEvent, useRef } from 'react'
 import { X } from 'lucide-react'
 import type { ResumeData } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function SkillsEditor({ data, onChange }: EditorProps) {
+export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
   const [input, setInput] = useState('')
 
   function addTag(raw: string) {
@@ -34,7 +39,7 @@ export default function SkillsEditor({ data, onChange }: EditorProps) {
   }
 
   return (
-    <div className="p-4">
+    <div ref={rootRef} className="p-4">
       <div className="flex flex-wrap gap-1.5 mb-2">
         {data.skills.map((skill, i) => (
           <span
@@ -53,6 +58,7 @@ export default function SkillsEditor({ data, onChange }: EditorProps) {
         ))}
       </div>
       <input
+        data-field-path={focusPath?.startsWith('skills.') ? focusPath : 'skills'}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}

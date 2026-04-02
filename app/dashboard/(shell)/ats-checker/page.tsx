@@ -13,13 +13,13 @@ export default async function ATSCheckerPage() {
   const [resumesResult, profileResult] = await Promise.all([
     supabase
       .from('resumes')
-      .select('id, title, raw_text')
+      .select('id, title, raw_text, parsed_data')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
     supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
-  const resumes = (resumesResult.data ?? []) as Pick<Resume, 'id' | 'title' | 'raw_text'>[]
+  const resumes = (resumesResult.data ?? []) as Pick<Resume, 'id' | 'title' | 'raw_text' | 'parsed_data'>[]
   const profile = profileResult.data as Profile | null
 
   return <ATSCheckerClient resumes={resumes} profile={profile} />

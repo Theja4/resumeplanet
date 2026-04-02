@@ -1,14 +1,20 @@
 'use client'
 
+import { useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ResumeData } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function ReferencesEditor({ data, onChange }: EditorProps) {
+export default function ReferencesEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
   function updateItem(index: number, value: string) {
     const next = [...data.references]
     next[index] = value
@@ -24,12 +30,13 @@ export default function ReferencesEditor({ data, onChange }: EditorProps) {
   }
 
   return (
-    <div className="p-4 space-y-2">
+    <div ref={rootRef} className="p-4 space-y-2">
       {data.references.map((ref, i) => (
         <div key={i} className="flex items-center gap-2">
           <input
             type="text"
             value={ref}
+            data-field-path={`references.${i}`}
             onChange={(e) => updateItem(i, e.target.value)}
             placeholder="Name, Title, Company, email@example.com"
             className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"

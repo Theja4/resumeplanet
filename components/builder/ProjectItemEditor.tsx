@@ -6,17 +6,18 @@ import type { ProjectItem } from '@/types'
 
 interface Props {
   item: ProjectItem
+  pathPrefix: string
   onChange: (updated: ProjectItem) => void
 }
 
-function InputField({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string
+function InputField({ label, path, value, onChange, placeholder }: {
+  label: string; path: string; value: string; onChange: (v: string) => void; placeholder?: string
 }) {
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
       <div className="relative">
-        <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        <input data-field-path={path} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
           className="w-full border border-gray-200 rounded-lg px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
         {value && <button onClick={() => onChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"><X size={13} /></button>}
       </div>
@@ -24,7 +25,7 @@ function InputField({ label, value, onChange, placeholder }: {
   )
 }
 
-export default function ProjectItemEditor({ item, onChange }: Props) {
+export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props) {
   const [techInput, setTechInput] = useState('')
 
   function addTech() {
@@ -41,10 +42,10 @@ export default function ProjectItemEditor({ item, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <InputField label="Project Name" value={item.name} onChange={v => onChange({ ...item, name: v })} placeholder="My Project" />
+      <InputField label="Project Name" path={`${pathPrefix}.name`} value={item.name} onChange={v => onChange({ ...item, name: v })} placeholder="My Project" />
       <div>
         <label className="block text-xs text-gray-500 mb-1">Description</label>
-        <textarea value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
+        <textarea data-field-path={`${pathPrefix}.description`} value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
           rows={3} placeholder="What does this project do?"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300" />
       </div>
@@ -59,7 +60,7 @@ export default function ProjectItemEditor({ item, onChange }: Props) {
           ))}
         </div>
         <div className="flex gap-2">
-          <input value={techInput} onChange={e => setTechInput(e.target.value)}
+          <input data-field-path={`${pathPrefix}.technologies`} value={techInput} onChange={e => setTechInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTech() } }}
             placeholder="React, TypeScript…" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
           <button onClick={addTech} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">

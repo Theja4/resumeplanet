@@ -74,6 +74,8 @@ interface Props {
   onDataChange: (updated: ResumeData) => void
   onVisibilityChange: (updated: BuilderVisibility) => void
   onExpand: () => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
   isDragDisabled?: boolean
 }
 
@@ -86,6 +88,8 @@ export default function SortableSectionRow({
   onDataChange,
   onVisibilityChange,
   onExpand,
+  focusPath,
+  onFocusHandled,
   isDragDisabled,
 }: Props) {
   const {
@@ -169,6 +173,8 @@ export default function SortableSectionRow({
             visibility={visibility}
             onDataChange={onDataChange}
             onVisibilityChange={onVisibilityChange}
+            focusPath={focusPath}
+            onFocusHandled={onFocusHandled}
           />
         )
       } else if (customConfig?.type === 'tags') {
@@ -185,21 +191,23 @@ export default function SortableSectionRow({
           sectionId={sectionKey}
           resumeData={resumeData}
           visibility={visibility}
-          onDataChange={onDataChange}
-          onVisibilityChange={onVisibilityChange}
-        />
+            onDataChange={onDataChange}
+            onVisibilityChange={onVisibilityChange}
+            focusPath={focusPath}
+            onFocusHandled={onFocusHandled}
+          />
       )
     }
     switch (sectionId) {
-      case 'contact':      return <ContactEditor data={resumeData} onChange={onDataChange} />
-      case 'summary':      return <SummaryEditor data={resumeData} onChange={onDataChange} />
-      case 'skills':       return <SkillsEditor data={resumeData} onChange={onDataChange} />
-      case 'languages':    return <LanguagesEditor data={resumeData} onChange={onDataChange} />
-      case 'interests':    return <InterestsEditor data={resumeData} onChange={onDataChange} />
-      case 'volunteer':    return <VolunteerEditor data={resumeData} onChange={onDataChange} />
-      case 'awards':       return <AwardsEditor data={resumeData} onChange={onDataChange} />
-      case 'publications': return <PublicationsEditor data={resumeData} onChange={onDataChange} />
-      case 'references':   return <ReferencesEditor data={resumeData} onChange={onDataChange} />
+      case 'contact':      return <ContactEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'summary':      return <SummaryEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'skills':       return <SkillsEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'languages':    return <LanguagesEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'interests':    return <InterestsEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'volunteer':    return <VolunteerEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'awards':       return <AwardsEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'publications': return <PublicationsEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
+      case 'references':   return <ReferencesEditor data={resumeData} onChange={onDataChange} focusPath={focusPath} onFocusHandled={onFocusHandled} />
       default:             return null
     }
   }

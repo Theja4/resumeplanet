@@ -1,20 +1,27 @@
 'use client'
 
+import { useRef } from 'react'
 import type { ResumeData } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function SummaryEditor({ data, onChange }: EditorProps) {
+export default function SummaryEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
   const charCount = data.summary.length
   const isLong = charCount >= 500
 
   return (
-    <div className="p-4">
+    <div ref={rootRef} className="p-4">
       <textarea
         value={data.summary}
+        data-field-path="summary"
         onChange={(e) => onChange({ ...data, summary: e.target.value })}
         rows={4}
         placeholder="Write a brief professional summary…"

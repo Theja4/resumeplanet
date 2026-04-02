@@ -314,7 +314,7 @@ export const PROMOTIONS: PromoConfig[] = [
       actualPrice: 12,
     },
     label: 'Special Offer',
-    badge: '$6 FIRST MONTH',
+    badge: 'MOST POPULAR',
     bannerEmoji: undefined,
     headline: 'Wait — before you go',
     subheadline: 'Get your first month of Pro for just $6. Cancel anytime.',

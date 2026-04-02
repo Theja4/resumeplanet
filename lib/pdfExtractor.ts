@@ -1,12 +1,12 @@
-// Node.js environment: use legacy build
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
+// Node.js environment: use the legacy build shipped by the installed pdfjs-dist version.
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
 import { resolve } from 'path'
 
 // pdfjs-dist v5 requires a real worker path even in Node.js.
 // Empty string causes "Setting up fake worker failed" — must point to the file.
 pdfjsLib.GlobalWorkerOptions.workerSrc = resolve(
   process.cwd(),
-  'node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs'
+  'node_modules/pdfjs-dist/legacy/build/pdf.worker.js'
 )
 
 export interface TextItem {

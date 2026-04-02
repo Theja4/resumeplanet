@@ -2,9 +2,9 @@ import React from 'react'
 import EditableText from './EditableText'
 import type { TemplateProps } from '@/types'
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({ title, accent }: { title: string; accent: string }) {
   return (
-    <h2 className="text-xs font-bold uppercase tracking-widest text-red-600 border-b-2 border-red-600 pb-1 mt-6 mb-4">
+    <h2 style={{ color: accent, borderColor: accent }} className="text-xs font-bold uppercase tracking-widest border-b-2 pb-1 mt-6 mb-4">
       {title}
     </h2>
   )
@@ -16,7 +16,8 @@ const DEFAULT_SECTION_ORDER = [
   'awards', 'publications', 'interests', 'references',
 ]
 
-export default function CreativeBold({ data, isEditing, onFieldChange, sectionOrder }: TemplateProps) {
+export default function CreativeBold({ data, isEditing, onFieldChange, sectionOrder, accentColor, fontFamily }: TemplateProps) {
+  const accent = accentColor || '#DC2626'
   const currentTitle = data.experience[0]?.title ?? ''
 
   function renderSection(id: string) {
@@ -27,7 +28,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'text' && custom.text && custom.text.trim()) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 leading-relaxed break-words" as="p" />
           </>
         )
@@ -36,7 +37,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <div>
               {custom.tags.map((tag, i) => (
                 <span key={i} className="inline-block bg-red-50 text-red-700 text-xs px-2 py-0.5 rounded-full mr-1 mb-1">
@@ -51,7 +52,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <div className="space-y-0">
               {custom.items.map((exp, ei) => (
                 <div key={ei} className="relative border-l-2 border-red-100 ml-2 pl-5 pb-5">
@@ -90,7 +91,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'summary':
         return data.summary ? (
           <>
-            <SectionHeading title="Profile" />
+            <SectionHeading title="Profile" accent={accent} />
             <EditableText
               value={data.summary}
               path="summary"
@@ -105,7 +106,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'experience':
         return data.experience.length > 0 ? (
           <>
-            <SectionHeading title="Experience" />
+            <SectionHeading title="Experience" accent={accent} />
             <div className="space-y-0">
               {data.experience.map((exp, ei) => (
                 <div key={ei} className="relative border-l-2 border-red-100 ml-2 pl-5 pb-5">
@@ -162,7 +163,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'skills':
         return data.skills.length > 0 ? (
           <>
-            <SectionHeading title="Skills" />
+            <SectionHeading title="Skills" accent={accent} />
             <div>
               {data.skills.map((skill, i) => (
                 <span
@@ -185,7 +186,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'education':
         return data.education.length > 0 ? (
           <>
-            <SectionHeading title="Education" />
+            <SectionHeading title="Education" accent={accent} />
             <div className="space-y-3">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between items-start">
@@ -214,7 +215,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'certifications':
         return data.certifications.length > 0 ? (
           <>
-            <SectionHeading title="Certifications" />
+            <SectionHeading title="Certifications" accent={accent} />
             <div className="space-y-1">
               {data.certifications.map((c, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -230,7 +231,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'projects':
         return data.projects.length > 0 ? (
           <>
-            <SectionHeading title="Projects" />
+            <SectionHeading title="Projects" accent={accent} />
             <div className="space-y-2">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -250,7 +251,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'languages':
         return data.languages.length > 0 ? (
           <>
-            <SectionHeading title="Languages" />
+            <SectionHeading title="Languages" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.languages.map((lang, i) => (
@@ -273,7 +274,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'volunteer':
         return data.volunteer.length > 0 ? (
           <>
-            <SectionHeading title="Volunteer Work" />
+            <SectionHeading title="Volunteer Work" accent={accent} />
             <div className="space-y-0">
               {data.volunteer.map((volunteer, vi) => (
                 <div key={vi} className="relative border-l-2 border-red-100 ml-2 pl-5 pb-5">
@@ -329,7 +330,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'awards':
         return data.awards.length > 0 ? (
           <>
-            <SectionHeading title="Awards" />
+            <SectionHeading title="Awards" accent={accent} />
             <div className="space-y-1">
               {data.awards.map((award, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -345,7 +346,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'publications':
         return data.publications.length > 0 ? (
           <>
-            <SectionHeading title="Publications" />
+            <SectionHeading title="Publications" accent={accent} />
             <div className="space-y-1">
               {data.publications.map((pub, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -361,7 +362,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'interests':
         return data.interests.length > 0 ? (
           <>
-            <SectionHeading title="Interests" />
+            <SectionHeading title="Interests" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.interests.map((interest, i) => (
@@ -384,7 +385,7 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
       case 'references':
         return data.references.length > 0 ? (
           <>
-            <SectionHeading title="References" />
+            <SectionHeading title="References" accent={accent} />
             <div className="space-y-1">
               {data.references.map((ref, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -407,9 +408,9 @@ export default function CreativeBold({ data, isEditing, onFieldChange, sectionOr
   }
 
   return (
-    <div className="w-[794px] bg-white min-h-[1123px]">
+    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] bg-white min-h-[1123px]">
       {/* Bold header */}
-      <div className="bg-red-600 px-12 py-10">
+      <div style={{ backgroundColor: accent }} className="px-12 py-10">
         <EditableText
           value={data.name}
           path="name"

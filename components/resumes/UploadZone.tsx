@@ -4,25 +4,21 @@ import { useCallback, useRef, useState } from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import type { Resume } from '@/types'
+import { parsePdfClient } from '@/lib/clientParser'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-]
-const ALLOWED_EXTENSIONS = ['.pdf', '.docx']
 
 type UploadState = 'idle' | 'uploading' | 'parsing' | 'done' | 'error'
 
 const ERROR_MESSAGES: Record<string, string> = {
-  INVALID_FILE_TYPE: 'Only PDF and DOCX files are accepted.',
+  INVALID_FILE_TYPE: 'Only PDF files are accepted.',
   FILE_TOO_LARGE: 'File must be under 5MB.',
-  SCANNED_PDF: 'This PDF appears to be scanned. Please upload a text-based PDF.',
+  INVALID_PARSED_DATA: 'Parsing failed — please try again.',
   DUPLICATE_FILE: 'This file was already uploaded recently.',
   STORAGE_UPLOAD_FAILED: 'Storage error — make sure the "resumes" bucket exists in Supabase Storage.',
-  TEXT_EXTRACTION_FAILED: 'Could not extract text from this file. Try a different PDF or DOCX.',
-  PARSE_FAILED: 'Could not parse this file. Try a different PDF or DOCX.',
+  PARSE_FAILED: 'Could not parse this file. Try a different PDF.',
   DB_SAVE_FAILED: 'Database error — the resume could not be saved. Check Supabase logs.',
+  CLIENT_PARSE_FAILED: 'Could not extract text from this PDF. Try a different file.',
   default: 'Upload failed. Please try again.',
 }
 
@@ -41,8 +37,8 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
 
   function validateFile(file: File): string | null {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()
-    if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext)) {
-      return 'Only PDF and DOCX files are accepted.'
+    if (file.type !== 'application/pdf' && ext !== '.pdf') {
+      return 'Only PDF files are accepted.'
     }
     if (file.size > MAX_FILE_SIZE) {
       return 'File must be under 5MB.'
@@ -67,7 +63,8 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
   }
 
   const uploadFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
+      // Validate first
       const validationError = validateFile(file)
       if (validationError) {
         setErrorMessage(validationError)
@@ -75,28 +72,41 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         return
       }
 
+      // Phase 1: Client-side parsing
       setState('uploading')
       setProgress(0)
       setErrorMessage(null)
 
+      let parsedData: ReturnType<typeof parsePdfClient>
+      try {
+        parsedData = await parsePdfClient(file)
+      } catch (err) {
+        stopAnimation()
+        const errMsg = err instanceof Error ? err.message : String(err)
+        setErrorMessage(`Could not parse PDF: ${errMsg}`)
+        setState('error')
+        return
+      }
+
+      setProgress(30)
+
+      // Phase 2: Upload + save to server (server receives parsed data)
+      setState('parsing')
+      setProgress(40)
+      startParsingAnimation()
+
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('parsedData', JSON.stringify(parsedData))
 
       const xhr = new XMLHttpRequest()
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          // Upload phase: 0 → 50%
-          const uploadProgress = Math.round((event.loaded / event.total) * 50)
+          // 40-60% range for upload
+          const uploadProgress = 40 + Math.round((event.loaded / event.total) * 20)
           setProgress(uploadProgress)
         }
-      }
-
-      xhr.upload.onload = () => {
-        // Upload done — switch to parsing phase
-        setState('parsing')
-        setProgress(50)
-        startParsingAnimation()
       }
 
       xhr.onload = () => {
@@ -201,7 +211,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept=".pdf,application/pdf"
           className="sr-only"
           onChange={handleFileChange}
           disabled={disabled || isActive}
@@ -228,7 +238,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         <p className="text-on-surface-variant text-center max-w-md mb-8">
           {state === 'parsing' 
             ? "We're extracting your skills and experience to build your professional profile."
-            : "Drag and drop your PDF or DOCX file here to start optimizing. We'll automatically parse your data."}
+            : "Drag and drop your PDF here to start optimizing. We'll automatically parse your data."}
         </p>
 
         {(state === 'idle' || state === 'error') && (
@@ -260,7 +270,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         )}
 
         <div className="mt-10 flex items-center gap-6 text-[11px] font-bold text-outline uppercase tracking-widest opacity-60">
-          <span>Supported: PDF, DOCX</span>
+          <span>PDF only</span>
           <span className="w-1 h-1 bg-outline rounded-full"></span>
           <span>Max size: 5MB</span>
         </div>

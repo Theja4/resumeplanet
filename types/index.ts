@@ -79,6 +79,7 @@ export interface ResumeData {
   linkedin: string
   website: string
   summary: string
+  currentRole: string
   experience: ExperienceItem[]
   education: EducationItem[]
   skills: string[]
@@ -100,6 +101,7 @@ export interface Resume {
   raw_text: string | null
   parsed_data: ResumeData | null
   original_file_url: string | null
+  template_config: UniversalConfig | null
   created_at: string
   updated_at: string
 }
@@ -139,6 +141,103 @@ export interface ATSResult {
   }
   industryInsight?: string
   formattingIssues?: string[]
+}
+
+// ── Rezoomed LLM Pipeline v3 types ───────────────────────────────────────────
+
+interface SectionScore {
+  score: number
+  max: number
+}
+
+interface SectionScoreWithIssues extends SectionScore {
+  issues: string[]
+}
+
+export interface FreeATSResult {
+  ats_score: number
+  section_scores: {
+    contact_information: SectionScore
+    section_structure: SectionScore
+    formatting: SectionScore
+    content_quality: SectionScore
+    keyword_optimization: SectionScore
+    length_density: SectionScore
+  }
+  detected_sections: string[]
+  missing_sections: string[]
+  word_count: number
+  has_quantified_achievements: boolean
+}
+
+export interface BulletRewrite {
+  section: string
+  company_or_project: string
+  original: string
+  rewritten: string
+  why: string
+}
+
+export interface ProATSResult {
+  ats_score: number
+  section_scores: {
+    contact_information: SectionScoreWithIssues
+    section_structure: SectionScoreWithIssues
+    formatting: SectionScoreWithIssues
+    content_quality: SectionScoreWithIssues
+    keyword_optimization: SectionScoreWithIssues
+    length_density: SectionScoreWithIssues
+  }
+  top_3_fixes: [string, string, string]
+  detected_sections: string[]
+  missing_sections: string[]
+  word_count: number
+  has_quantified_achievements: boolean
+  action_verb_percentage: number
+  bullet_rewrites: BulletRewrite[]
+  summary_suggestion: string | null
+  skills_section_suggestion: {
+    current_skills: string[]
+    missing_high_value_skills: string[]
+    recommended_format: string
+  }
+  overall_assessment: string
+}
+
+export interface JDTailorResult {
+  match_score: number
+  match_tier: 'STRONG_FIT' | 'MODERATE_FIT' | 'STRETCH' | 'LONG_SHOT'
+  jd_keywords: {
+    matched: Array<{ keyword: string; evidence: string }>
+    unmatched: Array<{ keyword: string; suggestion: string }>
+  }
+  tailored_summary: string
+  tailored_bullets: Array<{
+    section: string
+    company_or_project: string
+    original: string
+    tailored: string
+    jd_keywords_hit: string[]
+  }>
+  skills_reorder: {
+    recommended_order: string[]
+    add: string[]
+    deprioritize: string[]
+  }
+  gaps: Array<{
+    jd_requirement: string
+    gap_severity: 'CRITICAL' | 'MODERATE' | 'MINOR'
+    mitigation: string
+  }>
+  bullet_reorder: Array<{
+    section: string
+    company_or_project: string
+    recommended_order: string[]
+    reason: string
+  }>
+  overall_strategy: string
+  shortlisting_probability: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'
+  honest_assessment: string
 }
 
 export interface ATSScore {
@@ -192,7 +291,10 @@ export interface TemplateProps {
   isEditing?: boolean
   onFieldChange?: (path: string, value: string) => void
   sectionOrder?: string[]
+  sidebarSectionOrder?: string[]
   density?: 'compressed' | 'relaxed'
+  accentColor?: string
+  fontFamily?: string
 }
 
 export interface TemplateConfig {
@@ -204,6 +306,81 @@ export interface TemplateConfig {
   isPremium?: boolean
   isNew?: boolean
   tags?: string[]
+}
+
+// ─── Universal Template ─────────────────────────────────────────────────────────
+
+export interface UniversalConfig {
+  layout: 'single-column' | 'sidebar-left' | 'sidebar-right' | 'sidebar' // 'sidebar' is deprecated
+  headerStyle: 'banner' | 'sidebar-integrated' | 'minimal'
+  bulletStyle: 'plain' | 'timeline'
+  skillsStyle: 'inline' | 'badges'
+  accentColor: string
+  fontFamily: string
+  density: 'compressed' | 'relaxed'
+}
+
+export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
+  layout: 'single-column',
+  headerStyle: 'minimal',
+  bulletStyle: 'plain',
+  skillsStyle: 'inline',
+  accentColor: '#4F46E5', // indigo
+  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+  density: 'relaxed',
+}
+
+// Preset configurations mapped from old template IDs
+export function getPresetConfig(templateId?: TemplateId | string): UniversalConfig {
+  const presets: Record<string, UniversalConfig> = {
+    'modern-minimal': {
+      layout: 'single-column',
+      headerStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      accentColor: '#4F46E5',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      density: 'relaxed',
+    },
+    'executive-classic': {
+      layout: 'sidebar-left',
+      headerStyle: 'sidebar-integrated',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      accentColor: '#1E3A5F',
+      fontFamily: 'Georgia, "Times New Roman", Times, serif',
+      density: 'relaxed',
+    },
+    'creative-bold': {
+      layout: 'single-column',
+      headerStyle: 'banner',
+      bulletStyle: 'timeline',
+      skillsStyle: 'badges',
+      accentColor: '#DC2626',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      density: 'relaxed',
+    },
+    'graduate-entry': {
+      layout: 'single-column',
+      headerStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      accentColor: '#059669',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      density: 'compressed',
+    },
+    'technical-pro': {
+      layout: 'single-column',
+      headerStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      accentColor: '#0EA5E9',
+      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+      density: 'relaxed',
+    },
+  }
+
+  return templateId ? presets[templateId] || presets['modern-minimal'] : presets['modern-minimal']
 }
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
@@ -241,8 +418,10 @@ export interface BuilderVisibility {
   items: {
     [key: string]: boolean[] | undefined
   }
-  /** Section order — array of section ids determines render order in template */
+  /** Section order — array of section ids determines render order in primary column */
   sectionOrder: string[]
+  /** Sidebar section order — array of section ids determines render order in sidebar column */
+  sidebarSectionOrder?: string[]
   /** Layout spacing property enabling smooth fluid transition between compressed/relaxed templates */
   density?: 'compressed' | 'relaxed'
 }
@@ -270,9 +449,12 @@ export const DEFAULT_VISIBILITY: BuilderVisibility = {
     certifications: [],
   },
   sectionOrder: [
-    'contact', 'summary', 'experience', 'education', 'skills',
-    'projects', 'certifications', 'volunteer', 'languages',
-    'interests', 'awards', 'publications', 'references',
+    'summary', 'experience', 'education',
+    'projects', 'volunteer'
+  ],
+  sidebarSectionOrder: [
+    'skills', 'certifications', 'languages',
+    'interests', 'awards', 'publications', 'references'
   ],
   density: 'relaxed',
 }
@@ -285,6 +467,7 @@ export const EMPTY_RESUME_DATA: ResumeData = {
   linkedin: '',
   website: '',
   summary: '',
+  currentRole: '',
   experience: [],
   education: [],
   skills: [],

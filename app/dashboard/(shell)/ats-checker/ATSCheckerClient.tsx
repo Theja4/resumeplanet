@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
 import AdBanner from '@/components/shared/AdBanner'
-import type { ATSResult, ATSScanTier, Profile } from '@/types'
+import type { ATSResult, ATSScanTier, Profile, ResumeData } from '@/types'
 import {
   FileText,
   Briefcase,
@@ -22,6 +23,7 @@ interface ResumeOption {
   id: string
   title: string
   raw_text: string | null
+  parsed_data: ResumeData | null
 }
 
 interface ScanResponse extends ATSResult {
@@ -57,6 +59,69 @@ function severityBadge(severity: 'high' | 'medium' | 'low') {
     low: 'bg-surface-container-high text-on-surface-variant',
   }
   return map[severity]
+}
+
+function resumeDataToText(data: ResumeData | null): string {
+  if (!data) return ''
+
+  const parts: string[] = [
+    data.name,
+    data.currentRole,
+    data.summary,
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedin,
+    data.website,
+  ]
+
+  for (const item of data.experience) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.education) {
+    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
+  }
+
+  parts.push(...data.skills)
+
+  for (const item of data.projects) {
+    parts.push(item.name, item.description, ...(item.technologies ?? []))
+  }
+
+  for (const item of data.certifications) {
+    parts.push(item.name, item.issuer, item.date)
+  }
+
+  for (const item of data.volunteer) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.awards) {
+    parts.push(item.title, item.issuer, item.date)
+  }
+
+  for (const item of data.publications) {
+    parts.push(item.title, item.publisher, item.date)
+  }
+
+  parts.push(...data.languages, ...data.interests, ...data.references)
+
+  for (const section of data.customSections ?? []) {
+    parts.push(section.title)
+    if (section.type === 'text') parts.push(section.text ?? '')
+    if (section.type === 'tags') parts.push(...(section.tags ?? []))
+    if (section.type === 'complex') {
+      for (const item of section.items ?? []) {
+        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+        parts.push(...(item.bullets ?? []))
+      }
+    }
+  }
+
+  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -273,9 +338,11 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
 export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientProps) {
   const pro = isPro(profile)
   const initialScansLeft = getRemainingFreeScans(profile)
+  const searchParams = useSearchParams()
 
   const [inputMode, setInputMode] = useState<'resume' | 'upload'>(resumes.length > 0 ? 'resume' : 'upload')
   const [selectedResumeId, setSelectedResumeId] = useState<string>(resumes[0]?.id ?? '')
+  const [linkedResumeId, setLinkedResumeId] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<{ name: string; text: string } | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
@@ -293,15 +360,26 @@ export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientP
 
   const resultsRef = useRef<HTMLDivElement>(null)
 
+  useEffect(() => {
+    const requestedResumeId = searchParams.get('resumeId')
+    if (!requestedResumeId) return
+    const matchedResume = resumes.find(r => r.id === requestedResumeId)
+    if (!matchedResume) return
+
+    setSelectedResumeId(requestedResumeId)
+    setLinkedResumeId(requestedResumeId)
+    setInputMode('resume')
+  }, [searchParams, resumes])
+
   const getResumeText = (): string => {
     if (inputMode === 'upload') return uploadedFile?.text ?? ''
     const found = resumes.find(r => r.id === selectedResumeId)
-    return found?.raw_text ?? ''
+    return found?.raw_text?.trim() || resumeDataToText(found?.parsed_data ?? null)
   }
 
   const wordCount = inputMode === 'upload'
     ? (uploadedFile?.text.trim().split(/\s+/).filter(Boolean).length ?? 0)
-    : (resumes.find(r => r.id === selectedResumeId)?.raw_text?.trim().split(/\s+/).filter(Boolean).length ?? 0)
+    : (getResumeText().trim().split(/\s+/).filter(Boolean).length ?? 0)
 
   const jobWordCount = jobDescription.trim().split(/\s+/).filter(Boolean).length
 
@@ -344,7 +422,7 @@ export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientP
     setIsScanning(true)
 
     const resumeText = getResumeText()
-    const resumeId = inputMode === 'resume' ? selectedResumeId : undefined
+    const resumeId = inputMode === 'resume' ? selectedResumeId : (linkedResumeId ?? undefined)
 
 
     try {
@@ -510,7 +588,10 @@ export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientP
                 <div className="space-y-3">
                   <select
                     value={selectedResumeId}
-                    onChange={e => setSelectedResumeId(e.target.value)}
+                    onChange={e => {
+                      setSelectedResumeId(e.target.value)
+                      setLinkedResumeId(e.target.value)
+                    }}
                     className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {resumes.map(r => (
@@ -567,9 +648,11 @@ export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientP
                 className="w-full h-full min-h-[320px] p-4 bg-surface-container-low border-none rounded-xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none placeholder:text-on-surface-variant/50 leading-relaxed"
               />
               <div className="absolute bottom-3 right-3">
-                <span className="text-[10px] font-bold text-on-surface-variant bg-white/80 backdrop-blur px-2 py-1 rounded-md">
-                  {jobWordCount > 0 ? `${jobWordCount} words` : 'Analysis: Ready'}
-                </span>
+                {jobWordCount > 0 && (
+                  <span className="text-[10px] font-bold text-on-surface-variant bg-white/80 backdrop-blur px-2 py-1 rounded-md">
+                    {jobWordCount} words
+                  </span>
+                )}
               </div>
             </div>
           </div>

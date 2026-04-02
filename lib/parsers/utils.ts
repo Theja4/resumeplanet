@@ -97,13 +97,29 @@ export function chunkText(
 }
 
 /**
+ * Ensure an item's bullets field is actually an array.
+ * Some parsers or LLM responses may return a single string instead of string[].
+ */
+function normalizeBulletsArray(item: any): any {
+  if (Array.isArray(item.bullets)) return item
+  if (typeof item.bullets === 'string' && item.bullets.length > 0) {
+    item.bullets = item.bullets.split('\n').map((s: string) => s.replace(/^[•\-\*▸▹›\s]+ /, '').trim()).filter(Boolean)
+  } else {
+    item.bullets = []
+  }
+  return item
+}
+
+/**
  * Post‑process parsed ResumeData to fix common issues:
  * - Merge split sentences where a bullet ends without punctuation and the next starts lowercase.
  * - Ensure required top‑level fields exist.
+ * - Normalize bullets fields that might be strings instead of string[].
  */
 export function postProcessResume(data: any): any {
-  // Merge split bullet sentences
+  // Normalize and merge split bullet sentences for experience items
   data.experience?.forEach((exp: any) => {
+    normalizeBulletsArray(exp)
     const merged: string[] = []
     for (let i = 0; i < exp.bullets.length; i++) {
       const bullet = exp.bullets[i]
@@ -118,6 +134,34 @@ export function postProcessResume(data: any): any {
       merged.push(bullet)
     }
     exp.bullets = merged
+  })
+
+  // Same for volunteer items
+  data.volunteer?.forEach((v: any) => {
+    normalizeBulletsArray(v)
+    const merged: string[] = []
+    for (let i = 0; i < v.bullets.length; i++) {
+      const bullet = v.bullets[i]
+      if (i < v.bullets.length - 1) {
+        const next = v.bullets[i + 1]
+        if (!/[.!?]$/.test(bullet) && /^[a-z]/.test(next)) {
+          merged.push(bullet + ' ' + next)
+          i++
+          continue
+        }
+      }
+      merged.push(bullet)
+    }
+    v.bullets = merged
+  })
+
+  // Custom sections with complex items that may have bullets
+  data.customSections?.forEach((section: any) => {
+    if (section.items && Array.isArray(section.items)) {
+      section.items.forEach((item: any) => {
+        normalizeBulletsArray(item)
+      })
+    }
   })
 
   // Ensure required fields exist; if missing, set empty defaults

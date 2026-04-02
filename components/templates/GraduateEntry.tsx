@@ -2,9 +2,9 @@ import React from 'react'
 import EditableText from './EditableText'
 import type { TemplateProps } from '@/types'
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({ title, accent }: { title: string; accent: string }) {
   return (
-    <h2 className="text-sm font-bold uppercase tracking-wide text-gray-800 border-b border-gray-300 pb-1 mt-4 mb-3">
+    <h2 style={{ color: accent, borderColor: `${accent}50` }} className="text-sm font-bold uppercase tracking-wide border-b pb-1 mt-4 mb-3">
       {title}
     </h2>
   )
@@ -16,7 +16,8 @@ const DEFAULT_SECTION_ORDER = [
   'awards', 'publications', 'interests', 'references',
 ]
 
-export default function GraduateEntry({ data, isEditing, onFieldChange, sectionOrder }: TemplateProps) {
+export default function GraduateEntry({ data, isEditing, onFieldChange, sectionOrder, accentColor, fontFamily }: TemplateProps) {
+  const accent = accentColor || '#059669'
   function renderSection(id: string) {
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
@@ -25,7 +26,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'text' && custom.text && custom.text.trim()) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 leading-relaxed break-words" as="p" />
           </>
         )
@@ -34,12 +35,12 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             {custom.tags.length > 8 ? (
               <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
                 {custom.tags.map((tag, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
+                    <span style={{ backgroundColor: accent }} className="w-1 h-1 rounded-full shrink-0" />
                     <EditableText value={tag} path={`custom_${id}.tags.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 break-words" />
                   </div>
                 ))}
@@ -63,7 +64,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} />
+            <SectionHeading title={custom.title} accent={accent} />
             <div className="space-y-4">
               {custom.items.map((exp, ei) => (
                 <div key={ei}>
@@ -105,7 +106,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'summary':
         return data.summary ? (
           <>
-            <SectionHeading title="Summary" />
+            <SectionHeading title="Summary" accent={accent} />
             <EditableText
               value={data.summary}
               path="summary"
@@ -120,7 +121,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'education':
         return data.education.length > 0 ? (
           <>
-            <SectionHeading title="Education" />
+            <SectionHeading title="Education" accent={accent} />
             <div className="space-y-3">
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between items-start">
@@ -153,12 +154,12 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'skills':
         return data.skills.length > 0 ? (
           <>
-            <SectionHeading title="Skills" />
+            <SectionHeading title="Skills" accent={accent} />
             {data.skills.length > 8 ? (
               <div className="grid grid-cols-2 gap-x-8 gap-y-0.5">
                 {data.skills.map((skill, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className="w-1 h-1 rounded-full bg-emerald-500 shrink-0" />
+                    <span style={{ backgroundColor: accent }} className="w-1 h-1 rounded-full shrink-0" />
                     <EditableText
                       value={skill}
                       path={`skills.${i}`}
@@ -193,7 +194,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'experience':
         return data.experience.length > 0 ? (
           <>
-            <SectionHeading title="Experience" />
+            <SectionHeading title="Experience" accent={accent} />
             <div className="space-y-4">
               {data.experience.map((exp, ei) => (
                 <div key={ei}>
@@ -253,7 +254,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'projects':
         return data.projects.length > 0 ? (
           <>
-            <SectionHeading title="Projects" />
+            <SectionHeading title="Projects" accent={accent} />
             <div className="space-y-2">
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -273,7 +274,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'certifications':
         return data.certifications.length > 0 ? (
           <>
-            <SectionHeading title="Certifications" />
+            <SectionHeading title="Certifications" accent={accent} />
             <div className="space-y-1">
               {data.certifications.map((c, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -289,7 +290,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'languages':
         return data.languages.length > 0 ? (
           <>
-            <SectionHeading title="Languages" />
+            <SectionHeading title="Languages" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.languages.map((lang, i) => (
@@ -312,7 +313,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'volunteer':
         return data.volunteer.length > 0 ? (
           <>
-            <SectionHeading title="Volunteer Work" />
+            <SectionHeading title="Volunteer Work" accent={accent} />
             <div className="space-y-4">
               {data.volunteer.map((volunteer, vi) => (
                 <div key={vi}>
@@ -369,7 +370,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'awards':
         return data.awards.length > 0 ? (
           <>
-            <SectionHeading title="Awards" />
+            <SectionHeading title="Awards" accent={accent} />
             <div className="space-y-1">
               {data.awards.map((award, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -385,7 +386,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'publications':
         return data.publications.length > 0 ? (
           <>
-            <SectionHeading title="Publications" />
+            <SectionHeading title="Publications" accent={accent} />
             <div className="space-y-1">
               {data.publications.map((pub, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -401,7 +402,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'interests':
         return data.interests.length > 0 ? (
           <>
-            <SectionHeading title="Interests" />
+            <SectionHeading title="Interests" accent={accent} />
             <p className="text-sm text-gray-700">
               <span>
                 {data.interests.map((interest, i) => (
@@ -424,7 +425,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
       case 'references':
         return data.references.length > 0 ? (
           <>
-            <SectionHeading title="References" />
+            <SectionHeading title="References" accent={accent} />
             <div className="space-y-1">
               {data.references.map((ref, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -447,7 +448,7 @@ export default function GraduateEntry({ data, isEditing, onFieldChange, sectionO
   }
 
   return (
-    <div className="w-[794px] bg-white p-10 min-h-[1123px]">
+    <div style={{ fontFamily: fontFamily || undefined }} className="w-[794px] bg-white p-10 min-h-[1123px]">
       {/* Compact header */}
       <div className="mb-2">
         <EditableText

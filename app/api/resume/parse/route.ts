@@ -1,23 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { parseResume } from '@/lib/parsers'
-import { ParseError } from '@/lib/parsers/types'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 
+const ALLOWED_MIME_TYPE = 'application/pdf'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-]
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient()
 
   // ── Auth check ─────────────────────────────────────────────────────────────
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'Unauthorized' },
@@ -44,10 +36,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Server-side validation ─────────────────────────────────────────────────
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+  // Validate file type (PDF only)
+  if (file.type !== ALLOWED_MIME_TYPE && !file.name.toLowerCase().endsWith('.pdf')) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'INVALID_FILE_TYPE' },
+      { success: false, error: 'INVALID_FILE_TYPE', message: 'Only PDF files are supported' },
       { status: 400 }
     )
   }
@@ -55,6 +47,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'FILE_TOO_LARGE' },
+      { status: 400 }
+    )
+  }
+
+  // Parsed resume data from client (open-resume parser)
+  const parsedDataStr = formData.get('parsedData')
+  let parsedData: ResumeData
+  try {
+    parsedData = JSON.parse(parsedDataStr as string)
+  } catch {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'INVALID_PARSED_DATA' },
       { status: 400 }
     )
   }
@@ -78,16 +82,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Convert file to buffer ─────────────────────────────────────────────────
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-
   // ── Upload to Supabase storage ─────────────────────────────────────────────
   const storagePath = `${user.id}/${Date.now()}-${originalFilename}`
+  const buffer = Buffer.from(await file.arrayBuffer())
   const { error: uploadError } = await supabase.storage
     .from('resumes')
     .upload(storagePath, buffer, {
-      contentType: file.type,
+      contentType: 'application/pdf',
       upsert: false,
     })
 
@@ -99,28 +100,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Parse ──────────────────────────────────────────────────────────────────
-  let parsedData: ResumeData
-
-  try {
-    parsedData = await parseResume(buffer, file.type)
-  } catch (err) {
-    await supabase.storage.from('resumes').remove([storagePath])
-    if (err instanceof ParseError) {
-      return NextResponse.json<APIResponse<never>>(
-        { success: false, error: err.code },
-        { status: 400 }
-      )
-    }
-    const errMsg = err instanceof Error ? err.message : String(err)
-    console.error('Parse error:', errMsg)
-    return NextResponse.json(
-      { success: false, error: 'PARSE_FAILED', detail: errMsg },
-      { status: 500 }
-    )
-  }
-
-  // ── Save to database ───────────────────────────────────────────────────────
+  // ── Save to database (no server-side parsing — client already parsed) ──────
   const { data: resume, error: dbError } = await supabase
     .from('resumes')
     .insert({

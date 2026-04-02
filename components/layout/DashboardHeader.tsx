@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 
 const PAGE_TITLES: [string, string][] = [
-  ['/dashboard/ats-checker', 'AI Optimizer'],
+  ['/dashboard/ats-checker', 'ATS Checker'],
   ['/dashboard/resumes', 'Your Library'],
   ['/dashboard/builder', 'Resume Builder'],
   ['/dashboard/orders', 'Orders'],

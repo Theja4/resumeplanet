@@ -14,17 +14,19 @@ import type { ExperienceItem } from '@/types'
 
 interface Props {
   item: ExperienceItem
+  pathPrefix: string
   onChange: (updated: ExperienceItem) => void
 }
 
-function InputField({ label, value, onChange, placeholder, type = 'text' }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
+function InputField({ label, path, value, onChange, placeholder, type = 'text' }: {
+  label: string; path: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string
 }) {
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
       <div className="relative">
         <input
+          data-field-path={path}
           type={type}
           value={value}
           onChange={e => onChange(e.target.value)}
@@ -45,9 +47,9 @@ function InputField({ label, value, onChange, placeholder, type = 'text' }: {
 }
 
 function SortableBulletRow({
-  id, text, isVisible, onChange, onToggleVisibility, onDelete,
+  id, path, text, isVisible, onChange, onToggleVisibility, onDelete,
 }: {
-  id: string; text: string; isVisible: boolean
+  id: string; path: string; text: string; isVisible: boolean
   onChange: (text: string) => void; onToggleVisibility: () => void; onDelete: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
@@ -58,6 +60,7 @@ function SortableBulletRow({
         <GripVertical size={15} />
       </button>
       <textarea
+        data-field-path={path}
         value={text}
         onChange={e => onChange(e.target.value)}
         rows={2}
@@ -74,7 +77,7 @@ function SortableBulletRow({
   )
 }
 
-export default function ExperienceItemEditor({ item, onChange }: Props) {
+export default function ExperienceItemEditor({ item, pathPrefix, onChange }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -123,15 +126,15 @@ export default function ExperienceItemEditor({ item, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
-        <InputField label="Title" value={item.title} onChange={v => onChange({ ...item, title: v })} placeholder="Job title" />
-        <InputField label="Company" value={item.company} onChange={v => onChange({ ...item, company: v })} placeholder="Company name" />
+        <InputField label="Title" path={`${pathPrefix}.title`} value={item.title} onChange={v => onChange({ ...item, title: v })} placeholder="Job title" />
+        <InputField label="Company" path={`${pathPrefix}.company`} value={item.company} onChange={v => onChange({ ...item, company: v })} placeholder="Company name" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <InputField label="Location" value={item.location} onChange={v => onChange({ ...item, location: v })} placeholder="City, Country" />
-        <InputField label="Start Date" value={item.startDate} onChange={v => onChange({ ...item, startDate: v })} placeholder="Jan 2022" />
+        <InputField label="Location" path={`${pathPrefix}.location`} value={item.location} onChange={v => onChange({ ...item, location: v })} placeholder="City, Country" />
+        <InputField label="Start Date" path={`${pathPrefix}.startDate`} value={item.startDate} onChange={v => onChange({ ...item, startDate: v })} placeholder="Jan 2022" />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <InputField label="End Date" value={item.endDate} onChange={v => onChange({ ...item, endDate: v })} placeholder="Present" />
+        <InputField label="End Date" path={`${pathPrefix}.endDate`} value={item.endDate} onChange={v => onChange({ ...item, endDate: v })} placeholder="Present" />
         <div />
       </div>
 
@@ -139,6 +142,7 @@ export default function ExperienceItemEditor({ item, onChange }: Props) {
       <div>
         <label className="block text-xs text-gray-500 mb-1">Summary (optional)</label>
         <textarea
+          data-field-path={`${pathPrefix}.summary`}
           value={item.summary ?? ''}
           onChange={e => onChange({ ...item, summary: e.target.value })}
           rows={2}
@@ -156,6 +160,7 @@ export default function ExperienceItemEditor({ item, onChange }: Props) {
               <SortableBulletRow
                 key={bulletIds[bi]}
                 id={bulletIds[bi]}
+                path={`${pathPrefix}.bullets.${bi}`}
                 text={bullet}
                 isVisible={bulletVis[bi] !== false}
                 onChange={text => updateBullet(bi, text)}

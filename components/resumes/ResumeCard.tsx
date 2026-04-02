@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { FileText, BarChart2, Layout, Trash2, Pencil } from 'lucide-react'
+import { FileText, Trash2, Pencil } from 'lucide-react'
 import type { Resume } from '@/types'
 
 function formatDate(dateString: string) {
@@ -128,28 +128,14 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
         </div>
       </div>
 
-      {/* Action Grid */}
-      <div className="grid grid-cols-2 gap-3 mt-auto">
-        <button
-          onClick={() => router.push(`/dashboard/ats-checker?resumeId=${resume.id}`)}
-          className="flex items-center justify-center gap-2 py-2.5 bg-primary/5 text-primary text-xs font-bold rounded-lg hover:bg-primary/10 transition-colors"
-        >
-          <BarChart2 size={14} />
-          ATS Check
-        </button>
+      {/* Action Stack */}
+      <div className="mt-auto flex flex-col items-center gap-3">
         <button
           onClick={() => router.push(`/dashboard/builder/${resume.id}`)}
-          className="flex items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm"
+          className="flex w-full items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm"
         >
           <Pencil size={14} />
           Edit
-        </button>
-        <button
-          onClick={() => router.push(`/dashboard/templates?resumeId=${resume.id}`)}
-          className="flex items-center justify-center gap-2 py-2.5 bg-surface-container-low text-on-surface-variant text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors col-span-2"
-        >
-          <Layout size={14} />
-          Fill Template
         </button>
       </div>
 

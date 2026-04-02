@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { FONT_OPTIONS } from '@/lib/templateOptions'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Pencil,
   Star,
   Loader2,
   ArrowLeft,
@@ -34,8 +35,14 @@ import type { BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA, getPresetConfig } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
+import { generateResumePdfBlobFromElement } from '@/lib/domPdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import type { ResumeData, BuilderMode, TailorAnalysis, Profile } from '@/types'
+
+function normalizeResumeTitle(title: string) {
+  const trimmed = title.trim()
+  return trimmed.replace(/\.pdf\s*$/i, '').trim()
+}
 
 
 // ─── Inner builder (needs PlanContext) ────────────────────────────────────────
@@ -59,6 +66,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [templateConfig, setTemplateConfig] = useState<UniversalConfig>(DEFAULT_UNIVERSAL_CONFIG)
   const [activeMode, setActiveMode] = useState<BuilderMode>('builder')
   const [expandedSection, setExpandedSection] = useState<string | null>('contact')
+  const [focusedFieldPath, setFocusedFieldPath] = useState<string | null>(null)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
@@ -66,7 +74,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [tailorAnalysis, setTailorAnalysis] = useState<TailorAnalysis | null>(null)
   const [isTailoring, setIsTailoring] = useState(false)
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
-  const [previewScale, setPreviewScale] = useState(1)
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isApplyingFix, setIsApplyingFix] = useState(false)
@@ -85,7 +92,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [templateConfig.density])
 
   const [resumeHeight, setResumeHeight] = useState(0)
+  const [contentHeight, setContentHeight] = useState(0)
   const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
+  const [isPaginationSettling, setIsPaginationSettling] = useState(false)
+  const [previewVersion, setPreviewVersion] = useState(0)
 
   const recomputeResumeHeight = useCallback(() => {
     const el = resumeRef.current
@@ -94,6 +104,33 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (Number.isFinite(measured) && measured > 0) {
       setResumeHeight(measured)
     }
+  }, [])
+
+  const recomputePageBreak = useCallback(() => {
+    const container = resumeRef.current
+    if (!container) return
+
+    const CONTENT_LIMIT = 1123 - 50 // PAGE_H - PAGE_BOTTOM_PADDING
+    const containerTop = container.getBoundingClientRect().top
+    const elements = container.querySelectorAll(
+      '[data-resume-path], li, p, h1, h2, h3, h4'
+    )
+
+    let safe = 0
+    let contentBottom = 0
+    for (const el of Array.from(elements)) {
+      const rect = el.getBoundingClientRect()
+      const bottom = rect.bottom - containerTop
+      if (bottom > contentBottom) {
+        contentBottom = bottom
+      }
+      if (bottom <= CONTENT_LIMIT && bottom > safe) {
+        safe = bottom
+      }
+    }
+
+    setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
+    setPageBreakY(safe > 0 ? safe : CONTENT_LIMIT)
   }, [])
 
   // Measure resume height after render
@@ -119,28 +156,33 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return () => window.cancelAnimationFrame(id)
   }, [recomputeResumeHeight, resumeData, visibility, templateConfig])
 
-  // Compute safe page-break point: find the last content element whose bottom
-  // fits fully within CONTENT_H so no line is ever clipped mid-glyph.
-  useEffect(() => {
-    const container = resumeRef.current
-    if (!container || resumeHeight === 0) return
+  // Run a layout-synced pagination pass after density/layout/content changes.
+  // Two RAFs gives the browser a chance to settle wrapping before measuring.
+  useLayoutEffect(() => {
+    let frame1 = 0
+    let frame2 = 0
 
-    const CONTENT_LIMIT = 1123 - 50 // PAGE_H - PAGE_BOTTOM_PADDING
+    frame1 = window.requestAnimationFrame(() => {
+      recomputeResumeHeight()
+      frame2 = window.requestAnimationFrame(() => {
+        recomputeResumeHeight()
+        recomputePageBreak()
+      })
+    })
 
-    const containerTop = container.getBoundingClientRect().top
-    const elements = container.querySelectorAll('li, p, h1, h2, h3, h4')
-
-    let safe = 0
-    for (const el of Array.from(elements)) {
-      const rect = el.getBoundingClientRect()
-      const bottom = rect.bottom - containerTop
-      if (bottom <= CONTENT_LIMIT && bottom > safe) {
-        safe = bottom
-      }
+    return () => {
+      window.cancelAnimationFrame(frame1)
+      window.cancelAnimationFrame(frame2)
     }
+  }, [recomputeResumeHeight, recomputePageBreak, resumeData, visibility, templateConfig])
 
-    setPageBreakY(safe > 0 ? safe : CONTENT_LIMIT)
-  }, [resumeHeight, resumeData, visibility, templateConfig])
+  useEffect(() => {
+    if (resumeHeight === 0) return
+    const id = window.requestAnimationFrame(() => {
+      recomputePageBreak()
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [resumeHeight, recomputePageBreak])
 
   const ZOOM_STEP = 0.05
   const effectiveScale = Math.min(1.5, Math.max(0.3, 1.0 + zoomDelta))
@@ -149,9 +191,30 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const PAGE_GAP = 48 // Gap between pages
   const PAGE_BOTTOM_PADDING = 50 // Safe zone at bottom of each page
   const CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING // 1073px — max usable content height per page
+
+  // When layout density/visibility changes, optimistically collapse to one page
+  // until the hidden print wrapper finishes remeasuring.
+  useEffect(() => {
+    setIsPaginationSettling(true)
+    setContentHeight(CONTENT_H)
+    setPageBreakY(CONTENT_H)
+    setPreviewVersion(version => version + 1)
+
+    const id = window.setTimeout(() => {
+      setIsPaginationSettling(false)
+    }, 180)
+
+    return () => window.clearTimeout(id)
+  }, [visibility, templateConfig, CONTENT_H])
+
+  const effectivePageBreakY = pageBreakY > 0 ? pageBreakY : CONTENT_H
   const MAX_PAGES = 2
-  const pageCount = Math.max(1, Math.ceil(resumeHeight / CONTENT_H))
-  const renderedPageCount = Math.min(pageCount, MAX_PAGES)
+  const effectiveContentHeight = contentHeight > 0 ? contentHeight : resumeHeight
+  const secondPageHasContent = !isPaginationSettling && effectiveContentHeight > effectivePageBreakY + 12
+  const pageCount = isPaginationSettling
+    ? 1
+    : Math.max(1, Math.ceil(effectiveContentHeight / CONTENT_H))
+  const renderedPageCount = Math.min(secondPageHasContent ? pageCount : 1, MAX_PAGES)
   const isOverPageLimit = pageCount > MAX_PAGES
 
   useEffect(() => {
@@ -195,7 +258,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       const data = resume.parsed_data as ResumeData
       setResumeData(data)
       setSavedData(data)
-      setResumeTitle(resume.title ?? '')
+      setResumeTitle(normalizeResumeTitle(resume.title ?? ''))
 
       // Load saved template config from DB
       const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
@@ -255,8 +318,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
     load()
   }, [resumeId, userId, supabase, router])
-
-  // previewScale kept for potential future use; default zoom is always 100%
 
   const hasUnsavedChanges =
     !!resumeData && (
@@ -452,6 +513,33 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setVisibility(entry.visibility)
   }
 
+  function getSectionIdForFieldPath(path: string): string | null {
+    if (!path) return null
+    if (['name', 'currentRole', 'email', 'phone', 'location', 'linkedin', 'website'].includes(path)) return 'contact'
+    const root = path.split('.')[0]
+    if (root === 'summary') return 'summary'
+    if (root === 'skills') return 'skills'
+    if (root === 'languages') return 'languages'
+    if (root === 'interests') return 'interests'
+    if (root === 'experience') return 'experience'
+    if (root === 'education') return 'education'
+    if (root === 'projects') return 'projects'
+    if (root === 'certifications') return 'certifications'
+    if (root === 'volunteer') return 'volunteer'
+    if (root === 'awards') return 'awards'
+    if (root === 'publications') return 'publications'
+    if (root === 'references') return 'references'
+    if (root.startsWith('custom_')) return root
+    return null
+  }
+
+  function handleNavigateToField(path: string) {
+    const sectionId = getSectionIdForFieldPath(path)
+    if (!sectionId) return
+    setExpandedSection(sectionId)
+    setFocusedFieldPath(path)
+  }
+
   // Keyboard shortcuts: Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -622,78 +710,32 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
       return
     }
-    const printEl = document.getElementById('builder-print-wrapper')
-    if (!printEl) return
-
-    // Temporarily expose element for html2canvas (normally opacity-0, off-screen)
-    const prevStyle = { opacity: printEl.style.opacity, left: printEl.style.left, position: printEl.style.position }
-    printEl.style.opacity = '1'
-    printEl.style.left = '-9999px'
-    printEl.style.position = 'fixed'
+    setIsDownloadOpen(false)
+    if (!visibleData) return
 
     try {
-      const { default: html2canvas } = await import('html2canvas')
-      const jsPDFModule = await import('jspdf')
-      const jsPDF = jsPDFModule.jsPDF ?? jsPDFModule.default
+      const printWrapper = document.getElementById('builder-print-wrapper')
+      if (!(printWrapper instanceof HTMLElement)) return
 
-      const canvas = await html2canvas(printEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        width: 794,
-        height: printEl.scrollHeight,
-        backgroundColor: '#ffffff',
-        onclone: (clonedDoc) => {
-          // html2canvas 1.x can't parse modern CSS color functions (lab, oklch, color-mix).
-          // Patch every <style> tag in the clone to replace them with safe fallbacks.
-          const unsupportedColor = /\b(?:lab|oklch|lch|oklab|color-mix|color)\([^)]*\)/g
-          for (const el of Array.from(clonedDoc.querySelectorAll('style'))) {
-            if (el.textContent) {
-              el.textContent = el.textContent.replace(unsupportedColor, 'transparent')
-            }
-          }
-          // Ensure the root background is white so no bleed-through
-          clonedDoc.documentElement.style.backgroundColor = '#ffffff'
-          clonedDoc.body.style.backgroundColor = '#ffffff'
-        },
+      const blob = await generateResumePdfBlobFromElement(printWrapper, {
+        pageWidthPx: 794,
+        pageHeightPx: PAGE_H,
+        firstPageBreakPx: effectivePageBreakY,
+        secondPageTopOffsetPx: PAGE_H - effectivePageBreakY,
+        contentHeightPx: effectiveContentHeight,
       })
-
-      const PDF_W = 595.28  // A4 width in pt
-      // Map canvas pixel width → PDF pt width
-      const pxToPt = PDF_W / canvas.width
-
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
-
-      const totalPx = canvas.height
-      // Safe break in canvas pixel space (pageBreakY is in CSS px, canvas is 2× scale)
-      const breakPx = pageBreakY > 0 ? Math.round(pageBreakY * 2) : totalPx
-
-      function addCanvasSlice(srcY: number, srcH: number) {
-        const slice = document.createElement('canvas')
-        slice.width = canvas.width
-        slice.height = srcH
-        slice.getContext('2d')!.drawImage(canvas, 0, srcY, canvas.width, srcH, 0, 0, canvas.width, srcH)
-        const imgH = srcH * pxToPt
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, PDF_W, imgH)
-      }
-
-      // Page 1
-      addCanvasSlice(0, Math.min(breakPx, totalPx))
-
-      // Page 2 (only if content overflows)
-      if (totalPx > breakPx) {
-        pdf.addPage()
-        addCanvasSlice(breakPx, totalPx - breakPx)
-      }
-
-      pdf.save(`${resumeTitle || 'resume'}.pdf`)
-    } finally {
-      printEl.style.opacity = prevStyle.opacity
-      printEl.style.left = prevStyle.left
-      printEl.style.position = prevStyle.position
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) {
+      console.error('Generated PDF export failed, falling back to print dialog.', error)
+      window.print()
     }
-    setIsDownloadOpen(false)
   }
 
   async function handleDownloadDOCX() {
@@ -704,7 +746,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
     await generateDOCX(
       visibleData,
-      `${resumeTitle || 'resume'}.docx`,
+      `${normalizeResumeTitle(resumeTitle) || 'resume'}.docx`,
       templateConfig,
       getOrderedSections(visibility),
       getOrderedSidebarSections(visibility),
@@ -727,21 +769,44 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       <style>{`
         @media print {
           @page { size: A4; margin: 0; }
+          html, body {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            background: white !important;
+          }
           body * { visibility: hidden; }
           #builder-print-wrapper,
           #builder-print-wrapper * { visibility: visible; }
           #builder-print-wrapper {
             position: absolute;
-            top: 0; left: 0;
-            width: 794px;
+            top: 0;
+            left: 0;
+            width: 210mm !important;
+            min-height: 297mm !important;
             height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
             overflow: visible !important;
             transform: none !important;
             background: white;
             opacity: 1 !important;
             pointer-events: auto !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          #builder-print-wrapper * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            color-adjust: exact;
           }
           #builder-print-wrapper > div {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            box-shadow: none !important;
             page-break-inside: auto;
           }
           #builder-print-wrapper section,
@@ -765,27 +830,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         {/* ── TopNavBar ── */}
         <header className="fixed top-0 w-full z-50 glass-nav border-b border-outline-variant/10 flex justify-between items-center px-6 py-3">
           <div className="flex items-center gap-4">
-            <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             <Link href="/dashboard/resumes" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition-colors text-sm font-medium">
               <ArrowLeft size={16} />
               <span>Back</span>
             </Link>
+            <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             <div className="w-px h-4 bg-zinc-200" />
-            <input
-              type="text"
-              value={resumeTitle}
-              onChange={e => setResumeTitle(e.target.value)}
-              onBlur={async () => {
-                if (resumeId === 'draft') return
-                await supabase
-                  .from('resumes')
-                  .update({ title: resumeTitle || 'Untitled Resume' })
-                  .eq('id', resumeId)
-                  .eq('user_id', userId)
-              }}
-              placeholder="Untitled Resume"
-              className="text-sm font-semibold text-zinc-700 bg-transparent border-none outline-none focus:bg-white focus:px-2 focus:border focus:border-zinc-200 focus:rounded-md focus:shadow-sm transition-all w-48 truncate placeholder:text-zinc-400 placeholder:font-normal"
-            />
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 px-3 py-1.5 shadow-[0_8px_24px_rgba(16,185,129,0.08)]">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                <Pencil size={14} />
+              </div>
+              <input
+                type="text"
+                value={resumeTitle}
+                onChange={e => setResumeTitle(normalizeResumeTitle(e.target.value))}
+                onBlur={async () => {
+                  const normalizedTitle = normalizeResumeTitle(resumeTitle)
+                  setResumeTitle(normalizedTitle)
+                  if (resumeId === 'draft') return
+                  await supabase
+                    .from('resumes')
+                    .update({ title: normalizedTitle || 'Untitled Resume' })
+                    .eq('id', resumeId)
+                    .eq('user_id', userId)
+                }}
+                placeholder="Untitled Resume"
+                className="w-56 border-none bg-transparent text-sm font-semibold text-emerald-950 outline-none placeholder:font-normal placeholder:text-emerald-400"
+              />
+            </div>
           </div>
           
           {/* Builder / Tailor Toggle */}
@@ -903,6 +975,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                onDataChange={handleDataChange}
                onVisibilityChange={handleVisibilityChange}
                onExpandSection={(id) => setExpandedSection(id)}
+               focusedFieldPath={focusedFieldPath}
+               onFocusedFieldHandled={() => setFocusedFieldPath(null)}
                isDisabled={isApplyingFix}
              />
           </aside>
@@ -914,9 +988,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           />
 
           {/* Center Canvas */}
-          <section className="flex-1 overflow-y-auto bg-surface-container flex flex-col items-center py-8 px-8 min-w-[500px]">
+          <section className="flex-1 overflow-auto bg-surface-container flex flex-col items-center py-8 px-8 min-w-[500px]">
             {/* Canvas Tools */}
-            <div className="mx-auto flex justify-between items-center mb-6" style={{ width: 794 * effectiveScale }}>
+            <div className="mx-auto flex justify-between items-center mb-6 min-w-max" style={{ width: 794 * effectiveScale }}>
               <div className="flex items-center gap-1 bg-surface-container-lowest px-2 py-1.5 rounded-full shadow-sm">
                 <button
                   onClick={() => setTemplateConfig({ ...templateConfig, density: 'compressed' })}
@@ -972,17 +1046,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               aria-hidden
             >
               <TemplateComponent
+                key={`print-${previewVersion}`}
                 data={visibleData ?? resumeData}
                 isEditing={false}
                 onFieldChange={() => {}}
                 sectionOrder={getOrderedSections(visibility)}
                 sidebarSectionOrder={getOrderedSidebarSections(visibility)}
                 config={templateConfig}
+                onNavigateToField={handleNavigateToField}
               />
             </div>
 
             {/* Word-like paged preview + undo/redo to the right */}
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 min-w-max">
             <div
               className="print:hidden relative"
               style={{
@@ -1001,6 +1077,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
                   <div
                     key={`page-${pageIndex}`}
+                    data-resume-preview-page="true"
                     className="absolute left-0 bg-white"
                     style={{
                       top: pageIndex * (PAGE_H + PAGE_GAP),
@@ -1027,7 +1104,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       </div>
                     )}
 
-                    <div className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
+                    <div data-pdf-ignore="true" className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
                       Page {pageIndex + 1}
                     </div>
 
@@ -1036,27 +1113,29 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       style={(() => {
                         if (pageIndex === 0) {
                           // Page 1: clip at pageBreakY, leaving (PAGE_H - pageBreakY) as bottom padding
-                          return { marginTop: 0, height: `${pageBreakY}px` }
+                          return { marginTop: 0, height: `${effectivePageBreakY}px` }
                         }
                         // Page 2+: top padding mirrors page 1's bottom padding
-                        const topPad = PAGE_H - pageBreakY
+                        const topPad = PAGE_H - effectivePageBreakY
                         return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING}px` }
                       })()}
                     >
                       <div
                         style={{
                           width: '794px',
-                          transform: `translateY(-${pageIndex === 0 ? 0 : pageBreakY}px)`,
+                          transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY}px)`,
                           transformOrigin: 'top left',
                         }}
                       >
                         <TemplateComponent
+                          key={`preview-${previewVersion}-${pageIndex}`}
                           data={visibleData ?? resumeData}
                           isEditing={false}
                           onFieldChange={() => {}}
                           sectionOrder={getOrderedSections(visibility)}
                           sidebarSectionOrder={getOrderedSidebarSections(visibility)}
                           config={templateConfig}
+                          onNavigateToField={handleNavigateToField}
                         />
                       </div>
                     </div>

@@ -2,10 +2,10 @@ import React from 'react'
 import EditableText from './EditableText'
 import type { TemplateProps } from '@/types'
 
-function SectionHeading({ title, density }: { title: string, density: 'compressed' | 'relaxed' }) {
+function SectionHeading({ title, density, accent }: { title: string, density: 'compressed' | 'relaxed', accent: string }) {
   const isCompressed = density === 'compressed'
   return (
-    <h2 className={`text-xs font-bold uppercase tracking-widest text-indigo-600 border-b border-gray-200 pb-1 transition-all duration-300 ${isCompressed ? 'mt-3 mb-1.5' : 'mt-6 mb-3'}`}>
+    <h2 style={{ color: accent }} className={`text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 transition-all duration-300 ${isCompressed ? 'mt-3 mb-1.5' : 'mt-6 mb-3'}`}>
       {title}
     </h2>
   )
@@ -17,8 +17,9 @@ const DEFAULT_SECTION_ORDER = [
   'publications', 'languages', 'interests', 'references',
 ]
 
-export default function ModernMinimal({ data, isEditing, onFieldChange, sectionOrder, density = 'relaxed' }: TemplateProps) {
+export default function ModernMinimal({ data, isEditing, onFieldChange, sectionOrder, density = 'relaxed', accentColor, fontFamily }: TemplateProps) {
   const isCompressed = density === 'compressed'
+  const accent = accentColor || '#4F46E5'
 
   function renderSection(id: string) {
     if (id.startsWith('custom_')) {
@@ -28,7 +29,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'text' && custom.text && custom.text.trim()) {
         return (
           <>
-            <SectionHeading title={custom.title} density={density} />
+            <SectionHeading title={custom.title} density={density} accent={accent} />
             <EditableText value={custom.text} path={`custom_${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words transition-all duration-300 ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`} as="p" />
           </>
         )
@@ -37,7 +38,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} density={density} />
+            <SectionHeading title={custom.title} density={density} accent={accent} />
             <p className="text-sm text-gray-700">
               <span className={`transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`}>
                 {custom.tags.map((tag, i) => (
@@ -55,7 +56,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
         return (
           <>
-            <SectionHeading title={custom.title} density={density} />
+            <SectionHeading title={custom.title} density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-3' : 'space-y-5'}`}>
               {custom.items.map((exp, ei) => (
                 <div key={ei}>
@@ -78,7 +79,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
                     <ul className={`transition-all duration-300 ${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
                       {exp.bullets.map((b, bi) => (
                         <li key={bi} className="flex gap-2">
-                          <span className={`text-indigo-400 shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
+                          <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
                           <EditableText value={b} path={`custom_${id}.items.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
                         </li>
                       ))}
@@ -97,7 +98,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'summary':
         return data.summary ? (
           <>
-            <SectionHeading title="Summary" density={density} />
+            <SectionHeading title="Summary" density={density} accent={accent} />
             <EditableText value={data.summary} path="summary" isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words transition-all duration-300 ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`} as="p" />
           </>
         ) : null
@@ -105,7 +106,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'experience':
         return data.experience.length > 0 ? (
           <>
-            <SectionHeading title="Experience" density={density} />
+            <SectionHeading title="Experience" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-3' : 'space-y-5'}`}>
               {data.experience.map((exp, ei) => (
                 <div key={ei}>
@@ -128,7 +129,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
                     <ul className={`transition-all duration-300 ${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
                       {exp.bullets.map((b, bi) => (
                         <li key={bi} className="flex gap-2">
-                          <span className={`text-indigo-400 shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
+                          <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
                           <EditableText value={b} path={`experience.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
                         </li>
                       ))}
@@ -143,7 +144,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'education':
         return data.education.length > 0 ? (
           <>
-            <SectionHeading title="Education" density={density} />
+            <SectionHeading title="Education" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-1.5' : 'space-y-3'}`}>
               {data.education.map((edu, i) => (
                 <div key={i} className="flex justify-between items-start">
@@ -177,7 +178,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'skills':
         return data.skills.length > 0 ? (
           <>
-            <SectionHeading title="Skills" density={density} />
+            <SectionHeading title="Skills" density={density} accent={accent} />
             <p className="text-sm text-gray-700">
               <span className={`transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`}>
                 {data.skills.map((skill, i) => (
@@ -194,7 +195,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'projects':
         return data.projects.length > 0 ? (
           <>
-            <SectionHeading title="Projects" density={density} />
+            <SectionHeading title="Projects" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-1' : 'space-y-2'}`}>
               {data.projects.map((p, i) => (
                 <div key={i}>
@@ -217,7 +218,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'volunteer':
         return data.volunteer.length > 0 ? (
           <>
-            <SectionHeading title="Volunteer Work" density={density} />
+            <SectionHeading title="Volunteer Work" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-2' : 'space-y-4'}`}>
               {data.volunteer.map((v, vi) => (
                 <div key={vi}>
@@ -239,7 +240,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
                     <ul className={`transition-all duration-300 ${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1 space-y-1'}`}>
                       {v.bullets.map((b, bi) => (
                         <li key={bi} className="flex gap-2">
-                          <span className={`text-indigo-400 shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
+                          <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 transition-all duration-300 ${isCompressed ? 'mt-0' : 'mt-1'}`}>·</span>
                           <EditableText value={b} path={`volunteer.${vi}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} className={`text-sm text-gray-700 break-words transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
                         </li>
                       ))}
@@ -254,7 +255,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'certifications':
         return data.certifications.length > 0 ? (
           <>
-            <SectionHeading title="Certifications" density={density} />
+            <SectionHeading title="Certifications" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-0.5' : 'space-y-1'}`}>
               {data.certifications.map((c, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -270,7 +271,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'awards':
         return data.awards.length > 0 ? (
           <>
-            <SectionHeading title="Awards" density={density} />
+            <SectionHeading title="Awards" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-0.5' : 'space-y-1'}`}>
               {data.awards.map((a, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -286,7 +287,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'publications':
         return data.publications.length > 0 ? (
           <>
-            <SectionHeading title="Publications" density={density} />
+            <SectionHeading title="Publications" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-0.5' : 'space-y-1'}`}>
               {data.publications.map((p, i) => (
                 <p key={i} className="text-sm text-gray-700">
@@ -302,7 +303,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'languages':
         return data.languages.length > 0 ? (
           <>
-            <SectionHeading title="Languages" density={density} />
+            <SectionHeading title="Languages" density={density} accent={accent} />
             <p className="text-sm text-gray-700">
               <span className={`transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`}>
                 {data.languages.map((lang, i) => (
@@ -319,7 +320,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'interests':
         return data.interests.length > 0 ? (
           <>
-            <SectionHeading title="Interests" density={density} />
+            <SectionHeading title="Interests" density={density} accent={accent} />
             <p className="text-sm text-gray-700">
               <span className={`transition-all duration-300 ${isCompressed ? 'leading-tight' : 'leading-normal'}`}>
                 {data.interests.map((item, i) => (
@@ -336,7 +337,7 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
       case 'references':
         return data.references.length > 0 ? (
           <>
-            <SectionHeading title="References" density={density} />
+            <SectionHeading title="References" density={density} accent={accent} />
             <div className={`transition-all duration-300 ${isCompressed ? 'space-y-0.5' : 'space-y-1'}`}>
               {data.references.map((ref, i) => (
                 <EditableText key={i} value={ref} path={`references.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} className="text-sm text-gray-700 break-words" as="p" />
@@ -351,9 +352,9 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
   }
 
   return (
-    <div className={`w-[794px] min-h-[1123px] bg-white transition-all duration-300 ${isCompressed ? 'p-8' : 'p-12'}`}>
+    <div style={{ fontFamily: fontFamily || undefined }} className={`w-[794px] min-h-[1123px] bg-white transition-all duration-300 ${isCompressed ? 'p-8' : 'p-12'}`}>
       {/* Header */}
-      <div className="border-l-4 border-indigo-600 pl-3">
+      <div style={{ borderColor: accent }} className="border-l-4 pl-3">
         <EditableText
           value={data.name}
           path="name"
@@ -362,6 +363,15 @@ export default function ModernMinimal({ data, isEditing, onFieldChange, sectionO
           className="text-3xl font-bold text-gray-900 break-words"
           as="h1"
           fallback="Your Name"
+        />
+        <EditableText
+          value={data.currentRole}
+          path="currentRole"
+          isEditing={isEditing}
+          onFieldChange={onFieldChange}
+          style={{ color: accent }}
+          className="text-sm font-semibold mt-1 uppercase tracking-wider block"
+          fallback="Your Professional Title"
         />
       </div>
 

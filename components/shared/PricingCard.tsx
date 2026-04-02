@@ -77,30 +77,22 @@ export default function PricingCard({
     const display = getEffectiveDisplay(priceOption, activePromo)
     const formatted = formatPriceDisplay(display, priceOption)
 
-    const promoBadge =
-      !isCurrentPlan &&
-      activePromo?.overrideDisplay &&
-      (activePromo.appliesTo === 'all' || activePromo.appliesTo === priceOption.id)
-        ? activePromo.badge
-        : null
+    const promoBadge = !isCurrentPlan && activePromo?.badge ? activePromo.badge : null
 
     return (
-      <div
-        className="bg-[#026d32] rounded-2xl p-7 flex flex-col h-full relative overflow-hidden text-white opacity-0 [animation:card-enter_0.5s_ease_forwards]"
-        style={{ animationDelay: delay }}
-      >
-        {/* Shimmer */}
-        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-          <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent [animation:shimmer-sweep_5s_ease-in-out_2.5s_infinite]" />
-        </div>
-
+      <div className="relative opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
         {promoBadge && (
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-            <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full">
+            <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
               {promoBadge}
             </span>
           </div>
         )}
+        <div className="bg-[#026d32] rounded-2xl p-7 flex flex-col h-full relative overflow-hidden text-white">
+        {/* Shimmer */}
+        <div aria-hidden className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+          <div className="absolute top-0 bottom-0 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent [animation:shimmer-sweep_5s_ease-in-out_2.5s_infinite]" />
+        </div>
 
         <div className="flex items-center justify-between mb-5">
           <span className="text-lg font-bold text-white">Pro</span>
@@ -149,6 +141,7 @@ export default function PricingCard({
             </li>
           ))}
         </ul>
+      </div>
       </div>
     )
   }

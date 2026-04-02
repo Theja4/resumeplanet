@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ShoppingBag, Plus } from 'lucide-react'
+import { ShoppingBag, Plus, ArrowRight } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-gray-100 text-gray-600',
-  paid:        'bg-blue-100 text-blue-700',
+  paid:        'bg-green-100 text-[#026d32]',
   in_progress: 'bg-amber-100 text-amber-700',
-  delivered:   'bg-green-100 text-green-700',
+  delivered:   'bg-green-100 text-[#026d32]',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -38,35 +38,41 @@ export default async function OrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div
+        className="flex items-center justify-between mb-6 opacity-0 [animation:card-enter_0.4s_ease_forwards]"
+      >
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
           <p className="text-sm text-gray-500 mt-1">Track your professional resume rewrites.</p>
         </div>
         <Link
           href="/dashboard/orders/new"
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+          className="flex items-center gap-2 bg-[#026d32] hover:bg-green-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
         >
           <Plus size={15} /> New order
         </Link>
       </div>
 
       {typedOrders.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-gray-200 rounded-2xl bg-gray-50">
+        <div
+          className="text-center py-20 border border-dashed border-gray-200 rounded-2xl bg-gray-50 opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]"
+        >
           <ShoppingBag size={40} className="mx-auto text-gray-300 mb-4" />
           <h2 className="text-lg font-semibold text-gray-700">No orders yet</h2>
           <p className="text-sm text-gray-400 mt-2 max-w-sm mx-auto">
-            Have a professional recruiter rewrite your resume in 48 hours for ${PROFESSIONAL_ORDER.display.displayPrice}.
+            Have a professional recruiter rewrite your resume in 2–3 business days for ${PROFESSIONAL_ORDER.display.displayPrice}.
           </p>
           <Link
             href="/dashboard/orders/new"
-            className="mt-5 inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            className="mt-5 inline-flex items-center gap-2 bg-[#026d32] hover:bg-green-800 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
           >
-            Order now →
+            Order now <ArrowRight size={14} />
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div
+          className="bg-white rounded-2xl border border-gray-200 overflow-hidden opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]"
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
@@ -79,7 +85,11 @@ export default async function OrdersPage() {
             </thead>
             <tbody>
               {typedOrders.map((order, i) => (
-                <tr key={order.id} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                <tr
+                  key={order.id}
+                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition-colors opacity-0 [animation:card-enter_0.35s_ease_forwards]"
+                  style={{ animationDelay: `${0.05 * i + 0.15}s` }}
+                >
                   <td className="px-5 py-4 text-gray-500">{formatDate(order.created_at)}</td>
                   <td className="px-5 py-4 font-medium text-gray-900">{order.job_title ?? '—'}</td>
                   <td className="px-5 py-4">
@@ -89,8 +99,8 @@ export default async function OrdersPage() {
                   </td>
                   <td className="px-5 py-4 text-gray-700">${PROFESSIONAL_ORDER.display.displayPrice}</td>
                   <td className="px-5 py-4">
-                    <Link href={`/dashboard/orders/${order.id}`} className="text-indigo-600 hover:text-indigo-800 font-medium text-xs">
-                      View order →
+                    <Link href={`/dashboard/orders/${order.id}`} className="text-[#026d32] hover:text-green-800 font-medium text-xs flex items-center gap-1">
+                      View order <ArrowRight size={11} />
                     </Link>
                   </td>
                 </tr>

@@ -1,65 +1,170 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { callClaudeJSON } from '@/lib/claude'
-import { getATSModel, getRemainingFreeScans, isPro } from '@/lib/planUtils'
+import { analyzeResume } from '@/lib/claude'
+import { getRemainingFreeScans, isPro } from '@/lib/planUtils'
 import { FREE_PLAN } from '@/lib/pricing'
-import type { ATSResult, ATSScanTier, APIResponse, Profile } from '@/types'
-
-const BASIC_SYSTEM = `You are an ATS resume analyst. Analyse the resume against the job description provided. If no job description given, analyse against general ATS best practices. Return ONLY valid JSON.`
-
-const ADVANCED_SYSTEM = `You are a senior ATS specialist and career coach with deep expertise in applicant tracking systems. Provide a comprehensive, detailed analysis of this resume. Return ONLY valid JSON.`
-
-const BASIC_SCHEMA = `{
-  "score": number 0-100,
-  "tier": "basic",
-  "missingKeywords": ["string (top 5 only)"],
-  "presentKeywords": ["string (top 5 only)"],
-  "suggestions": [
-    {
-      "category": "keywords|formatting|experience|education|skills|summary",
-      "severity": "high|medium|low",
-      "issue": "string (1 sentence)",
-      "fix": "string (1 sentence)"
-    }
-  ],
-  "summary": "string (2 sentences max)"
-}`
-
-const ADVANCED_SCHEMA = `{
-  "score": number 0-100,
-  "tier": "advanced",
-  "scoreBreakdown": {
-    "keywordMatch": number 0-100,
-    "formatting": number 0-100,
-    "relevance": number 0-100,
-    "completeness": number 0-100,
-    "keywordDensity": number 0-100
-  },
-  "missingKeywords": ["string (ALL missing keywords ranked by importance)"],
-  "presentKeywords": ["string (ALL present keywords)"],
-  "keywordAnalysis": {
-    "mustHave": ["string (critical missing keywords)"],
-    "niceToHave": ["string (secondary missing keywords)"],
-    "overused": ["string (keywords used too many times)"]
-  },
-  "suggestions": [
-    {
-      "category": "keywords|formatting|experience|education|skills|summary",
-      "severity": "high|medium|low",
-      "issue": "string (detailed explanation)",
-      "fix": "string (specific actionable fix)",
-      "example": "string (concrete before/after example)"
-    }
-  ],
-  "industryInsight": "string (1-2 sentences about this role/industry ATS patterns)",
-  "formattingIssues": ["string (specific formatting problems found)"],
-  "summary": "string (3-4 sentences comprehensive summary)"
-}`
+import type { APIResponse, ATSResult, ATSSuggestion, ATSScanTier, Profile, FreeATSResult, ProATSResult, ResumeData } from '@/types'
 
 type ATSScoreResponse = ATSResult & {
-  scanTier: ATSScanTier
+  pipeline: 'free_ats' | 'pro_ats'
   scansRemaining: number | null
   scoreId: string
+  scanTier: ATSScanTier
+}
+
+function toPercent(score: number, max: number): number {
+  if (!max) return 0
+  return Math.max(0, Math.min(100, Math.round((score / max) * 100)))
+}
+
+function buildFreeSuggestions(result: FreeATSResult): ATSSuggestion[] {
+  return result.missing_sections.map(section => ({
+    category: 'keywords',
+    severity: 'medium',
+    issue: `Missing ${section} section`,
+    fix: `Add a clear ${section} section using a standard resume heading.`,
+  }))
+}
+
+function buildProSuggestions(result: ProATSResult): ATSSuggestion[] {
+  const suggestions: ATSSuggestion[] = []
+
+  for (const [category, data] of Object.entries(result.section_scores)) {
+    const mappedCategory: ATSSuggestion['category'] =
+      category === 'formatting' ? 'formatting'
+        : category === 'education' ? 'education'
+        : category === 'skills' ? 'skills'
+        : category === 'summary' ? 'summary'
+        : 'experience'
+
+    for (const issue of data.issues ?? []) {
+      suggestions.push({
+        category: mappedCategory,
+        severity: data.score < data.max * 0.5 ? 'high' : data.score < data.max * 0.75 ? 'medium' : 'low',
+        issue,
+        fix: result.top_3_fixes.find(fix => fix.toLowerCase().includes(issue.toLowerCase().split(' ')[0])) ?? result.top_3_fixes[0] ?? 'Improve this section for better ATS performance.',
+      })
+    }
+  }
+
+  return suggestions
+}
+
+function normalizeATSResult(result: FreeATSResult | ProATSResult, pro: boolean): ATSResult {
+  if (!pro) {
+    const freeResult = result as FreeATSResult
+    return {
+      score: freeResult.ats_score,
+      tier: 'basic',
+      missingKeywords: freeResult.missing_sections ?? [],
+      presentKeywords: freeResult.detected_sections ?? [],
+      suggestions: buildFreeSuggestions(freeResult),
+      summary: freeResult.has_quantified_achievements
+        ? `Resume scored ${freeResult.ats_score}/100. Core sections detected: ${(freeResult.detected_sections ?? []).join(', ') || 'none'}.`
+        : `Resume scored ${freeResult.ats_score}/100 and needs stronger quantified achievements plus clearer ATS structure.`,
+      scoreBreakdown: {
+        keywordMatch: toPercent(freeResult.section_scores.keyword_optimization.score, freeResult.section_scores.keyword_optimization.max),
+        formatting: toPercent(freeResult.section_scores.formatting.score, freeResult.section_scores.formatting.max),
+        relevance: toPercent(freeResult.section_scores.content_quality.score, freeResult.section_scores.content_quality.max),
+        completeness: toPercent(freeResult.section_scores.section_structure.score, freeResult.section_scores.section_structure.max),
+        keywordDensity: toPercent(freeResult.section_scores.length_density.score, freeResult.section_scores.length_density.max),
+      },
+      keywordAnalysis: {
+        mustHave: freeResult.missing_sections ?? [],
+        niceToHave: [],
+        overused: [],
+      },
+      formattingIssues: [],
+    }
+  }
+
+  const proResult = result as ProATSResult
+  return {
+    score: proResult.ats_score,
+    tier: 'advanced',
+    missingKeywords: proResult.missing_sections ?? [],
+    presentKeywords: proResult.detected_sections ?? [],
+    suggestions: buildProSuggestions(proResult),
+    summary: proResult.overall_assessment,
+    scoreBreakdown: {
+      keywordMatch: toPercent(proResult.section_scores.keyword_optimization.score, proResult.section_scores.keyword_optimization.max),
+      formatting: toPercent(proResult.section_scores.formatting.score, proResult.section_scores.formatting.max),
+      relevance: toPercent(proResult.section_scores.content_quality.score, proResult.section_scores.content_quality.max),
+      completeness: toPercent(proResult.section_scores.section_structure.score, proResult.section_scores.section_structure.max),
+      keywordDensity: toPercent(proResult.section_scores.length_density.score, proResult.section_scores.length_density.max),
+    },
+    keywordAnalysis: {
+      mustHave: proResult.missing_sections ?? [],
+      niceToHave: proResult.skills_section_suggestion?.missing_high_value_skills ?? [],
+      overused: [],
+    },
+    industryInsight: proResult.summary_suggestion ?? undefined,
+    formattingIssues: proResult.section_scores.formatting.issues ?? [],
+  }
+}
+
+function resumeDataToText(data: ResumeData | null): string {
+  if (!data) return ''
+
+  const parts: string[] = [
+    data.name,
+    data.currentRole,
+    data.summary,
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedin,
+    data.website,
+  ]
+
+  for (const item of data.experience) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.education) {
+    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
+  }
+
+  parts.push(...data.skills)
+
+  for (const item of data.projects) {
+    parts.push(item.name, item.description, ...(item.technologies ?? []))
+  }
+
+  for (const item of data.certifications) {
+    parts.push(item.name, item.issuer, item.date)
+  }
+
+  for (const item of data.volunteer) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.awards) {
+    parts.push(item.title, item.issuer, item.date)
+  }
+
+  for (const item of data.publications) {
+    parts.push(item.title, item.publisher, item.date)
+  }
+
+  parts.push(...data.languages, ...data.interests, ...data.references)
+
+  for (const section of data.customSections ?? []) {
+    parts.push(section.title)
+    if (section.type === 'text') parts.push(section.text ?? '')
+    if (section.type === 'tags') parts.push(...(section.tags ?? []))
+    if (section.type === 'complex') {
+      for (const item of section.items ?? []) {
+        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+        parts.push(...(item.bullets ?? []))
+      }
+    }
+  }
+
+  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -78,7 +183,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
-  let body: { resumeText: string; jobDescription?: string; resumeId?: string }
+  let body: { resumeText: string; resumeId?: string }
   try {
     body = await request.json()
   } catch {
@@ -88,19 +193,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { resumeText, jobDescription, resumeId } = body
+  let { resumeText } = body
+  const { resumeId } = body
+
+  if ((!resumeText || resumeText.trim().length < 100) && resumeId) {
+    const { data: resume } = await supabase
+      .from('resumes')
+      .select('raw_text, parsed_data')
+      .eq('id', resumeId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const fallbackText =
+      resume?.raw_text?.trim() ||
+      resumeDataToText((resume?.parsed_data as ResumeData | null) ?? null)
+
+    if (fallbackText.trim().length > 0) {
+      resumeText = fallbackText
+    }
+  }
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!resumeText || resumeText.trim().length < 100) {
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'RESUME_TOO_SHORT' },
-      { status: 400 }
-    )
-  }
-
-  if (jobDescription && jobDescription.trim().length > 0 && jobDescription.trim().length < 50) {
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'JOB_DESCRIPTION_TOO_SHORT' },
       { status: 400 }
     )
   }
@@ -113,15 +229,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .single()
 
   const profile = profileData as Profile | null
+  const pro = isPro(profile)
 
   // ── Rate limiting (free plan) ──────────────────────────────────────────────
-  if (!isPro(profile)) {
+  if (!pro) {
     const now = new Date()
     const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
     const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60)
 
     if (hoursSinceReset >= 24) {
-      // Reset the daily counter
       await supabase
         .from('profiles')
         .update({ ats_scans_today: 0, ats_scans_reset_at: now.toISOString() })
@@ -145,48 +261,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── Determine model + prompt ───────────────────────────────────────────────
-  const model = getATSModel(profile)
-  const pro = isPro(profile)
-  const schema = pro ? ADVANCED_SCHEMA : BASIC_SCHEMA
-  const system = pro ? ADVANCED_SYSTEM : BASIC_SYSTEM
-  const jobContext = jobDescription?.trim()
-    ? `Job Description:\n${jobDescription}\n\n`
-    : 'No job description provided — analyse against general ATS best practices.\n\n'
+  // ── Trim input to tier limit ───────────────────────────────────────────────
+  const maxChars = pro ? 20000 : 8000
+  const trimmedText = resumeText.slice(0, maxChars)
 
-  const prompt = `${jobContext}Resume Text:\n${resumeText}\n\nReturn a JSON object matching exactly this schema:\n${schema}\n\nOnly include the max allowed suggestions for basic tier (3). For advanced, include all. Ensure all number fields are integers 0-100.`
+  // ── Call LLM pipeline ─────────────────────────────────────────────────────
+  const pipeline = pro ? 'pro_ats' : 'free_ats'
+  const llmResult = pro
+    ? await analyzeResume<ProATSResult>(pipeline, trimmedText)
+    : await analyzeResume<FreeATSResult>(pipeline, trimmedText)
 
-  // ── Call Claude ────────────────────────────────────────────────────────────
-  let result: ATSResult
-
-  try {
-    result = await callClaudeJSON<ATSResult>({
-      model,
-      system,
-      prompt,
-      maxTokens: pro ? 8192 : 2048,
-      timeoutMs: 90000,
+  if (!llmResult.success) {
+    console.error('ATS score error:', {
+      error: llmResult.error,
+      pipeline,
+      pro,
+      inputChars: trimmedText.length,
+      details: llmResult.details ?? [],
     })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    if (msg === 'CLAUDE_TIMEOUT') {
-      return NextResponse.json<APIResponse<never>>(
-        { success: false, error: 'CLAUDE_TIMEOUT' },
-        { status: 408 }
-      )
-    }
-    if (msg === 'CLAUDE_JSON_PARSE_FAILED') {
-      return NextResponse.json<APIResponse<never>>(
-        { success: false, error: 'PARSE_FAILED' },
-        { status: 422 }
-      )
-    }
-    console.error('ATS score error:', msg)
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'INTERNAL_ERROR' },
       { status: 500 }
     )
   }
+
+  const result = llmResult.data
+  const normalizedResult = normalizeATSResult(result, pro)
 
   // ── Save to ats_scores ─────────────────────────────────────────────────────
   const { data: savedScore } = await supabase
@@ -194,14 +294,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .insert({
       user_id: user.id,
       resume_id: resumeId ?? null,
-      job_description: jobDescription ?? null,
-      score: result.score,
-      missing_keywords: result.missingKeywords ?? [],
-      suggestions: result.suggestions ?? [],
-      scan_tier: result.tier ?? (pro ? 'advanced' : 'basic'),
+      job_description: null,
+      score: normalizedResult.score,
+      missing_keywords: normalizedResult.missingKeywords,
+      suggestions: [],
+      scan_tier: pro ? 'advanced' : 'basic',
     })
     .select('id')
     .single()
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/resumes')
+  if (resumeId) {
+    revalidatePath(`/dashboard/resumes/${resumeId}`)
+  }
 
   // ── Increment free scan count ──────────────────────────────────────────────
   if (!pro) {
@@ -217,10 +323,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     {
       success: true,
       data: {
-        ...result,
-        scanTier: result.tier ?? (pro ? 'advanced' : 'basic'),
+        ...normalizedResult,
+        pipeline,
         scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
         scoreId: savedScore?.id ?? '',
+        scanTier: pro ? 'advanced' : 'basic',
       },
     },
     { status: 200 }

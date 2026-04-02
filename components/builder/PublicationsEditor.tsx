@@ -1,16 +1,22 @@
 'use client'
 
+import { useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ResumeData, PublicationItem } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
 const EMPTY: PublicationItem = { title: '', publisher: '', date: '' }
 
-export default function PublicationsEditor({ data, onChange }: EditorProps) {
+export default function PublicationsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
   function updateItem(index: number, updated: PublicationItem) {
     const next = [...data.publications]
     next[index] = updated
@@ -26,12 +32,13 @@ export default function PublicationsEditor({ data, onChange }: EditorProps) {
   }
 
   return (
-    <div className="p-4 space-y-2">
+    <div ref={rootRef} className="p-4 space-y-2">
       {data.publications.map((pub, i) => (
         <div key={i} className="flex items-center gap-2">
           <input
             type="text"
             value={pub.title}
+            data-field-path={`publications.${i}.title`}
             onChange={(e) => updateItem(i, { ...pub, title: e.target.value })}
             placeholder="Publication title"
             className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -39,6 +46,7 @@ export default function PublicationsEditor({ data, onChange }: EditorProps) {
           <input
             type="text"
             value={pub.publisher}
+            data-field-path={`publications.${i}.publisher`}
             onChange={(e) => updateItem(i, { ...pub, publisher: e.target.value })}
             placeholder="Publisher"
             className="w-28 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -46,6 +54,7 @@ export default function PublicationsEditor({ data, onChange }: EditorProps) {
           <input
             type="text"
             value={pub.date}
+            data-field-path={`publications.${i}.date`}
             onChange={(e) => updateItem(i, { ...pub, date: e.target.value })}
             placeholder="Year"
             className="w-16 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"

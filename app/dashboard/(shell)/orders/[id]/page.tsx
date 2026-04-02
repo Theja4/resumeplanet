@@ -1,9 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Check, Clock, AlertCircle } from 'lucide-react'
+import { Check, Clock, Download } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
+import OrderStatusPoller from './OrderStatusPoller'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -12,9 +13,9 @@ interface Props {
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-gray-100 text-gray-700',
-  paid:        'bg-blue-100 text-blue-700',
+  paid:        'bg-green-100 text-[#026d32]',
   in_progress: 'bg-amber-100 text-amber-700',
-  delivered:   'bg-green-100 text-green-700',
+  delivered:   'bg-green-100 text-[#026d32]',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,9 +37,9 @@ function TimelineStep({ label, description, status, date }: {
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-          status === 'complete' ? 'bg-green-500' :
-          status === 'current'  ? 'bg-indigo-600' :
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+          status === 'complete' ? 'bg-[#026d32]' :
+          status === 'current'  ? 'bg-amber-500' :
           'bg-gray-200'
         }`}>
           {status === 'complete'
@@ -48,7 +49,7 @@ function TimelineStep({ label, description, status, date }: {
             : <div className="w-2 h-2 rounded-full bg-gray-400" />
           }
         </div>
-        <div className="w-0.5 flex-1 bg-gray-200 mt-1" />
+        <div className="w-0.5 flex-1 bg-gray-100 mt-1" />
       </div>
       <div className="pb-8">
         <p className={`text-sm font-semibold ${status === 'pending' ? 'text-gray-400' : 'text-gray-900'}`}>{label}</p>
@@ -79,8 +80,11 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const o = order as Order & { resumes?: { title: string; id: string } | null }
   const showSuccess = success === 'true'
 
+  // When returning from payment but webhook hasn't fired yet, treat as optimistically paid
+  const optimisticStatus = showSuccess && o.status === 'pending' ? 'paid' : o.status
+
   function stepStatus(step: 'placed' | 'paid' | 'in_progress' | 'delivered'): StepStatus {
-    const s = o.status
+    const s = optimisticStatus
     if (step === 'placed') return 'complete'
     if (step === 'paid') return (s === 'paid' || s === 'in_progress' || s === 'delivered') ? 'complete' : (s === 'pending' ? 'current' : 'pending')
     if (step === 'in_progress') return (s === 'in_progress' || s === 'delivered') ? 'complete' : (s === 'paid' ? 'current' : 'pending')
@@ -90,47 +94,50 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Poll until DB reflects payment when returning from checkout */}
+      {showSuccess && <OrderStatusPoller orderId={o.id} currentStatus={o.status} />}
+
       <Link href="/dashboard/orders" className="text-sm text-gray-500 hover:text-gray-700 block mb-4">
         ← My Orders
       </Link>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Order #{o.id.slice(0, 8).toUpperCase()}
-          </h1>
-        </div>
-        <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${STATUS_STYLES[o.status] ?? STATUS_STYLES.pending}`}>
-          {STATUS_LABELS[o.status] ?? o.status}
+      <div
+        className="flex items-center justify-between mb-6 opacity-0 [animation:card-enter_0.4s_ease_forwards]"
+      >
+        <h1 className="text-2xl font-bold text-gray-900">
+          Order #{o.id.slice(0, 8).toUpperCase()}
+        </h1>
+        <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${STATUS_STYLES[optimisticStatus] ?? STATUS_STYLES.pending}`}>
+          {STATUS_LABELS[optimisticStatus] ?? optimisticStatus}
         </span>
       </div>
 
       {showSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-          <Check size={18} className="text-green-600 shrink-0 mt-0.5" />
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3 opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]">
+          <Check size={18} className="text-[#026d32] shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-green-800">🎉 Payment confirmed! Your order is in the queue.</p>
-            <p className="text-xs text-green-600 mt-0.5">Our writer will begin within 24 hours.</p>
+            <p className="text-sm font-semibold text-green-800">Payment confirmed! Your order is in the queue.</p>
+            <p className="text-xs text-green-600 mt-0.5">Our writer will begin within 24 hours. We&apos;ll email you when it&apos;s ready.</p>
           </div>
         </div>
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Order details */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 opacity-0 [animation:card-enter_0.4s_ease_0.15s_forwards]">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Order Details</h2>
           <div className="space-y-3 text-sm">
             <Detail label="Target role" value={o.job_title ?? '—'} />
             <Detail label="Resume used" value={
               o.resumes
-                ? <Link href={`/dashboard/resumes/${o.resumes.id}`} className="text-indigo-600 hover:underline">{o.resumes.title}</Link>
+                ? <Link href={`/dashboard/builder/${o.resumes.id}`} className="text-[#026d32] hover:underline">{o.resumes.title}</Link>
                 : '—'
             } />
             <Detail label="Ordered" value={formatDate(o.created_at)} />
             <Detail label="Amount" value={`$${PROFESSIONAL_ORDER.display.displayPrice}`} />
             <Detail label="Payment" value={
-              <span className={o.status !== 'pending' ? 'text-green-600' : 'text-gray-500'}>
-                {o.status !== 'pending' ? 'Confirmed' : 'Pending'}
+              <span className={optimisticStatus !== 'pending' ? 'text-[#026d32] font-semibold' : 'text-gray-500'}>
+                {optimisticStatus !== 'pending' ? 'Confirmed' : 'Pending'}
               </span>
             } />
           </div>
@@ -151,7 +158,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
         </div>
 
         {/* Timeline */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 opacity-0 [animation:card-enter_0.4s_ease_0.25s_forwards]">
           <h2 className="text-base font-semibold text-gray-900 mb-6">Status</h2>
           <div>
             <TimelineStep
@@ -162,12 +169,16 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             <TimelineStep
               label="Payment confirmed"
               status={stepStatus('paid')}
-              description={o.status === 'pending' ? 'Waiting for payment' : undefined}
+              description={
+                optimisticStatus === 'pending'
+                  ? 'Waiting for payment confirmation…'
+                  : undefined
+              }
             />
             <TimelineStep
               label="In progress"
               status={stepStatus('in_progress')}
-              description={stepStatus('in_progress') === 'current' ? 'Our writer will begin shortly' : undefined}
+              description={stepStatus('in_progress') === 'current' ? 'Our writer is working on your resume' : undefined}
             />
             <TimelineStep
               label="Delivered"
@@ -181,9 +192,9 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               href={o.delivered_file_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
+              className="mt-2 w-full flex items-center justify-center gap-2 bg-[#026d32] hover:bg-green-800 text-white font-semibold py-3 rounded-xl text-sm transition-colors"
             >
-              Download your resume →
+              <Download size={15} /> Download your resume
             </a>
           )}
         </div>
