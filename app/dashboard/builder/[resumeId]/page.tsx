@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { FONT_OPTIONS } from '@/lib/templateOptions'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -14,21 +15,24 @@ import {
   CloudUpload,
   Cloud,
   Check,
-  Wand2,
+  Undo2,
+  Redo,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useProGate } from '@/lib/hooks/useProGate'
 import { PlanProvider } from '@/lib/context/PlanContext'
 import ProGateModal from '@/components/shared/ProGateModal'
-import TemplateSwitcherModal from '@/components/builder/TemplateSwitcherModal'
+import TemplateCustomizerModal from '@/components/builder/TemplateCustomizerModal'
 import TailorPanel from '@/components/builder/TailorPanel'
+import AIInsightsPanel from '@/components/builder/AIInsightsPanel'
 import SectionList from '@/components/builder/SectionList'
-import { getVisibleResumeData, getOrderedSections } from '@/lib/visibilityUtils'
-import type { BuilderVisibility } from '@/types'
-import { DEFAULT_VISIBILITY, EMPTY_RESUME_DATA } from '@/types'
-import { getTemplateComponent } from '@/components/templates/registry'
+import { getVisibleResumeData, getOrderedSections, getOrderedSidebarSections } from '@/lib/visibilityUtils'
+import type { BuilderVisibility, UniversalConfig } from '@/types'
+import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA, getPresetConfig } from '@/types'
+import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
-import type { ResumeData, TemplateId, BuilderMode, TailorAnalysis, TemplateProps, Profile } from '@/types'
+import { useUndoHistory } from '@/lib/undoHistory'
+import type { ResumeData, BuilderMode, TailorAnalysis, Profile } from '@/types'
 
 
 // ─── Inner builder (needs PlanContext) ────────────────────────────────────────
@@ -49,9 +53,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [savedData, setSavedData] = useState<ResumeData | null>(null)
   const [resumeTitle, setResumeTitle] = useState('')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<TemplateId>(
-    (searchParams.get('template') as TemplateId) ?? 'modern-minimal'
-  )
+  const [templateConfig, setTemplateConfig] = useState<UniversalConfig>(DEFAULT_UNIVERSAL_CONFIG)
   const [activeMode, setActiveMode] = useState<BuilderMode>('builder')
   const [expandedSection, setExpandedSection] = useState<string | null>('contact')
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
@@ -63,15 +65,81 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [previewScale, setPreviewScale] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
+  const [isApplyingFix, setIsApplyingFix] = useState(false)
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
-
+  const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
   const saveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const resumeRef = useRef<HTMLDivElement>(null)
+  const hasShownPageLimitAlertRef = useRef(false)
   const userId = profile.id
+  const history = useUndoHistory()
+
+  // Sync visibility density with template config density
+  useEffect(() => {
+    setVisibility(prev => ({ ...prev, density: templateConfig.density }))
+  }, [templateConfig.density])
+
+  const [resumeHeight, setResumeHeight] = useState(0)
+
+  const recomputeResumeHeight = useCallback(() => {
+    const el = resumeRef.current
+    if (!el) return
+    const measured = Math.max(el.scrollHeight, el.getBoundingClientRect().height)
+    if (Number.isFinite(measured) && measured > 0) {
+      setResumeHeight(measured)
+    }
+  }, [])
+
+  // Measure resume height after render
+  useEffect(() => {
+    const el = resumeRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const target = entry.target as HTMLElement
+        setResumeHeight(Math.max(entry.contentRect.height, target.scrollHeight))
+      }
+    })
+    observer.observe(el)
+    recomputeResumeHeight()
+    return () => observer.disconnect()
+  }, [resumeRef, recomputeResumeHeight])
+
+  // Fallback: force re-measure when content/layout inputs change
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => {
+      recomputeResumeHeight()
+    })
+    return () => window.cancelAnimationFrame(id)
+  }, [recomputeResumeHeight, resumeData, visibility, templateConfig])
+
+  const PAGE_H = 1123 // A4 at 96 DPI
+  const PAGE_GAP = 48 // Increased from 28 for visual separation
+  const PAGE_BOTTOM_PADDING = 50 // Buffer zone at bottom of each page
+  const MAX_PAGES = 2
+  const pageCount = Math.max(1, Math.ceil(resumeHeight / PAGE_H))
+  const renderedPageCount = Math.min(pageCount, MAX_PAGES)
+  const isOverPageLimit = pageCount > MAX_PAGES
+
+  useEffect(() => {
+    if (isOverPageLimit && !hasShownPageLimitAlertRef.current) {
+      hasShownPageLimitAlertRef.current = true
+      window.alert('Your resume is over 2 pages. Keep it to 1-2 pages for best results. Please trim content before continuing.')
+    }
+    if (!isOverPageLimit) {
+      hasShownPageLimitAlertRef.current = false
+    }
+  }, [isOverPageLimit])
 
   // ── Load resume on mount ────────────────────────────────────────────────────
   useEffect(() => {
     async function load() {
+      if (resumeId === 'new') {
+        router.replace('/dashboard/builder/draft')
+        return
+      }
+
       if (resumeId === 'draft') {
         setResumeData(EMPTY_RESUME_DATA)
         setSavedData(EMPTY_RESUME_DATA)
@@ -96,6 +164,39 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setResumeData(data)
       setSavedData(data)
       setResumeTitle(resume.title ?? '')
+
+      // Load saved template config from DB
+      const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
+
+      // Build final config: start with saved or default, then apply URL overrides
+      let config: UniversalConfig = savedTemplateConfig
+        ? { ...savedTemplateConfig }
+        : { ...DEFAULT_UNIVERSAL_CONFIG }
+
+      // Apply URL param overrides
+      const templateParam = searchParams.get('template')
+      if (templateParam) {
+        config = { ...config, ...getPresetConfig(templateParam as any) }
+      }
+      const accentParam = searchParams.get('accent')
+      if (accentParam) config.accentColor = accentParam
+      const fontParam = searchParams.get('font')
+      if (fontParam) {
+        const font = FONT_OPTIONS.find((f) => f.id === fontParam)
+        if (font) config.fontFamily = font.value
+      }
+      const layoutParam = searchParams.get('layout') as 'single-column' | 'sidebar' | undefined
+      if (layoutParam) config.layout = layoutParam
+      const headerParam = searchParams.get('header') as 'banner' | 'sidebar-integrated' | 'minimal' | undefined
+      if (headerParam) config.headerStyle = headerParam
+      const bulletParam = searchParams.get('bullet') as 'plain' | 'timeline' | undefined
+      if (bulletParam) config.bulletStyle = bulletParam
+      const densityParam = searchParams.get('density') as 'compressed' | 'relaxed' | undefined
+      if (densityParam) config.density = densityParam
+
+      setTemplateConfig(config)
+      setSavedTemplateConfig(config)
+
       // Load saved visibility, merging with defaults to handle new fields
       const savedVis = (resume as Record<string, unknown>).builder_visibility as Partial<BuilderVisibility> | null
       if (savedVis && Object.keys(savedVis).length > 0) {
@@ -108,10 +209,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             ...(savedVis.items ?? {}),
           },
           sectionOrder: savedVis.sectionOrder ?? DEFAULT_VISIBILITY.sectionOrder,
+          sidebarSectionOrder: savedVis.sidebarSectionOrder ?? DEFAULT_VISIBILITY.sidebarSectionOrder,
           density: savedVis.density ?? 'relaxed',
         }
         setVisibility(merged)
         setSavedVisibility(merged)
+      } else {
+        // If no saved visibility, use default
+        setVisibility(DEFAULT_VISIBILITY)
+        setSavedVisibility(DEFAULT_VISIBILITY)
       }
       setIsLoading(false)
     }
@@ -132,73 +238,102 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const hasUnsavedChanges =
     !!resumeData && (
       JSON.stringify(resumeData) !== JSON.stringify(savedData) ||
-      JSON.stringify(visibility) !== JSON.stringify(savedVisibility)
+      JSON.stringify(visibility) !== JSON.stringify(savedVisibility) ||
+      JSON.stringify(templateConfig) !== JSON.stringify(savedTemplateConfig)
     )
 
   async function forceSave() {
     if (!resumeData || !hasUnsavedChanges || isSaving) return
+    if (isOverPageLimit) {
+      window.alert('Saving is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
+      return
+    }
 
-    // Define what constitutes an 'empty' resume to avoid saving ghost records
-    const isEmpty = 
-      !resumeData.name?.trim() && 
-      !resumeData.summary?.trim() &&
-      resumeData.experience.length === 0 &&
-      resumeData.education.length === 0 &&
-      resumeData.skills.length === 0 &&
-      resumeData.projects.length === 0
+    // Define what constitutes a truly 'empty' resume to avoid ghost records on new drafts.
+    // If it's a new draft, we only save if the user has actually done something.
+    if (resumeId === 'draft') {
+      const isDataEmpty = 
+        !resumeData.name?.trim() && 
+        !resumeData.email?.trim() &&
+        !resumeData.phone?.trim() &&
+        !resumeData.summary?.trim() &&
+        !resumeData.location?.trim() &&
+        !resumeData.linkedin?.trim() &&
+        !resumeData.website?.trim() &&
+        resumeData.experience.length === 0 &&
+        resumeData.education.length === 0 &&
+        resumeData.skills.length === 0 &&
+        resumeData.projects.length === 0 &&
+        resumeData.certifications.length === 0 &&
+        resumeData.languages.length === 0 &&
+        resumeData.volunteer.length === 0 &&
+        resumeData.awards.length === 0 &&
+        resumeData.publications.length === 0 &&
+        (!resumeData.customSections || resumeData.customSections.length === 0)
 
-    if (isEmpty && resumeId === 'draft') return
+      const isTemplateDefault = 
+        JSON.stringify(templateConfig) === JSON.stringify(DEFAULT_UNIVERSAL_CONFIG) &&
+        JSON.stringify(visibility) === JSON.stringify(DEFAULT_VISIBILITY)
+
+      // If everything is untouched, don't create a database record yet
+      if (isDataEmpty && isTemplateDefault) return
+    }
 
     setIsSaving(true)
     clearTimeout(saveTimerRef.current)
 
-    if (resumeId === 'draft') {
-      const { data, error } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: userId,
-          title: resumeTitle || 'Untitled Resume',
-          parsed_data: resumeData,
-          builder_visibility: visibility,
-          updated_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single()
+    try {
+      if (resumeId === 'draft') {
+        const { data, error } = await supabase
+          .from('resumes')
+          .insert({
+            user_id: userId,
+            title: resumeTitle || 'Untitled Resume',
+            parsed_data: resumeData,
+            builder_visibility: visibility,
+            template_config: templateConfig,
+            updated_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
 
-      if (error) {
-        console.error('Error inserting draft:', error)
-        setIsSaving(false)
-        return
-      }
+        if (error) throw error
 
-      if (data) {
+        if (data) {
+          setSavedData(resumeData)
+          setSavedVisibility(visibility)
+          setSavedTemplateConfig(templateConfig)
+          router.replace(`/dashboard/builder/${data.id}`)
+        }
+      } else {
+        const { error } = await supabase
+          .from('resumes')
+          .update({
+            parsed_data: resumeData,
+            builder_visibility: visibility,
+            template_config: templateConfig,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', resumeId)
+          .eq('user_id', userId)
+
+        if (error) throw error
+
         setSavedData(resumeData)
         setSavedVisibility(visibility)
-        setIsSaving(false)
-        // Transition from draft to real ID without a full reload if possible, 
-        // but router.replace is safest to sync all components.
-        router.replace(`/dashboard/builder/${data.id}`)
+        setSavedTemplateConfig(templateConfig)
       }
-      return
-    }
-
-    const { error } = await supabase
-      .from('resumes')
-      .update({
-        parsed_data: resumeData,
-        builder_visibility: visibility,
-        updated_at: new Date().toISOString(),
+    } catch (err: any) {
+      console.error('Persistence Error Details:', {
+        message: err.message,
+        details: err.details,
+        hint: err.hint,
+        code: err.code,
+        fullError: err
       })
-      .eq('id', resumeId)
-      .eq('user_id', userId)
-    if (error) {
-      console.error('Auto-save failed:', error.message, error.code, error.details)
+    } finally {
       setIsSaving(false)
-      return
     }
-    setSavedData(resumeData)
-    setSavedVisibility(visibility)
-    setIsSaving(false)
   }
 
   // ── Resizable Panels ────────────────────────────────────────────────────────
@@ -248,7 +383,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }, 1500)
     return () => clearTimeout(saveTimerRef.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeData, visibility])
+  }, [resumeData, visibility, templateConfig])
 
   // ── Instant auto-save on clicking out of section ─────────────────────────────
   useEffect(() => {
@@ -268,12 +403,49 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [resumeId, userId, supabase, hasUnsavedChanges])
 
   function handleDataChange(updated: ResumeData) {
+    if (resumeData) history.pushHistory(resumeData, visibility)
     setResumeData(updated)
   }
-  
+
   function handleVisibilityChange(updated: BuilderVisibility) {
+    if (resumeData) history.pushHistory(resumeData, visibility)
     setVisibility(updated)
   }
+
+  function handleUndo() {
+    if (!resumeData) return
+    const entry = history.undo()
+    if (!entry) return
+    setResumeData(entry.data)
+    setVisibility(entry.visibility)
+  }
+
+  function handleRedo() {
+    if (!resumeData) return
+    const entry = history.redo()
+    if (!entry) return
+    setResumeData(entry.data)
+    setVisibility(entry.visibility)
+  }
+
+  // Keyboard shortcuts: Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      } else if (mod && e.key === 'Z' && e.shiftKey) {
+        e.preventDefault()
+        handleRedo()
+      } else if (mod && e.key === 'y') {
+        e.preventDefault()
+        handleRedo()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleUndo, handleRedo])
 
   function handleTailorClick() {
     if (!requirePro('tailor')) return
@@ -315,18 +487,127 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setSectionHints(prev => new Set(prev).add(sectionId))
   }
 
+  async function handleApplyAIInsightFix(suggestion: {
+    beforeText: string
+    afterText: string
+    sectionHint: string
+  }) {
+    setIsApplyingFix(true)
+    try {
+      const resumeText = buildResumeTextForFix(resumeData!)
+      const res = await fetch('/api/ats/apply-fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beforeText: suggestion.beforeText,
+          afterText: suggestion.afterText,
+          sectionHint: suggestion.sectionHint,
+          resumeContext: resumeText,
+        }),
+      })
+
+      if (!res.ok) {
+        console.error('Apply fix failed:', res.status)
+        return
+      }
+
+      const json = await res.json()
+      if (json.success && json.data?.newText) {
+        // Apply the fix to the corresponding section in resumeData
+        applyFixToResumeData(resumeData!, suggestion.sectionHint, suggestion.beforeText, json.data.newText)
+      }
+    } finally {
+      setIsApplyingFix(false)
+    }
+  }
+
+  function buildResumeTextForFix(data: ResumeData): string {
+    const parts: string[] = []
+    if (data.name) parts.push(data.name)
+    if (data.summary) parts.push(`Summary: ${data.summary}`)
+    for (const exp of data.experience) {
+      parts.push(`${exp.title} at ${exp.company}: ${exp.bullets.join(' | ')}`)
+    }
+    for (const edu of data.education) {
+      parts.push(`${edu.degree} in ${edu.field} at ${edu.institution}`)
+    }
+    if (data.skills.length) parts.push(`Skills: ${data.skills.join(', ')}`)
+    for (const proj of data.projects) {
+      parts.push(`${proj.name}: ${proj.description}`)
+    }
+    return parts.join('\n')
+  }
+
+  function applyFixToResumeData(
+    data: ResumeData,
+    sectionHint: string,
+    oldText: string,
+    newText: string
+  ) {
+    const updated = structuredClone(data)
+
+    if (sectionHint === 'experience') {
+      for (let i = 0; i < updated.experience.length; i++) {
+        const exp = updated.experience[i]
+        const bullets = [...exp.bullets]
+        const idx = bullets.findIndex(b => b.includes(oldText.substring(0, 30)) || oldText.includes(b.substring(0, 30)))
+        if (idx !== -1) {
+          bullets[idx] = newText
+          updated.experience[i] = { ...updated.experience[i], bullets }
+          handleDataChange(updated)
+          return
+        }
+      }
+    }
+
+    if (sectionHint === 'summary') {
+      updated.summary = newText
+      handleDataChange(updated)
+      return
+    }
+
+    if (sectionHint === 'skills') {
+      updated.skills = newText.split(',').map(s => s.trim()).filter(Boolean)
+      handleDataChange(updated)
+      return
+    }
+
+    // Fallback: just replace in summary or first empty field
+    updated.summary = newText
+    handleDataChange(updated)
+  }
+
   const visibleData = useMemo(
     () => resumeData ? getVisibleResumeData(resumeData, visibility) : null,
     [resumeData, visibility]
   )
 
+  function accentToSidebarFill(hex?: string | null): string {
+    if (typeof hex !== 'string') return 'rgba(99, 102, 241, 0.12)'
+    const normalized = hex.trim().replace('#', '')
+    if (!normalized) return 'rgba(99, 102, 241, 0.12)'
+    const six = normalized.length === 3
+      ? normalized.split('').map(ch => ch + ch).join('')
+      : normalized
+    const valid = /^[0-9a-fA-F]{6}$/.test(six)
+    if (!valid) return 'rgba(99, 102, 241, 0.12)'
+    const r = parseInt(six.slice(0, 2), 16)
+    const g = parseInt(six.slice(2, 4), 16)
+    const b = parseInt(six.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, 0.10)`
+  }
+
   async function handleDownloadDOCX() {
     if (!requirePro('docx_download') || !resumeData || !visibleData) return
+    if (isOverPageLimit) {
+      window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
+      return
+    }
     await generateDOCX(visibleData, `${resumeTitle || 'resume'}.docx`)
     setIsDownloadOpen(false)
   }
 
-  const TemplateComponent = getTemplateComponent(selectedTemplateId) as React.ComponentType<TemplateProps>
+  const TemplateComponent = UniversalTemplate
 
   if (isLoading || !resumeData) {
     return (
@@ -345,10 +626,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           #builder-print-wrapper,
           #builder-print-wrapper * { visibility: visible; }
           #builder-print-wrapper {
-            position: fixed;
+            position: absolute;
             top: 0; left: 0;
             width: 794px;
+            height: auto !important;
+            overflow: visible !important;
             transform: none !important;
+            background: white;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+          }
+          #builder-print-wrapper > div {
+            page-break-inside: auto;
+          }
+          #builder-print-wrapper section,
+          #builder-print-wrapper .section-break {
+            page-break-inside: avoid;
           }
         }
         
@@ -357,7 +650,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             backdrop-filter: blur(20px);
         }
         .resume-canvas {
-            aspect-ratio: 1 / 1.414;
             box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
         }
       `}</style>
@@ -407,7 +699,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             >
               Template
             </button>
-            
+
+            {/* Undo/Redo */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleUndo}
+                disabled={!history.canUndo}
+                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 size={16} />
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!history.canRedo}
+                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100/50 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Redo (Ctrl+Shift+Z)"
+              >
+                <Redo size={16} />
+              </button>
+            </div>
+
             {/* Save Status Indicator */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-100/50 text-zinc-500 border border-zinc-200/50 transition-all duration-300">
               {isSaving ? (
@@ -428,7 +740,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
             <div className="relative">
               <button
-                onClick={() => setIsDownloadOpen(!isDownloadOpen)}
+                onClick={() => {
+                  if (isOverPageLimit) {
+                    window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
+                    return
+                  }
+                  setIsDownloadOpen(!isDownloadOpen)
+                }}
                 className="px-4 py-2 text-sm font-semibold bg-primary-container text-on-primary-container rounded-lg flex items-center gap-2 active:scale-95 transition-all shadow-sm"
               >
                 <ChevronDown size={18} />
@@ -437,7 +755,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               {isDownloadOpen && (
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-lg border border-gray-100 shadow-lg py-1 w-36 z-[100]">
                   <button
-                    onClick={() => { window.print(); setIsDownloadOpen(false) }}
+                    onClick={() => {
+                      if (isOverPageLimit) {
+                        window.alert('Print is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
+                        return
+                      }
+                      window.print()
+                      setIsDownloadOpen(false)
+                    }}
                     className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     PDF
@@ -459,15 +784,17 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         <main className="flex h-screen pt-16">
           
           {/* Left Sidebar: EDITOR SECTIONS */}
-          <aside style={{ width: leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 overflow-y-auto flex flex-col shrink-0">
+          <aside style={{ width: leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 overflow-y-auto flex flex-col shrink-0 relative">
              <SectionList
                resumeData={resumeData}
                visibility={visibility}
+               layout={templateConfig.layout}
                expandedSection={expandedSection}
                sectionHints={sectionHints}
                onDataChange={handleDataChange}
                onVisibilityChange={handleVisibilityChange}
                onExpandSection={(id) => setExpandedSection(id)}
+               isDisabled={isApplyingFix}
              />
           </aside>
 
@@ -480,28 +807,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           {/* Center Canvas */}
           <section className="flex-1 overflow-y-auto bg-surface-container flex flex-col items-center py-8 px-8 min-w-[500px]">
             {/* Canvas Tools */}
-            <div className="w-full max-w-[800px] flex justify-between items-center mb-6">
+            <div className="mx-auto flex justify-between items-center mb-6" style={{ width: 794 * previewScale }}>
               <div className="flex items-center gap-1 bg-surface-container-lowest px-2 py-1.5 rounded-full shadow-sm">
                 <button
-                  onClick={() => setVisibility({ ...visibility, density: 'compressed' })}
+                  onClick={() => setTemplateConfig({ ...templateConfig, density: 'compressed' })}
                   className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${
-                    visibility.density === 'compressed' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                    templateConfig.density === 'compressed' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
                   }`}
                 >
                   Compressed
                 </button>
                 <div className="w-px h-4 bg-zinc-200"></div>
                 <button
-                  onClick={() => setVisibility({ ...visibility, density: 'relaxed' })}
+                  onClick={() => setTemplateConfig({ ...templateConfig, density: 'relaxed' })}
                   className={`px-4 py-1.5 text-xs font-bold rounded-full transition-all ${
-                    visibility.density === 'relaxed' || !visibility.density ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                    templateConfig.density === 'relaxed' || !templateConfig.density ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
                   }`}
                 >
                   Relaxed
                 </button>
               </div>
               
-              {/* Cloud Save Logic Status Badge */}
               <div className="flex items-center gap-2 text-zinc-400 text-xs font-medium bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm">
                 {isSaving ? (
                   <>
@@ -529,24 +855,105 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               </div>
             </div>
 
-            {/* The Resume */}
+            {/* Hidden full-flow content: measurement + print source */}
             <div
+              ref={resumeRef}
               id="builder-print-wrapper"
-              className="resume-canvas bg-white"
-              style={{
-                transform: `scale(${previewScale})`,
-                transformOrigin: 'top center',
-                width: '794px',
-              }}
+              className="absolute -left-[99999px] top-0 w-[794px] opacity-0 pointer-events-none"
+              aria-hidden
             >
               <TemplateComponent
                 data={visibleData ?? resumeData}
                 isEditing={false}
                 onFieldChange={() => {}}
                 sectionOrder={getOrderedSections(visibility)}
-                density={visibility.density ?? 'relaxed'}
+                sidebarSectionOrder={getOrderedSidebarSections(visibility)}
+                config={templateConfig}
               />
             </div>
+
+            {/* Word-like paged preview (paginate first, scale once) */}
+            <div
+              className="print:hidden relative"
+              style={{
+                width: 794 * previewScale,
+                height: ((renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)) * previewScale,
+              }}
+            >
+              <div
+                style={{
+                  width: '794px',
+                  height: `${(renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)}px`,
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'top left',
+                }}
+              >
+                {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
+                  <div
+                    key={`page-${pageIndex}`}
+                    className={`absolute left-0 bg-white border ${
+                      isOverPageLimit && pageIndex === MAX_PAGES - 1 ? 'border-red-300' : 'border-zinc-200/80'
+                    }`}
+                    style={{
+                      top: pageIndex * (PAGE_H + PAGE_GAP),
+                      width: '794px',
+                      height: `${PAGE_H}px`,
+                    }}
+                  >
+                    {/* Full-page template shell so page styling continues to page bottom */}
+                    {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
+                      <div
+                        className="absolute inset-0 pointer-events-none z-0"
+                      >
+                        <div
+                          className="absolute top-0 bottom-0"
+                          style={{
+                            width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
+                            backgroundColor: accentToSidebarFill(templateConfig.accentColor),
+                            ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
+                      Page {pageIndex + 1}
+                    </div>
+
+                    <div className="relative overflow-hidden w-full h-full z-10">
+                      <div
+                        style={{
+                          width: '794px',
+                          transform: `translateY(-${pageIndex * PAGE_H}px)`,
+                          transformOrigin: 'top left',
+                        }}
+                      >
+                        <TemplateComponent
+                          data={visibleData ?? resumeData}
+                          isEditing={false}
+                          onFieldChange={() => {}}
+                          sectionOrder={getOrderedSections(visibility)}
+                          sidebarSectionOrder={getOrderedSidebarSections(visibility)}
+                          config={templateConfig}
+                        />
+                      </div>
+                    </div>
+
+                    {isOverPageLimit && pageIndex === MAX_PAGES - 1 && (
+                      <div className="absolute bottom-0 left-0 right-0 z-30 bg-red-50 border-t border-red-200 text-red-700 text-[11px] font-bold px-4 py-2">
+                        Resume content beyond 2 pages is hidden. Keep your resume to 1-2 pages max.
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {isOverPageLimit && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-xs font-semibold">
+                Your resume is currently {pageCount} pages. Resumes over 2 pages are blocked. Trim content to continue.
+              </div>
+            )}
           </section>
 
           {/* Right Handle */}
@@ -592,49 +999,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     onApplySuggestion={handleApplySuggestion}
                   />
                 ) : (
-                  <div className="flex flex-col h-full overflow-hidden">
-                    <div className="p-6 overflow-y-auto flex-1">
-                      <div className="mb-8">
-                        <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-6">AI Insights</h2>
-                        {/* Score Meter */}
-                        <div className="relative flex flex-col items-center p-6 bg-surface-container-low rounded-3xl mb-8">
-                          <div className="w-24 h-24 rounded-full border-[6px] border-zinc-200 flex items-center justify-center relative">
-                            <div className="absolute inset-[-6px] rounded-full border-[6px] border-primary" style={{ clipPath: "polygon(0 0, 100% 0, 100% 84%, 0 84%)" }}></div>
-                            <span className="text-3xl font-black text-zinc-800 tracking-tighter">84</span>
-                          </div>
-                          <span className="mt-4 text-[13px] font-bold text-zinc-700">Resume Strength: Good</span>
-                          <p className="mt-1 text-[11px] text-zinc-500 text-center leading-tight">Your summary is strong, but work experience needs more metrics.</p>
-                        </div>
-                        
-                        {/* Suggestion Cards */}
-                        <div className="space-y-4">
-                          <div className="p-4 bg-primary-container/20 rounded-2xl border border-primary-container/30">
-                            <div className="flex items-start gap-3 mb-2">
-                              <Wand2 className="text-primary text-lg" size={18} />
-                              <h3 className="text-xs font-bold text-on-primary-container uppercase">Action Verb Suggestion</h3>
-                            </div>
-                            <p className="text-xs text-on-secondary-container leading-normal">
-                              Replace <span className="font-bold underline decoration-primary">"Led"</span> with <span className="font-bold text-primary italic">"Orchestrated"</span> for stronger impact.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Tailoring CTA */}
-                    <div className="p-6 bg-zinc-900 text-white rounded-t-[2rem]">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Wand2 className="text-primary-container" size={16} />
-                        <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Tailor for Job</span>
-                      </div>
-                      <p className="text-xs text-zinc-300 mb-4 leading-relaxed">Instantly adjust your resume keywords for a specific job description.</p>
-                      <button 
-                        onClick={handleTailorClick}
-                        className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all"
-                      >
-                        Start Tailoring
-                      </button>
-                    </div>
-                  </div>
+                  <AIInsightsPanel
+                    resumeData={resumeData}
+                    onApplyFix={handleApplyAIInsightFix}
+                    isApplyingFix={isApplyingFix}
+                    resumeId={resumeId}
+                    isPro={isPro}
+                  />
                 )
               )}
             </div>
@@ -643,12 +1014,12 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         </main>
       </div>
 
-      <TemplateSwitcherModal
+      <TemplateCustomizerModal
         isOpen={isTemplateModalOpen}
-        currentTemplateId={selectedTemplateId}
-        resumeData={resumeData}
-        onSelect={setSelectedTemplateId}
+        config={templateConfig}
+        onConfigChange={setTemplateConfig}
         onClose={() => setIsTemplateModalOpen(false)}
+        resumeData={resumeData}
       />
       <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
     </>
