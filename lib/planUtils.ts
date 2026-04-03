@@ -1,9 +1,8 @@
 import type { Profile } from '@/types'
 import { FREE_PLAN } from '@/lib/pricing'
 
-const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'openrouter/free'
-// Pro: Claude 3.5 Sonnet for advanced ATS analysis
-const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'anthropic/claude-3.5-sonnet'
+const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
+const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
 
 export function isPro(profile: Profile | null): boolean {
   return profile?.plan === 'pro'

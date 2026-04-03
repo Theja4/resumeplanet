@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
 import AdBanner from '@/components/shared/AdBanner'
@@ -336,6 +337,7 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientProps) {
+  const router = useRouter()
   const pro = isPro(profile)
   const initialScansLeft = getRemainingFreeScans(profile)
   const searchParams = useSearchParams()
@@ -439,6 +441,10 @@ export default function ATSCheckerClient({ resumes, profile }: ATSCheckerClientP
       setScanResult(json.data)
       if (!pro) setScansLeft(json.data.scansRemaining ?? 0)
       setActiveTab('results')
+      // The scan updates shared dashboard data, so refresh router state and warm fresh payloads.
+      router.refresh()
+      void router.prefetch('/dashboard')
+      void router.prefetch('/dashboard/resumes')
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch {
       setScanError(ERROR_MESSAGES['INTERNAL_ERROR'])

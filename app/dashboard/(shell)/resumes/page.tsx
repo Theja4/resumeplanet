@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import ResumesClient from './ResumesClient'
-import type { Resume, ATSScore, Profile } from '@/types'
+import type { Resume, Profile } from '@/types'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ResumesPage() {
   const supabase = await createClient()
@@ -24,7 +26,11 @@ export default async function ResumesPage() {
 
   // Fetch latest ATS score for each resume in a single query
   const resumeIds = resumes.map((r) => r.id)
-  let latestScores: Record<string, number> = {}
+  const latestScores: Record<string, number> = Object.fromEntries(
+    resumes
+      .filter((resume): resume is Resume & { ats_score: number } => typeof resume.ats_score === 'number')
+      .map(resume => [resume.id, resume.ats_score])
+  )
 
   if (resumeIds.length > 0) {
     const { data: scores } = await supabase

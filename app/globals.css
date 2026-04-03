@@ -386,3 +386,67 @@
   0%        { transform: translateX(-100%) skewX(-15deg); }
   20%, 100% { transform: translateX(380%)  skewX(-15deg); }
 }
+
+@keyframes aurora-drift {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(32px, -28px, 0) scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+@keyframes login-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes logo-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.login-aurora {
+  filter: blur(72px);
+  animation: aurora-drift 18s ease-in-out infinite;
+}
+
+.login-aurora-two {
+  animation-delay: 4s;
+}
+
+.login-progress-fill {
+  transform-origin: left center;
+  animation: login-progress 5.6s linear forwards;
+}
+
+.login-carousel-shell {
+  animation: floating-stack 10s ease-in-out infinite;
+}
+
+.login-floating-chip {
+  animation: float-up-down 5.5s ease-in-out infinite;
+}
+
+.logo-marquee-mask {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+.logo-marquee-track {
+  animation: logo-marquee 28s linear infinite;
+  will-change: transform;
+}
+
+.logo-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-marquee-track {
+    animation: none;
+    transform: none;
+  }
+}

@@ -15,9 +15,9 @@ export const PRO_FEATURES = {
     ],
   },
   docx_download: {
-    title: 'DOCX export is a Pro feature',
-    description: 'Download your resume as an editable Word document.',
-    bullets: ['Word .docx format', 'ATS-friendly', 'Editable by recruiters'],
+    title: 'Custom template exports are a Pro feature',
+    description: 'Customize one polished template and export it as PDF or editable Word.',
+    bullets: ['Highly customizable template', 'PDF + DOCX export', 'ATS-friendly formatting'],
   },
   multi_resume: {
     title: 'Multiple resumes is a Pro feature',

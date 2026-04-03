@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { analyzeResume } from '@/lib/claude'
 import { getRemainingFreeScans, isPro } from '@/lib/planUtils'
 import { FREE_PLAN } from '@/lib/pricing'
-import type { APIResponse, ATSResult, ATSSuggestion, ATSScanTier, Profile, FreeATSResult, ProATSResult, ResumeData } from '@/types'
+import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import { parseResumeText } from '@/lib/resumeParser'
+import type { APIResponse, ATSResult, ATSSuggestion, ATSScanTier, Profile, ResumeData } from '@/types'
 
 type ATSScoreResponse = ATSResult & {
   pipeline: 'free_ats' | 'pro_ats'
@@ -13,95 +14,65 @@ type ATSScoreResponse = ATSResult & {
   scanTier: ATSScanTier
 }
 
-function toPercent(score: number, max: number): number {
-  if (!max) return 0
-  return Math.max(0, Math.min(100, Math.round((score / max) * 100)))
+interface ScoreBody {
+  resumeText?: string
+  resumeId?: string
+  jobDescription?: string
 }
 
-function buildFreeSuggestions(result: FreeATSResult): ATSSuggestion[] {
-  return result.missing_sections.map(section => ({
-    category: 'keywords',
-    severity: 'medium',
-    issue: `Missing ${section} section`,
-    fix: `Add a clear ${section} section using a standard resume heading.`,
-  }))
-}
+const KEYWORD_STOPWORDS = new Set([
+  'about', 'across', 'after', 'also', 'and', 'any', 'are', 'based', 'been', 'being', 'build',
+  'building', 'business', 'candidate', 'candidates', 'clear', 'closely', 'collaborate', 'company',
+  'cross', 'deliver', 'demonstrated', 'department', 'develop', 'experience', 'for', 'from', 'have',
+  'help', 'ideal', 'including', 'into', 'join', 'knowledge', 'looking', 'manage', 'must', 'need',
+  'our', 'plus', 'preferred', 'requirements', 'responsibilities', 'role', 'self', 'skills', 'strong',
+  'team', 'teams', 'that', 'the', 'their', 'this', 'through', 'using', 'will', 'with', 'work', 'years',
+  'you', 'your',
+])
 
-function buildProSuggestions(result: ProATSResult): ATSSuggestion[] {
-  const suggestions: ATSSuggestion[] = []
+const PHRASE_KEYWORDS = [
+  'machine learning',
+  'data analysis',
+  'data engineering',
+  'project management',
+  'product management',
+  'stakeholder management',
+  'customer success',
+  'business intelligence',
+  'continuous integration',
+  'continuous deployment',
+  'cross functional',
+  'go to market',
+  'search engine optimization',
+  'account management',
+  'user research',
+]
 
-  for (const [category, data] of Object.entries(result.section_scores)) {
-    const mappedCategory: ATSSuggestion['category'] =
-      category === 'formatting' ? 'formatting'
-        : category === 'education' ? 'education'
-        : category === 'skills' ? 'skills'
-        : category === 'summary' ? 'summary'
-        : 'experience'
-
-    for (const issue of data.issues ?? []) {
-      suggestions.push({
-        category: mappedCategory,
-        severity: data.score < data.max * 0.5 ? 'high' : data.score < data.max * 0.75 ? 'medium' : 'low',
-        issue,
-        fix: result.top_3_fixes.find(fix => fix.toLowerCase().includes(issue.toLowerCase().split(' ')[0])) ?? result.top_3_fixes[0] ?? 'Improve this section for better ATS performance.',
-      })
-    }
+function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
+  const normalized: ResumeData = {
+    name: data?.name ?? '',
+    email: data?.email ?? '',
+    phone: data?.phone ?? '',
+    location: data?.location ?? '',
+    linkedin: data?.linkedin ?? '',
+    website: data?.website ?? '',
+    summary: data?.summary ?? '',
+    currentRole: data?.currentRole ?? data?.experience?.[0]?.title ?? '',
+    experience: data?.experience ?? [],
+    education: data?.education ?? [],
+    skills: data?.skills ?? [],
+    certifications: data?.certifications ?? [],
+    projects: data?.projects ?? [],
+    languages: data?.languages ?? [],
+    volunteer: data?.volunteer ?? [],
+    interests: data?.interests ?? [],
+    awards: data?.awards ?? [],
+    publications: data?.publications ?? [],
+    references: data?.references ?? [],
+    customSections: data?.customSections ?? [],
   }
 
-  return suggestions
-}
-
-function normalizeATSResult(result: FreeATSResult | ProATSResult, pro: boolean): ATSResult {
-  if (!pro) {
-    const freeResult = result as FreeATSResult
-    return {
-      score: freeResult.ats_score,
-      tier: 'basic',
-      missingKeywords: freeResult.missing_sections ?? [],
-      presentKeywords: freeResult.detected_sections ?? [],
-      suggestions: buildFreeSuggestions(freeResult),
-      summary: freeResult.has_quantified_achievements
-        ? `Resume scored ${freeResult.ats_score}/100. Core sections detected: ${(freeResult.detected_sections ?? []).join(', ') || 'none'}.`
-        : `Resume scored ${freeResult.ats_score}/100 and needs stronger quantified achievements plus clearer ATS structure.`,
-      scoreBreakdown: {
-        keywordMatch: toPercent(freeResult.section_scores.keyword_optimization.score, freeResult.section_scores.keyword_optimization.max),
-        formatting: toPercent(freeResult.section_scores.formatting.score, freeResult.section_scores.formatting.max),
-        relevance: toPercent(freeResult.section_scores.content_quality.score, freeResult.section_scores.content_quality.max),
-        completeness: toPercent(freeResult.section_scores.section_structure.score, freeResult.section_scores.section_structure.max),
-        keywordDensity: toPercent(freeResult.section_scores.length_density.score, freeResult.section_scores.length_density.max),
-      },
-      keywordAnalysis: {
-        mustHave: freeResult.missing_sections ?? [],
-        niceToHave: [],
-        overused: [],
-      },
-      formattingIssues: [],
-    }
-  }
-
-  const proResult = result as ProATSResult
-  return {
-    score: proResult.ats_score,
-    tier: 'advanced',
-    missingKeywords: proResult.missing_sections ?? [],
-    presentKeywords: proResult.detected_sections ?? [],
-    suggestions: buildProSuggestions(proResult),
-    summary: proResult.overall_assessment,
-    scoreBreakdown: {
-      keywordMatch: toPercent(proResult.section_scores.keyword_optimization.score, proResult.section_scores.keyword_optimization.max),
-      formatting: toPercent(proResult.section_scores.formatting.score, proResult.section_scores.formatting.max),
-      relevance: toPercent(proResult.section_scores.content_quality.score, proResult.section_scores.content_quality.max),
-      completeness: toPercent(proResult.section_scores.section_structure.score, proResult.section_scores.section_structure.max),
-      keywordDensity: toPercent(proResult.section_scores.length_density.score, proResult.section_scores.length_density.max),
-    },
-    keywordAnalysis: {
-      mustHave: proResult.missing_sections ?? [],
-      niceToHave: proResult.skills_section_suggestion?.missing_high_value_skills ?? [],
-      overused: [],
-    },
-    industryInsight: proResult.summary_suggestion ?? undefined,
-    formattingIssues: proResult.section_scores.formatting.issues ?? [],
-  }
+  return normalized
 }
 
 function resumeDataToText(data: ResumeData | null): string {
@@ -142,14 +113,8 @@ function resumeDataToText(data: ResumeData | null): string {
     parts.push(...item.bullets)
   }
 
-  for (const item of data.awards) {
-    parts.push(item.title, item.issuer, item.date)
-  }
-
-  for (const item of data.publications) {
-    parts.push(item.title, item.publisher, item.date)
-  }
-
+  for (const item of data.awards) parts.push(item.title, item.issuer, item.date)
+  for (const item of data.publications) parts.push(item.title, item.publisher, item.date)
   parts.push(...data.languages, ...data.interests, ...data.references)
 
   for (const section of data.customSections ?? []) {
@@ -167,10 +132,316 @@ function resumeDataToText(data: ResumeData | null): string {
   return parts.map(part => part?.trim()).filter(Boolean).join('\n')
 }
 
+function escapeRegex(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function includesKeyword(text: string, keyword: string) {
+  if (!keyword.trim()) return false
+  const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i')
+  return pattern.test(text)
+}
+
+function averagePercent(items: Array<{ score: number; max: number }>) {
+  if (items.length === 0) return 0
+  const total = items.reduce((sum, item) => sum + (item.max ? item.score / item.max : 0), 0)
+  return Math.round((total / items.length) * 100)
+}
+
+function extractRelevantKeywords(jobDescription: string) {
+  const source = jobDescription.trim()
+  if (!source) return []
+
+  const lower = source.toLowerCase()
+  const phrases = PHRASE_KEYWORDS.filter(phrase => lower.includes(phrase))
+  const tokenMatches = source.match(/[A-Za-z][A-Za-z0-9.+#/-]{1,}/g) ?? []
+  const frequency = new Map<string, { display: string; count: number; priority: number }>()
+
+  for (const token of tokenMatches) {
+    const normalized = token.toLowerCase()
+    if (KEYWORD_STOPWORDS.has(normalized)) continue
+    if (normalized.length < 3 && !/[+#.]/.test(token)) continue
+
+    const current = frequency.get(normalized)
+    const priority =
+      /[+#./]/.test(token) || /\d/.test(token) ? 3
+        : token === token.toUpperCase() ? 2
+        : 1
+
+    frequency.set(normalized, {
+      display: current?.display ?? token,
+      count: (current?.count ?? 0) + 1,
+      priority: Math.max(current?.priority ?? 0, priority),
+    })
+  }
+
+  const rankedTokens = [...frequency.entries()]
+    .sort((a, b) => {
+      if (b[1].priority !== a[1].priority) return b[1].priority - a[1].priority
+      if (b[1].count !== a[1].count) return b[1].count - a[1].count
+      return a[0].localeCompare(b[0])
+    })
+    .map(([, value]) => value.display)
+
+  const ordered = [...phrases, ...rankedTokens]
+  const deduped: string[] = []
+  const seen = new Set<string>()
+  for (const keyword of ordered) {
+    const normalized = keyword.toLowerCase()
+    if (seen.has(normalized)) continue
+    seen.add(normalized)
+    deduped.push(keyword)
+  }
+
+  return deduped.slice(0, 15)
+}
+
+function getResumeEvidenceText(data: ResumeData) {
+  return [
+    data.currentRole,
+    data.summary,
+    ...data.skills,
+    ...data.experience.flatMap(exp => [exp.title, exp.company, ...exp.bullets]),
+    ...data.projects.flatMap(project => [project.name, project.description, ...(project.technologies ?? [])]),
+  ].filter(Boolean).join('\n')
+}
+
+function getSeverity(gap: number, max: number): ATSSuggestion['severity'] {
+  const ratio = max ? gap / max : 0
+  if (gap >= 5 || ratio >= 0.6) return 'high'
+  if (gap >= 3 || ratio >= 0.35) return 'medium'
+  return 'low'
+}
+
+function weakAreaToSuggestion(area: WeakArea, breakdown: ScorerResult['breakdown'], pro: boolean): ATSSuggestion | null {
+  const detail = breakdown[area.criterionId]?.details ?? area.description
+  const severity = getSeverity(area.gap, area.maxScore)
+
+  switch (area.criterionId) {
+    case 'contact':
+      return {
+        category: 'formatting',
+        severity,
+        issue: 'Your header is missing contact details ATS and recruiters expect immediately.',
+        fix: 'Add a professional email, phone number, and either LinkedIn or portfolio URL in the top header.',
+        example: pro ? detail : undefined,
+      }
+    case 'summary':
+      return {
+        category: 'summary',
+        severity,
+        issue: 'Your summary is not positioning you quickly enough for a recruiter skim.',
+        fix: 'Write a 2-3 sentence summary that matches your target role, core strengths, and strongest outcome.',
+        example: pro ? area.relevantText[0] : undefined,
+      }
+    case 'exp_verbs':
+      return {
+        category: 'experience',
+        severity,
+        issue: 'Too many bullets read like responsibilities instead of ownership and action.',
+        fix: 'Rewrite weak bullet openings with strong action verbs tied to what you owned and moved forward.',
+        example: pro ? area.relevantText[0] : undefined,
+      }
+    case 'exp_metrics':
+      return {
+        category: 'experience',
+        severity,
+        issue: 'Your experience bullets are not proving impact clearly enough.',
+        fix: 'Add concrete outcomes, scope, or measurable results so each bullet shows why the work mattered.',
+        example: pro ? area.relevantText[0] : undefined,
+      }
+    case 'exp_depth':
+      return {
+        category: 'experience',
+        severity,
+        issue: 'Your roles are too thin to communicate scope, ownership, and results.',
+        fix: 'Expand your strongest roles to roughly 3-4 useful bullets covering challenge, action, and outcome.',
+        example: pro ? detail : undefined,
+      }
+    case 'skills':
+      return {
+        category: 'skills',
+        severity,
+        issue: 'Your skills section is not broad or specific enough to support ATS matching.',
+        fix: 'Add the real tools, platforms, and methods you use most often, grouped cleanly and consistently.',
+        example: pro ? detail : undefined,
+      }
+    case 'keywords':
+      return {
+        category: 'keywords',
+        severity,
+        issue: 'Important keywords are sitting in isolation instead of showing up in accomplishment context.',
+        fix: 'Move core tools and skills into bullets where you can show how you used them to deliver results.',
+        example: pro ? area.relevantText.slice(0, 3).join(', ') : undefined,
+      }
+    case 'education':
+      return {
+        category: 'education',
+        severity,
+        issue: 'Your education section is incomplete for ATS parsing.',
+        fix: 'Include institution, degree, field of study, and graduation date in a consistent format.',
+        example: pro ? detail : undefined,
+      }
+    case 'structure':
+      return {
+        category: 'formatting',
+        severity,
+        issue: 'Your resume structure is missing standard sections or reads in a non-standard order.',
+        fix: 'Use a recruiter-friendly structure: Summary, Experience, Education, then Skills.',
+        example: pro ? detail : undefined,
+      }
+    case 'polish':
+      return {
+        category: 'formatting',
+        severity,
+        issue: 'Your resume still has vague or non-production-ready language.',
+        fix: 'Remove placeholders, replace vague bullets with specific outcomes, and tighten weak lines.',
+        example: pro ? detail : undefined,
+      }
+    default:
+      return null
+  }
+}
+
+function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData, scorerResult: ScorerResult) {
+  const evidenceText = getResumeEvidenceText(data)
+
+  if (jobKeywords.length > 0) {
+    const presentKeywords = jobKeywords.filter(keyword => includesKeyword(evidenceText, keyword))
+    const missingKeywords = jobKeywords.filter(keyword => !includesKeyword(evidenceText, keyword))
+
+    return {
+      presentKeywords,
+      missingKeywords,
+      keywordAnalysis: {
+        mustHave: missingKeywords.slice(0, 8),
+        niceToHave: presentKeywords.slice(0, 6),
+        overused: [] as string[],
+      },
+    }
+  }
+
+  const keywordWeakArea = scorerResult.weakAreas.find(area => area.criterionId === 'keywords')
+  const presentKeywords = data.skills.filter(skill => includesKeyword(evidenceText, skill)).slice(0, 10)
+  const missingKeywords = (keywordWeakArea?.relevantText ?? []).slice(0, 10)
+
+  return {
+    presentKeywords,
+    missingKeywords,
+    keywordAnalysis: {
+      mustHave: missingKeywords.slice(0, 8),
+      niceToHave: presentKeywords.slice(0, 6),
+      overused: [] as string[],
+    },
+  }
+}
+
+function buildATSCheckerSummary(
+  scorerResult: ScorerResult,
+  missingKeywords: string[],
+  jobKeywords: string[]
+) {
+  const topWeakAreas = scorerResult.weakAreas
+    .slice(0, 2)
+    .map(area => area.description.replace(/\.$/, ''))
+    .join('; ')
+
+  if (jobKeywords.length > 0) {
+    if (missingKeywords.length === 0) {
+      return `Resume scored ${scorerResult.score}/100 and covers the core job keywords well. Focus next on sharpening execution and recruiter readability.`
+    }
+
+    return `Resume scored ${scorerResult.score}/100. The biggest gaps are missing role keywords plus ${topWeakAreas || 'stronger evidence of impact'}.`
+  }
+
+  if (scorerResult.score >= 80) {
+    return `Resume scored ${scorerResult.score}/100. The foundation is strong, with only a few refinements left to improve recruiter confidence.`
+  }
+
+  return `Resume scored ${scorerResult.score}/100. The biggest issues are ${topWeakAreas || 'weak impact evidence and incomplete ATS structure'}.`
+}
+
+function buildIndustryInsight(jobKeywords: string[], presentKeywords: string[], missingKeywords: string[]) {
+  if (jobKeywords.length === 0) return undefined
+
+  const leadingTerms = jobKeywords.slice(0, 3).join(', ')
+  if (missingKeywords.length === 0) {
+    return `This role emphasizes ${leadingTerms}. Your resume already reflects those priorities directly, so the next gains come from clearer outcomes and stronger specificity.`
+  }
+
+  return `This role emphasizes ${leadingTerms}. Your resume currently matches ${presentKeywords.length} of ${jobKeywords.length} high-signal terms directly and still needs stronger evidence around ${missingKeywords.slice(0, 3).join(', ')}.`
+}
+
+function buildATSResult(
+  scorerResult: ScorerResult,
+  data: ResumeData,
+  pro: boolean,
+  jobDescription?: string
+): ATSResult {
+  const jobKeywords = extractRelevantKeywords(jobDescription ?? '')
+  const { presentKeywords, missingKeywords, keywordAnalysis } = buildKeywordAnalysis(jobKeywords, data, scorerResult)
+  const breakdown = scorerResult.breakdown
+
+  const baseSuggestions = scorerResult.weakAreas
+    .map(area => weakAreaToSuggestion(area, breakdown, pro))
+    .filter((suggestion): suggestion is ATSSuggestion => Boolean(suggestion))
+
+  const keywordGapSuggestions = missingKeywords.slice(0, pro ? 4 : 2).map(keyword => ({
+    category: 'keywords' as const,
+    severity: 'high' as const,
+    issue: `The target role emphasizes "${keyword}" and your resume does not show direct evidence of it.`,
+    fix: `Add "${keyword}" only where it is truthful, ideally inside bullets or projects that show how you used it.`,
+    example: pro ? `Weave ${keyword} into an experience bullet instead of leaving it isolated in a list.` : undefined,
+  }))
+
+  const suggestions = [...baseSuggestions, ...keywordGapSuggestions].slice(0, pro ? 10 : 5)
+
+  return {
+    score: scorerResult.score,
+    tier: pro ? 'advanced' : 'basic',
+    missingKeywords,
+    presentKeywords,
+    suggestions,
+    summary: buildATSCheckerSummary(scorerResult, missingKeywords, jobKeywords),
+    scoreBreakdown: {
+      keywordMatch: Math.round(((breakdown.keywords.score + breakdown.skills.score) / (breakdown.keywords.max + breakdown.skills.max)) * 100),
+      formatting: averagePercent([breakdown.structure, breakdown.polish]),
+      relevance: averagePercent([breakdown.summary, breakdown.exp_verbs, breakdown.exp_metrics, breakdown.exp_depth]),
+      completeness: averagePercent([breakdown.contact, breakdown.structure, breakdown.education, breakdown.skills]),
+      keywordDensity: averagePercent([breakdown.keywords]),
+    },
+    keywordAnalysis: pro ? keywordAnalysis : {
+      mustHave: missingKeywords.slice(0, 6),
+      niceToHave: [],
+      overused: [],
+    },
+    industryInsight: pro ? buildIndustryInsight(jobKeywords, presentKeywords, missingKeywords) : undefined,
+    formattingIssues: pro
+      ? scorerResult.weakAreas
+          .filter(area => area.criterionId === 'structure' || area.criterionId === 'polish' || area.criterionId === 'contact')
+          .map(area => area.description)
+      : [],
+  }
+}
+
+async function getScoringResumeData(
+  resumeText: string,
+  storedParsedData: ResumeData | null
+) {
+  if (storedParsedData) return normalizeResumeData(storedParsedData)
+
+  try {
+    const parsed = await parseResumeText(resumeText)
+    return normalizeResumeData(parsed)
+  } catch (error) {
+    console.warn('Failed to parse resume text for deterministic ATS score:', error instanceof Error ? error.message : error)
+    return normalizeResumeData(null)
+  }
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient()
 
-  // ── Auth ───────────────────────────────────────────────────────────────────
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -182,8 +453,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Parse body ─────────────────────────────────────────────────────────────
-  let body: { resumeText: string; resumeId?: string }
+  let body: ScoreBody
   try {
     body = await request.json()
   } catch {
@@ -194,9 +464,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   let { resumeText } = body
-  const { resumeId } = body
+  const { resumeId, jobDescription } = body
 
-  if ((!resumeText || resumeText.trim().length < 100) && resumeId) {
+  let storedParsedData: ResumeData | null = null
+  if (resumeId) {
     const { data: resume } = await supabase
       .from('resumes')
       .select('raw_text, parsed_data')
@@ -204,24 +475,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    const fallbackText =
-      resume?.raw_text?.trim() ||
-      resumeDataToText((resume?.parsed_data as ResumeData | null) ?? null)
-
-    if (fallbackText.trim().length > 0) {
+    storedParsedData = normalizeResumeData((resume?.parsed_data as ResumeData | null) ?? null)
+    const fallbackText = resume?.raw_text?.trim() || resumeDataToText(storedParsedData)
+    if ((!resumeText || resumeText.trim().length < 50) && fallbackText.trim().length > 0) {
       resumeText = fallbackText
     }
   }
 
-  // ── Input validation ───────────────────────────────────────────────────────
-  if (!resumeText || resumeText.trim().length < 100) {
+  if (!resumeText || resumeText.trim().length < 50) {
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'RESUME_TOO_SHORT' },
       { status: 400 }
     )
   }
 
-  // ── Fetch profile ──────────────────────────────────────────────────────────
   const { data: profileData } = await supabase
     .from('profiles')
     .select('*')
@@ -231,7 +498,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const profile = profileData as Profile | null
   const pro = isPro(profile)
 
-  // ── Rate limiting (free plan) ──────────────────────────────────────────────
   if (!pro) {
     const now = new Date()
     const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
@@ -261,47 +527,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── Trim input to tier limit ───────────────────────────────────────────────
-  const maxChars = pro ? 20000 : 8000
-  const trimmedText = resumeText.slice(0, maxChars)
+  const scoringData = await getScoringResumeData(resumeText, storedParsedData)
+  const scorerResult = scoreResume(scoringData)
+  const normalizedResult = buildATSResult(scorerResult, scoringData, pro, jobDescription)
 
-  // ── Call LLM pipeline ─────────────────────────────────────────────────────
-  const pipeline = pro ? 'pro_ats' : 'free_ats'
-  const llmResult = pro
-    ? await analyzeResume<ProATSResult>(pipeline, trimmedText)
-    : await analyzeResume<FreeATSResult>(pipeline, trimmedText)
-
-  if (!llmResult.success) {
-    console.error('ATS score error:', {
-      error: llmResult.error,
-      pipeline,
-      pro,
-      inputChars: trimmedText.length,
-      details: llmResult.details ?? [],
-    })
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'INTERNAL_ERROR' },
-      { status: 500 }
-    )
-  }
-
-  const result = llmResult.data
-  const normalizedResult = normalizeATSResult(result, pro)
-
-  // ── Save to ats_scores ─────────────────────────────────────────────────────
   const { data: savedScore } = await supabase
     .from('ats_scores')
     .insert({
       user_id: user.id,
       resume_id: resumeId ?? null,
-      job_description: null,
+      job_description: jobDescription ?? null,
       score: normalizedResult.score,
       missing_keywords: normalizedResult.missingKeywords,
-      suggestions: [],
+      suggestions: normalizedResult.suggestions,
       scan_tier: pro ? 'advanced' : 'basic',
     })
     .select('id')
     .single()
+
+  if (resumeId) {
+    await supabase
+      .from('resumes')
+      .update({
+        ats_score: scorerResult.score,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', resumeId)
+      .eq('user_id', user.id)
+  }
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/resumes')
@@ -309,7 +562,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     revalidatePath(`/dashboard/resumes/${resumeId}`)
   }
 
-  // ── Increment free scan count ──────────────────────────────────────────────
   if (!pro) {
     await supabase
       .from('profiles')
@@ -324,7 +576,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       success: true,
       data: {
         ...normalizedResult,
-        pipeline,
+        pipeline: pro ? 'pro_ats' : 'free_ats',
         scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
         scoreId: savedScore?.id ?? '',
         scanTier: pro ? 'advanced' : 'basic',

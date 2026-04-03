@@ -1,6 +1,6 @@
 // lib/claude.ts - Refactored for OpenRouter support
-export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'openrouter/free'
-export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'anthropic/claude-3.5-sonnet'
+export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
+export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
 
 // ── Rezoomed LLM Pipeline v3 ────────────────────────────────────────────────
 // Swap this one line if DeepSeek faces regulatory issues

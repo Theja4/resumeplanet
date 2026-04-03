@@ -40,10 +40,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { beforeText, afterText, sectionHint, resumeContext } = body
 
-  if (!beforeText || !afterText) {
+  if (!afterText) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Missing beforeText/afterText' },
+      { success: false, error: 'Missing afterText' },
       { status: 400 }
+    )
+  }
+
+  // No beforeText means nothing to locate in the resume — return afterText as-is
+  if (!beforeText) {
+    return NextResponse.json<APIResponse<ApplyFixResponse>>(
+      { success: true, data: { newText: afterText } },
+      { status: 200 }
     )
   }
 
@@ -71,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     result = await callClaudeJSONRace<ApplyFixResponse>({
-      model: process.env.ANTHROPIC_MODEL_PREMIUM || 'anthropic/claude-3.5-sonnet',
+      model: process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2',
       system: APPLY_SYSTEM,
       prompt,
       maxTokens: 512,

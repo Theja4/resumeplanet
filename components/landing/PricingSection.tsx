@@ -35,13 +35,13 @@ export default function PricingSection({ activePromo }: Props) {
         <PricingCard
           variant="free"
           activePromo={activePromo}
-          onUpgrade={() => router.push('/auth/login')}
+          onUpgrade={() => router.push('/auth/register')}
         />
         <PricingCard
           variant="pro"
           selectedPriceId={selectedPriceId}
           activePromo={activePromo}
-          onUpgrade={() => router.push('/auth/login')}
+          onUpgrade={() => router.push('/auth/register')}
         />
         <PricingCard
           variant="professional"

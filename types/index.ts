@@ -100,6 +100,10 @@ export interface Resume {
   title: string
   raw_text: string | null
   parsed_data: ResumeData | null
+  ats_score?: number | null
+  ai_insights_signature?: string | null
+  ai_insights_cache?: unknown | null
+  ai_insights_cached_at?: string | null
   original_file_url: string | null
   template_config: UniversalConfig | null
   created_at: string
@@ -277,14 +281,7 @@ export interface APIResponse<T> {
   error?: string
 }
 
-// ─── Templates ────────────────────────────────────────────────────────────────
-
-export type TemplateId =
-  | 'modern-minimal'
-  | 'executive-classic'
-  | 'creative-bold'
-  | 'graduate-entry'
-  | 'technical-pro'
+// ─── Template Rendering ───────────────────────────────────────────────────────
 
 export interface TemplateProps {
   data: ResumeData
@@ -295,17 +292,6 @@ export interface TemplateProps {
   density?: 'compressed' | 'relaxed'
   accentColor?: string
   fontFamily?: string
-}
-
-export interface TemplateConfig {
-  id: TemplateId
-  name: string
-  description: string
-  targetRole: string
-  accentColor: string
-  isPremium?: boolean
-  isNew?: boolean
-  tags?: string[]
 }
 
 // ─── Universal Template ─────────────────────────────────────────────────────────
@@ -330,58 +316,6 @@ export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
   density: 'relaxed',
 }
 
-// Preset configurations mapped from old template IDs
-export function getPresetConfig(templateId?: TemplateId | string): UniversalConfig {
-  const presets: Record<string, UniversalConfig> = {
-    'modern-minimal': {
-      layout: 'single-column',
-      headerStyle: 'minimal',
-      bulletStyle: 'plain',
-      skillsStyle: 'inline',
-      accentColor: '#4F46E5',
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      density: 'relaxed',
-    },
-    'executive-classic': {
-      layout: 'sidebar-left',
-      headerStyle: 'sidebar-integrated',
-      bulletStyle: 'plain',
-      skillsStyle: 'inline',
-      accentColor: '#1E3A5F',
-      fontFamily: 'Georgia, "Times New Roman", Times, serif',
-      density: 'relaxed',
-    },
-    'creative-bold': {
-      layout: 'single-column',
-      headerStyle: 'banner',
-      bulletStyle: 'timeline',
-      skillsStyle: 'badges',
-      accentColor: '#DC2626',
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      density: 'relaxed',
-    },
-    'graduate-entry': {
-      layout: 'single-column',
-      headerStyle: 'minimal',
-      bulletStyle: 'plain',
-      skillsStyle: 'inline',
-      accentColor: '#059669',
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      density: 'compressed',
-    },
-    'technical-pro': {
-      layout: 'single-column',
-      headerStyle: 'minimal',
-      bulletStyle: 'plain',
-      skillsStyle: 'inline',
-      accentColor: '#0EA5E9',
-      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      density: 'relaxed',
-    },
-  }
-
-  return templateId ? presets[templateId] || presets['modern-minimal'] : presets['modern-minimal']
-}
 
 // ─── Builder ──────────────────────────────────────────────────────────────────
 

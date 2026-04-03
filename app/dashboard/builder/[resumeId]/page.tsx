@@ -5,7 +5,6 @@ import { FONT_OPTIONS } from '@/lib/templateOptions'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  LayoutGrid,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -32,11 +31,13 @@ import AIInsightsPanel from '@/components/builder/AIInsightsPanel'
 import SectionList from '@/components/builder/SectionList'
 import { getVisibleResumeData, getOrderedSections, getOrderedSidebarSections } from '@/lib/visibilityUtils'
 import type { BuilderVisibility, UniversalConfig } from '@/types'
-import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA, getPresetConfig } from '@/types'
+import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
 import { generateResumePdfBlobFromElement } from '@/lib/domPdf'
 import { useUndoHistory } from '@/lib/undoHistory'
+import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
+import { scoreResume } from '@/lib/ats-scorer'
 import type { ResumeData, BuilderMode, TailorAnalysis, Profile } from '@/types'
 
 function normalizeResumeTitle(title: string) {
@@ -76,7 +77,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isApplyingFix, setIsApplyingFix] = useState(false)
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
@@ -263,16 +263,12 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       // Load saved template config from DB
       const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
 
-      // Build final config: start with saved or default, then apply URL overrides
-      let config: UniversalConfig = savedTemplateConfig
+      // Build final config: start with saved or default, then apply direct URL overrides
+      const config: UniversalConfig = savedTemplateConfig
         ? { ...savedTemplateConfig }
         : { ...DEFAULT_UNIVERSAL_CONFIG }
 
       // Apply URL param overrides
-      const templateParam = searchParams.get('template')
-      if (templateParam) {
-        config = { ...config, ...getPresetConfig(templateParam as any) }
-      }
       const accentParam = searchParams.get('accent')
       if (accentParam) config.accentColor = accentParam
       const fontParam = searchParams.get('font')
@@ -317,7 +313,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setIsLoading(false)
     }
     load()
-  }, [resumeId, userId, supabase, router])
+  }, [resumeId, userId, supabase, router, searchParams])
 
   const hasUnsavedChanges =
     !!resumeData && (
@@ -365,6 +361,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
     setIsSaving(true)
     clearTimeout(saveTimerRef.current)
+    const visibleResumeData = getVisibleResumeData(resumeData, visibility)
+    const atsScore = scoreResume(visibleResumeData).score
 
     try {
       if (resumeId === 'draft') {
@@ -374,6 +372,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             user_id: userId,
             title: resumeTitle || 'Untitled Resume',
             parsed_data: resumeData,
+            ats_score: atsScore,
             builder_visibility: visibility,
             template_config: templateConfig,
             updated_at: new Date().toISOString(),
@@ -395,6 +394,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           .update({
             title: resumeTitle || 'Untitled Resume',
             parsed_data: resumeData,
+            ats_score: atsScore,
             builder_visibility: visibility,
             template_config: templateConfig,
             updated_at: new Date().toISOString(),
@@ -408,12 +408,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         setSavedVisibility(visibility)
         setSavedTemplateConfig(templateConfig)
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorDetails =
+        err && typeof err === 'object'
+          ? (err as { message?: string; details?: string; hint?: string; code?: string })
+          : {}
       console.error('Persistence Error Details:', {
-        message: err.message,
-        details: err.details,
-        hint: err.hint,
-        code: err.code,
+        message: errorDetails.message,
+        details: errorDetails.details,
+        hint: errorDetails.hint,
+        code: errorDetails.code,
         fullError: err
       })
     } finally {
@@ -423,7 +427,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   // ── Resizable Panels ────────────────────────────────────────────────────────
   const [leftWidth, setLeftWidth] = useState(420)
-  const [rightWidth, setRightWidth] = useState(320) // Matches previous w-80 (20rem = 320px)
+  const [rightWidth, setRightWidth] = useState(380)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const [isRightCollapsed, setIsRightCollapsed] = useState(false)
@@ -433,7 +437,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       if (isDraggingLeft) {
         setLeftWidth(Math.max(240, Math.min(800, e.clientX)))
       } else if (isDraggingRight) {
-        setRightWidth(Math.max(280, Math.min(800, window.innerWidth - e.clientX)))
+        setRightWidth(Math.max(320, Math.min(800, window.innerWidth - e.clientX)))
       }
     }
 
@@ -497,21 +501,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setVisibility(updated)
   }
 
-  function handleUndo() {
+  const handleUndo = useCallback(() => {
     if (!resumeData) return
     const entry = history.undo()
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
-  }
+  }, [history, resumeData])
 
-  function handleRedo() {
+  const handleRedo = useCallback(() => {
     if (!resumeData) return
     const entry = history.redo()
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
-  }
+  }, [history, resumeData])
 
   function getSectionIdForFieldPath(path: string): string | null {
     if (!path) return null
@@ -565,14 +569,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }
 
   async function handleAnalyse() {
-    if (!resumeData) return
+    if (!visibleData) return
     setIsTailoring(true)
     try {
       const resumeText = [
-        resumeData.name,
-        resumeData.summary,
-        ...resumeData.experience.flatMap(e => [e.title, e.company, ...e.bullets]),
-        ...resumeData.skills,
+        visibleData.name,
+        visibleData.currentRole,
+        visibleData.summary,
+        ...visibleData.experience.flatMap(e => [e.title, e.company, ...e.bullets]),
+        ...visibleData.skills,
       ].filter(Boolean).join('\n')
 
       const res = await fetch('/api/ats/tailor-analysis', {
@@ -599,94 +604,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setSectionHints(prev => new Set(prev).add(sectionId))
   }
 
-  async function handleApplyAIInsightFix(suggestion: {
-    beforeText: string
-    afterText: string
-    sectionHint: string
-  }) {
-    setIsApplyingFix(true)
-    try {
-      const resumeText = buildResumeTextForFix(resumeData!)
-      const res = await fetch('/api/ats/apply-fix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          beforeText: suggestion.beforeText,
-          afterText: suggestion.afterText,
-          sectionHint: suggestion.sectionHint,
-          resumeContext: resumeText,
-        }),
-      })
-
-      if (!res.ok) {
-        console.error('Apply fix failed:', res.status)
-        return
-      }
-
-      const json = await res.json()
-      if (json.success && json.data?.newText) {
-        // Apply the fix to the corresponding section in resumeData
-        applyFixToResumeData(resumeData!, suggestion.sectionHint, suggestion.beforeText, json.data.newText)
-      }
-    } finally {
-      setIsApplyingFix(false)
-    }
-  }
-
-  function buildResumeTextForFix(data: ResumeData): string {
-    const parts: string[] = []
-    if (data.name) parts.push(data.name)
-    if (data.summary) parts.push(`Summary: ${data.summary}`)
-    for (const exp of data.experience) {
-      parts.push(`${exp.title} at ${exp.company}: ${exp.bullets.join(' | ')}`)
-    }
-    for (const edu of data.education) {
-      parts.push(`${edu.degree} in ${edu.field} at ${edu.institution}`)
-    }
-    if (data.skills.length) parts.push(`Skills: ${data.skills.join(', ')}`)
-    for (const proj of data.projects) {
-      parts.push(`${proj.name}: ${proj.description}`)
-    }
-    return parts.join('\n')
-  }
-
-  function applyFixToResumeData(
-    data: ResumeData,
-    sectionHint: string,
-    oldText: string,
-    newText: string
-  ) {
-    const updated = structuredClone(data)
-
-    if (sectionHint === 'experience') {
-      for (let i = 0; i < updated.experience.length; i++) {
-        const exp = updated.experience[i]
-        const bullets = [...exp.bullets]
-        const idx = bullets.findIndex(b => b.includes(oldText.substring(0, 30)) || oldText.includes(b.substring(0, 30)))
-        if (idx !== -1) {
-          bullets[idx] = newText
-          updated.experience[i] = { ...updated.experience[i], bullets }
-          handleDataChange(updated)
-          return
-        }
-      }
-    }
-
-    if (sectionHint === 'summary') {
-      updated.summary = newText
-      handleDataChange(updated)
-      return
-    }
-
-    if (sectionHint === 'skills') {
-      updated.skills = newText.split(',').map(s => s.trim()).filter(Boolean)
-      handleDataChange(updated)
-      return
-    }
-
-    // Fallback: just replace in summary or first empty field
-    updated.summary = newText
-    handleDataChange(updated)
+  function handleApplyAIInsightFix(suggestion: InsightSuggestionLike) {
+    setResumeData(previous => {
+      if (!previous) return previous
+      const updated = applyInsightSuggestionToResumeData(previous, suggestion)
+      if (updated === previous) return previous
+      history.pushHistory(previous, visibility)
+      return updated
+    })
   }
 
   const visibleData = useMemo(
@@ -977,7 +902,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                onExpandSection={(id) => setExpandedSection(id)}
                focusedFieldPath={focusedFieldPath}
                onFocusedFieldHandled={() => setFocusedFieldPath(null)}
-               isDisabled={isApplyingFix}
              />
           </aside>
 
@@ -1194,22 +1118,45 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             {/* Collapse Toggle */}
             <button
               onClick={() => setIsRightCollapsed(!isRightCollapsed)}
-              className={`absolute top-4 ${isRightCollapsed ? 'left-1/2 -translate-x-1/2' : 'left-[-24px]'} z-50 w-7 h-7 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-400 hover:text-primary shadow-sm hover:shadow-md active:scale-95 transition-all`}
-              title={isRightCollapsed ? "Expand Sidebar" : "Hide Sidebar"}
+              className={`absolute top-4 ${isRightCollapsed ? 'left-1/2 -translate-x-1/2' : 'left-[-24px]'} z-50 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm active:scale-95 transition-all ${
+                isRightCollapsed && !isPro && activeMode === 'builder'
+                  ? 'border-emerald-300 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.32)] hover:brightness-110'
+                  : 'border-zinc-200 bg-white text-zinc-400 hover:text-primary hover:shadow-md'
+              }`}
+              title={isRightCollapsed ? (activeMode === 'builder' && !isPro ? 'Open AI Insights Pro panel' : "Expand Sidebar") : "Hide Sidebar"}
             >
               {isRightCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
 
             <div className="flex-1 flex flex-col overflow-hidden">
               {isRightCollapsed ? (
-                <div className="flex-1 flex flex-col items-center pt-16 gap-8">
-                  <span className="[writing-mode:vertical-lr] rotate-180 text-[10px] font-bold uppercase tracking-widest text-zinc-400 whitespace-nowrap">
-                    {activeMode === 'tailor' ? 'Tailor Mode' : 'AI Assistant'}
+                <button
+                  type="button"
+                  onClick={() => setIsRightCollapsed(false)}
+                  className={`flex-1 flex flex-col items-center pt-16 gap-5 transition-colors ${
+                    !isPro && activeMode === 'builder'
+                      ? 'bg-gradient-to-b from-emerald-50 via-white to-emerald-50/70 hover:from-emerald-100 hover:via-white hover:to-emerald-100/80'
+                      : 'hover:bg-zinc-50'
+                  }`}
+                  title={activeMode === 'builder' && !isPro ? 'Open AI Insights panel' : 'Expand Sidebar'}
+                >
+                  <span className={`[writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest ${
+                    !isPro && activeMode === 'builder'
+                      ? 'text-emerald-700'
+                      : 'text-zinc-400'
+                  }`}>
+                    {activeMode === 'tailor' ? 'Tailor Mode' : 'AI Insights'}
                   </span>
-                  <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
-                    <Star size={16} />
-                  </div>
-                </div>
+                  {!isPro && activeMode === 'builder' ? (
+                    <div className="flex h-20 w-9 items-center justify-center rounded-[20px] bg-gradient-to-b from-emerald-500 to-emerald-600 text-white shadow-[0_14px_28px_rgba(5,150,105,0.28)]">
+                      <Sparkles size={16} />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
+                      <Star size={16} />
+                    </div>
+                  )}
+                </button>
               ) : (
                 activeMode === 'tailor' ? (
                   <TailorPanel
@@ -1222,9 +1169,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   />
                 ) : (
                   <AIInsightsPanel
-                    resumeData={resumeData}
+                    resumeData={visibleData}
                     onApplyFix={handleApplyAIInsightFix}
-                    isApplyingFix={isApplyingFix}
+                    onUndoFix={handleUndo}
                     resumeId={resumeId}
                     isPro={isPro}
                   />
@@ -1237,6 +1184,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       </div>
 
       <TemplateCustomizerModal
+        key={isTemplateModalOpen ? JSON.stringify(templateConfig) : 'template-modal-closed'}
         isOpen={isTemplateModalOpen}
         config={templateConfig}
         onConfigChange={setTemplateConfig}
@@ -1265,7 +1213,7 @@ function MobileFallback({ resumeId }: { resumeId: string }) {
           Run ATS Check
         </Link>
         <Link href="/dashboard/templates" className="text-sm font-semibold text-primary hover:underline">
-          Browse Templates
+          Customize Template
         </Link>
       </div>
     </div>

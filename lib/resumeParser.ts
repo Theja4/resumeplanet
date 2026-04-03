@@ -403,9 +403,7 @@ function parseReferences(lines: string[]): string[] {
 // ─── Spatial section splitter ─────────────────────────────────────────────────
 
 function splitStructuredLines(
-  lines: StructuredLine[],
-  _medianFontSize: number,
-  _largeFontThreshold: number
+  lines: StructuredLine[]
 ): Record<string, string[]> {
   const sections: Record<string, string[]> = { preamble: [] }
   let current = 'preamble'
@@ -481,6 +479,8 @@ function buildResumeData(
   linkedin: string,
   website: string
 ): ResumeData {
+  const experience = parseExperience(sections['experience'] ?? [])
+
   return {
     name,
     email,
@@ -488,8 +488,9 @@ function buildResumeData(
     location,
     linkedin,
     website,
+    currentRole: experience[0]?.title ?? '',
     summary: parseSummary(sections['summary'] ?? [], sections['preamble'] ?? []),
-    experience: parseExperience(sections['experience'] ?? []),
+    experience,
     education: parseEducation(sections['education'] ?? []),
     skills: parseSkills(sections['skills'] ?? []),
     certifications: parseCertifications(sections['certifications'] ?? []),
@@ -500,6 +501,7 @@ function buildResumeData(
     awards: parseAwards(sections['awards'] ?? []),
     publications: parsePublications(sections['publications'] ?? []),
     references: parseReferences(sections['references'] ?? []),
+    customSections: [],
   }
 }
 
@@ -513,7 +515,6 @@ export async function parseResumeFromPages(pages: ExtractedPage[]): Promise<Resu
   const fontSizes = lines.map(l => l.fontSize).filter(s => s > 0)
   const sorted = [...fontSizes].sort((a, b) => a - b)
   const medianFontSize = sorted[Math.floor(sorted.length / 2)] ?? 11
-  const largeFontThreshold = medianFontSize * 1.3
 
   const fullText = lines.map(l => l.text).join('\n')
   const email = extractEmail(fullText)
@@ -530,7 +531,7 @@ export async function parseResumeFromPages(pages: ExtractedPage[]): Promise<Resu
     return ''
   })()
 
-  const sections = splitStructuredLines(lines, medianFontSize, largeFontThreshold)
+  const sections = splitStructuredLines(lines)
   const result = buildResumeData(sections, name, email, phone, location, linkedin, website)
 
   const populated = [result.name, result.email, result.experience.length > 0, result.education.length > 0, result.skills.length > 0].filter(Boolean).length
@@ -589,59 +590,10 @@ export async function parseResumeText(rawText: string): Promise<ResumeData> {
 function emptyResume(): ResumeData {
   return {
     name: '', email: '', phone: '', location: '', linkedin: '', website: '',
-    summary: '', experience: [], education: [], skills: [],
+    summary: '', currentRole: '', experience: [], education: [], skills: [],
     certifications: [], projects: [], languages: [],
-    volunteer: [], interests: [], awards: [], publications: [], references: [],
+    volunteer: [], interests: [], awards: [], publications: [], references: [], customSections: [],
   }
 }
 
 // ─── Template adapter ─────────────────────────────────────────────────────────
-
-export function adaptResumeForTemplate(data: ResumeData, templateId: string): ResumeData {
-  const adapted: ResumeData = JSON.parse(JSON.stringify(data))
-
-  // Trim bullets to 120 chars max
-  adapted.experience = adapted.experience.map(exp => ({
-    ...exp,
-    bullets: exp.bullets.map(b => (b.length > 120 ? b.slice(0, 117) + '...' : b)),
-  }))
-  adapted.volunteer = adapted.volunteer.map(v => ({
-    ...v,
-    bullets: v.bullets.map(b => (b.length > 120 ? b.slice(0, 117) + '...' : b)),
-  }))
-
-  // Trim summary to 3 sentences
-  if (adapted.summary) {
-    const sentences = adapted.summary.split(/(?<=[.!?])\s+/).filter(Boolean)
-    adapted.summary = sentences.slice(0, 3).join(' ')
-  }
-
-  // Technical Pro: group skills by category
-  if (templateId === 'technical-pro') {
-    const categories: Record<string, string[]> = {
-      Languages: ['Python','JavaScript','TypeScript','Java','C++','C#','Go','Rust','Ruby','PHP','Swift','Kotlin','R','Scala','Dart'],
-      Frameworks: ['React','Next.js','Vue','Angular','Express','FastAPI','Django','Flask','Spring','Rails','Laravel','NestJS','Svelte'],
-      Databases: ['PostgreSQL','MySQL','MongoDB','Redis','SQLite','DynamoDB','Supabase','Firebase'],
-      'Cloud & DevOps': ['AWS','GCP','Azure','Docker','Kubernetes','Terraform','GitHub Actions','Vercel'],
-      Tools: ['Git','Linux','Figma','Postman','Jira'],
-    }
-    const grouped: string[] = []
-    const used = new Set<string>()
-
-    for (const [cat, keywords] of Object.entries(categories)) {
-      const matches = adapted.skills.filter(
-        skill => keywords.some(k => skill.toLowerCase().includes(k.toLowerCase())) && !used.has(skill)
-      )
-      if (matches.length > 0) {
-        matches.forEach(s => used.add(s))
-        grouped.push(`${cat}: ${matches.join(', ')}`)
-      }
-    }
-
-    const uncategorised = adapted.skills.filter(s => !used.has(s))
-    if (uncategorised.length > 0) grouped.push(`Other: ${uncategorised.join(', ')}`)
-    adapted.skills = grouped.length > 0 ? grouped : adapted.skills
-  }
-
-  return adapted
-}

@@ -106,7 +106,7 @@ export const FREE_PLAN = {
     '3 ATS scans per day',
     'Basic AI analysis',
     '1 resume stored',
-    'Template preview',
+    'Custom template preview',
     'Ads shown',
   ],
 
@@ -114,7 +114,7 @@ export const FREE_PLAN = {
     'Advanced AI analysis (Claude Opus)',
     'Unlimited ATS scans',
     'Unlimited resumes',
-    'Template downloads',
+    'Custom template downloads',
     'Resume auto-optimiser',
     'Ad-free experience',
   ],
@@ -188,7 +188,7 @@ export const PRO_PLAN = {
     'Unlimited ATS scans',
     'Advanced AI analysis (Claude Opus)',
     'Unlimited resumes stored',
-    'All 5 templates + PDF & DOCX download',
+    'Highly customizable template + PDF & DOCX download',
     'Resume auto-optimiser',
     'Ad-free experience',
     'Full resume builder with reordering',
@@ -404,9 +404,7 @@ export function formatPriceDisplay(
 
 export type FormattedPrice = ReturnType<typeof formatPriceDisplay>
 
-export function getProfessionalOrderDisplay(
-  _promo: PromoConfig | null
-): PriceDisplay {
+export function getProfessionalOrderDisplay(): PriceDisplay {
   return PROFESSIONAL_ORDER.display
 }
 

@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { X, Check, ArrowRight, Pipette } from 'lucide-react'
-import { getPresetConfig } from '@/types'
+import { useState } from 'react'
+import { Check, Pipette } from 'lucide-react'
 import { FONT_OPTIONS, COLOR_THEMES, DEFAULT_FONT_ID } from '@/lib/templateOptions'
 import { SAMPLE_RESUME } from '@/lib/sampleResumeData'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
@@ -25,26 +24,7 @@ export default function TemplateCustomizerModal({
   resumeData = SAMPLE_RESUME,
 }: Props) {
   const [localConfig, setLocalConfig] = useState<UniversalConfig>(config)
-  const [hasChanges, setHasChanges] = useState(false)
-
-  // Sync local config when modal opens or config prop changes
-  useEffect(() => {
-    if (isOpen) {
-      setLocalConfig(config)
-      setHasChanges(false)
-    }
-  }, [isOpen, config])
-
-  // Detect changes
-  useEffect(() => {
-    const changed = JSON.stringify(localConfig) !== JSON.stringify(config)
-    setHasChanges(changed)
-  }, [localConfig, config])
-
-  function handleReset() {
-    setLocalConfig(config)
-    setHasChanges(false)
-  }
+  const hasChanges = JSON.stringify(localConfig) !== JSON.stringify(config)
 
   function handleApply() {
     onConfigChange(localConfig)

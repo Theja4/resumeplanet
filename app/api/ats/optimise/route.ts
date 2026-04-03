@@ -3,7 +3,29 @@ import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
 import { requirePro } from '@/lib/planEnforcement'
 import type { ATSResult, APIResponse } from '@/types'
 
-const OPTIMISE_SYSTEM = `You are a senior resume writer and ATS specialist. Your task is to rewrite and optimise a resume to score higher on ATS systems while keeping it truthful and professional. Return ONLY valid JSON.`
+const OPTIMISE_SYSTEM = `You are a senior resume strategist optimizing for real shortlist odds, not cosmetic keyword stuffing.
+
+Rewrite the full resume into plain text that is stronger for both ATS parsing and recruiter skim-reading while remaining fully truthful.
+
+NON-NEGOTIABLE RULES:
+- Never invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, or outcomes
+- Never add a job-description keyword unless the source resume already supports it
+- Never use placeholders, brackets, dummy numbers, TBD, or fill-in-the-blank language
+- Never inflate seniority or rewrite the candidate into a different role
+- Remove weak filler such as "responsible for", "worked on", "helped with", "various", "multiple", and "etc."
+
+REWRITE GOALS:
+- Keep the resume conventional and easy for ATS systems to parse
+- Make bullets stronger with clearer action, scope, tools, ownership, and outcomes where supported
+- Improve summary clarity and relevance without sounding generic
+- Weave supported keywords into experience context naturally
+- Prefer concrete non-numeric specificity over vague claims when exact metrics are unavailable
+
+OUTPUT RULES:
+- Return ONLY valid JSON
+- optimisedText must be complete, paste-ready plain text
+- keywordsAdded must list only keywords that truly appear in optimisedText
+- changesSummary must briefly describe the real improvements made, and may mention important keywords intentionally omitted because they were not supported by the source`
 
 const OPTIMISE_SCHEMA = `{
   "optimisedText": "string (the full rewritten resume text, plain text format)",
@@ -30,7 +52,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ── Auth + Pro gate ────────────────────────────────────────────────────────
   const authResult = await requirePro()
   if (authResult instanceof NextResponse) return authResult
-  const { userId, profile, supabase } = authResult
+  const { userId, supabase } = authResult
 
   // ── Parse body ─────────────────────────────────────────────────────────────
   let body: OptimiseBody
@@ -76,15 +98,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const issueContext = issues ? `\nHigh-Priority Issues to Fix:\n${issues}\n` : ''
 
-  const prompt = `${jobContext}Current ATS Score: ${atsResult.score}/100\n${missingKeywords}${issueContext}
+  const prompt = `${jobContext}Current ATS Score: ${atsResult.score}/100
+Target: produce a cleaner, more credible resume that improves screening quality without inventing anything.
+${missingKeywords}${issueContext}
 Resume Text:
 ${resumeText}
 
 Rewrite this resume to:
-1. Incorporate the missing keywords naturally and truthfully
-2. Fix the identified issues
-3. Improve overall ATS compatibility
-4. Maintain the candidate's authentic experience and qualifications
+1. Preserve all facts, chronology, employers, titles, and supported skills
+2. Strengthen bullets with better verbs, clearer scope, and clearer outcomes where the source supports them
+3. Improve keyword alignment only where the resume already provides evidence
+4. Make the summary and section phrasing sharper, more specific, and easier to skim
+5. Keep the final result recruiter-ready and ATS-friendly in plain text
+
+If a missing keyword is not supported by the source resume, do not add it.
 
 Return a JSON object matching exactly this schema:
 ${OPTIMISE_SCHEMA}

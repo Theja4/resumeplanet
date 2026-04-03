@@ -25,6 +25,12 @@ function formatDate(dateString: string) {
   })
 }
 
+function scoreBadgeClass(score: number) {
+  if (score < 50) return 'bg-red-100 text-red-800'
+  if (score < 70) return 'bg-amber-100 text-amber-800'
+  return 'bg-green-100 text-green-800'
+}
+
 interface ResumeCardProps {
   resume: Resume
   latestScore?: number
@@ -112,11 +118,7 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
 
           <div className="mt-2 flex items-center gap-2">
             {latestScore !== undefined ? (
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${
-                latestScore >= 75 ? 'bg-green-100 text-green-800' : 
-                latestScore >= 50 ? 'bg-amber-100 text-amber-800' : 
-                'bg-red-100 text-red-800'
-              }`}>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-tighter ${scoreBadgeClass(latestScore)}`}>
                 {latestScore} ATS Score
               </span>
             ) : (

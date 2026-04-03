@@ -1,5 +1,7 @@
 import Link from 'next/link'
-import { WandSparkles, FileUp, Lock, BadgeCheck, Quote } from 'lucide-react'
+import { WandSparkles, Quote } from 'lucide-react'
+import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
+import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 
 export default async function LandingPage() {
   return (
@@ -9,14 +11,24 @@ export default async function LandingPage() {
           <div className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
             <span className="tracking-tighter">Rezoomed</span>
           </div>
-          <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 group">
-            <Link className="font-semibold border-b-2 pb-1 transition-all text-[#026d32] dark:text-[#A3FFB3] border-[#A3FFB3] group-hover:text-zinc-500 group-hover:border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#">Home</Link>
-            <Link className="font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#features">Features</Link>
-            <Link className="font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/blog">Blog</Link>
+          <div className="pointer-events-none hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 group">
+            <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-[#026d32] dark:text-[#A3FFB3] border-[#A3FFB3] group-hover:text-zinc-500 group-hover:border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#">Home</Link>
+            <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#features">Features</Link>
+            <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/blog">Blog</Link>
           </div>
-          <div className="flex items-center gap-4">
-            <button className="text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full cursor-pointer">Sign In</button>
-            <Link href="/dashboard" className="text-sm font-bold text-primary-landing border-2 border-primary-container bg-primary-container/10 px-6 py-2 rounded-full hover:bg-primary-container/20 transition-all">Sign Up</Link>
+          <div className="relative z-10 flex items-center gap-4">
+            <Link
+              href="/auth/login"
+              className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/auth/register"
+              className="inline-flex items-center justify-center text-sm font-bold text-primary-landing border-2 border-primary-container bg-primary-container/10 px-6 py-2 rounded-full hover:bg-primary-container/20 transition-all"
+            >
+              Sign Up
+            </Link>
           </div>
         </nav>
 
@@ -45,7 +57,13 @@ export default async function LandingPage() {
                     <span className="text-primary-landing font-black text-sm">98%</span>
                   </div>
                   <div className="h-1.5 w-full bg-surface-container-low rounded-full overflow-hidden">
-                    <div className="h-full bg-primary-landing w-[98%]"></div>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: '98%',
+                        backgroundImage: 'var(--signature-gradient)',
+                      }}
+                    />
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
                     <div className="h-3 w-10 bg-primary-landing/10 rounded"></div>
@@ -67,160 +85,21 @@ export default async function LandingPage() {
                 <WandSparkles size={16} strokeWidth={2.5} className="opacity-90" />
                 AI-Powered Career Revolution
               </div>
-              <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-6xl md:text-[6.5rem] lg:text-[7.5rem]">The job market is <span className="text-[#008f44]">ruthless</span>. Don't let one keyword <span className="text-[#008f44]">cost you the interview</span>.</h1>
+              <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-6xl md:text-[6.5rem] lg:text-[7.5rem]">The job market is <span className="text-[#008f44]">ruthless</span>. Don&apos;t let one keyword <span className="text-[#008f44]">cost you the interview</span>.</h1>
               <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
                 Rezoomed uses optic precision to analyze and amplify your career milestones. Stand out with AI-driven clarity and premium design.
               </p>
               <div className="flex flex-wrap justify-center gap-4 pt-2">
-                <Link href="/dashboard">
+                <Link href="/auth/register">
                   <button className="px-12 py-5 text-white text-lg font-black shadow-2xl btn-hover flex items-center shimmer-effect justify-center relative z-10 tracking-wider transition-all duration-300 rounded-full glow-on-hover bg-black hover:bg-[#00a84d] cursor-pointer">GET STARTED NOW</button>
                 </Link>
               </div>
             </div>
           </section>
 
-          {/* Features Section (The Process) */}
-          <section id="features" className="py-32 px-6 bg-surface-container-low overflow-hidden">
-            <div className="max-w-7xl mx-auto">
-              <div className="mb-20 space-y-4 reveal-on-scroll active">
-                <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-primary-landing">The Process</h2>
-                <h3 className="text-5xl font-extrabold tracking-tight">Optic Precision in <span className="text-gradient">100+ Phases</span></h3>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                {/* AI Optimization (Main Feature) */}
-                <div className="lg:col-span-7 bg-white rounded-[2.5rem] p-12 border border-surface-container-highest shadow-sm card-hover reveal-on-scroll active stagger-1 flex flex-col justify-between overflow-hidden relative group">
-                  <div className="space-y-6 relative z-10">
-                    <h4 className="text-3xl font-extrabold tracking-tight">AI Optimization <span className="text-on-surface-variant font-medium">(for job description)</span></h4>
-                    <p className="text-on-surface-variant text-lg leading-relaxed max-w-md">Customize your resume to match job postings, increasing interview chances.</p>
-                  </div>
-                  <div className="mt-12 relative h-72 w-full bg-surface-container-low rounded-2xl overflow-hidden border border-surface-container-highest">
-                    {/* Simulated Resume UI */}
-                    <div className="p-8 space-y-4">
-                      <div className="h-4 w-32 bg-zinc-800 rounded-full"></div>
-                      <div className="space-y-2">
-                        <div className="h-2.5 w-full bg-zinc-200 rounded-full"></div>
-                        <div className="h-2.5 w-5/6 bg-zinc-200 rounded-full"></div>
-                      </div>
-                      <div className="flex gap-2 py-4">
-                        <div className="h-8 w-24 bg-primary-landing/20 rounded-lg flex items-center justify-center">
-                          <div className="h-2 w-16 bg-primary-landing/40 rounded-full"></div>
-                        </div>
-                        <div className="h-8 w-24 bg-surface-container-high rounded-lg"></div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-2.5 w-full bg-zinc-200 rounded-full"></div>
-                        <div className="h-2.5 w-4/5 bg-zinc-200 rounded-full"></div>
-                      </div>
-                    </div>
-                    {/* Scanning Line Animation */}
-                    <div className="scanning-animation"></div>
-                    <div className="absolute bottom-6 right-6">
-                      <div className="bg-zinc-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                        TAILORED
-                      </div>
-                    </div>
-                  </div>
-                </div>
+          <LogoMarqueeSection />
 
-                {/* Column for Secure Ingestion and Semantic Analysis */}
-                <div className="lg:col-span-5 flex flex-col gap-8">
-                  {/* Secure Ingestion */}
-                  <div className="bg-white rounded-[2.5rem] p-8 border border-surface-container-highest shadow-sm card-hover reveal-on-scroll active stagger-2 flex flex-col relative overflow-hidden group">
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className="bg-surface-container-low/50 rounded-2xl p-6 mb-6 flex items-center justify-center h-40">
-                        <div className="relative">
-                          <div className="w-20 h-20 rounded-2xl bg-primary-landing/10 flex items-center justify-center relative z-10 border border-primary-landing/20 ring-animation">
-                            <FileUp className="text-[#80ba92]" size={36} strokeWidth={2.5} />
-                          </div>
-                          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-md shadow-md flex items-center justify-center border border-zinc-100 float-animation">
-                            <Lock className="text-zinc-500" size={16} strokeWidth={2.5} />
-                          </div>
-                        </div>
-                      </div>
-                      <h4 className="text-2xl font-bold tracking-tight">Secure Ingestion</h4>
-                      <p className="text-on-surface-variant text-sm mt-2">Upload your current resume with enterprise-grade privacy.</p>
-                    </div>
-                  </div>
-
-                  {/* Semantic Analysis */}
-                  <div className="bg-white rounded-[2.5rem] p-8 border border-surface-container-highest shadow-sm card-hover reveal-on-scroll active stagger-3 flex flex-col relative overflow-hidden group">
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className="bg-zinc-900 rounded-2xl p-6 mb-6 flex flex-col justify-center h-40 space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="h-2 w-16 bg-white/20 rounded-full"></div>
-                          <div className="text-[10px] text-primary-landing font-bold">DETECTION: 98%</div>
-                        </div>
-                        <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-primary-landing w-4/5 animate-[shimmer-flow_3s_infinite]"></div>
-                        </div>
-                        <div className="space-y-1.5 opacity-50">
-                          <div className="h-1 w-2/3 bg-white/20 rounded-full"></div>
-                          <div className="h-1 w-full bg-white/20 rounded-full"></div>
-                        </div>
-                      </div>
-                      <h4 className="text-2xl font-bold tracking-tight">Semantic Analysis</h4>
-                      <p className="text-on-surface-variant text-sm mt-2">Identify skill gaps and quantify achievements using deep learning models.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Curated Output */}
-                <div className="lg:col-span-5 bg-white rounded-[2.5rem] p-8 border border-surface-container-highest shadow-sm card-hover reveal-on-scroll active stagger-4 flex flex-col relative overflow-hidden group">
-                  <div className="relative z-10 flex flex-col h-full">
-                    <div className="bg-surface-container-low/50 rounded-2xl p-6 mb-6 flex items-center justify-center h-48">
-                      <div className="w-32 h-40 bg-white rounded-lg shadow-xl border border-zinc-100 p-4 space-y-3 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-primary-landing"></div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-zinc-100"></div>
-                          <div className="h-1.5 w-12 bg-zinc-800 rounded-full"></div>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="h-1 w-full bg-zinc-100 rounded-full"></div>
-                          <div className="h-1 w-full bg-zinc-100 rounded-full"></div>
-                          <div className="h-1 w-3/4 bg-zinc-100 rounded-full"></div>
-                        </div>
-                        <div className="pt-2 flex justify-end">
-                          <BadgeCheck className="text-primary-landing animate-bounce" fill="currentColor" stroke="white" size={20} />
-                        </div>
-                      </div>
-                    </div>
-                    <h4 className="text-2xl font-bold tracking-tight">Curated Output</h4>
-                    <p className="text-on-surface-variant text-sm mt-2">Receive a professionally formatted, ATS-optimized document ready for submission.</p>
-                  </div>
-                </div>
-
-                {/* Professionally Proven Templates */}
-                <div className="lg:col-span-7 bg-white rounded-[2.5rem] p-8 lg:p-12 border border-surface-container-highest shadow-sm card-hover reveal-on-scroll active stagger-5 flex flex-col lg:flex-row items-center gap-12 relative overflow-hidden group">
-                  <div className="flex-1 space-y-6">
-                    <h4 className="text-3xl font-extrabold tracking-tight">Professionally Proven Templates</h4>
-                    <p className="text-on-surface-variant text-lg">Swiss typography and layout principles that make your resume a joy to read.</p>
-                    <div className="flex gap-4">
-                      <div className="text-xs font-bold uppercase tracking-widest text-primary-landing py-3">10+ DESIGN VARIATIONS</div>
-                    </div>
-                  </div>
-                  <div className="flex-1 relative h-64 w-full max-w-sm flex items-center justify-center">
-                    <div className="absolute w-40 h-56 bg-zinc-900 rounded-xl shadow-2xl rotate-[-6deg] translate-x-[-20px] opacity-10 stack-animation"></div>
-                    <div className="absolute w-40 h-56 bg-zinc-800 rounded-xl shadow-2xl rotate-[3deg] translate-x-[20px] opacity-20 stack-animation" style={{ animationDelay: '0.5s' }}></div>
-                    <div className="relative w-40 h-56 bg-white rounded-xl shadow-2xl border border-zinc-100 p-4 space-y-3 z-10 stack-animation" style={{ animationDelay: '1s' }}>
-                      <div className="flex items-center gap-2 mb-4">
-                        <div className="w-8 h-8 rounded-full bg-zinc-100"></div>
-                        <div className="space-y-1">
-                          <div className="h-1.5 w-12 bg-zinc-800 rounded-full"></div>
-                          <div className="h-1 w-8 bg-zinc-400 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="h-1 w-full bg-zinc-100 rounded-full"></div>
-                        <div className="h-1 w-full bg-zinc-100 rounded-full"></div>
-                        <div className="h-1 w-3/4 bg-zinc-100 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          <FeatureShowcaseSection />
 
           {/* Testimonials */}
           <section className="py-32 px-6 overflow-hidden">
@@ -235,7 +114,7 @@ export default async function LandingPage() {
               <div className="lg:w-2/3 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-8 bg-surface-container-low rounded-3xl space-y-6 flex flex-col justify-between card-hover reveal-on-scroll active stagger-1">
                   <Quote className="text-primary-landing rotate-180" fill="currentColor" stroke="none" size={36} />
-                  <p className="text-lg font-medium italic text-on-surface">"Rezoomed didn't just fix my resume; they helped me understand my own worth. I landed a Senior Role within two weeks."</p>
+                  <p className="text-lg font-medium italic text-on-surface">&ldquo;Rezoomed didn&apos;t just fix my resume; they helped me understand my own worth. I landed a Senior Role within two weeks.&rdquo;</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="text-sm font-bold">Sarah Jenkins</p>
@@ -245,7 +124,7 @@ export default async function LandingPage() {
                 </div>
                 <div className="p-8 bg-surface-container-lowest border border-surface-container rounded-3xl space-y-6 flex flex-col justify-between shadow-sm card-hover reveal-on-scroll active stagger-2">
                   <Quote className="text-primary-landing rotate-180" fill="currentColor" stroke="none" size={36} />
-                  <p className="text-lg font-medium italic text-on-surface">"The Optic AI identified achievements I hadn't even thought to include. The design is stunning and professional."</p>
+                  <p className="text-lg font-medium italic text-on-surface">&ldquo;The Optic AI identified achievements I hadn&apos;t even thought to include. The design is stunning and professional.&rdquo;</p>
                   <div className="flex items-center gap-4">
                     <div>
                       <p className="text-sm font-bold">Marcus Kane</p>
@@ -261,7 +140,7 @@ export default async function LandingPage() {
               <h2 className="text-5xl font-extrabold tracking-tight">Ready to rezoom your career?</h2>
               <p className="text-xl text-on-surface-variant">Join 50,000+ professionals who have found their dream roles.</p>
               <div className="flex justify-center">
-                <Link href="/dashboard">
+                <Link href="/auth/register">
                   <button className="px-12 py-5 text-white text-lg font-black shadow-2xl btn-hover flex items-center shimmer-effect justify-center relative z-10 tracking-wider transition-all duration-300 rounded-full glow-on-hover bg-black hover:bg-[#00a84d] cursor-pointer uppercase">GET STARTED NOW</button>
                 </Link>
               </div>

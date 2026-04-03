@@ -1,9 +1,42 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import AdBanner from '@/components/shared/AdBanner'
-import { getRemainingFreeScans } from '@/lib/planUtils'
 import type { Profile } from '@/types'
 import { Upload, ClipboardCheck, LayoutDashboard, Rocket } from 'lucide-react'
+
+export const dynamic = 'force-dynamic'
+
+function scoreTone(score: number | null) {
+  if (score === null) {
+    return {
+      valueClass: 'text-on-surface',
+      pillClass: 'text-on-surface-variant',
+      label: 'Run your first scan',
+    }
+  }
+
+  if (score < 50) {
+    return {
+      valueClass: 'text-red-600',
+      pillClass: 'text-red-700',
+      label: 'Needs attention',
+    }
+  }
+
+  if (score < 70) {
+    return {
+      valueClass: 'text-amber-600',
+      pillClass: 'text-amber-700',
+      label: 'Keep improving',
+    }
+  }
+
+  return {
+    valueClass: 'text-emerald-700',
+    pillClass: 'text-emerald-700',
+    label: 'Top range',
+  }
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -13,20 +46,20 @@ export default async function DashboardPage() {
 
   if (!user) return null
 
-  const [profileResult, resumesResult, scoresResult] = await Promise.all([
+  const [profileResult, resumesResult] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('resumes').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
     supabase
-      .from('ats_scores')
-      .select('score')
+      .from('resumes')
+      .select('id, ats_score, updated_at', { count: 'exact' })
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1),
+      .order('updated_at', { ascending: false }),
   ])
 
   const profile = profileResult.data as Profile | null
   const resumeCount = resumesResult.count ?? 0
-  const lastScore = (scoresResult.data && scoresResult.data.length > 0) ? scoresResult.data[0].score : null
+  const lastScore =
+    resumesResult.data?.find(resume => typeof resume.ats_score === 'number')?.ats_score ?? null
+  const lastScoreTone = scoreTone(lastScore)
 
   const isPro = profile?.plan === 'pro'
   const firstName = profile?.full_name?.split(' ')[0] ?? 'there'
@@ -56,9 +89,9 @@ export default async function DashboardPage() {
         <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 shadow-sm group hover:shadow-md transition-shadow">
           <p className="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">Last ATS Score</p>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-on-surface">{lastScore !== null ? `${lastScore}%` : '—'}</span>
-            <span className="text-xs text-on-surface-variant">
-              {lastScore !== null && lastScore >= 80 ? 'Top 15%' : lastScore !== null ? 'Keep improving' : 'Run your first scan'}
+            <span className={`text-3xl font-black ${lastScoreTone.valueClass}`}>{lastScore !== null ? `${lastScore}%` : '—'}</span>
+            <span className={`text-xs font-semibold ${lastScoreTone.pillClass}`}>
+              {lastScoreTone.label}
             </span>
           </div>
         </div>
@@ -109,15 +142,15 @@ export default async function DashboardPage() {
             </div>
           </Link>
 
-          {/* Action Card 3: Templates */}
+          {/* Action Card 3: Template styling */}
           <Link href="/dashboard/templates" className="group relative bg-surface-container-lowest p-8 rounded-2xl border border-outline-variant/10 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative z-10 text-left">
               <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
                 <LayoutDashboard size={22} strokeWidth={1.75} />
               </div>
-              <h4 className="text-xl font-bold mb-2">Resume Templates</h4>
-              <p className="text-sm text-on-surface-variant leading-relaxed">Choose from dozens of high-conversion, professional layout designs.</p>
+              <h4 className="text-xl font-bold mb-2">Customize Template</h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">Fine-tune one flexible, recruiter-ready template with layout, typography, and color controls.</p>
             </div>
           </Link>
 

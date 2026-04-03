@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import type { ResumeData } from '@/types'
-
 export default async function NewBlankResumePage() {
   const supabase = await createClient()
   const {
@@ -10,28 +8,6 @@ export default async function NewBlankResumePage() {
 
   if (!user) {
     redirect('/auth/login')
-  }
-
-  // Define a fresh, entirely empty ResumeData object
-  const emptyData: ResumeData = {
-    name: '',
-    email: '',
-    phone: '',
-    location: '',
-    linkedin: '',
-    website: '',
-    summary: '',
-    experience: [],
-    education: [],
-    skills: [],
-    certifications: [],
-    projects: [],
-    languages: [],
-    volunteer: [],
-    interests: [],
-    awards: [],
-    publications: [],
-    references: [],
   }
 
   // Check resume limit for free users
@@ -52,5 +28,5 @@ export default async function NewBlankResumePage() {
 
   // Reroute to builder in 'draft' mode. 
   // No database record is created until the user actually makes an edit.
-  redirect(`/dashboard/builder/draft?template=modern-minimal`)
+  redirect('/dashboard/builder/draft')
 }

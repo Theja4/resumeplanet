@@ -9,6 +9,20 @@ interface GenerateResumePdfFromElementOptions {
   contentHeightPx?: number
 }
 
+function canInlineFontsFromDocument(element: HTMLElement) {
+  const doc = element.ownerDocument
+  if (!doc) return false
+
+  return Array.from(doc.styleSheets).every(sheet => {
+    try {
+      void sheet.cssRules
+      return true
+    } catch {
+      return false
+    }
+  })
+}
+
 function createSliceCanvas(source: HTMLCanvasElement, startY: number, height: number) {
   const slice = document.createElement('canvas')
   slice.width = source.width
@@ -77,12 +91,14 @@ export async function generateResumePdfBlobFromElement(
   let fontEmbedCSS: string | undefined
 
   try {
-    try {
-      fontEmbedCSS = await getFontEmbedCSS(element, {
-        preferredFontFormat: 'woff2',
-      })
-    } catch {
-      fontEmbedCSS = undefined
+    if (canInlineFontsFromDocument(element)) {
+      try {
+        fontEmbedCSS = await getFontEmbedCSS(element, {
+          preferredFontFormat: 'woff2',
+        })
+      } catch {
+        fontEmbedCSS = undefined
+      }
     }
 
     canvas = await toCanvas(element, {
