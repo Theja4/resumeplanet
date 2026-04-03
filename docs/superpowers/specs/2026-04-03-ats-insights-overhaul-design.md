@@ -294,17 +294,166 @@ When the checker page completes a scan:
 
 ---
 
-### Tailor Feature (Layer 2 — JD Match)
+### Free vs Pro Tier — Suggestion Gating
+
+The deterministic scorer always computes the real score internally. But the suggestions exposed to the user are gated by plan:
+
+#### Free Users
+
+- **Suggestion cap:** Only suggestions that bring the score up to **85** are shown. Once the score reaches 85, remaining weak areas are hidden behind a Pro upgrade prompt.
+- **Insights panel:** After all free suggestions are applied, show a card:
+  > "Your resume scores 85/100 — great foundation. Upgrade to Pro for advanced optimizations that push past 90."
+- **ATS Score page:** When score >= 75, show a sidebar CTA:
+  > "You're in the top 30%. Pro users see 5-10 additional expert-level suggestions to reach 95+ and maximize shortlisting chances."
+- **No tailor feature:** JD matching is Pro-only. The tailor section shows a locked state with upgrade CTA.
+
+#### Pro Users
+
+- **All suggestions unlocked** — no score cap
+- **Full tailor feature** with JD gap analysis and missing experience prompts
+- **Advanced suggestions** include keyword integration, STAR restructuring, and section-level rewrites that push beyond 85
+
+#### Implementation
+
+The scorer returns ALL weak areas regardless of plan. The insights API filters:
+
+```typescript
+function filterSuggestionsForPlan(
+  suggestions: Suggestion[],
+  currentScore: number,
+  isPro: boolean
+): { visible: Suggestion[]; gated: number } {
+  if (isPro) return { visible: suggestions, gated: 0 }
+
+  const FREE_SCORE_CAP = 85
+  let projectedScore = currentScore
+  const visible: Suggestion[] = []
+
+  for (const s of suggestions) {
+    if (projectedScore + s.estimatedPoints > FREE_SCORE_CAP) {
+      break
+    }
+    visible.push(s)
+    projectedScore += s.estimatedPoints
+  }
+
+  return { visible, gated: suggestions.length - visible.length }
+}
+```
+
+The response includes `gatedCount` so the UI knows how many Pro-only suggestions exist and can show "Unlock N more suggestions with Pro".
+
+---
+
+### Tailor Feature (Layer 2 — JD Match, Pro Only)
 
 When the user pastes a job description and clicks "Start Tailoring":
 
 1. Deterministic scorer runs first (base quality)
 2. LLM receives: resume text + job description + base score breakdown
-3. LLM returns: keyword gap analysis, tailored bullet rewrites, match score 0-100
-4. Match score shown separately as "JD Match: X%" alongside the base quality score
-5. Tailored suggestions follow the same apply-fix flow (exact afterText, scorer re-runs)
+3. LLM returns structured analysis:
 
-This is a separate feature — not changing the current tailor implementation in this spec. But the scorer infrastructure supports it.
+#### Tailor Output Schema
+
+```typescript
+interface TailorResult {
+  matchScore: number // 0-100, how well resume matches this JD
+  matchTier: 'STRONG_FIT' | 'MODERATE_FIT' | 'STRETCH' | 'LONG_SHOT'
+
+  // Keywords from JD found in resume
+  matchedKeywords: Array<{ keyword: string; location: string }>
+
+  // Keywords from JD NOT in resume — actionable gaps
+  missingKeywords: Array<{
+    keyword: string
+    importance: 'critical' | 'preferred' | 'nice-to-have'
+    suggestion: string // how to address: add to skills, weave into bullet, etc.
+  }>
+
+  // Experience/qualifications the JD expects but resume lacks entirely
+  experienceGaps: Array<{
+    requirement: string // what the JD asks for
+    severity: 'blocker' | 'significant' | 'minor'
+    action: 'add_project' | 'add_certification' | 'reframe_existing' | 'add_to_skills'
+    prompt: string // user-facing prompt, e.g. "Consider adding a project demonstrating cloud migration experience"
+  }>
+
+  // Tailored bullet rewrites to better align with JD
+  tailoredSuggestions: Array<{
+    beforeText: string
+    afterText: string
+    sectionHint: string
+    jdKeywordsHit: string[] // which JD keywords this rewrite targets
+  }>
+
+  // Summary rewrite optimized for this specific JD
+  tailoredSummary: string | null
+}
+```
+
+#### Experience Gap Prompts
+
+The tailor feature actively identifies what's MISSING from the resume relative to the JD and prompts the user to add it:
+
+- **"blocker" gaps** → Red flag card: "This JD requires [X]. Your resume doesn't mention this. If you have this experience, add it to your [experience/projects/skills] section."
+- **"significant" gaps** → Amber card: "The JD prefers [X]. Consider adding a project or certification that demonstrates this skill."
+- **"minor" gaps** → Info card: "Adding [X] to your skills section would improve keyword match."
+
+These prompts don't auto-apply — they guide the user to manually add real experience. The system never fabricates experience.
+
+#### Tailor System Prompt
+
+```
+You are a JD-resume matching specialist. Given a resume and job description, analyze the fit and provide actionable improvements.
+
+ANALYSIS PRIORITIES:
+1. KEYWORD GAP — Identify every hard skill, technology, methodology, and qualification in the JD. Check which are present in the resume and which are missing.
+2. EXPERIENCE ALIGNMENT — Map JD requirements to resume experience. Identify requirements with zero evidence in the resume.
+3. REFRAMING OPPORTUNITIES — Find existing experience that partially matches a JD requirement but uses different terminology. Suggest reframing.
+
+FOR MISSING EXPERIENCE:
+- Classify severity: "blocker" (explicitly required, deal-breaker), "significant" (strongly preferred), "minor" (nice-to-have)
+- Suggest concrete actions: add a relevant project, get a certification, reframe existing experience, add to skills list
+- Write user-facing prompts that are specific and actionable
+- NEVER suggest fabricating experience — only surface real gaps the user can address
+
+FOR TAILORED REWRITES:
+- Rewrite bullets to naturally incorporate JD keywords
+- Preserve facts and achievements — only change framing
+- Each rewrite must target at least one missing JD keyword
+- Use exact beforeText from the resume
+
+MATCH SCORE CALIBRATION:
+- 85-100 STRONG_FIT: Almost every requirement maps to real experience
+- 65-84 MODERATE_FIT: Most met, 1-2 significant gaps
+- 45-64 STRETCH: Several gaps but transferable skills
+- 0-44 LONG_SHOT: Fundamental mismatch
+
+Return ONLY valid JSON matching the schema. No markdown, no explanation.
+```
+
+Match score shown separately as "JD Match: X%" alongside the base quality score. Tailored suggestions follow the same apply-fix flow (exact afterText, scorer re-runs).
+
+---
+
+### ATS Score Page — Upgrade Prompts for Free Users
+
+The ATS score page (`/dashboard/ats-checker`) shows results using the same deterministic scorer. For free users, add contextual upgrade CTAs:
+
+#### Score-Based Prompts
+
+| Score Range | Sidebar Message |
+|-------------|----------------|
+| 0-50 | "Your resume needs work. Start with the free suggestions in the builder." |
+| 51-74 | "Good start. Pro unlocks advanced suggestions to push past 85." |
+| 75-84 | "Strong resume. Pro users see expert-level optimizations to reach 90+ and maximize shortlisting." |
+| 85+ | "Excellent foundation. Unlock Pro to fine-tune with JD tailoring and hit 95+." |
+
+#### UI Placement
+
+- **Below the score ring:** A compact card with the message + "Upgrade to Pro" button
+- **Below the breakdown table:** "N more suggestions available with Pro" (using `gatedCount` from insights)
+- **Tailor section:** Locked state with preview of what JD matching provides
 
 ---
 
@@ -312,21 +461,23 @@ This is a separate feature — not changing the current tailor implementation in
 
 ```
 lib/
-  ats-scorer.ts          # scoreResume(), rubric definitions, verb/filler sets
-  ats-scorer-verbs.ts    # ACTION_VERBS set, FILLER_PHRASES set
+  ats-scorer.ts          # scoreResume(), rubric definitions, action verb/filler sets
+  ats-scorer-data.ts     # ACTION_VERBS set, FILLER_PHRASES set (separate for maintainability)
 
 app/api/ats/
-  insights/route.ts      # Uses scorer for scoring, LLM for suggestions only
-  apply-fix/route.ts     # DELETED or gutted — apply is now client-side only
-  score/route.ts         # Uses same scorer
+  insights/route.ts      # Uses scorer for scoring, LLM for suggestions only, plan gating
+  score/route.ts         # Uses same scorer, persists ats_score
+  tailor-analysis/route.ts # JD matching (Pro only)
 
 components/builder/
-  AIInsightsPanel.tsx     # Shows scorer breakdown, live score updates
+  AIInsightsPanel.tsx     # Shows scorer breakdown, live score updates, Pro upgrade prompts
   AIInsightCard.tsx       # Shows "+N pts" badge per suggestion
 
 supabase/migrations/
   011_add_ats_score_to_resumes.sql
 ```
+
+Note: `app/api/ats/apply-fix/route.ts` is no longer needed — fixes are applied client-side using exact `afterText`.
 
 ---
 
@@ -334,10 +485,11 @@ supabase/migrations/
 
 | Action | Current | New |
 |--------|---------|-----|
-| Insights scan (score + suggestions) | ~3000 input + ~2000 output = ~5000 tokens | ~800 input + ~1200 output = ~2000 tokens (suggestions only, no scoring) |
-| Apply fix | ~500 tokens per fix (LLM rewrite) | 0 tokens (client-side) |
-| Apply all (5 fixes) | ~2500 tokens | 0 tokens |
-| Rescan after fixes | ~5000 tokens (full re-analysis) | ~2000 tokens (if suggestions needed) or 0 (scorer only) |
-| **Total for full flow** | **~12,500 tokens** | **~2,000-4,000 tokens** |
+| Insights scan (score + suggestions) | ~5000 tokens | ~2000 tokens (suggestions only, no scoring) |
+| Apply fix | ~500 per fix | 0 (client-side) |
+| Apply all (5 fixes) | ~2500 | 0 |
+| Rescan after fixes | ~5000 | ~2000 (if new suggestions needed) or 0 (scorer only) |
+| Tailor (Pro) | ~6000 | ~4000 (focused prompt, no scoring) |
+| **Total for full flow (Pro)** | **~19,000 tokens** | **~6,000-8,000 tokens** |
 
-~70-85% token reduction.
+~60-70% token reduction.
