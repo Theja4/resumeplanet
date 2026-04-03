@@ -1,4 +1,10 @@
 {
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "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",
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_MODEL": "stepfun/step-3.5-flash:free"
+  },
   "permissions": {
     "allow": [
       "Bash(npx:*)",
@@ -65,7 +71,41 @@
       "Bash(find /Users/thejach/Downloads/ResumePlanet/app/api -type f -name *.ts)",
       "Bash(cat \"/Users/thejach/Downloads/ResumePlanet/app/dashboard/\\(shell\\)/ats-checker/ATSCheckerClient.tsx\")",
       "Bash(npx eslint:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(grep -n \"DEFAULT_SECTION_ORDER\\\\|case '\" /Users/thejach/Downloads/ResumePlanet/components/templates/*.tsx)",
+      "Bash(grep:*)",
+      "Bash(kill %1)",
+      "Bash(kill 37413)",
+      "Bash(curl -s --max-time 30 -X POST https://openrouter.ai/api/v1/chat/completions -H 'Content-Type: application/json' -H 'Authorization: Bearer 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' -d '{:*)",
+      "Bash(curl -s --max-time 15 -X POST https://openrouter.ai/api/v1/chat/completions -H 'Content-Type: application/json' -H 'Authorization: Bearer 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' -d '{\"model\":\"__TRACKED_VAR__\",\"messages\":[{\"role\":\"user\",\"content\":\"Say pong\"}]}')",
+      "Bash(curl -s --max-time 30 -X POST https://openrouter.ai/api/v1/chat/completions -H 'Content-Type: application/json' -H 'Authorization: Bearer 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' -d '{\"model\":\"qwen/qwen3.6-plus-preview:free\",\"messages\":[{\"role\":\"user\",\"content\":\"Say pong, nothing else\"}]}')",
+      "Bash(python3 -m json.tool)",
+      "Bash(find /Users/thejach/Downloads/ResumePlanet/components -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"ATSScore\\\\|AIInsight\\\\|SuggestionPanel\\\\|Score\" {} \\\\;)",
+      "Bash(tail -80 /Users/thejach/Downloads/ResumePlanet/app/dashboard/*/ats-checker/ATSCheckerClient.tsx)",
+      "Bash(find /Users/thejach/Downloads/ResumePlanet/components -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"suggestion\\\\|insight\\\\|hint\" {} \\\\;)",
+      "Bash(time curl:*)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('choices',[{}]\\)[0].get\\('message',{}\\).get\\('content',''\\); e=d.get\\('error',{}\\).get\\('message',''\\); print\\(f'OK: {c[:50]}' if not e else f'ERR: {e}'\\)\")",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('choices',[{}]\\)[0].get\\('message',{}\\).get\\('content',''\\); e=d.get\\('error',{}\\).get\\('message',''\\); print\\(f'RESPONDED: {c[:100]}' if not e else f'ERR: {e}'\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('choices',[{}]\\)[0].get\\('message',{}\\).get\\('content',''\\); e=d.get\\('error',{}\\).get\\('message',''\\); print\\(f'RESPONDED: {c[:50]} \\({d.get\\(\\\\\"model\\\\\",\\\\\"?\\\\\"\\)}\\)' if not e else f'ERR: {e}'\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('choices',[{}]\\)[0].get\\('message',{}\\).get\\('content',''\\); e=d.get\\('error',{}\\).get\\('message',''\\); print\\(f'RESPONDED: {c[:100]} \\({d.get\\(\\\\\"model\\\\\",\\\\\"?\\\\\"\\)}\\)' if not e else f'ERR: {e}'\\)\")",
+      "Bash(curl -s \"http://localhost:3000\" -H \"X-Pass: test\")",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(curl -s http://localhost:3000/dashboard/resumes -o /dev/null -w \"%{http_code}\\\\n\")",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/xitanggg/open-resume/contents/src\")",
+      "Bash(python3 -c \"import json,sys; data=json.load\\(sys.stdin\\); [print\\(f'{d[\\\\\"type\\\\\"]:6s} {d[\\\\\"name\\\\\"]}'\\) for d in data if 'name' in d]\")",
+      "Bash(curl -s \"https://api.github.com/repos/xitanggg/open-resume\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('description',''\\)\\); print\\('Topics:',d.get\\('topics',[]\\)\\)\")",
+      "Bash(curl -s \"https://api.github.com/repos/xitanggg/open-resume/contents/src/common\")",
+      "Bash(python3 -c \"import json,sys; [print\\(f'{x[\\\\\"type\\\\\"]:6s} {x[\\\\\"name\\\\\"]}'\\) for x in json.load\\(sys.stdin\\) if 'name' in x]\")",
+      "Bash(curl -s \"https://api.github.com/repos/xitanggg/open-resume/git/trees/main?recursive=1\")",
+      "Bash(python3 -c \" import json,sys data=json.load\\(sys.stdin\\) for f in data.get\\('tree',[]\\): p=f['path'] if any\\(kw in p.lower\\(\\) for kw in ['parser','parse','resume','pdf','extract']\\): print\\(p\\) \")",
+      "Bash(npm search:*)",
+      "Bash(wc:*)",
+      "Bash(head -100 /Users/thejach/Downloads/ResumePlanet/app/dashboard/builder/[resumeId]/page.tsx)"
     ]
   }
 }
