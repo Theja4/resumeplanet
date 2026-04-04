@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
-  paddle,
   PADDLE_PRICES,
   isValidPaddlePriceId,
   getOrCreatePaddleCustomer,
@@ -37,6 +36,9 @@ export async function POST(request: NextRequest) {
   }
 
   const { mode } = body
+  const distinctId = typeof body.distinctId === 'string' ? body.distinctId : undefined
+  const blogReferrerSlug = typeof body.blogReferrerSlug === 'string' ? body.blogReferrerSlug : undefined
+  const blogReferrerCta = typeof body.blogReferrerCta === 'string' ? body.blogReferrerCta : undefined
 
   // ── Order checkout ──────────────────────────────────────────────────────────
   if (mode === 'order') {
@@ -44,9 +46,6 @@ export async function POST(request: NextRequest) {
     const jobTitle = body.jobTitle as string | undefined
     const jobDescription = body.jobDescription as string | undefined
     const additionalNotes = body.additionalNotes as string | undefined
-    const industry = body.industry as string | undefined
-    const yearsExp = body.yearsExp as string | undefined
-
     if (!resumeId) return err('Resume required')
     if (!jobTitle) return err('Job title required')
 
@@ -87,6 +86,9 @@ export async function POST(request: NextRequest) {
         orderId: order.id,
         userId: user.id,
         mode: 'order',
+        posthogDistinctId: distinctId,
+        blogReferrerSlug,
+        blogReferrerCta,
       },
     })
   }
@@ -134,6 +136,9 @@ export async function POST(request: NextRequest) {
       customData: {
         userId: user.id,
         mode: 'subscription',
+        posthogDistinctId: distinctId,
+        blogReferrerSlug,
+        blogReferrerCta,
       },
     })
   }

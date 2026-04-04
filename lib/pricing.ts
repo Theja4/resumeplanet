@@ -100,6 +100,7 @@ export const FREE_PLAN = {
   limits: {
     atsScansPerDay: 3,
     maxResumes: 1,
+    maxTrackedJobs: 5,
   },
 
   features: [
@@ -127,6 +128,9 @@ export const FREE_PLAN = {
 export const PRO_PLAN = {
   id: 'pro' as PlanId,
   name: 'Pro',
+  limits: {
+    maxTrackedJobs: 3000,
+  },
 
   prices: [
     {

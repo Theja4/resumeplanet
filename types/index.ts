@@ -337,10 +337,62 @@ export interface BuilderSection {
 
 export type BuilderMode = 'builder' | 'tailor'
 
+export type TailorIntensity = 'conservative' | 'balanced' | 'aggressive' | 'overboard'
+
+export interface TailorKeywordEvidence {
+  keyword: string
+  evidence: string
+}
+
+export interface TailorKeywordGap {
+  keyword: string
+  suggestion: string
+}
+
+export interface TailorSectionFocus {
+  sectionId: 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer'
+  priority: 'high' | 'medium' | 'low'
+  title: string
+  reason: string
+}
+
+export interface TailorBulletRewrite {
+  sectionId: 'experience' | 'volunteer' | 'projects'
+  companyOrProject: string
+  original: string
+  tailored: string
+  keywordsHit: string[]
+  rationale: string
+  impact: 'high' | 'medium' | 'low'
+}
+
+export interface TailorBulletOrderPlan {
+  sectionId: 'experience' | 'volunteer'
+  companyOrProject: string
+  orderedOriginalBullets: string[]
+  reason: string
+}
+
 export interface TailorAnalysis {
+  intensity: TailorIntensity
   matchScore: number
-  missingKeywords: string[]
-  suggestions: { sectionId: string; hint: string }[]
+  matchTier: 'STRONG_FIT' | 'MODERATE_FIT' | 'STRETCH' | 'LONG_SHOT'
+  shortlistingProbability: 'LOW' | 'MODERATE' | 'HIGH' | 'VERY_HIGH'
+  overallStrategy: string
+  honestAssessment: string
+  tailoredHeadline: string
+  tailoredSummary: string
+  matchedKeywords: TailorKeywordEvidence[]
+  missingKeywords: TailorKeywordGap[]
+  skillsPlan: {
+    recommendedOrder: string[]
+    add: string[]
+    deprioritize: string[]
+    rationale: string
+  }
+  sectionFocus: TailorSectionFocus[]
+  bulletRewrites: TailorBulletRewrite[]
+  bulletOrderPlans: TailorBulletOrderPlan[]
 }
 
 // ─── Builder Visibility ───────────────────────────────────────────────────────
@@ -414,4 +466,59 @@ export const EMPTY_RESUME_DATA: ResumeData = {
   publications: [],
   references: [],
   customSections: [],
+}
+
+// ─── Jobs ────────────────────────────────────────────────────────────────────
+
+export type JobSourceProvider = 'greenhouse' | 'lever' | 'remotive' | 'manual'
+export type JobRemoteType = 'remote' | 'hybrid' | 'on_site' | 'unknown'
+export type TrackedJobStatus =
+  | 'saved'
+  | 'applied'
+  | 'interviewing'
+  | 'offer'
+  | 'rejected'
+  | 'archived'
+
+export interface Job {
+  id: string
+  source_provider: JobSourceProvider
+  source_key: string
+  external_id: string
+  slug: string
+  title: string
+  company_name: string
+  location_text: string
+  remote_type: JobRemoteType
+  employment_type: string | null
+  salary_text: string | null
+  description_text: string
+  apply_url: string
+  source_url: string | null
+  company_logo_url: string | null
+  category: string | null
+  tags: string[]
+  posted_at: string | null
+  metadata: Record<string, unknown>
+  is_active: boolean
+  last_seen_at: string
+  created_at: string
+  updated_at: string
+  tracked_status?: TrackedJobStatus | null
+}
+
+export interface TrackedJob {
+  id: string
+  user_id: string
+  job_id: string
+  status: TrackedJobStatus
+  applied_at: string | null
+  saved_on: string | null
+  salary_text: string | null
+  job_description: string | null
+  excitement_rating: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  job?: Job | null
 }

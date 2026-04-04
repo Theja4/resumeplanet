@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { paddle } from '@/lib/paddle'
 import { PRO_PLAN } from '@/lib/pricing'
+import { captureServerAnalyticsEvent } from '@/lib/analytics-server'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
   if (!priceId) return null
   const option = PRO_PLAN.getPriceByPaddleId(priceId)
@@ -109,6 +109,15 @@ async function handleOrderCompleted(transaction: any, supabase: any) {
     })
     .eq('id', orderId)
 
+  const analyticsDistinctId = transaction.customData?.posthogDistinctId as string | undefined
+  if (analyticsDistinctId) {
+    await captureServerAnalyticsEvent(analyticsDistinctId, 'checkout_completed', {
+      product: 'writing_service',
+      revenue: Number(transaction.details?.totals?.total ?? 0) / 100,
+      discountCode: undefined,
+    })
+  }
+
   console.log(`Order ${orderId} marked as paid`)
 }
 
@@ -138,6 +147,16 @@ async function handleSubscriptionFromTransaction(transaction: any, supabase: any
       subscription_interval: subscriptionInterval,
     })
     .eq('id', userId)
+
+  const analyticsDistinctId =
+    (transaction.customData?.posthogDistinctId as string | undefined) ?? userId
+  if (analyticsDistinctId) {
+    await captureServerAnalyticsEvent(analyticsDistinctId, 'checkout_completed', {
+      product: 'pro_subscription',
+      revenue: Number(transaction.details?.totals?.total ?? 0) / 100,
+      discountCode: undefined,
+    })
+  }
 
   console.log(`User ${userId} upgraded to Pro (via transaction), interval: ${subscriptionInterval}`)
 }

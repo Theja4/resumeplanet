@@ -12,6 +12,7 @@ type ATSScoreResponse = ATSResult & {
   scansRemaining: number | null
   scoreId: string
   scanTier: ATSScanTier
+  resumeData: ResumeData
 }
 
 interface ScoreBody {
@@ -446,13 +447,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
   let body: ScoreBody
   try {
     body = await request.json()
@@ -467,7 +461,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { resumeId, jobDescription } = body
 
   let storedParsedData: ResumeData | null = null
-  if (resumeId) {
+  if (user && resumeId) {
     const { data: resume } = await supabase
       .from('resumes')
       .select('raw_text, parsed_data')
@@ -489,16 +483,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  const profile = profileData as Profile | null
+  const profile = user
+    ? ((await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()).data as Profile | null)
+    : null
   const pro = isPro(profile)
 
-  if (!pro) {
+  if (user && !pro) {
     const now = new Date()
     const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
     const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60)
@@ -531,45 +525,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const scorerResult = scoreResume(scoringData)
   const normalizedResult = buildATSResult(scorerResult, scoringData, pro, jobDescription)
 
-  const { data: savedScore } = await supabase
-    .from('ats_scores')
-    .insert({
-      user_id: user.id,
-      resume_id: resumeId ?? null,
-      job_description: jobDescription ?? null,
-      score: normalizedResult.score,
-      missing_keywords: normalizedResult.missingKeywords,
-      suggestions: normalizedResult.suggestions,
-      scan_tier: pro ? 'advanced' : 'basic',
-    })
-    .select('id')
-    .single()
-
-  if (resumeId) {
-    await supabase
-      .from('resumes')
-      .update({
-        ats_score: scorerResult.score,
-        updated_at: new Date().toISOString(),
+  let savedScoreId = ''
+  if (user) {
+    const { data: savedScore } = await supabase
+      .from('ats_scores')
+      .insert({
+        user_id: user.id,
+        resume_id: resumeId ?? null,
+        job_description: jobDescription ?? null,
+        score: normalizedResult.score,
+        missing_keywords: normalizedResult.missingKeywords,
+        suggestions: normalizedResult.suggestions,
+        scan_tier: pro ? 'advanced' : 'basic',
       })
-      .eq('id', resumeId)
-      .eq('user_id', user.id)
+      .select('id')
+      .single()
+
+    savedScoreId = savedScore?.id ?? ''
+
+    if (resumeId) {
+      await supabase
+        .from('resumes')
+        .update({
+          ats_score: scorerResult.score,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', resumeId)
+        .eq('user_id', user.id)
+    }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/dashboard/resumes')
+    if (resumeId) {
+      revalidatePath(`/dashboard/resumes/${resumeId}`)
+    }
+
+    if (!pro) {
+      await supabase
+        .from('profiles')
+        .update({ ats_scans_today: (profile?.ats_scans_today ?? 0) + 1 })
+        .eq('id', user.id)
+    }
   }
 
-  revalidatePath('/dashboard')
-  revalidatePath('/dashboard/resumes')
-  if (resumeId) {
-    revalidatePath(`/dashboard/resumes/${resumeId}`)
-  }
-
-  if (!pro) {
-    await supabase
-      .from('profiles')
-      .update({ ats_scans_today: (profile?.ats_scans_today ?? 0) + 1 })
-      .eq('id', user.id)
-  }
-
-  const scansRemaining = pro ? null : getRemainingFreeScans(profile) - 1
+  const scansRemaining = user ? (pro ? null : getRemainingFreeScans(profile) - 1) : null
 
   return NextResponse.json<APIResponse<ATSScoreResponse>>(
     {
@@ -578,8 +577,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...normalizedResult,
         pipeline: pro ? 'pro_ats' : 'free_ats',
         scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
-        scoreId: savedScore?.id ?? '',
+        scoreId: savedScoreId,
         scanTier: pro ? 'advanced' : 'basic',
+        resumeData: scoringData,
       },
     },
     { status: 200 }

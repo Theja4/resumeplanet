@@ -16,9 +16,10 @@ export interface PromoValidationResult {
 interface Props {
   onApply: (result: PromoValidationResult) => void
   autoFillCode?: string
+  compact?: boolean
 }
 
-export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
+export default function PromoCodeInput({ onApply, autoFillCode, compact = false }: Props) {
   const [code, setCode] = useState(autoFillCode ?? '')
   const [isValidating, setIsValidating] = useState(false)
   const [result, setResult] = useState<PromoValidationResult | null>(null)
@@ -67,7 +68,7 @@ export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
   }
 
   return (
-    <div>
+    <div className={compact ? 'rounded-[1.35rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(244,248,246,0.9))] p-2 shadow-[0_16px_38px_rgba(25,28,29,0.06)]' : ''}>
       <div className="flex gap-2">
         <input
           value={code}
@@ -78,13 +79,19 @@ export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
           onKeyDown={e => e.key === 'Enter' && handleApply()}
           placeholder="Promo code"
           disabled={result?.valid === true}
-          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-500"
+          className={compact
+            ? 'flex-1 rounded-[1.05rem] border border-black/6 bg-white/88 px-4 py-3 text-sm font-mono uppercase tracking-[0.18em] text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-500'
+            : 'flex-1 rounded-[1rem] border border-black/8 bg-white px-4 py-3 text-sm font-mono uppercase tracking-wider text-slate-700 shadow-[0_12px_28px_rgba(25,28,29,0.04)] focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-500'
+          }
         />
         {result?.valid !== true && (
           <button
             onClick={() => handleApply()}
             disabled={!code.trim() || isValidating}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-700 transition-colors"
+            className={compact
+              ? 'min-w-[6.75rem] rounded-[1.05rem] bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-45'
+              : 'rounded-[1rem] bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
+            }
           >
             {isValidating ? 'Checking…' : 'Apply'}
           </button>
@@ -93,12 +100,12 @@ export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
 
       {/* Success state */}
       {result?.valid === true && (
-        <div className="flex items-center gap-2 mt-2 text-green-600 text-sm">
+        <div className={`${compact ? 'mt-2.5' : 'mt-3'} flex items-center gap-2 rounded-[1rem] border border-primary/12 bg-primary-container/25 px-3 py-2.5 text-sm text-primary`}>
           <CheckCircle size={16} className="shrink-0" />
           <span>{result.displayLabel}</span>
           <button
             onClick={clearPromo}
-            className="ml-auto text-gray-400 hover:text-gray-600 text-xs"
+            className="ml-auto text-xs text-slate-500 transition-colors hover:text-slate-700"
           >
             Remove
           </button>
@@ -107,7 +114,7 @@ export default function PromoCodeInput({ onApply, autoFillCode }: Props) {
 
       {/* Error state */}
       {result?.valid === false && result.errorMessage && (
-        <p className="mt-2 text-sm text-red-500 flex items-center gap-1.5">
+        <p className={`${compact ? 'mt-2.5' : 'mt-3'} flex items-center gap-1.5 rounded-[1rem] border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-500`}>
           <XCircle size={14} className="shrink-0" />
           {result.errorMessage}
         </p>

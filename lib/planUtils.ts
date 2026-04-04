@@ -1,5 +1,5 @@
 import type { Profile } from '@/types'
-import { FREE_PLAN } from '@/lib/pricing'
+import { FREE_PLAN, PRO_PLAN } from '@/lib/pricing'
 
 const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
 const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
@@ -27,4 +27,17 @@ export function getRemainingFreeScans(profile: Profile | null): number {
 
 export function getATSModel(profile: Profile | null): string {
   return isPro(profile) ? CLAUDE_PREMIUM : CLAUDE_STANDARD
+}
+
+export function getTrackedJobsLimit(profile: Profile | null): number {
+  return isPro(profile) ? PRO_PLAN.limits.maxTrackedJobs : FREE_PLAN.limits.maxTrackedJobs
+}
+
+export function getTrackedJobsLimitLabel(profile: Profile | null): string {
+  return isPro(profile) ? 'Unlimited' : String(FREE_PLAN.limits.maxTrackedJobs)
+}
+
+export function getRemainingTrackedJobs(profile: Profile | null, trackedJobCount: number): number {
+  if (isPro(profile)) return Infinity
+  return Math.max(0, FREE_PLAN.limits.maxTrackedJobs - trackedJobCount)
 }

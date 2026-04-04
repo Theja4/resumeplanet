@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ShoppingBag, Plus, ArrowRight } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
+import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-gray-100 text-gray-600',
@@ -37,26 +38,23 @@ export default async function OrdersPage() {
   const typedOrders = (orders ?? []) as Order[]
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div
-        className="flex items-center justify-between mb-6 opacity-0 [animation:card-enter_0.4s_ease_forwards]"
-      >
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-          <p className="text-sm text-gray-500 mt-1">Track your professional resume rewrites.</p>
-        </div>
-        <Link
-          href="/dashboard/orders/new"
-          className="flex items-center gap-2 bg-[#026d32] hover:bg-green-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Plus size={15} /> New order
-        </Link>
-      </div>
+    <div className="max-w-5xl mx-auto space-y-8">
+      <DashboardPageIntro
+        kicker="Professional Rewrite"
+        title="Track every rewrite order from one place."
+        description="See where each order sits, when it was placed, and what needs follow-up, all inside the same premium dashboard shell."
+        actions={
+          <Link
+            href="/dashboard/orders/new"
+            className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900"
+          >
+            <Plus size={15} /> New order
+          </Link>
+        }
+      />
 
       {typedOrders.length === 0 ? (
-        <div
-          className="text-center py-20 border border-dashed border-gray-200 rounded-2xl bg-gray-50 opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]"
-        >
+        <DashboardSurface variant="default" className="py-20 text-center opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]">
           <ShoppingBag size={40} className="mx-auto text-gray-300 mb-4" />
           <h2 className="text-lg font-semibold text-gray-700">No orders yet</h2>
           <p className="text-sm text-gray-400 mt-2 max-w-sm mx-auto">
@@ -68,10 +66,11 @@ export default async function OrdersPage() {
           >
             Order now <ArrowRight size={14} />
           </Link>
-        </div>
+        </DashboardSurface>
       ) : (
-        <div
-          className="bg-white rounded-2xl border border-gray-200 overflow-hidden opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]"
+        <DashboardSurface
+          variant="default"
+          className="overflow-hidden opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]"
         >
           <table className="w-full text-sm">
             <thead>
@@ -107,7 +106,7 @@ export default async function OrdersPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </DashboardSurface>
       )}
     </div>
   )

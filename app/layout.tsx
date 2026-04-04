@@ -4,6 +4,8 @@ import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
 import PromoBanner from '@/components/shared/PromoBanner'
 import PaddleProvider from '@/components/providers/PaddleProvider'
+import PostHogProvider from '@/components/providers/PostHogProvider'
+import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,14 +32,18 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
       data-scroll-behavior="smooth"
     >
-      <body className="min-h-full flex flex-col">
-        <PaddleProvider>
-          {bannerPromo && <PromoBanner promo={bannerPromo} />}
-          {children}
-        </PaddleProvider>
+      <body suppressHydrationWarning className="min-h-full flex flex-col">
+        <PostHogProvider>
+          <PaddleProvider>
+            {bannerPromo && <PromoBanner promo={bannerPromo} />}
+            {children}
+            <PendingJobApplyPrompt />
+          </PaddleProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

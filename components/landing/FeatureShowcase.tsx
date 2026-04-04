@@ -4,25 +4,21 @@ import Link from 'next/link'
 import {
   ArrowRight,
   BarChart3,
-  Check,
   FolderOpen,
   LayoutTemplate,
   Lock,
   WandSparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useEffectEvent, useState } from 'react'
+import { useState } from 'react'
 import { PRO_FEATURES } from '@/lib/proFeatures'
 import { FREE_PLAN } from '@/lib/pricing'
-
-const CAROUSEL_INTERVAL_MS = 5600
 
 interface FeatureSlide {
   id: string
   badge: string
   title: string
   description: string
-  bullets: string[]
   metricValue: string
   metricLabel: string
   icon: LucideIcon
@@ -34,7 +30,6 @@ const FEATURE_SLIDES = [
     badge: 'Tailor Mode',
     title: 'Shape every resume around the exact role you want.',
     description: PRO_FEATURES.tailor.description,
-    bullets: PRO_FEATURES.tailor.bullets,
     metricValue: 'Match score',
     metricLabel: 'Role-fit guidance',
     icon: WandSparkles,
@@ -44,11 +39,6 @@ const FEATURE_SLIDES = [
     badge: 'Unlimited ATS',
     title: 'Run scan after scan until the score finally looks right.',
     description: `Free plans stop at ${FREE_PLAN.limits.atsScansPerDay} ATS scans per day. Pro removes the ceiling and unlocks deeper AI analysis.`,
-    bullets: [
-      `Free plan: ${FREE_PLAN.limits.atsScansPerDay} scans/day`,
-      'Unlimited ATS scans',
-      'Advanced AI analysis',
-    ],
     metricValue: 'Unlimited',
     metricLabel: 'Daily scans',
     icon: BarChart3,
@@ -58,7 +48,6 @@ const FEATURE_SLIDES = [
     badge: 'Custom Template',
     title: 'Customize one polished template and export recruiter-ready files fast.',
     description: PRO_FEATURES.docx_download.description,
-    bullets: ['Highly customizable template', 'PDF + DOCX download', 'ATS-friendly formatting'],
     metricValue: 'Flexible',
     metricLabel: 'Template control',
     icon: LayoutTemplate,
@@ -68,7 +57,6 @@ const FEATURE_SLIDES = [
     badge: 'Resume Library',
     title: 'Keep a tailored version for every company without clutter.',
     description: PRO_FEATURES.multi_resume.description,
-    bullets: ['Unlimited resumes stored', 'Separate ATS scores', 'Quick switching'],
     metricValue: 'Unlimited',
     metricLabel: 'Saved resumes',
     icon: FolderOpen,
@@ -291,14 +279,12 @@ function CarouselPreview({ slideId, compact = false }: { slideId: string; compac
       <div className={`overflow-hidden rounded-[1.7rem] bg-surface-container-low p-5 ${shellClassName}`}>
         <div className={splitLayoutClass}>
           <div className="relative flex h-full items-center justify-center">
-            <div className="absolute h-36 w-28 rounded-[1.5rem] bg-zinc-900/10 rotate-[-10deg] stack-animation" />
+            <div className="absolute h-36 w-28 -translate-x-7 translate-y-1 rounded-[1.5rem] bg-zinc-900/10" />
             <div
-              className="absolute h-40 w-[7.5rem] rounded-[1.5rem] bg-zinc-900/15 rotate-[6deg] stack-animation"
-              style={{ animationDelay: '0.6s' }}
+              className="absolute h-40 w-[7.5rem] translate-x-6 -translate-y-2 rounded-[1.5rem] bg-zinc-900/15"
             />
             <div
-              className="relative h-44 w-32 rounded-[1.6rem] bg-white p-4 shadow-[0_20px_45px_rgba(17,24,39,0.1)] stack-animation"
-              style={{ animationDelay: '1.2s' }}
+              className="relative h-44 w-32 rounded-[1.6rem] bg-white p-4 shadow-[0_20px_45px_rgba(17,24,39,0.1)]"
             >
               <div className="h-1 w-16 rounded-full bg-primary" />
               <div className="mt-4 flex items-center gap-2">
@@ -396,39 +382,20 @@ export function FeatureShowcase({
   className?: string
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
-  const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true)
-
-  const advanceSlide = useEffectEvent(() => {
-    setActiveIndex(current => (current + 1) % FEATURE_SLIDES.length)
-  })
-
-  useEffect(() => {
-    if (!isAutoScrollEnabled) {
-      return
-    }
-
-    const intervalId = window.setInterval(() => {
-      advanceSlide()
-    }, CAROUSEL_INTERVAL_MS)
-
-    return () => window.clearInterval(intervalId)
-  }, [isAutoScrollEnabled])
 
   function handleFeatureSelect(index: number) {
     setActiveIndex(index)
-    setIsAutoScrollEnabled(false)
   }
 
   const slide = FEATURE_SLIDES[activeIndex]
   const Icon = slide.icon
-  const visibleBullets = compact ? slide.bullets.slice(0, 2) : slide.bullets
-  const carouselCardHeightClass = compact ? 'min-h-[35rem]' : 'h-[41.5rem] xl:h-[42rem]'
-  const desktopLayoutClass = 'lg:grid lg:h-full lg:grid-rows-[13.5rem_minmax(0,1fr)_5rem] lg:gap-4'
+  const carouselCardHeightClass = compact ? 'min-h-[28rem]' : 'h-[35.5rem] xl:h-[36rem]'
+  const desktopLayoutClass = 'lg:grid lg:h-full lg:grid-rows-[13.5rem_minmax(0,1fr)] lg:gap-4'
 
   return (
     <div className={joinClasses('flex flex-col gap-4', className)}>
       <div
-        className={`login-carousel-shell relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/78 backdrop-blur-2xl shadow-[0_26px_70px_rgba(25,28,29,0.08)] ${carouselCardHeightClass} ${
+        className={`relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/78 backdrop-blur-2xl shadow-[0_26px_70px_rgba(25,28,29,0.08)] ${carouselCardHeightClass} ${
           compact ? 'p-5' : 'p-6 xl:p-7'
         }`}
       >
@@ -453,10 +420,6 @@ export function FeatureShowcase({
               >
                 {slide.title}
               </h2>
-
-              <p className="mt-2.5 max-w-[38rem] text-sm leading-6 text-on-surface-variant xl:text-[15px]">
-                {slide.description}
-              </p>
             </div>
 
             <div className={`flex ${compact ? 'items-center justify-between gap-4' : 'flex-row items-center justify-between gap-4 xl:flex-col xl:items-end xl:justify-start'}`}>
@@ -473,26 +436,6 @@ export function FeatureShowcase({
 
           <div className="lg:h-full">
             <CarouselPreview slideId={slide.id} compact={compact} />
-          </div>
-
-          <div
-            className={joinClasses(
-              `grid gap-3 ${compact ? 'sm:grid-cols-2' : 'md:grid-cols-3'}`,
-              compact ? 'min-h-[9.5rem]' : 'min-h-[5rem]',
-              'lg:mt-0 lg:h-full lg:min-h-0'
-            )}
-          >
-            {visibleBullets.map(bullet => (
-              <div
-                key={bullet}
-                className="flex h-full min-h-[4.5rem] items-center gap-3 rounded-[1.25rem] bg-white/72 px-4 py-3 text-sm font-semibold text-on-surface shadow-[0_12px_30px_rgba(25,28,29,0.04)]"
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-container/70 text-on-primary-container">
-                  <Check size={14} strokeWidth={2.8} />
-                </span>
-                <span>{bullet}</span>
-              </div>
-            ))}
           </div>
         </div>
       </div>

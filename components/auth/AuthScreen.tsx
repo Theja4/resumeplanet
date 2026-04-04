@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from 'react'
 import { PRO_PLAN } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
+import { Analytics, setAuthIntent } from '@/lib/analytics'
 
 type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
 
@@ -320,6 +321,11 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
     setIsGoogleLoading(true)
 
     try {
+      setAuthIntent({
+        mode: isRegister ? 'register' : 'login',
+        method: 'google',
+      })
+
       const supabase = createClient()
       const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
       const { error } = await supabase.auth.signInWithOAuth({
@@ -416,6 +422,17 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
+        Analytics.signupCompleted({ method: 'email' })
+
+        if (data.user?.id) {
+          Analytics.identify(data.user.id, {
+            email: data.user.email,
+            fullName: fullName.trim() || null,
+            plan: 'free',
+            signupDate: data.user.created_at,
+          })
+        }
+
         if (data.session) {
           router.replace('/dashboard')
           router.refresh()
@@ -428,7 +445,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
         return
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
@@ -436,6 +453,17 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       if (error) {
         setLocalError(error.message)
         return
+      }
+
+      Analytics.loginCompleted({ method: 'email' })
+
+      if (data.user?.id) {
+        Analytics.identify(data.user.id, {
+          email: data.user.email,
+          fullName: data.user.user_metadata?.full_name as string | undefined,
+          plan: 'free',
+          signupDate: data.user.created_at,
+        })
       }
 
       router.replace('/dashboard')

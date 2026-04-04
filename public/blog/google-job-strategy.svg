@@ -1,0 +1,17 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" rx="48" fill="#F9FBF9"/>
+  <rect x="100" y="100" width="1400" height="700" rx="36" fill="#FFFFFF"/>
+  <text x="170" y="176" fill="#0F6B3A" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="3">GOOGLE APPLICATION PLAN</text>
+  <rect x="170" y="250" width="360" height="420" rx="30" fill="#F0FBF3"/>
+  <rect x="620" y="250" width="360" height="420" rx="30" fill="#F6F8F7"/>
+  <rect x="1070" y="250" width="360" height="420" rx="30" fill="#0D1117"/>
+  <text x="220" y="322" fill="#0D1117" font-family="Arial, sans-serif" font-size="36" font-weight="800">1. Pick the exact role</text>
+  <text x="220" y="388" fill="#55606B" font-family="Arial, sans-serif" font-size="26">Use the job description</text>
+  <text x="220" y="424" fill="#55606B" font-family="Arial, sans-serif" font-size="26">as a qualification filter.</text>
+  <text x="670" y="322" fill="#0D1117" font-family="Arial, sans-serif" font-size="36" font-weight="800">2. Tailor the resume</text>
+  <text x="670" y="388" fill="#55606B" font-family="Arial, sans-serif" font-size="26">Check ATS fit and rewrite</text>
+  <text x="670" y="424" fill="#55606B" font-family="Arial, sans-serif" font-size="26">generic bullets in Rezoomed.</text>
+  <text x="1120" y="322" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="36" font-weight="800">3. Apply with intent</text>
+  <text x="1120" y="388" fill="#D6DDD8" font-family="Arial, sans-serif" font-size="26">Google limits applications.</text>
+  <text x="1120" y="424" fill="#D6DDD8" font-family="Arial, sans-serif" font-size="26">Make each one count.</text>
+</svg>

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { extractPDFText } from '@/lib/pdfExtractor'
+import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 const ALLOWED_TYPES = [
@@ -9,12 +8,6 @@ const ALLOWED_TYPES = [
 ]
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-  }
-
   let formData: FormData
   try {
     formData = await request.formData()
@@ -38,9 +31,12 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer())
 
   let text: string
+  let pageCount = 1
   try {
     if (file.type === 'application/pdf') {
-      text = await extractPDFText(buffer)
+      const pages = await extractPDFItems(buffer)
+      pageCount = pages.length || 1
+      text = pagesToLines(pages).map(line => line.text).join('\n')
     } else {
       const mammoth = await import('mammoth')
       const result = await mammoth.extractRawText({ buffer })
@@ -55,5 +51,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'SCANNED_OR_EMPTY' }, { status: 422 })
   }
 
-  return NextResponse.json({ success: true, text })
+  return NextResponse.json({ success: true, text, pageCount })
 }

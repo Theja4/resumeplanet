@@ -1,0 +1,24 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="900" rx="48" fill="#F6FBF7"/>
+  <rect x="70" y="70" width="1460" height="760" rx="36" fill="url(#g1)"/>
+  <rect x="140" y="150" width="670" height="380" rx="30" fill="#FFFFFF"/>
+  <text x="190" y="228" fill="#0F6B3A" font-family="Arial, sans-serif" font-size="24" font-weight="800" letter-spacing="3">FOLLOW-UP GUIDE</text>
+  <text x="190" y="312" fill="#0D1117" font-family="Arial, sans-serif" font-size="68" font-weight="800">Short.</text>
+  <text x="190" y="388" fill="#0D1117" font-family="Arial, sans-serif" font-size="68" font-weight="800">Specific.</text>
+  <text x="190" y="464" fill="#0D1117" font-family="Arial, sans-serif" font-size="68" font-weight="800">Well-timed.</text>
+  <rect x="930" y="160" width="460" height="520" rx="32" fill="#0D1117"/>
+  <rect x="990" y="240" width="320" height="18" rx="9" fill="#A8F2B7"/>
+  <rect x="990" y="286" width="260" height="16" rx="8" fill="#D8E0DA"/>
+  <rect x="990" y="330" width="300" height="16" rx="8" fill="#D8E0DA"/>
+  <rect x="990" y="374" width="240" height="16" rx="8" fill="#D8E0DA"/>
+  <rect x="990" y="450" width="180" height="52" rx="18" fill="#A8F2B7"/>
+  <text x="1030" y="485" fill="#0F6B3A" font-family="Arial, sans-serif" font-size="28" font-weight="800">Follow up</text>
+  <text x="142" y="650" fill="#0F6B3A" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="3">REZOOMED</text>
+  <text x="142" y="700" fill="#4F5963" font-family="Arial, sans-serif" font-size="30">The strongest follow-up starts with a stronger application.</text>
+  <defs>
+    <linearGradient id="g1" x1="110" y1="110" x2="1490" y2="790" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEFBF2"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+</svg>

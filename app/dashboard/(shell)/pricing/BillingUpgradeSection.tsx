@@ -14,9 +14,10 @@ import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 interface Props {
   autoFillPromo?: string
   isPro: boolean
+  compact?: boolean
 }
 
-export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
+export default function BillingUpgradeSection({ autoFillPromo, isPro, compact = false }: Props) {
   const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
   const [appliedDiscountId, setAppliedDiscountId] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
@@ -48,24 +49,44 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className={compact ? 'space-y-3.5' : 'space-y-6'}>
       {/* Interval toggle — only relevant when upgrading from free */}
-      {!isPro && (
-        <div className="flex justify-center">
-          <PricingToggle
-            selectedPriceId={selectedPriceId}
-            onChange={setSelectedPriceId}
-            activePromo={activePromo}
-          />
-        </div>
-      )}
+      {!isPro &&
+        (compact ? (
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,0.94fr)] xl:items-start xl:gap-4">
+            <div className="hidden xl:block" />
+            <div className="xl:flex xl:justify-center">
+              <PricingToggle
+                selectedPriceId={selectedPriceId}
+                onChange={setSelectedPriceId}
+                activePromo={activePromo}
+              />
+            </div>
+            <div className="xl:col-start-3 xl:w-full">
+              <PromoCodeInput
+                autoFillCode={autoFillPromo}
+                onApply={handlePromoApply}
+                compact
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <PricingToggle
+              selectedPriceId={selectedPriceId}
+              onChange={setSelectedPriceId}
+              activePromo={activePromo}
+            />
+          </div>
+        ))}
 
       {/* 3-column card grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
+      <div className={`grid grid-cols-1 md:grid-cols-3 md:items-stretch ${compact ? 'gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,0.94fr)]' : 'gap-5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,0.96fr)]'}`}>
         <PricingCard
           variant="free"
           activePromo={activePromo}
           isCurrentPlan={!isPro}
+          compact={compact}
           delay="0ms"
         />
         <PricingCard
@@ -75,11 +96,13 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
           isCurrentPlan={isPro}
           onUpgrade={isPro ? undefined : handleUpgrade}
           isUpgrading={isLoading}
+          compact={compact}
           delay="120ms"
         />
         <PricingCard
           variant="professional"
           activePromo={activePromo}
+          compact={compact}
           delay="240ms"
         />
       </div>
@@ -89,9 +112,12 @@ export default function BillingUpgradeSection({ autoFillPromo, isPro }: Props) {
       )}
 
       {/* Promo code input — only relevant when upgrading from free */}
-      {!isPro && (
-        <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">Have a promo code?</p>
+      {!isPro && !compact && (
+        <div className="rounded-[1.6rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(244,248,246,0.9))] p-4 shadow-[0_18px_45px_rgba(25,28,29,0.05)] sm:p-5">
+          <div className="mb-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">Discount code</p>
+            <p className="mt-1 text-sm text-slate-500">Apply a promo code before opening checkout.</p>
+          </div>
           <PromoCodeInput
             autoFillCode={autoFillPromo}
             onApply={handlePromoApply}

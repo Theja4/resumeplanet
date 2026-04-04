@@ -7,6 +7,7 @@ import { ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react'
 import type { Resume } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
+import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 
 const STEPS = ['Resume', 'Job Details', 'Notes', 'Review']
 
@@ -100,21 +101,28 @@ export default function NewOrderPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Link href="/dashboard/orders" className="text-sm text-gray-500 hover:text-gray-700">
-          ← My Orders
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">Order Professional Resume</h1>
-        <p className="text-sm text-gray-500 mt-1">A professional writer rewrites your resume in 2–3 business days.</p>
-      </div>
+    <div className="max-w-3xl mx-auto space-y-8">
+      <DashboardPageIntro
+        kicker="Professional Rewrite"
+        title="Order a recruiter-level resume rewrite."
+        description="Move through the rewrite flow with the same polished shell as the rest of the dashboard. We keep the steps focused so the order stays easy to complete."
+        actions={
+          <Link
+            href="/dashboard/orders"
+            className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+          >
+            Back to orders
+          </Link>
+        }
+      />
 
-      <StepIndicator current={step} total={4} />
+      <DashboardSurface variant="default" className="p-6">
+        <StepIndicator current={step} total={4} />
 
-      {/* Step 1: Select Resume */}
-      {step === 1 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Which resume should we rewrite?</h2>
+        {/* Step 1: Select Resume */}
+        {step === 1 && (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Which resume should we rewrite?</h2>
           {isLoadingResumes ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="animate-spin text-[#026d32]" size={24} />
@@ -167,12 +175,12 @@ export default function NewOrderPage() {
               Next <ChevronRight size={16} />
             </button>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Step 2: Job Details */}
-      {step === 2 && (
-        <div className="space-y-4">
+        {/* Step 2: Job Details */}
+        {step === 2 && (
+          <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Tell us about the role</h2>
             <p className="text-sm text-gray-500 mt-1">The more detail you provide, the better we can tailor your resume to the position.</p>
@@ -246,12 +254,12 @@ export default function NewOrderPage() {
               Next <ChevronRight size={16} />
             </button>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Step 3: Additional Notes */}
-      {step === 3 && (
-        <div className="space-y-4">
+        {/* Step 3: Additional Notes */}
+        {step === 3 && (
+          <div className="space-y-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Anything else we should know?</h2>
             <p className="text-sm text-gray-500 mt-1">Optional context helps our writer personalise your resume beyond the basics.</p>
@@ -279,12 +287,12 @@ export default function NewOrderPage() {
               Next <ChevronRight size={16} />
             </button>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Step 4: Review */}
-      {step === 4 && (
-        <div>
+        {/* Step 4: Review */}
+        {step === 4 && (
+          <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Review your order</h2>
 
           {/* Summary */}
@@ -341,8 +349,9 @@ export default function NewOrderPage() {
           <button onClick={() => setStep(3)} className="w-full mt-3 flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-gray-700">
             <ChevronLeft size={16} /> Back
           </button>
-        </div>
-      )}
+          </div>
+        )}
+      </DashboardSurface>
     </div>
   )
 }

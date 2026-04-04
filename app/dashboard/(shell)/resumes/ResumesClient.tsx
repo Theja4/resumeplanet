@@ -8,6 +8,7 @@ import ResumeCard from '@/components/resumes/ResumeCard'
 import EmptyState from '@/components/shared/EmptyState'
 import PaywallModal from '@/components/shared/PaywallModal'
 import AdBanner from '@/components/shared/AdBanner'
+import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { deleteResume, renameResume } from './actions'
 import type { Resume, Profile } from '@/types'
 
@@ -24,24 +25,16 @@ export default function ResumesClient({
 }: ResumesClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const limitReached = searchParams.get('status') === 'limit-reached'
   const [resumes, setResumes] = useState<Resume[]>(initialResumes)
-  const [showPaywall, setShowPaywall] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(limitReached)
 
   useEffect(() => {
-    if (searchParams.get('status') === 'limit-reached') {
-      setShowPaywall(true)
+    if (limitReached) {
       // Clean up the URL to prevent showing the popup again on refresh
       router.replace('/dashboard/resumes')
     }
-  }, [searchParams, router])
-
-  function handleUploadAttempt() {
-    if (plan === 'free' && resumes.length >= 3) {
-      setShowPaywall(true)
-      return false
-    }
-    return true
-  }
+  }, [limitReached, router])
 
   function handleUploadSuccess(newResume: Resume) {
     setResumes((prev) => [newResume, ...prev])
@@ -60,17 +53,26 @@ export default function ResumesClient({
 
   return (
     <div className="max-w-7xl mx-auto space-y-12">
-      {/* Editorial Header - Only visible on desktop if needed, otherwise rely on the layout header */}
-      <div className="flex justify-between items-end mb-4">
-        <div>
-          <h3 className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-1">
-            Your Library
-          </h3>
-          <p className="text-4xl font-black text-on-surface tracking-tight">
-            Recent Resumes
-          </p>
-        </div>
-      </div>
+      <DashboardPageIntro
+        kicker="Resume Library"
+        title="Every version, one polished system."
+        description="Upload new resumes, revisit old drafts, and move straight into ATS analysis or the builder without losing the calmer visual language from login and landing."
+        aside={
+          <div className="space-y-2.5">
+            <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${plan === 'pro' ? 'text-primary' : 'text-primary/80'}`}>
+              {plan === 'pro' ? 'Pro workspace' : 'Free workspace'}
+            </p>
+            <p className="text-2xl font-black tracking-tight text-on-background">
+              {resumes.length} saved resume{resumes.length === 1 ? '' : 's'}
+            </p>
+            <p className="text-sm leading-6 text-on-surface-variant">
+              {plan === 'pro'
+                ? 'Store unlimited tailored drafts and jump between versions freely.'
+                : 'Free plans can save up to 3 resumes before the library locks.'}
+            </p>
+          </div>
+        }
+      />
 
       {/* Hero Upload Section */}
       <div
@@ -105,7 +107,7 @@ export default function ResumesClient({
               />
               {/* Insert Asymmetric CTA Card after the second item */}
               {index === 1 && (
-                <div key="cta-card" className="group bg-primary-container p-6 rounded-2xl flex flex-col justify-between relative overflow-hidden shadow-lg shadow-primary/5">
+                <DashboardSurface key="cta-card" variant="accent" className="dashboard-card-hover group flex flex-col justify-between p-6">
                   <div className="absolute -right-8 -top-8 w-32 h-32 bg-white/20 rounded-full blur-2xl"></div>
                   <div className="relative z-10">
                     <span className="bg-white/40 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-on-primary-container mb-4 inline-block">
@@ -120,11 +122,11 @@ export default function ResumesClient({
                   </div>
                   <button 
                     onClick={() => router.push('/dashboard/ats-checker')}
-                    className="w-full py-3 bg-on-primary-container text-white font-bold rounded-xl text-sm hover:opacity-90 transition-opacity active:scale-95 shadow-md shadow-primary/20"
+                    className="w-full rounded-full bg-zinc-950 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95"
                   >
                     Try AI Tailoring
                   </button>
-                </div>
+                </DashboardSurface>
               )}
             </div>
           ))}

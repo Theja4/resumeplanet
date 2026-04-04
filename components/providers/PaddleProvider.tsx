@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { initializePaddle, type Paddle } from '@paddle/paddle-js'
+import { Analytics, clearCheckoutContext, readCheckoutContext } from '@/lib/analytics'
 
 // Singleton Paddle instance for client-side use
 let paddleInstance: Paddle | null = null
@@ -25,7 +26,18 @@ export default function PaddleProvider({
       token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
       eventCallback: (event) => {
         if (event.name === 'checkout.completed') {
-          console.log('Paddle checkout completed:', event.data)
+          clearCheckoutContext()
+        }
+
+        if (event.name === 'checkout.closed') {
+          const checkoutContext = readCheckoutContext()
+          if (!checkoutContext) return
+
+          Analytics.checkoutAbandoned({
+            product: checkoutContext.product,
+            step: checkoutContext.step ?? 'checkout_closed',
+          })
+          clearCheckoutContext()
         }
       },
     }).then((paddle) => {

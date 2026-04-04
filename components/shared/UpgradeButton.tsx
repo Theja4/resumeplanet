@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 import { PRO_PLAN } from '@/lib/pricing'
+import { Analytics } from '@/lib/analytics'
 
 interface Props {
   label?: string
@@ -11,6 +12,8 @@ interface Props {
   variant?: 'button' | 'link'
   className?: string
   onSuccess?: () => void
+  analyticsLocation?: string
+  analyticsVariant?: string
 }
 
 export default function UpgradeButton({
@@ -20,6 +23,7 @@ export default function UpgradeButton({
   variant = 'button',
   className = '',
   onSuccess,
+  analyticsLocation,
 }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +32,11 @@ export default function UpgradeButton({
   const handleClick = async () => {
     setIsLoading(true)
     setError(null)
+    if (analyticsLocation) {
+      Analytics.upgradePromptClicked({
+        location: analyticsLocation,
+      })
+    }
     await openSubscriptionCheckout({
       priceId: priceId ?? PRO_PLAN.defaultPrice.paddlePriceId,
       couponId,

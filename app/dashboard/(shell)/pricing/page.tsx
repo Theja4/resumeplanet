@@ -2,11 +2,12 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
-import ManageSubscriptionButton from './ManageSubscriptionButton'
 import BillingUpgradeSection from './BillingUpgradeSection'
 import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
 import UpgradePoller from '@/components/shared/UpgradePoller'
-import { PRO_PLAN, PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
+import { PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
+import { DashboardSurface } from '@/components/layout/DashboardSurface'
+import PricingPageTracker from '@/components/analytics/PricingPageTracker'
 import type { Profile, Order } from '@/types'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
@@ -34,11 +35,12 @@ function formatDate(d: string) {
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ upgraded?: string; promo?: string }>
+  searchParams: Promise<{ upgraded?: string; promo?: string; source?: string }>
 }) {
   const params = await searchParams
   const upgraded = params.upgraded === 'true'
   const promoCode = params.promo
+  const pricingSource = params.source ?? 'dashboard'
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -60,96 +62,51 @@ export default async function PricingPage({
 
   const isPro = profile.plan === 'pro'
   const paidOrders = (ordersResult.data ?? []) as Order[]
-
-  const subscriptionTier =
-    !isPro ? 'free'
-    : profile.subscription_interval === 'annual' ? 'pro-annual'
-    : 'pro-monthly'
-
-  const annualPrice = PRO_PLAN.getPriceById('annual')
   const exitPromo = getActiveExitIntentPromo()
 
   return (
     <ExitIntentProvider isPro={isPro} exitPromo={exitPromo}>
-      <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      <PricingPageTracker source={pricingSource} />
+      <div className="mx-auto w-full max-w-[1320px] space-y-5 pb-8">
         {/* Upgrade success banner */}
         {upgraded && (
           <>
-            <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-5 py-4">
+            <DashboardSurface variant="accent" className="flex items-center gap-3 px-5 py-4">
               <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
               <div>
                 <p className="text-sm font-semibold text-green-800">You&apos;re now on Pro!</p>
                 <p className="text-xs text-green-700 mt-0.5">All Pro features are unlocked. Enjoy unlimited scans and AI-powered tools.</p>
               </div>
-            </div>
+            </DashboardSurface>
             <UpgradePoller upgraded={upgraded} isPro={isPro} />
           </>
         )}
 
-        {/* Current plan badge */}
-        <div className={`rounded-xl border p-5 flex items-center justify-between ${
-          isPro ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-        }`}>
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Current Plan</p>
-            <p className={`text-xl font-bold mt-0.5 ${isPro ? 'text-[#026d32]' : 'text-gray-800'}`}>
-              {isPro ? 'Pro' : 'Free'}
-            </p>
-            {profile.subscription_status && isPro && (
-              <p className="text-xs text-gray-500 mt-1 capitalize">
-                Status: {profile.subscription_status}
+        <DashboardSurface variant="default" className="space-y-4 p-4 sm:p-5">
+          <div className="space-y-2.5">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
+              Plans & Billing
+            </span>
+            <div className="space-y-1.5">
+              <h1 className="max-w-4xl text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem] xl:max-w-none xl:whitespace-nowrap">
+                {isPro ? 'Billing, simplified.' : 'Choose the plan that fits your workflow.'}
+              </h1>
+              <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
+                Compare the self-serve plans with the recruiter-led rewrite service in one cleaner view.
               </p>
-            )}
-          </div>
-          <div className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide ${
-            isPro ? 'bg-[#026d32] text-white' : 'bg-gray-200 text-gray-600'
-          }`}>
-            {isPro ? 'Active' : 'Free tier'}
-          </div>
-        </div>
-
-        {/* Monthly Pro: annual upsell — shown ABOVE cards */}
-        {subscriptionTier === 'pro-monthly' && (
-          <div className="rounded-xl border border-green-200 bg-green-50 p-5 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-green-800">Switch to Annual — Save 31%</p>
-              {annualPrice && (
-                <p className="text-xs text-green-700 mt-1">
-                  ${annualPrice.display.displayPrice}/year
-                  {' · '}${annualPrice.perMonthEquivalent}/mo
-                  {' · '}{annualPrice.savingsNote}
-                </p>
-              )}
             </div>
-            <ManageSubscriptionButton
-              label="Switch plan →"
-              className="px-4 py-2 bg-[#026d32] text-white text-sm font-semibold rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap flex items-center justify-center gap-2"
-            />
           </div>
-        )}
 
-        {/* Plans */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold text-gray-700">Plans</h2>
-          <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} />
-        </div>
-
-        {/* Pro: manage subscription button */}
-        {subscriptionTier !== 'free' && (
-          <ManageSubscriptionButton />
-        )}
-
-        {isPro && (
-          <p className="text-center text-xs text-gray-400">
-            You can cancel anytime from the customer portal. Your access continues until the end of the billing period.
-          </p>
-        )}
+          <div className="border-t border-black/6 pt-4">
+            <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} compact />
+          </div>
+        </DashboardSurface>
 
         {/* Order history */}
         {paidOrders.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Order history</h2>
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <DashboardSurface variant="default" className="overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
@@ -180,7 +137,7 @@ export default async function PricingPage({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </DashboardSurface>
           </div>
         )}
       </div>

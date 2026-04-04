@@ -18,6 +18,7 @@ import ProjectItemEditor from './ProjectItemEditor'
 import CertificationItemEditor from './CertificationItemEditor'
 
 type ComplexSectionId = 'experience' | 'education' | 'projects' | 'certifications' | string
+type ComplexSectionItem = ExperienceItem | EducationItem | ProjectItem | CertificationItem
 
 interface Props {
   sectionId: ComplexSectionId
@@ -27,37 +28,44 @@ interface Props {
   onVisibilityChange: (updated: BuilderVisibility) => void
   focusPath?: string | null
   onFocusHandled?: () => void
+  onItemAdd?: (sectionId: string) => void
+  onItemDelete?: (sectionId: string) => void
+  onItemEditorOpen?: (sectionId: string, subSectionId: string) => void
 }
 
 function getItems(data: ResumeData, sectionId: ComplexSectionId) {
   if (sectionId.startsWith('custom_')) {
     const custom = data.customSections?.find(c => c.id === sectionId)
-    return (custom?.items || []) as (ExperienceItem | EducationItem | ProjectItem | CertificationItem)[]
+    return (custom?.items || []) as ComplexSectionItem[]
   }
-  return data[sectionId as keyof ResumeData] as (ExperienceItem | EducationItem | ProjectItem | CertificationItem)[]
+  return data[sectionId as keyof ResumeData] as ComplexSectionItem[]
 }
 
-function getItemLabel(item: any, sectionId: ComplexSectionId): string {
-  if (sectionId.startsWith('custom_') || sectionId === 'experience') return item.company || item.title || 'Untitled'
-  if (sectionId === 'education') return item.institution || 'Untitled'
-  if (sectionId === 'projects') return item.name || 'Untitled'
-  if (sectionId === 'certifications') return item.name || 'Untitled'
+function getItemLabel(item: ComplexSectionItem, sectionId: ComplexSectionId): string {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') {
+    const experienceItem = item as ExperienceItem
+    return experienceItem.company || experienceItem.title || 'Untitled'
+  }
+  if (sectionId === 'education') return (item as EducationItem).institution || 'Untitled'
+  if (sectionId === 'projects') return (item as ProjectItem).name || 'Untitled'
+  if (sectionId === 'certifications') return (item as CertificationItem).name || 'Untitled'
   return 'Untitled'
 }
 
-function getItemSublabel(item: any, sectionId: ComplexSectionId): string {
-  if (sectionId.startsWith('custom_') || sectionId === 'experience') return item.title || ''
-  if (sectionId === 'education') return item.degree || ''
-  if (sectionId === 'projects') return item.description?.slice(0, 40) || ''
-  if (sectionId === 'certifications') return item.issuer || ''
+function getItemSublabel(item: ComplexSectionItem, sectionId: ComplexSectionId): string {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') return (item as ExperienceItem).title || ''
+  if (sectionId === 'education') return (item as EducationItem).degree || ''
+  if (sectionId === 'projects') return (item as ProjectItem).description?.slice(0, 40) || ''
+  if (sectionId === 'certifications') return (item as CertificationItem).issuer || ''
   return ''
 }
 
-function makeEmptyItem(sectionId: ComplexSectionId): any {
+function makeEmptyItem(sectionId: ComplexSectionId): ComplexSectionItem {
   if (sectionId.startsWith('custom_') || sectionId === 'experience') return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
   if (sectionId === 'education') return { institution: '', degree: '', field: '', graduationDate: '', gpa: '' }
   if (sectionId === 'projects') return { name: '', description: '', technologies: [] }
   if (sectionId === 'certifications') return { name: '', issuer: '', date: '' }
+  return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
 }
 
 // Sortable wrapper for a single sub-item card
@@ -111,7 +119,18 @@ function SortableItemCard({
   )
 }
 
-export default function SubItemList({ sectionId, resumeData, visibility, onDataChange, onVisibilityChange, focusPath, onFocusHandled }: Props) {
+export default function SubItemList({
+  sectionId,
+  resumeData,
+  visibility,
+  onDataChange,
+  onVisibilityChange,
+  focusPath,
+  onFocusHandled,
+  onItemAdd,
+  onItemDelete,
+  onItemEditorOpen,
+}: Props) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -138,7 +157,10 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
     const id = window.requestAnimationFrame(() => {
       const root = rootRef.current
       if (!root) return
-      const escapedPath = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(focusPath) : focusPath
+      const escapedPath =
+        typeof window !== 'undefined' && window.CSS?.escape
+          ? window.CSS.escape(focusPath)
+          : focusPath
       const target = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field-path="${escapedPath}"]`) ?? root.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
       if (target) {
         target.focus()
@@ -188,8 +210,10 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
   function addItem() {
     const newItem = makeEmptyItem(sectionId)
     updateItems([...items, newItem] as typeof items)
+    onItemAdd?.(sectionId)
     // Set editing to the new item
     setEditingIndex(items.length)
+    onItemEditorOpen?.(sectionId, `${sectionId}.${items.length}`)
   }
 
   function confirmDelete(index: number) {
@@ -197,6 +221,7 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
     const newVis = itemVisibility.filter((_, i) => i !== index)
     updateItems(newItems)
     updateItemVisibility(newVis)
+    onItemDelete?.(sectionId)
     setDeletingIndex(null)
     if (editingIndex !== null) {
       if (editingIndex === index) setEditingIndex(null)
@@ -229,7 +254,10 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
                 onDelete={() => setDeletingIndex(i)}
                 onConfirmDelete={() => confirmDelete(i)}
                 onCancelDelete={() => setDeletingIndex(null)}
-                onEdit={() => setEditingIndex(i)}
+                onEdit={() => {
+                  setEditingIndex(i)
+                  onItemEditorOpen?.(sectionId, `${sectionId}.${i}`)
+                }}
               />
             ))}
           </SortableContext>
@@ -255,7 +283,11 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setEditingIndex(editingIndex > 0 ? editingIndex - 1 : editingIndex)}
+            onClick={() => {
+              const nextIndex = editingIndex > 0 ? editingIndex - 1 : editingIndex
+              setEditingIndex(nextIndex)
+              onItemEditorOpen?.(sectionId, `${sectionId}.${nextIndex}`)
+            }}
             disabled={editingIndex === 0}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
@@ -265,7 +297,11 @@ export default function SubItemList({ sectionId, resumeData, visibility, onDataC
             {editingIndex + 1} / {items.length}
           </span>
           <button
-            onClick={() => setEditingIndex(editingIndex < items.length - 1 ? editingIndex + 1 : editingIndex)}
+            onClick={() => {
+              const nextIndex = editingIndex < items.length - 1 ? editingIndex + 1 : editingIndex
+              setEditingIndex(nextIndex)
+              onItemEditorOpen?.(sectionId, `${sectionId}.${nextIndex}`)
+            }}
             disabled={editingIndex === items.length - 1}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >

@@ -2,7 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Eye, EyeOff, Plus, Pencil, Trash2,
+import { GripVertical, Eye, EyeOff, Trash2,
   User, AlignLeft, Briefcase, GraduationCap, Zap,
   Code, Award, Heart, Globe, Star, Trophy, BookOpen, Users,
   List, Tags, Component
@@ -77,6 +77,11 @@ interface Props {
   focusPath?: string | null
   onFocusHandled?: () => void
   isDragDisabled?: boolean
+  onSectionAction?: (
+    sectionType: string,
+    action: 'edit' | 'reorder' | 'toggle_visibility' | 'add' | 'delete'
+  ) => void
+  onSubSectionEditorOpened?: (sectionType: string, subSectionId: string) => void
 }
 
 export default function SortableSectionRow({
@@ -91,6 +96,8 @@ export default function SortableSectionRow({
   focusPath,
   onFocusHandled,
   isDragDisabled,
+  onSectionAction,
+  onSubSectionEditorOpened,
 }: Props) {
   const {
     attributes, listeners, setNodeRef,
@@ -159,6 +166,7 @@ export default function SortableSectionRow({
       sections: newSections,
       items: newItems,
     })
+    onSectionAction?.(sectionId, 'delete')
   }
 
   const isComplex = ['experience', 'education', 'projects', 'certifications'].includes(sectionId)
@@ -168,13 +176,16 @@ export default function SortableSectionRow({
       if (customConfig?.type === 'complex') {
         return (
           <SubItemList
-            sectionId={sectionId as any} // SubItemList will be updated to handle custom IDs
+            sectionId={sectionId}
             resumeData={resumeData}
             visibility={visibility}
             onDataChange={onDataChange}
             onVisibilityChange={onVisibilityChange}
             focusPath={focusPath}
             onFocusHandled={onFocusHandled}
+            onItemAdd={sectionType => onSectionAction?.(sectionType, 'add')}
+            onItemDelete={sectionType => onSectionAction?.(sectionType, 'delete')}
+            onItemEditorOpen={onSubSectionEditorOpened}
           />
         )
       } else if (customConfig?.type === 'tags') {
@@ -191,11 +202,14 @@ export default function SortableSectionRow({
           sectionId={sectionKey}
           resumeData={resumeData}
           visibility={visibility}
-            onDataChange={onDataChange}
-            onVisibilityChange={onVisibilityChange}
-            focusPath={focusPath}
-            onFocusHandled={onFocusHandled}
-          />
+          onDataChange={onDataChange}
+          onVisibilityChange={onVisibilityChange}
+          focusPath={focusPath}
+          onFocusHandled={onFocusHandled}
+          onItemAdd={sectionType => onSectionAction?.(sectionType, 'add')}
+          onItemDelete={sectionType => onSectionAction?.(sectionType, 'delete')}
+          onItemEditorOpen={onSubSectionEditorOpened}
+        />
       )
     }
     switch (sectionId) {

@@ -3,8 +3,9 @@
 import { useCallback, useRef, useState } from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
-import type { Resume } from '@/types'
+import type { Resume, ResumeData } from '@/types'
 import { parsePdfClient } from '@/lib/clientParser'
+import { Analytics } from '@/lib/analytics'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
@@ -25,6 +26,30 @@ const ERROR_MESSAGES: Record<string, string> = {
 interface UploadZoneProps {
   onUploadSuccess: (resume: Resume) => void
   disabled?: boolean
+}
+
+type ParsedResumeLike = ResumeData | null | undefined
+
+function countResumeSections(parsedData: ParsedResumeLike): number {
+  if (!parsedData) return 0
+
+  const sections = [
+    parsedData.summary,
+    parsedData.skills?.length,
+    parsedData.experience?.length,
+    parsedData.education?.length,
+    parsedData.projects?.length,
+    parsedData.certifications?.length,
+    parsedData.languages?.length,
+    parsedData.volunteer?.length,
+    parsedData.awards?.length,
+    parsedData.publications?.length,
+    parsedData.interests?.length,
+    parsedData.references?.length,
+    parsedData.customSections?.length,
+  ]
+
+  return sections.filter(Boolean).length
 }
 
 export default function UploadZone({ onUploadSuccess, disabled = false }: UploadZoneProps) {
@@ -76,13 +101,27 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
       setState('uploading')
       setProgress(0)
       setErrorMessage(null)
+      const parseStartedAt = performance.now()
 
-      let parsedData: ReturnType<typeof parsePdfClient>
+      Analytics.resumeUploaded({
+        fileSize: file.size,
+        pageCount: 1,
+        fileType: file.type || 'application/pdf',
+      })
+
+      let parsedData: Awaited<ReturnType<typeof parsePdfClient>>
       try {
         parsedData = await parsePdfClient(file)
+        Analytics.resumeParseCompleted({
+          sectionCount: countResumeSections(parsedData),
+          durationMs: Math.round(performance.now() - parseStartedAt),
+        })
       } catch (err) {
         stopAnimation()
         const errMsg = err instanceof Error ? err.message : String(err)
+        Analytics.resumeParseFailed({
+          error: errMsg,
+        })
         setErrorMessage(`Could not parse PDF: ${errMsg}`)
         setState('error')
         return

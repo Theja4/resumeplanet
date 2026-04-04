@@ -36,7 +36,7 @@ export default function ManageSubscriptionButton({ label = 'Manage Subscription'
       <button
         onClick={handleManage}
         disabled={loading}
-        className={className ?? "w-full py-3 border border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"}
+        className={className ?? 'flex w-full items-center justify-center gap-2 rounded-full border border-white/80 bg-white/88 px-6 py-4 text-sm font-semibold text-slate-700 shadow-[0_16px_40px_rgba(25,28,29,0.05)] transition-all hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50'}
       >
         {loading ? (
           <>

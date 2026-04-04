@@ -7,9 +7,9 @@ import { ArrowLeft, BarChart2, Layout, Save, X, Plus, Trash2, PenLine } from 'lu
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { updateResumeData } from '../actions'
 import type { Resume, ATSScore, ResumeData, ExperienceItem, EducationItem } from '@/types'
+import { DashboardPageIntro } from '@/components/layout/DashboardSurface'
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -398,9 +398,9 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
   const [data, setData] = useState<ResumeData>(
     resume.parsed_data ?? {
       name: '', email: '', phone: '', location: '', linkedin: '',
-      website: '', summary: '', experience: [], education: [],
+      website: '', summary: '', currentRole: '', experience: [], education: [],
       skills: [], certifications: [], projects: [], languages: [],
-      volunteer: [], interests: [], awards: [], publications: [], references: [],
+      volunteer: [], interests: [], awards: [], publications: [], references: [], customSections: [],
     }
   )
 
@@ -411,49 +411,47 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => router.push('/dashboard/resumes')}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeft size={15} /> Resumes
-        </button>
-        <Separator orientation="vertical" className="h-4" />
-        <h1 className="text-lg font-semibold text-gray-900 truncate">{resume.title}</h1>
-        <div className="ml-auto flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/dashboard/ats-checker?resumeId=${resume.id}`)}
-            className="gap-1.5"
-          >
-            <BarChart2 size={14} /> ATS Check
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.push(`/dashboard/templates?resumeId=${resume.id}`)}
-            className="gap-1.5"
-          >
-            <Layout size={14} /> Fill Template
-          </Button>
-          <Button
-            size="sm"
-            className="gap-1.5"
-            asChild
-          >
-            <Link href={`/dashboard/builder/${resume.id}`}>
-              <PenLine size={14} /> Open Builder
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-8">
+      <DashboardPageIntro
+        kicker="Resume Detail"
+        title={resume.title}
+        description="Review parsed sections, clean up details, and jump straight into ATS analysis or the builder from the same refined workspace."
+        actions={
+          <>
+            <button
+              onClick={() => router.push('/dashboard/resumes')}
+              className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+            >
+              <ArrowLeft size={15} /> Resumes
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/ats-checker?resumeId=${resume.id}`)}
+              className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+            >
+              <BarChart2 size={14} /> ATS Check
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/templates?resumeId=${resume.id}`)}
+              className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+            >
+              <Layout size={14} /> Template Preview
+            </button>
+            <Button
+              size="sm"
+              className="!h-auto rounded-full bg-zinc-950 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white hover:bg-zinc-900"
+              asChild
+            >
+              <Link href={`/dashboard/builder/${resume.id}`}>
+                <PenLine size={14} /> Open Builder
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-5">
         {/* Contact info */}
-        <Card>
+        <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">Contact Information</CardTitle>
           </CardHeader>
@@ -468,7 +466,7 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
         </Card>
 
         {/* Summary */}
-        <Card>
+        <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">Summary</CardTitle>
           </CardHeader>
@@ -483,7 +481,7 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
         </Card>
 
         {/* Experience */}
-        <Card>
+        <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">Experience</CardTitle>
           </CardHeader>
@@ -496,7 +494,7 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
         </Card>
 
         {/* Education */}
-        <Card>
+        <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">Education</CardTitle>
           </CardHeader>
@@ -509,7 +507,7 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
         </Card>
 
         {/* Skills */}
-        <Card>
+        <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-gray-700">Skills</CardTitle>
           </CardHeader>
@@ -523,7 +521,7 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
 
         {/* ATS score history */}
         {atsHistory.length > 0 && (
-          <Card>
+          <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-gray-700">ATS Score History</CardTitle>
             </CardHeader>

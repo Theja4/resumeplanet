@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { logout } from '@/app/dashboard/(shell)/actions'
+import { Analytics } from '@/lib/analytics'
 import Link from 'next/link'
 import type { Profile } from '@/types'
 
@@ -50,7 +51,7 @@ export default function UserMenu({ profile }: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <form action={logout} className="w-full">
+          <form action={logout} className="w-full" onSubmit={() => Analytics.reset()}>
             <button type="submit" className="w-full text-left text-red-600">
               Log out
             </button>

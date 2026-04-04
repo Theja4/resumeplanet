@@ -32,6 +32,7 @@ interface Props {
   resumeData: ResumeData | null
   onApplyFix: (suggestion: Suggestion) => void
   onUndoFix: () => void
+  onStartTailoring: () => void
   resumeId: string
   isPro: boolean
 }
@@ -494,6 +495,7 @@ export default function AIInsightsPanel({
   resumeData,
   onApplyFix,
   onUndoFix,
+  onStartTailoring,
   resumeId,
   isPro,
 }: Props) {
@@ -908,7 +910,11 @@ export default function AIInsightsPanel({
             <p className="text-xs text-zinc-300 mb-4 leading-relaxed">
               Instantly adjust your resume keywords for a specific job description.
             </p>
-            <button className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all">
+            <button
+              onClick={onStartTailoring}
+              disabled={!resumeData || isLoading}
+              className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Start Tailoring
             </button>
           </div>
@@ -1111,7 +1117,11 @@ export default function AIInsightsPanel({
           <p className="text-xs text-zinc-300 mb-4 leading-relaxed">
             Instantly adjust your resume keywords for a specific job description.
           </p>
-          <button className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all">
+          <button
+            onClick={onStartTailoring}
+            disabled={!resumeData || isLoading}
+            className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Start Tailoring
           </button>
         </div>

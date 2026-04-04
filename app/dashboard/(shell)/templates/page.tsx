@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { ArrowRight, LayoutDashboard, Palette, Type } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import type { LucideIcon } from 'lucide-react'
+import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { TemplateGalleryLink, TemplateGalleryTracker } from '@/components/analytics/TemplateGalleryAnalytics'
 
 // Dynamically import UniversalTemplate to avoid SSR issues
 const UniversalTemplate = dynamic(
@@ -51,27 +53,54 @@ export default async function TemplatesPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50/60 py-12 px-4">
-      <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+    <div className="space-y-8">
+      <TemplateGalleryTracker totalTemplates={1} />
+      <DashboardPageIntro
+        kicker="Template System"
+        title="Customize one flexible template with premium polish."
+        description="The builder now uses a single adaptable template system. Adjust structure, typography, and brand tone without jumping across multiple preset layouts."
+        actions={
+          <>
+            <TemplateGalleryLink
+              href={builderHref}
+              templateId="universal"
+              className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900"
+            >
+              {latestResume ? 'Open Builder' : 'Upload a Resume'}
+              <ArrowRight size={15} strokeWidth={2.2} />
+            </TemplateGalleryLink>
+            <Link
+              href="/dashboard/resumes"
+              className="inline-flex items-center rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+            >
+              Manage resumes
+            </Link>
+          </>
+        }
+      />
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <div className="space-y-6">
-          <div className="space-y-3">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 ring-1 ring-emerald-100">
+          <DashboardSurface variant="default" className="p-6">
+            <div className="space-y-3">
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700 ring-1 ring-emerald-100">
               <LayoutDashboard size={14} strokeWidth={2.4} />
               Custom Template
-            </span>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">Customize one professional template.</h1>
-              <p className="mt-3 text-sm leading-6 text-gray-500">
+              </span>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">Customize one professional template.</h1>
+                <p className="mt-3 text-sm leading-6 text-gray-500">
                 Rezoomed now uses a single flexible template system. Adjust layout, typography, color, and spacing inside the builder, then export polished PDF or DOCX files when you&apos;re ready.
-              </p>
+                </p>
+              </div>
             </div>
-          </div>
+          </DashboardSurface>
 
           <div className="space-y-3">
             {customTemplateControls.map(item => {
               const ItemIcon = item.icon
               return (
-                <div key={item.title} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                <DashboardSurface key={item.title} variant="subtle" className="dashboard-card-hover p-4">
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
                       <ItemIcon size={18} strokeWidth={2} />
@@ -81,25 +110,9 @@ export default async function TemplatesPage() {
                       <p className="mt-1 text-sm leading-6 text-gray-500">{item.description}</p>
                     </div>
                   </div>
-                </div>
+                </DashboardSurface>
               )
             })}
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={builderHref}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-800"
-            >
-              {latestResume ? 'Open Builder' : 'Upload a Resume'}
-              <ArrowRight size={15} strokeWidth={2.2} />
-            </Link>
-            <Link
-              href="/dashboard/resumes"
-              className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              Manage resumes
-            </Link>
           </div>
 
           {!latestResume && (
@@ -109,7 +122,7 @@ export default async function TemplatesPage() {
           )}
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <DashboardSurface variant="default" className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
             <div>
               <p className="text-sm font-semibold text-gray-900">Live template preview</p>
@@ -139,7 +152,7 @@ export default async function TemplatesPage() {
               />
             </div>
           </div>
-        </div>
+        </DashboardSurface>
       </div>
     </div>
   )

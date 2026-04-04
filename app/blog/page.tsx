@@ -1,83 +1,132 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
+import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import { formatBlogDate, getBlogMediaFallback, getPublishedBlogPosts } from '@/lib/blog'
 
-export default function BlogPage() {
+export const metadata: Metadata = {
+  title: 'Blog | Rezoomed',
+  description: 'Insights, product updates, and job-search strategy from the Rezoomed team.',
+}
+
+export default async function BlogPage() {
+  const posts = await getPublishedBlogPosts()
+  const [featuredPost, ...otherPosts] = posts
+  const featuredCoverImage = featuredPost ? featuredPost.cover_image_url || getBlogMediaFallback(featuredPost.slug)?.coverImage || null : null
+
   return (
     <div className="bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container min-h-screen">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-white/70 backdrop-blur-xl dark:bg-zinc-900/70 shadow-[0_8px_24px_rgba(0,0,0,0.06)] font-['Plus_Jakarta_Sans'] tracking-tight">
-        <div className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-          <Link href="/" className="tracking-tighter">Rezoomed</Link>
-        </div>
-        <div className="pointer-events-none hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 group">
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/">Home</Link>
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/#features">Features</Link>
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-[#026d32] dark:text-[#A3FFB3] border-[#A3FFB3] group-hover:text-zinc-500 group-hover:border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/blog">Blog</Link>
-        </div>
-        <div className="relative z-10 flex items-center gap-4">
-          <Link
-            href="/auth/login"
-            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center justify-center text-sm font-bold text-primary-landing border-2 border-primary-container bg-primary-container/10 px-6 py-2 rounded-full hover:bg-primary-container/20 transition-all"
-          >
-            Sign Up
-          </Link>
-        </div>
-      </nav>
+      <PublicSiteHeader active="blog" />
 
-      <main className="pt-40 pb-24 px-6 max-w-7xl mx-auto space-y-20">
+      <main className="pt-28 pb-24 px-6 max-w-7xl mx-auto space-y-20">
         <div className="space-y-6 text-center reveal-on-scroll active">
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter leading-none text-on-background">The Career <span className="text-[#008f44]">Curator</span>.</h1>
           <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">Insights, strategies, and updates from the team building the future of ATS optimization.</p>
         </div>
-        
-        {/* Card Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-10">
-          {[
-            { tag: 'Career Strategy', title: 'How to beat the modern ATS tracking systems in 2026', date: 'March 31, 2026' },
-            { tag: 'Product Update', title: 'Introducing the Optic Precision Parsing Engine', date: 'March 28, 2026' },
-            { tag: 'Success Story', title: 'From rejection to FAANG: A keyword story', date: 'March 22, 2026' },
-            { tag: 'Resume Tips', title: 'Why 16:9 formatting creates the perfect visual weight', date: 'March 15, 2026' },
-            { tag: 'Industry News', title: 'The hidden algorithms behind automated rejection emails', date: 'March 08, 2026' },
-            { tag: 'Design System', title: 'Building a modern application with dark transitions', date: 'March 01, 2026' },
-          ].map((post, i) => (
-            <div key={i} className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-surface-container-highest overflow-hidden card-hover transition-all flex flex-col cursor-pointer group">
-              <div className="h-56 bg-zinc-50 flex items-center justify-center border-b border-surface-container-highest relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent to-[#A3FFB3]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="text-zinc-200 font-bold text-4xl group-hover:scale-105 transition-transform duration-500">Image Asset</div>
-              </div>
-              <div className="p-8 flex-1 flex flex-col">
-                <div className="text-[10px] font-black uppercase tracking-widest text-[#008f44] mb-3">{post.tag}</div>
-                <h3 className="text-xl font-extrabold text-on-background mb-4 leading-tight group-hover:text-[#008f44] transition-colors">{post.title}</h3>
-                <p className="text-on-surface-variant text-sm mb-8 flex-1 line-clamp-3">Discover the hidden mechanics behind modern career optimization and how you can leverage these formatting rules to bypass the robotic gatekeepers.</p>
-                <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">{post.date}</div>
+
+        {featuredPost ? (
+          <Link
+            href={`/blog/${featuredPost.slug}`}
+            className="group grid gap-0 overflow-hidden rounded-[3rem] border border-white/70 bg-white/88 shadow-[0_22px_60px_rgba(25,28,29,0.06)] backdrop-blur-xl lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]"
+          >
+            <div
+              className="relative flex min-h-[28rem] flex-col justify-center overflow-hidden p-10 sm:p-14"
+              style={{
+                backgroundImage: featuredCoverImage
+                  ? `linear-gradient(135deg, rgba(242,247,243,0.5), rgba(255,255,255,0.85)), url(${featuredCoverImage})`
+                  : 'radial-gradient(circle_at_top_left,rgba(163,255,179,0.28),transparent_42%),linear-gradient(135deg,#f2f7f3_0%,#ffffff_100%)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }}
+            >
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent,rgba(2,109,50,0.02))]" />
+              <div className="relative max-w-2xl space-y-8">
+                <span className="inline-flex rounded-full bg-[#008f44]/10 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-[#008f44] backdrop-blur-md">
+                  Featured: {featuredPost.category}
+                </span>
+                <h2 className="text-5xl font-black tracking-tight text-on-background sm:text-7xl leading-[1.05]">
+                  {featuredPost.title}
+                </h2>
+                <p className="max-w-xl text-lg leading-relaxed text-on-surface-variant/90">
+                  {featuredPost.excerpt}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
+
+            <div className="flex flex-col justify-between gap-12 border-l border-white/40 p-10 sm:p-14 bg-white/40">
+              <div className="space-y-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
+                  {formatBlogDate(featuredPost.published_at)}
+                </p>
+                <div className="h-0.5 w-8 bg-[#008f44]/20" />
+                <p className="text-sm font-bold text-on-surface-variant flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-[#008f44]" />
+                  By {featuredPost.author_name}
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-3 text-xs font-black uppercase tracking-[0.2em] text-[#008f44] group-hover:gap-5 transition-all">
+                Read full article
+                <ArrowRight size={16} />
+              </div>
+            </div>
+          </Link>
+        ) : (
+          <div className="rounded-[2rem] border border-white/70 bg-white/88 px-8 py-12 text-center shadow-[0_22px_60px_rgba(25,28,29,0.06)]">
+            <p className="text-lg font-bold text-on-background">No blog posts published yet.</p>
+            <p className="mt-2 text-sm text-on-surface-variant">Published posts from the admin panel will appear here.</p>
+          </div>
+        )}
+
+        {otherPosts.length > 0 ? (
+          <div className="grid grid-cols-1 gap-12 pb-10 md:grid-cols-2">
+            {otherPosts.map(post => {
+              const coverImage = post.cover_image_url || getBlogMediaFallback(post.slug)?.coverImage || null
+
+              return (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-[2.5rem] border border-white/70 bg-white/88 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all card-hover h-full"
+                >
+                  <div
+                    className="relative flex h-64 items-end overflow-hidden border-b border-surface-container-highest p-8"
+                    style={{
+                      backgroundImage: coverImage
+                        ? `linear-gradient(180deg, rgba(245,251,247,0.15), rgba(238,244,239,0.72)), url(${coverImage})`
+                        : 'radial-gradient(circle_at_top_left,rgba(163,255,179,0.24),transparent_36%),linear-gradient(135deg,#f5fbf7_0%,#eef4ef_100%)',
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    <div className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#008f44] backdrop-blur-md shadow-sm">
+                      {post.category}
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col p-10">
+                    <h3 className="mb-4 text-2xl font-black leading-tight text-on-background transition-colors group-hover:text-[#008f44]">
+                      {post.title}
+                    </h3>
+                    <p className="mb-10 flex-1 text-base leading-relaxed text-on-surface-variant line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between border-t border-zinc-100 pt-6">
+                      <div className="text-[11px] font-bold uppercase tracking-widest text-zinc-400">
+                        {formatBlogDate(post.published_at)}
+                      </div>
+                      <div className="text-[11px] font-black uppercase tracking-[0.12em] text-[#008f44]">
+                        Read more
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        ) : null}
       </main>
 
-      {/* Footer */}
-      <footer className="w-full py-12 px-8 mt-10 border-t border-zinc-100 dark:border-zinc-800 bg-[#f8f9fa] dark:bg-zinc-950">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto text-sm text-zinc-500 font-semibold">
-          <div className="flex items-center gap-3">
-            <span className="font-extrabold text-zinc-600 text-lg">Rezoomed</span>
-          </div>
-          <div className="flex items-center gap-8 text-zinc-400">
-            <Link className="hover:text-zinc-700 transition-colors" href="#">Privacy Policy</Link>
-            <Link className="hover:text-zinc-700 transition-colors" href="#">Terms of Service</Link>
-            <Link className="hover:text-zinc-700 transition-colors" href="#">Security</Link>
-            <Link className="hover:text-zinc-700 transition-colors" href="#">Status</Link>
-          </div>
-          <div className="text-zinc-400 font-medium">
-            © 2024 Rezoomed AI. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <PublicSiteFooter />
     </div>
   )
 }

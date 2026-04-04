@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, CheckCircle2, Sparkles, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react'
 import {
   PRO_PLAN,
   getActivePromotion,
@@ -10,6 +10,7 @@ import {
 } from '@/lib/pricing'
 import PriceDisplay from './PriceDisplay'
 import UpgradeButton from './UpgradeButton'
+import { Analytics } from '@/lib/analytics'
 
 interface PaywallModalProps {
   isOpen: boolean
@@ -19,6 +20,15 @@ interface PaywallModalProps {
 }
 
 export default function PaywallModal({ isOpen, onClose, feature, reason }: PaywallModalProps) {
+  useEffect(() => {
+    if (!isOpen) return
+
+    Analytics.upgradePromptShown({
+      location: `paywall:${feature}`,
+      variant: 'modal',
+    })
+  }, [feature, isOpen])
+
   if (!isOpen) return null
 
   const activePromo = getActivePromotion()
@@ -50,7 +60,12 @@ export default function PaywallModal({ isOpen, onClose, feature, reason }: Paywa
         <div className="p-8 md:p-10 relative bg-white">
           {/* Close Button */}
           <button 
-            onClick={onClose}
+            onClick={() => {
+              Analytics.upgradePromptDismissed({
+                location: `paywall:${feature}`,
+              })
+              onClose()
+            }}
             className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-800 transition-colors"
           >
             <X size={24} />
@@ -114,12 +129,19 @@ export default function PaywallModal({ isOpen, onClose, feature, reason }: Paywa
             <UpgradeButton
               label={ctaLabel}
               couponId={activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined}
+              analyticsLocation={`paywall:${feature}`}
+              analyticsVariant="modal"
               className="!bg-[#a3ffb3] !hover:bg-[#9bf7ac] !text-[#19793c] !py-4 !px-8 !font-bold !text-lg !rounded-full !shadow-none !border-none !inline-flex !items-center !justify-center !gap-2 !w-full"
             />
             
             <div className="flex justify-center">
               <button 
-                onClick={onClose}
+                onClick={() => {
+                  Analytics.upgradePromptDismissed({
+                    location: `paywall:${feature}`,
+                  })
+                  onClose()
+                }}
                 className="text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
               >
                 Maybe later, keep free version

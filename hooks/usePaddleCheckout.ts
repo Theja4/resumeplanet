@@ -1,6 +1,14 @@
 'use client'
 
 import { getPaddle } from '@/components/providers/PaddleProvider'
+import {
+  Analytics,
+  clearCheckoutContext,
+  readAnalyticsAttribution,
+  readPostHogDistinctIdFromCookie,
+  setCheckoutContext,
+} from '@/lib/analytics'
+import { PROFESSIONAL_ORDER, PRO_PLAN } from '@/lib/pricing'
 
 export function usePaddleCheckout() {
   const openOrderCheckout = async (params: {
@@ -14,6 +22,9 @@ export function usePaddleCheckout() {
     onError?: (error: string) => void
   }) => {
     try {
+      const attribution = readAnalyticsAttribution()
+      const distinctId = readPostHogDistinctIdFromCookie()
+
       const res = await fetch('/api/paddle/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -25,6 +36,9 @@ export function usePaddleCheckout() {
           additionalNotes: params.additionalNotes,
           industry: params.industry,
           yearsExp: params.yearsExp,
+          distinctId,
+          blogReferrerSlug: attribution?.ref === 'blog' ? attribution.slug : undefined,
+          blogReferrerCta: attribution?.ref === 'blog' ? attribution.cta : undefined,
         }),
       })
       const json = await res.json()
@@ -34,6 +48,16 @@ export function usePaddleCheckout() {
 
       const paddle = getPaddle()
       if (!paddle) throw new Error('Paddle not initialized')
+
+      Analytics.checkoutStarted({
+        product: 'writing_service',
+        price: PROFESSIONAL_ORDER.amountCents / 100,
+      })
+      setCheckoutContext({
+        product: 'writing_service',
+        price: PROFESSIONAL_ORDER.amountCents / 100,
+        step: 'overlay_opened',
+      })
 
       paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
@@ -49,6 +73,7 @@ export function usePaddleCheckout() {
 
       params.onSuccess?.(orderId)
     } catch (err) {
+      clearCheckoutContext()
       const message = err instanceof Error ? err.message : 'Checkout failed'
       params.onError?.(message)
     }
@@ -61,6 +86,9 @@ export function usePaddleCheckout() {
     onError?: (error: string) => void
   }) => {
     try {
+      const attribution = readAnalyticsAttribution()
+      const distinctId = readPostHogDistinctIdFromCookie()
+
       const res = await fetch('/api/paddle/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,6 +96,9 @@ export function usePaddleCheckout() {
           mode: 'subscription',
           priceId: params.priceId,
           couponId: params.couponId,
+          distinctId,
+          blogReferrerSlug: attribution?.ref === 'blog' ? attribution.slug : undefined,
+          blogReferrerCta: attribution?.ref === 'blog' ? attribution.cta : undefined,
         }),
       })
       const json = await res.json()
@@ -77,6 +108,21 @@ export function usePaddleCheckout() {
 
       const paddle = getPaddle()
       if (!paddle) throw new Error('Paddle not initialized')
+
+      const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
+      const checkoutPrice = selectedPrice.display.displayPrice
+
+      Analytics.checkoutStarted({
+        product: 'pro_subscription',
+        price: checkoutPrice,
+        discountCode: params.couponId,
+      })
+      setCheckoutContext({
+        product: 'pro_subscription',
+        price: checkoutPrice,
+        discountCode: params.couponId,
+        step: 'overlay_opened',
+      })
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const checkoutParams: any = {
@@ -99,6 +145,7 @@ export function usePaddleCheckout() {
       paddle.Checkout.open(checkoutParams)
       params.onSuccess?.()
     } catch (err) {
+      clearCheckoutContext()
       const message = err instanceof Error ? err.message : 'Checkout failed'
       params.onError?.(message)
     }

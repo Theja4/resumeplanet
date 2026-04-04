@@ -71,11 +71,12 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
   }
 
   return (
-    <div className="group bg-surface-container-lowest p-6 rounded-2xl transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-black/5 relative flex flex-col justify-between">
+    <div className="dashboard-card-hover group relative flex flex-col justify-between overflow-hidden rounded-[1.75rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] p-6 pr-12 shadow-[0_20px_50px_rgba(25,28,29,0.06)] transition-all hover:scale-[1.01]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_58%)]" />
       {/* Document Header Area */}
-      <div className="flex items-start gap-5 mb-6">
+      <div className="relative mb-6 flex items-start gap-5">
         {/* Document Icon / Preview placeholder */}
-        <div className="w-16 h-20 bg-surface-container-low rounded-lg flex-shrink-0 flex items-center justify-center border border-outline-variant/10 overflow-hidden relative">
+        <div className="relative flex h-20 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-[1rem] border border-white/80 bg-[linear-gradient(145deg,rgba(240,246,242,0.92),rgba(255,255,255,0.96))]">
           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')]"></div>
           <FileText size={32} className="text-primary opacity-80" />
         </div>
@@ -92,7 +93,7 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
               className="w-full bg-surface-container-low rounded px-2 py-1 text-sm font-bold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           ) : (
-            <div className="group/title flex items-start gap-1">
+            <div className="flex items-start">
               <Link
                 href={`/dashboard/builder/${resume.id}`}
                 className="font-bold text-on-surface text-lg truncate leading-tight hover:text-primary transition-colors"
@@ -100,20 +101,11 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
               >
                 {resume.title}
               </Link>
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  setIsEditing(true)
-                }}
-                className="opacity-0 group-hover/title:opacity-100 p-1 text-outline hover:text-primary transition-all"
-              >
-                <Pencil size={12} />
-              </button>
             </div>
           )}
           
-          <p className="text-xs text-on-surface-variant font-medium mt-1">
-            Modified {formatDate(resume.created_at)}
+          <p className="mt-1 text-xs font-medium text-on-surface-variant">
+            Updated {formatDate(resume.updated_at ?? resume.created_at)}
           </p>
 
           <div className="mt-2 flex items-center gap-2">
@@ -134,7 +126,7 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
       <div className="mt-auto flex flex-col items-center gap-3">
         <button
           onClick={() => router.push(`/dashboard/builder/${resume.id}`)}
-          className="flex w-full items-center justify-center gap-2 py-2.5 bg-secondary-container text-on-secondary-container text-xs font-bold rounded-lg hover:opacity-90 transition-all shadow-sm"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 py-3 text-xs font-bold uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
         >
           <Pencil size={14} />
           Edit
@@ -145,7 +137,7 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <button
-            className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-outline-variant/20 rounded-full flex items-center justify-center text-outline hover:text-error hover:border-error/20 opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/80 bg-white/95 text-outline opacity-0 shadow-sm transition-all group-hover:opacity-100 hover:border-error/20 hover:text-error"
             aria-label="Delete resume"
           >
             <Trash2 size={14} />

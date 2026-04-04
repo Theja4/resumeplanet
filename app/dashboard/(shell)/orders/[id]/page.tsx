@@ -5,6 +5,7 @@ import { Check, Clock, Download } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 import OrderStatusPoller from './OrderStatusPoller'
+import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -93,38 +94,44 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-8">
       {/* Poll until DB reflects payment when returning from checkout */}
       {showSuccess && <OrderStatusPoller orderId={o.id} currentStatus={o.status} />}
 
-      <Link href="/dashboard/orders" className="text-sm text-gray-500 hover:text-gray-700 block mb-4">
-        ← My Orders
-      </Link>
-
-      <div
-        className="flex items-center justify-between mb-6 opacity-0 [animation:card-enter_0.4s_ease_forwards]"
-      >
-        <h1 className="text-2xl font-bold text-gray-900">
-          Order #{o.id.slice(0, 8).toUpperCase()}
-        </h1>
-        <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${STATUS_STYLES[optimisticStatus] ?? STATUS_STYLES.pending}`}>
-          {STATUS_LABELS[optimisticStatus] ?? optimisticStatus}
-        </span>
-      </div>
+      <DashboardPageIntro
+        kicker="Order Detail"
+        title={`Order #${o.id.slice(0, 8).toUpperCase()}`}
+        description="Review the selected resume, target role, and current delivery stage without leaving the dashboard flow."
+        actions={
+          <Link
+            href="/dashboard/orders"
+            className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
+          >
+            Back to orders
+          </Link>
+        }
+        aside={
+          <div className="flex items-start xl:justify-end">
+            <span className={`inline-flex rounded-full px-3 py-1.5 text-sm font-medium ${STATUS_STYLES[optimisticStatus] ?? STATUS_STYLES.pending}`}>
+              {STATUS_LABELS[optimisticStatus] ?? optimisticStatus}
+            </span>
+          </div>
+        }
+      />
 
       {showSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-start gap-3 opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]">
+        <DashboardSurface variant="accent" className="flex items-start gap-3 p-4 opacity-0 [animation:card-enter_0.4s_ease_0.1s_forwards]">
           <Check size={18} className="text-[#026d32] shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-green-800">Payment confirmed! Your order is in the queue.</p>
             <p className="text-xs text-green-600 mt-0.5">Our writer will begin within 24 hours. We&apos;ll email you when it&apos;s ready.</p>
           </div>
-        </div>
+        </DashboardSurface>
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Order details */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 opacity-0 [animation:card-enter_0.4s_ease_0.15s_forwards]">
+        <DashboardSurface variant="default" className="p-6 opacity-0 [animation:card-enter_0.4s_ease_0.15s_forwards]">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Order Details</h2>
           <div className="space-y-3 text-sm">
             <Detail label="Target role" value={o.job_title ?? '—'} />
@@ -155,10 +162,10 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               <p className="text-sm text-gray-600">{o.additional_notes}</p>
             </div>
           )}
-        </div>
+        </DashboardSurface>
 
         {/* Timeline */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 opacity-0 [animation:card-enter_0.4s_ease_0.25s_forwards]">
+        <DashboardSurface variant="default" className="p-6 opacity-0 [animation:card-enter_0.4s_ease_0.25s_forwards]">
           <h2 className="text-base font-semibold text-gray-900 mb-6">Status</h2>
           <div>
             <TimelineStep
@@ -197,7 +204,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
               <Download size={15} /> Download your resume
             </a>
           )}
-        </div>
+        </DashboardSurface>
       </div>
     </div>
   )

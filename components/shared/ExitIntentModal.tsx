@@ -9,6 +9,7 @@ import {
   type PromoConfig,
 } from '@/lib/pricing'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
+import { Analytics } from '@/lib/analytics'
 
 interface Props {
   promo: PromoConfig
@@ -29,7 +30,11 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
     sessionStorage.setItem(key, 'true')
     setHasShown(true)
     setIsOpen(true)
-  }, [promo.id])
+    Analytics.exitIntentModalShown({
+      page: window.location.pathname,
+      promoCode: promo.paddleDiscountCode,
+    })
+  }, [promo.id, promo.paddleDiscountCode])
 
   // Exit intent detection: trigger when cursor leaves from the top
   useEffect(() => {
@@ -64,11 +69,19 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
 
   function handleClose() {
     setIsOpen(false)
+    Analytics.exitIntentModalDismissed({
+      page: window.location.pathname,
+    })
     onClose()
   }
 
   async function handleClaim() {
     setIsLoading(true)
+    if (promo.paddleDiscountCode) {
+      Analytics.exitIntentModalConverted({
+        promoCode: promo.paddleDiscountCode,
+      })
+    }
     await openSubscriptionCheckout({
       priceId: PRO_PLAN.defaultPrice.paddlePriceId,
       couponId: promo.paddleDiscountId,
@@ -137,7 +150,7 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
               )}
             </h1>
             <p className="text-zinc-600 text-lg font-medium max-w-sm">
-              We'd love for you to experience the full power of Rezoomed.
+              We&apos;d love for you to experience the full power of Rezoomed.
             </p>
           </div>
           
@@ -180,7 +193,7 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
                 onClick={handleClose}
                 className="text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
               >
-                No thanks, I'll pay full price later
+                No thanks, I&apos;ll pay full price later
               </button>
             </div>
           </div>

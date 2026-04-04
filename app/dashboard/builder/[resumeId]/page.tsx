@@ -37,12 +37,146 @@ import { generateDOCX } from '@/lib/docxGenerator'
 import { generateResumePdfBlobFromElement } from '@/lib/domPdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
+import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
 import { scoreResume } from '@/lib/ats-scorer'
-import type { ResumeData, BuilderMode, TailorAnalysis, Profile } from '@/types'
+import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
+import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
+import type { BuilderSource } from '@/lib/analytics'
 
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
+}
+
+function getBuilderAnalyticsSource(searchParams: ReturnType<typeof useSearchParams>): BuilderSource {
+  const source = searchParams.get('source')
+
+  if (source === 'ats') return 'ats_result'
+  if (source === 'upload') return 'upload'
+  return 'scratch'
+}
+
+function getRenderableSectionIds(visibility: BuilderVisibility) {
+  return [...(visibility.sectionOrder ?? []), ...(visibility.sidebarSectionOrder ?? [])].filter(
+    (sectionId, index, allSectionIds) =>
+      sectionId !== 'contact' &&
+      visibility.sections[sectionId] !== false &&
+      allSectionIds.indexOf(sectionId) === index
+  )
+}
+
+function getExperienceLikeItems(data: ResumeData, sectionId: string) {
+  if (sectionId === 'experience') return data.experience
+  if (sectionId === 'volunteer') return data.volunteer
+
+  if (!sectionId.startsWith('custom_')) return null
+
+  const customSection = data.customSections?.find(section => section.id === sectionId)
+  if (!customSection || customSection.type !== 'complex') return null
+
+  return customSection.items ?? []
+}
+
+function getSectionItemCount(data: ResumeData, sectionId: string) {
+  switch (sectionId) {
+    case 'experience':
+      return data.experience.length
+    case 'education':
+      return data.education.length
+    case 'projects':
+      return data.projects.length
+    case 'certifications':
+      return data.certifications.length
+    case 'volunteer':
+      return data.volunteer.length
+    default: {
+      if (!sectionId.startsWith('custom_')) return 0
+      const customSection = data.customSections?.find(section => section.id === sectionId)
+      return customSection?.type === 'complex' ? (customSection.items?.length ?? 0) : 0
+    }
+  }
+}
+
+function trimLastVisibleBullet(data: ResumeData, visibility: BuilderVisibility, sectionId: string) {
+  const items = getExperienceLikeItems(data, sectionId)
+  if (!items?.length) return false
+
+  const itemVisibility = visibility.items[sectionId] ?? []
+
+  for (let itemIndex = items.length - 1; itemIndex >= 0; itemIndex -= 1) {
+    if (itemVisibility[itemIndex] === false) continue
+
+    const item = items[itemIndex]
+    if (!item?.bullets?.length) continue
+
+    const nextBulletVisibility =
+      item.bulletVisibility?.length === item.bullets.length
+        ? [...item.bulletVisibility]
+        : item.bullets.map(() => true)
+
+    for (let bulletIndex = item.bullets.length - 1; bulletIndex >= 0; bulletIndex -= 1) {
+      if (nextBulletVisibility[bulletIndex] === false) continue
+
+      nextBulletVisibility[bulletIndex] = false
+      item.bulletVisibility = nextBulletVisibility
+      return true
+    }
+  }
+
+  return false
+}
+
+function hideLastVisibleSectionItem(data: ResumeData, visibility: BuilderVisibility, sectionId: string) {
+  const itemCount = getSectionItemCount(data, sectionId)
+  if (itemCount === 0) return false
+
+  const currentItemVisibility = visibility.items[sectionId] ?? []
+  const nextItemVisibility = Array.from({ length: itemCount }, (_, index) => currentItemVisibility[index] !== false)
+
+  for (let itemIndex = itemCount - 1; itemIndex >= 0; itemIndex -= 1) {
+    if (!nextItemVisibility[itemIndex]) continue
+
+    nextItemVisibility[itemIndex] = false
+    visibility.items = {
+      ...visibility.items,
+      [sectionId]: nextItemVisibility,
+    }
+    return true
+  }
+
+  return false
+}
+
+function hideVisibleSection(visibility: BuilderVisibility, sectionId: string) {
+  if (visibility.sections[sectionId] === false) return false
+
+  visibility.sections = {
+    ...visibility.sections,
+    [sectionId]: false,
+  }
+
+  return true
+}
+
+function applyOverflowTrimStep(resumeData: ResumeData, visibility: BuilderVisibility) {
+  const nextResumeData = structuredClone(resumeData)
+  const nextVisibility = structuredClone(visibility)
+
+  for (const sectionId of [...getRenderableSectionIds(nextVisibility)].reverse()) {
+    if (trimLastVisibleBullet(nextResumeData, nextVisibility, sectionId)) {
+      return { nextResumeData, nextVisibility }
+    }
+
+    if (hideLastVisibleSectionItem(nextResumeData, nextVisibility, sectionId)) {
+      return { nextResumeData, nextVisibility }
+    }
+
+    if (hideVisibleSection(nextVisibility, sectionId)) {
+      return { nextResumeData, nextVisibility }
+    }
+  }
+
+  return null
 }
 
 
@@ -73,7 +207,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
   const [jobDescription, setJobDescription] = useState('')
   const [tailorAnalysis, setTailorAnalysis] = useState<TailorAnalysis | null>(null)
+  const [tailorIntensity, setTailorIntensity] = useState<TailorIntensity>('balanced')
   const [isTailoring, setIsTailoring] = useState(false)
+  const [tailorError, setTailorError] = useState<string | null>(null)
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -85,6 +221,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const hasShownPageLimitAlertRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
+  const analyticsTemplateId = useMemo(
+    () =>
+      [
+        'universal',
+        templateConfig.layout,
+        templateConfig.headerStyle,
+        templateConfig.density,
+        templateConfig.bulletStyle,
+      ].join(':'),
+    [
+      templateConfig.bulletStyle,
+      templateConfig.density,
+      templateConfig.headerStyle,
+      templateConfig.layout,
+    ]
+  )
+  const builderAnalytics = useBuilderAnalytics({
+    templateId: analyticsTemplateId,
+    source: getBuilderAnalyticsSource(searchParams),
+    activeSection: expandedSection,
+  })
+  const previousTemplateIdRef = useRef<string | null>(null)
 
   // Sync visibility density with template config density
   useEffect(() => {
@@ -96,6 +254,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
   const [isPaginationSettling, setIsPaginationSettling] = useState(false)
   const [previewVersion, setPreviewVersion] = useState(0)
+  const [needsOverflowTrim, setNeedsOverflowTrim] = useState(searchParams.get('trimOverflow') === '1')
 
   const recomputeResumeHeight = useCallback(() => {
     const el = resumeRef.current
@@ -431,6 +590,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const [isRightCollapsed, setIsRightCollapsed] = useState(false)
+  const builderPanelWidthsRef = useRef({ left: 420, right: 380 })
+
+  useEffect(() => {
+    if (activeMode !== 'tailor') {
+      builderPanelWidthsRef.current = { left: leftWidth, right: rightWidth }
+    }
+  }, [activeMode, leftWidth, rightWidth])
+
+  useEffect(() => {
+    if (activeMode === 'tailor') {
+      const { left, right } = builderPanelWidthsRef.current
+      setIsRightCollapsed(false)
+      setExpandedSection(null)
+      setLeftWidth(Math.min(left, 320))
+      setRightWidth(Math.max(right, 480))
+      return
+    }
+
+    const { left, right } = builderPanelWidthsRef.current
+    setLeftWidth(left)
+    setRightWidth(right)
+  }, [activeMode])
 
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
@@ -463,24 +644,54 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
   }, [isDraggingLeft, isDraggingRight])
 
+  useEffect(() => {
+    if (!previousTemplateIdRef.current) {
+      previousTemplateIdRef.current = analyticsTemplateId
+      return
+    }
+
+    if (previousTemplateIdRef.current === analyticsTemplateId) return
+
+    builderAnalytics.trackTemplateChange(previousTemplateIdRef.current, analyticsTemplateId)
+    previousTemplateIdRef.current = analyticsTemplateId
+  }, [analyticsTemplateId, builderAnalytics])
+
   // ── Auto-save (debounced 500ms) ─────────────────────────────────────────────
   useEffect(() => {
-    if (!resumeData || !hasUnsavedChanges) return
+    if (!resumeData || !hasUnsavedChanges || needsOverflowTrim) return
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       forceSave()
     }, 1500)
     return () => clearTimeout(saveTimerRef.current)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeData, visibility, templateConfig])
+  }, [resumeData, visibility, templateConfig, needsOverflowTrim])
 
   // ── Instant auto-save on clicking out of section ─────────────────────────────
   useEffect(() => {
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges && !needsOverflowTrim) {
       forceSave()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedSection])
+  }, [expandedSection, needsOverflowTrim])
+
+  useEffect(() => {
+    if (!needsOverflowTrim || !resumeData || isLoading || isPaginationSettling) return
+
+    if (!isOverPageLimit) {
+      setNeedsOverflowTrim(false)
+      return
+    }
+
+    const trimmedStep = applyOverflowTrimStep(resumeData, visibility)
+    if (!trimmedStep) {
+      setNeedsOverflowTrim(false)
+      return
+    }
+
+    setResumeData(trimmedStep.nextResumeData)
+    setVisibility(trimmedStep.nextVisibility)
+  }, [needsOverflowTrim, resumeData, visibility, isLoading, isPaginationSettling, isOverPageLimit])
 
   // ── beforeunload guard ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -493,11 +704,46 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   function handleDataChange(updated: ResumeData) {
     if (resumeData) history.pushHistory(resumeData, visibility)
+    builderAnalytics.trackSectionEdit(expandedSection ?? 'contact', 'edit')
     setResumeData(updated)
   }
 
   function handleVisibilityChange(updated: BuilderVisibility) {
     if (resumeData) history.pushHistory(resumeData, visibility)
+
+    const toggledSection = Object.keys(updated.sections).find(
+      sectionId => updated.sections[sectionId] !== visibility.sections[sectionId]
+    )
+
+    if (toggledSection) {
+      const visible = updated.sections[toggledSection] !== false
+      builderAnalytics.trackVisibilityToggle(toggledSection, visible)
+      builderAnalytics.trackSectionEdit(toggledSection, 'toggle_visibility')
+    }
+
+    const previousOrder = [
+      ...(visibility.sectionOrder ?? []),
+      ...(visibility.sidebarSectionOrder ?? []),
+    ]
+    const nextOrder = [
+      ...(updated.sectionOrder ?? []),
+      ...(updated.sidebarSectionOrder ?? []),
+    ]
+
+    if (JSON.stringify(previousOrder) !== JSON.stringify(nextOrder)) {
+      const movedSection =
+        nextOrder.find(sectionId => previousOrder.indexOf(sectionId) !== nextOrder.indexOf(sectionId)) ??
+        expandedSection ??
+        'section_order'
+      const fromIndex = previousOrder.indexOf(movedSection)
+      const toIndex = nextOrder.indexOf(movedSection)
+
+      if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+        builderAnalytics.trackDragReorder(movedSection, fromIndex, toIndex)
+        builderAnalytics.trackSectionEdit(movedSection, 'reorder')
+      }
+    }
+
     setVisibility(updated)
   }
 
@@ -507,7 +753,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
-  }, [history, resumeData])
+    builderAnalytics.trackUndoRedo('undo')
+  }, [builderAnalytics, history, resumeData])
 
   const handleRedo = useCallback(() => {
     if (!resumeData) return
@@ -515,7 +762,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
-  }, [history, resumeData])
+    builderAnalytics.trackUndoRedo('redo')
+  }, [builderAnalytics, history, resumeData])
 
   function getSectionIdForFieldPath(path: string): string | null {
     if (!path) return null
@@ -570,38 +818,63 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   async function handleAnalyse() {
     if (!visibleData) return
+    setTailorError(null)
     setIsTailoring(true)
     try {
-      const resumeText = [
-        visibleData.name,
-        visibleData.currentRole,
-        visibleData.summary,
-        ...visibleData.experience.flatMap(e => [e.title, e.company, ...e.bullets]),
-        ...visibleData.skills,
-      ].filter(Boolean).join('\n')
-
       const res = await fetch('/api/ats/tailor-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText, jobDescription }),
+        body: JSON.stringify({
+          resumeData: visibleData,
+          jobDescription,
+          intensity: tailorIntensity,
+        }),
       })
+      const json = await res.json()
       if (!res.ok) {
-        console.error('Tailor analysis failed:', res.status)
+        setTailorError(json.error ?? 'Tailor analysis failed.')
         return
       }
-      const json = await res.json()
       if (json.success) {
         setTailorAnalysis(json.data)
+      } else {
+        setTailorError(json.error ?? 'Tailor analysis failed.')
       }
     } finally {
       setIsTailoring(false)
     }
   }
 
-  function handleApplySuggestion(sectionId: string) {
-    if (activeMode !== 'builder') setActiveMode('builder')
+  function handleApplyTailorSection(sectionId: 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer') {
+    if (!resumeData || !tailorAnalysis) return
+
+    const result = applyTailorAnalysisToResumeData(resumeData, tailorAnalysis, sectionId)
     setExpandedSection(sectionId)
     setSectionHints(prev => new Set(prev).add(sectionId))
+
+    if (!result.changed) return
+
+    history.pushHistory(resumeData, visibility)
+    builderAnalytics.trackSectionEdit(sectionId, 'edit')
+    setResumeData(result.data)
+  }
+
+  function handleApplyTailorAll() {
+    if (!resumeData || !tailorAnalysis) return
+
+    const result = applyTailorAnalysisToResumeData(resumeData, tailorAnalysis)
+    if (!result.changed) return
+
+    history.pushHistory(resumeData, visibility)
+    result.touchedSections.forEach(sectionId => {
+      builderAnalytics.trackSectionEdit(sectionId, 'edit')
+    })
+    setResumeData(result.data)
+    setSectionHints(prev => {
+      const next = new Set(prev)
+      result.touchedSections.forEach(sectionId => next.add(sectionId))
+      return next
+    })
   }
 
   function handleApplyAIInsightFix(suggestion: InsightSuggestionLike) {
@@ -610,6 +883,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       const updated = applyInsightSuggestionToResumeData(previous, suggestion)
       if (updated === previous) return previous
       history.pushHistory(previous, visibility)
+      builderAnalytics.trackSectionEdit(suggestion.sectionHint, 'edit')
       return updated
     })
   }
@@ -617,6 +891,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const visibleData = useMemo(
     () => resumeData ? getVisibleResumeData(resumeData, visibility) : null,
     [resumeData, visibility]
+  )
+
+  const tailorPreview = useMemo(
+    () => (visibleData && tailorAnalysis ? applyTailorAnalysisToResumeData(visibleData, tailorAnalysis) : null),
+    [visibleData, tailorAnalysis]
   )
 
   function accentToSidebarFill(hex?: string | null): string {
@@ -631,6 +910,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }
 
   async function handleDownloadPDF() {
+    builderAnalytics.trackDownload('clicked', 'pdf')
     if (isOverPageLimit) {
       window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
       return
@@ -657,26 +937,43 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       link.click()
       link.remove()
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      builderAnalytics.trackDownload('completed', 'pdf')
     } catch (error) {
       console.error('Generated PDF export failed, falling back to print dialog.', error)
+      builderAnalytics.trackDownload(
+        'failed',
+        'pdf',
+        error instanceof Error ? error.message : 'PDF export failed'
+      )
       window.print()
     }
   }
 
   async function handleDownloadDOCX() {
+    builderAnalytics.trackDownload('clicked', 'docx')
     if (!requirePro('docx_download') || !resumeData || !visibleData) return
     if (isOverPageLimit) {
       window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
       return
     }
-    await generateDOCX(
-      visibleData,
-      `${normalizeResumeTitle(resumeTitle) || 'resume'}.docx`,
-      templateConfig,
-      getOrderedSections(visibility),
-      getOrderedSidebarSections(visibility),
-    )
-    setIsDownloadOpen(false)
+    try {
+      await generateDOCX(
+        visibleData,
+        `${normalizeResumeTitle(resumeTitle) || 'resume'}.docx`,
+        templateConfig,
+        getOrderedSections(visibility),
+        getOrderedSidebarSections(visibility),
+      )
+      builderAnalytics.trackDownload('completed', 'docx')
+      setIsDownloadOpen(false)
+    } catch (error) {
+      builderAnalytics.trackDownload(
+        'failed',
+        'docx',
+        error instanceof Error ? error.message : 'DOCX export failed'
+      )
+      throw error
+    }
   }
 
   const TemplateComponent = UniversalTemplate
@@ -890,7 +1187,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         <main className="flex h-screen pt-16">
           
           {/* Left Sidebar: EDITOR SECTIONS */}
-          <aside style={{ width: leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 overflow-y-auto flex flex-col shrink-0 relative">
+          <aside style={{ width: leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 overflow-y-auto flex flex-col shrink-0 relative transition-[width] duration-300">
              <SectionList
                resumeData={resumeData}
                visibility={visibility}
@@ -902,6 +1199,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                onExpandSection={(id) => setExpandedSection(id)}
                focusedFieldPath={focusedFieldPath}
                onFocusedFieldHandled={() => setFocusedFieldPath(null)}
+               onSectionAction={(sectionType, action) => builderAnalytics.trackSectionEdit(sectionType, action)}
+               onSubSectionEditorOpened={(sectionType, subSectionId) =>
+                 builderAnalytics.trackSubSectionEditorOpened(sectionType, subSectionId)
+               }
              />
           </aside>
 
@@ -1162,16 +1463,24 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   <TailorPanel
                     analysis={tailorAnalysis}
                     isTailoring={isTailoring}
+                    tailorError={tailorError}
                     jobDescription={jobDescription}
+                    intensity={tailorIntensity}
+                    previewScoreDelta={tailorPreview?.scoreDelta ?? null}
+                    previewScore={tailorPreview?.afterScore ?? null}
+                    currentScore={tailorPreview?.beforeScore ?? null}
                     onJobDescriptionChange={setJobDescription}
+                    onIntensityChange={setTailorIntensity}
                     onAnalyse={handleAnalyse}
-                    onApplySuggestion={handleApplySuggestion}
+                    onApplyAll={handleApplyTailorAll}
+                    onApplySection={handleApplyTailorSection}
                   />
                 ) : (
                   <AIInsightsPanel
                     resumeData={visibleData}
                     onApplyFix={handleApplyAIInsightFix}
                     onUndoFix={handleUndo}
+                    onStartTailoring={handleTailorClick}
                     resumeId={resumeId}
                     isPro={isPro}
                   />

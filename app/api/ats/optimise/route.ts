@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
 import { requirePro } from '@/lib/planEnforcement'
-import type { ATSResult, APIResponse } from '@/types'
+import { parseResumeText } from '@/lib/resumeParser'
+import type { ATSResult, APIResponse, ResumeData } from '@/types'
 
 const OPTIMISE_SYSTEM = `You are a senior resume strategist optimizing for real shortlist odds, not cosmetic keyword stuffing.
 
@@ -13,6 +14,9 @@ NON-NEGOTIABLE RULES:
 - Never use placeholders, brackets, dummy numbers, TBD, or fill-in-the-blank language
 - Never inflate seniority or rewrite the candidate into a different role
 - Remove weak filler such as "responsible for", "worked on", "helped with", "various", "multiple", and "etc."
+- Keep every real role, employer, education entry, project, certification, and other substantive section from the source resume
+- Do not collapse multiple roles into one
+- Do not shorten the resume by dropping meaningful bullets, context, or supported skills
 
 REWRITE GOALS:
 - Keep the resume conventional and easy for ATS systems to parse
@@ -25,7 +29,8 @@ OUTPUT RULES:
 - Return ONLY valid JSON
 - optimisedText must be complete, paste-ready plain text
 - keywordsAdded must list only keywords that truly appear in optimisedText
-- changesSummary must briefly describe the real improvements made, and may mention important keywords intentionally omitted because they were not supported by the source`
+- changesSummary must briefly describe the real improvements made, and may mention important keywords intentionally omitted because they were not supported by the source
+- Use explicit section headings like SUMMARY, SKILLS, EXPERIENCE, EDUCATION, PROJECTS, CERTIFICATIONS, LANGUAGES, VOLUNTEER, AWARDS, PUBLICATIONS, and REFERENCES whenever those sections exist`
 
 const OPTIMISE_SCHEMA = `{
   "optimisedText": "string (the full rewritten resume text, plain text format)",
@@ -39,6 +44,7 @@ interface OptimiseBody {
   jobDescription?: string
   atsResult: ATSResult
   scoreId?: string
+  resumeData?: ResumeData
 }
 
 interface OptimiseResult {
@@ -46,6 +52,108 @@ interface OptimiseResult {
   keywordsAdded: string[]
   improvementsCount: number
   changesSummary: string
+  resumeData: ResumeData
+}
+
+function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
+  return {
+    name: data?.name ?? '',
+    email: data?.email ?? '',
+    phone: data?.phone ?? '',
+    location: data?.location ?? '',
+    linkedin: data?.linkedin ?? '',
+    website: data?.website ?? '',
+    summary: data?.summary ?? '',
+    currentRole: data?.currentRole ?? data?.experience?.[0]?.title ?? '',
+    experience: data?.experience ?? [],
+    education: data?.education ?? [],
+    skills: data?.skills ?? [],
+    certifications: data?.certifications ?? [],
+    projects: data?.projects ?? [],
+    languages: data?.languages ?? [],
+    volunteer: data?.volunteer ?? [],
+    interests: data?.interests ?? [],
+    awards: data?.awards ?? [],
+    publications: data?.publications ?? [],
+    references: data?.references ?? [],
+    customSections: data?.customSections ?? [],
+  }
+}
+
+function preferText(nextValue: string | undefined, fallbackValue: string | undefined) {
+  return nextValue?.trim() ? nextValue : (fallbackValue ?? '')
+}
+
+function mergeStringList(nextValues: string[], fallbackValues: string[]) {
+  return nextValues.length > 0 ? nextValues : fallbackValues
+}
+
+function shouldKeepOriginalBullets(nextBullets: string[], fallbackBullets: string[]) {
+  if (fallbackBullets.length === 0) return false
+  if (nextBullets.length === 0) return true
+  if (fallbackBullets.length >= 3 && nextBullets.length <= 1) return true
+
+  const nextTextLength = nextBullets.join(' ').trim().length
+  const fallbackTextLength = fallbackBullets.join(' ').trim().length
+  return fallbackTextLength > 220 && nextTextLength < fallbackTextLength * 0.45
+}
+
+function mergeExperienceLikeItems(
+  nextItems: ResumeData['experience'],
+  fallbackItems: ResumeData['experience']
+): ResumeData['experience'] {
+  const itemCount = Math.max(nextItems.length, fallbackItems.length)
+
+  return Array.from({ length: itemCount }, (_, index) => {
+    const nextItem = nextItems[index]
+    const fallbackItem = fallbackItems[index]
+
+    if (!nextItem) return fallbackItem
+    if (!fallbackItem) return nextItem
+
+    const nextBullets = nextItem.bullets?.filter(Boolean) ?? []
+    const fallbackBullets = fallbackItem.bullets?.filter(Boolean) ?? []
+
+    return {
+      title: preferText(nextItem.title, fallbackItem.title),
+      company: preferText(nextItem.company, fallbackItem.company),
+      location: preferText(nextItem.location, fallbackItem.location),
+      startDate: preferText(nextItem.startDate, fallbackItem.startDate),
+      endDate: preferText(nextItem.endDate, fallbackItem.endDate),
+      summary: preferText(nextItem.summary, fallbackItem.summary),
+      bullets: shouldKeepOriginalBullets(nextBullets, fallbackBullets) ? fallbackBullets : nextBullets,
+    }
+  }).filter(Boolean)
+}
+
+function mergeOptimisedResumeData(nextData: ResumeData, fallbackData: ResumeData): ResumeData {
+  const safeNext = normalizeResumeData(nextData)
+  const safeFallback = normalizeResumeData(fallbackData)
+  const parsedCurrentRole = safeNext.currentRole.trim()
+  const parsedLooksLikeFirstJob = parsedCurrentRole !== '' && parsedCurrentRole === safeNext.experience[0]?.title?.trim()
+
+  return {
+    name: preferText(safeNext.name, safeFallback.name),
+    email: preferText(safeNext.email, safeFallback.email),
+    phone: preferText(safeNext.phone, safeFallback.phone),
+    location: preferText(safeNext.location, safeFallback.location),
+    linkedin: preferText(safeNext.linkedin, safeFallback.linkedin),
+    website: preferText(safeNext.website, safeFallback.website),
+    summary: preferText(safeNext.summary, safeFallback.summary),
+    currentRole: !parsedLooksLikeFirstJob ? preferText(safeNext.currentRole, safeFallback.currentRole) : safeFallback.currentRole,
+    experience: mergeExperienceLikeItems(safeNext.experience, safeFallback.experience),
+    education: safeNext.education.length > 0 ? safeNext.education : safeFallback.education,
+    skills: mergeStringList(safeNext.skills, safeFallback.skills),
+    certifications: safeNext.certifications.length > 0 ? safeNext.certifications : safeFallback.certifications,
+    projects: safeNext.projects.length > 0 ? safeNext.projects : safeFallback.projects,
+    languages: mergeStringList(safeNext.languages, safeFallback.languages),
+    volunteer: mergeExperienceLikeItems(safeNext.volunteer, safeFallback.volunteer),
+    interests: mergeStringList(safeNext.interests, safeFallback.interests),
+    awards: safeFallback.awards,
+    publications: safeFallback.publications,
+    references: safeFallback.references,
+    customSections: safeFallback.customSections,
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -65,7 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { resumeText, jobDescription, atsResult, scoreId } = body
+  const { resumeText, jobDescription, atsResult, scoreId, resumeData } = body
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!resumeText || resumeText.trim().length < 100) {
@@ -159,8 +267,20 @@ Ensure improvementsCount is an integer.`
       .eq('user_id', userId)
   }
 
+  const parsedResumeData = await parseResumeText(result.optimisedText)
+  const mergedResumeData = mergeOptimisedResumeData(
+    parsedResumeData,
+    normalizeResumeData(resumeData)
+  )
+
   return NextResponse.json<APIResponse<OptimiseResult>>(
-    { success: true, data: result },
+    {
+      success: true,
+      data: {
+        ...result,
+        resumeData: mergedResumeData,
+      },
+    },
     { status: 200 }
   )
 }

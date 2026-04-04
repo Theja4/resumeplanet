@@ -44,6 +44,11 @@ interface Props {
   focusedFieldPath?: string | null
   onFocusedFieldHandled?: () => void
   isDisabled?: boolean
+  onSectionAction?: (
+    sectionType: string,
+    action: 'edit' | 'reorder' | 'toggle_visibility' | 'add' | 'delete'
+  ) => void
+  onSubSectionEditorOpened?: (sectionType: string, subSectionId: string) => void
 }
 
 // Thin droppable wrappers — needed so empty columns can receive cross-column drops
@@ -68,6 +73,8 @@ export default function SectionList({
   focusedFieldPath,
   onFocusedFieldHandled,
   isDisabled = false,
+  onSectionAction,
+  onSubSectionEditorOpened,
 }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -92,6 +99,7 @@ export default function SectionList({
   // Sync from props whenever not mid-drag
   useEffect(() => {
     if (!activeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalPrimary((visibility.sectionOrder || []).filter(id => id !== 'contact'))
       setLocalSecondary((visibility.sidebarSectionOrder || []).filter(id => id !== 'contact'))
     }
@@ -246,6 +254,7 @@ export default function SectionList({
     setNewTitle('')
     setNewType('complex')
     setIsAdding(false)
+    onSectionAction?.(id, 'add')
     onExpandSection(id)
   }
 
@@ -256,7 +265,7 @@ export default function SectionList({
     ])).filter(id => id.startsWith('custom_'))
 
     const finalPrimary = [...DEFAULT_VISIBILITY.sectionOrder, ...customIds]
-    const finalSecondary = [...DEFAULT_VISIBILITY.sidebarSectionOrder]
+    const finalSecondary = [...(DEFAULT_VISIBILITY.sidebarSectionOrder ?? [])]
 
     setLocalPrimary(finalPrimary)
     setLocalSecondary(finalSecondary)
@@ -281,6 +290,8 @@ export default function SectionList({
         onExpand={() => onExpandSection(expandedSection === sectionId ? null : sectionId)}
         focusPath={focusedFieldPath}
         onFocusHandled={onFocusedFieldHandled}
+        onSectionAction={onSectionAction}
+        onSubSectionEditorOpened={onSubSectionEditorOpened}
       />
     ))
 
