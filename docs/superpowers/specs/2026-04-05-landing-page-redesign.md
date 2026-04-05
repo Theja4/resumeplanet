@@ -13,7 +13,7 @@
 - Dual CTAs everywhere: a dark primary and a green ghost secondary
 - Green radial glow + subtle grid background in hero instead of pure gradient
 - Dark-to-green gradient in the CTA footer (replaces flat `#026d32`)
-- Featured testimonial card on dark green spanning full width
+- Testimonials as auto-scrolling horizontal carousel with 8 reviews (pauses on hover, fade masks on edges)
 
 ---
 
@@ -48,12 +48,22 @@
 
 ### 03 — Logo Marquee (`components/landing/LogoMarquee.tsx`)
 
-**Current issues:** Section heading typography is understated relative to redesigned hero.
+**Current issues:** Hand-crafted letter-mark logos don't look like the real brands; heading typography is understated.
 
 **Changes:**
+- **Replace all custom LogoMark / LogoWordmark components** with real SVG logos fetched from Simple Icons CDN (`https://cdn.simpleicons.org/<slug>/<hex-color>`). Each company chip renders an `<img>` tag pointing to the CDN URL — no new npm packages needed.
+  - Google → `google/4285F4`
+  - Microsoft → `microsoft/00A4EF`
+  - Amazon → `amazon/FF9900`
+  - Meta → `meta/0866FF`
+  - Stripe → `stripe/635BFF`
+  - Figma → `figma/F24E1E`
+  - Shopify → `shopify/96BF48`
+  - Uber → `uber/000000`
+- Chip layout: 40×40px white rounded square icon container + company name wordmark in `font-semibold`
 - Heading: increase weight to `font-black`, tighten tracking to `-0.03em`
-- Subtext: reduce to `text-sm` and `text-on-surface-variant` for cleaner hierarchy
-- No structural changes to marquee animation or logo wordmarks
+- Subtext: `text-sm text-on-surface-variant` for cleaner hierarchy
+- Marquee animation and scroll behavior unchanged
 
 ---
 
@@ -71,13 +81,17 @@
 
 ### 05 — Testimonials (`app/page.tsx`)
 
-**Current issues:** Four equal-height cards in 2-col grid lacks visual hierarchy.
+**Current issues:** Four equal-height cards in 2-col grid lacks visual hierarchy and feels static.
 
-**New layout:**
-- Remove 4-card equal grid
-- Add a **featured card** (first testimonial: Priya Sharma) spanning full width on dark green background (`bg-[#026d32]`), with white text, slightly larger quote (`text-lg`), and white/translucent avatar
-- Below: remaining 3 testimonials in a 3-column grid (`md:grid-cols-3`), standard white cards
-- Stars: use filled star character `★` in amber instead of Lucide Star icon for crispness
+**New layout — auto-scrolling carousel:**
+- Expand `TESTIMONIALS` array to **8 reviews** (add 4 more with varied roles/industries)
+- Replace the static grid with a **horizontal auto-scrolling marquee** (same CSS technique as the logo marquee): a `flex` row of cards in a `w-max` track that animates with `@keyframes scroll-left`, duplicated to create seamless loop
+- Each card: white, `rounded-3xl`, `w-[340px]` fixed width, `shrink-0`, `p-7`, `border border-zinc-100 shadow-sm`
+- Stars: use `★` character in `text-[#FFB800]` instead of Lucide Star
+- The first card (Priya Sharma) uses the dark green featured style (`bg-[#026d32] text-white`) to anchor the carousel visually
+- Carousel pauses on `hover` (`animation-play-state: paused`)
+- Add `overflow-hidden` + left/right fade masks on the section wrapper (same `mask-image` linear-gradient technique used on logo marquee)
+- CSS animation defined in `globals.css` as `testimonial-scroll` (or reuse the existing `logo-marquee-track` class if timing works)
 
 ---
 
@@ -112,7 +126,7 @@
 | `components/landing/FeatureShowcase.tsx` | Section heading italic, badge, CTA arrow |
 | `components/landing/LogoMarquee.tsx` | Heading weight/tracking |
 
-No new files needed. No new dependencies needed.
+No new npm dependencies needed. Simple Icons logos are loaded via CDN `<img>` tags.
 
 ---
 
