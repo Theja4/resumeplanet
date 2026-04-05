@@ -4,7 +4,16 @@ import { WandSparkles } from 'lucide-react'
 import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 
-const TESTIMONIALS = [
+type Testimonial = {
+  quote: string
+  name: string
+  role: string
+  initials: string
+  color: string
+  featured: boolean
+}
+
+const TESTIMONIALS: Testimonial[] = [
   {
     quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
     name: 'Priya Sharma',
@@ -87,7 +96,7 @@ export default async function LandingPage() {
         <div className="relative z-10 flex items-center gap-4">
           <Link
             href="/auth/login"
-            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 rounded-full"
+            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full"
           >
             Sign In
           </Link>
@@ -151,6 +160,7 @@ export default async function LandingPage() {
           </div>
           <div className="relative z-10 max-w-6xl mx-auto w-full text-center space-y-6 reveal-on-scroll active stagger-1">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-container/30 text-on-primary-container text-xs font-bold uppercase tracking-widest border border-primary-container/50">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
               <WandSparkles size={16} strokeWidth={2.5} className="opacity-90" />
               AI-Powered Career Revolution
             </div>
@@ -219,7 +229,7 @@ export default async function LandingPage() {
                     </p>
                   </div>
                   <div className={`flex items-center gap-3 pt-2 border-t ${t.featured ? 'border-white/20' : 'border-zinc-100'}`}>
-                    <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-[11px] font-black ${t.featured ? 'text-white' : 'text-zinc-800'} shrink-0`}>
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${t.featured ? 'bg-white/20 text-white' : `bg-gradient-to-br ${t.color} text-zinc-800`}`}>
                       {t.initials}
                     </div>
                     <div>
@@ -234,7 +244,7 @@ export default async function LandingPage() {
         </section>
 
         {/* ── CTA Footer ─────────────────────────────────────────────────── */}
-        <section className="py-28 px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #022c14 0%, #026d32 50%, #019a47 100%)' }}>
+        <section className="py-28 px-6 overflow-hidden relative bg-[linear-gradient(135deg,#022c14_0%,#026d32_50%,#019a47_100%)]">
           <div className="absolute inset-0 pointer-events-none opacity-20">
             <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/10 blur-3xl translate-x-1/3 -translate-y-1/2" />
             <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full bg-white/10 blur-3xl -translate-x-1/3 translate-y-1/3" />

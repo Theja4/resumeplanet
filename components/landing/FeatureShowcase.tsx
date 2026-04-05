@@ -503,7 +503,7 @@ export default function FeatureShowcaseSection() {
         <div className="grid gap-10 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-start">
           <div className="space-y-6 reveal-on-scroll active">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary-container/40 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container border border-primary-container/50">
-              <WandSparkles size={14} strokeWidth={2.6} />
+              <span aria-hidden="true">✦</span>
               Premium Features
             </span>
 
