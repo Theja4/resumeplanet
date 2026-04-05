@@ -509,7 +509,8 @@ export default function FeatureShowcaseSection() {
 
             <div className="space-y-4">
               <h2 className="text-4xl font-extrabold tracking-tight text-on-background sm:text-5xl xl:text-6xl">
-                The feature stack that turns one resume into a system.
+                The feature stack that turns one resume{' '}
+                <em className="italic text-primary">into a system.</em>
               </h2>
               <p className="max-w-xl text-lg leading-8 text-on-surface-variant">
                 Tailor each version for the job, run deeper ATS diagnostics, export polished files, and keep every role-specific draft organized.
