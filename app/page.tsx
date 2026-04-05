@@ -182,7 +182,7 @@ export default async function LandingPage() {
                   </button>
                 </Link>
                 <Link href="/ats-checker">
-                  <button className="px-8 py-4 text-base font-bold rounded-full bg-primary-container text-primary-landing hover:bg-[#80da92] transition-all duration-300 cursor-pointer">
+                  <button className="px-8 py-4 text-base font-bold rounded-full bg-[#008f44] text-white hover:bg-[#007a3a] transition-all duration-300 cursor-pointer">
                     Check ATS Score
                   </button>
                 </Link>
