@@ -68,7 +68,7 @@ export default async function LandingPage() {
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col items-center justify-start pt-16 pb-24 px-6 overflow-hidden grid-bg gradient-glow-hero">
           {/* Green glow orb */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(163,255,179,0.25)_0%,transparent_70%)] pointer-events-none z-0" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(163,255,179,0.25)_0%,transparent_70%)] pointer-events-none z-[1]" />
           <div className="absolute inset-0 z-0 flex justify-center items-start pointer-events-none fade-mask">
             <div className="hero-resume-animation relative w-full max-w-[98rem] translate-y-40 scale-[1.015] opacity-100">
               <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_40px_120px_rgba(15,23,18,0.18)]">
@@ -136,7 +136,7 @@ export default async function LandingPage() {
                   </button>
                 </Link>
                 <Link href="/ats-checker">
-                  <button className="px-8 py-4 text-base font-bold rounded-full border-2 border-primary-container bg-primary-container/20 text-primary-landing hover:bg-primary-container/30 transition-all cursor-pointer">
+                  <button className="px-8 py-4 text-base font-bold rounded-full border-2 border-primary-container bg-primary-container/20 text-primary-landing hover:bg-primary-container/30 transition-all duration-300 cursor-pointer">
                     Check My ATS Score
                   </button>
                 </Link>
