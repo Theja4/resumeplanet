@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/planEnforcement'
+import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache } from '@/lib/aiRequestCache'
+import { requirePro } from '@/lib/planEnforcement'
 import { parseResume } from '@/lib/parsers'
 import { generateCoverLetterFromResumeData } from '@/lib/cv/generator'
 import {
@@ -7,12 +8,19 @@ import {
   resumeHasMeaningfulContent,
   sanitizeDocumentTitle,
 } from '@/lib/cv/shared'
+import { MAX_RESUME_UPLOAD_BYTES, MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import type { GeneratedCoverLetterPayload } from '@/lib/cv/shared'
 import type { APIResponse, Resume, ResumeData, TailorIntensity } from '@/types'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 const PDF_MIME_TYPE = 'application/pdf'
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const COVER_LETTER_CACHE_VERSION = 1
+
+interface CachedCoverLetterResult {
+  coverLetter: GeneratedCoverLetterPayload['coverLetter']
+  sender: GeneratedCoverLetterPayload['sender']
+}
 
 function inferFileType(file: File) {
   if (file.type === PDF_MIME_TYPE || file.name.toLowerCase().endsWith('.pdf')) {
@@ -27,7 +35,7 @@ function inferFileType(file: File) {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const auth = await requireAuth()
+  const auth = await requirePro()
 
   if (auth instanceof NextResponse) {
     return auth
@@ -97,7 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json<APIResponse<never>>(
-        { success: false, error: 'Resume file must be under 5MB' },
+        { success: false, error: `Resume file must be under ${MAX_RESUME_UPLOAD_LABEL}` },
         { status: 400 },
       )
     }
@@ -124,11 +132,51 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
+  const cacheSignature = buildAIRequestSignature({
+    version: COVER_LETTER_CACHE_VERSION,
+    feature: 'cover_letter',
+    resumeData: sourceResumeData,
+    jobDescription,
+    intensity,
+  })
+
+  const cached = await readAIRequestCache<CachedCoverLetterResult>({
+    supabase: auth.supabase,
+    userId: auth.userId,
+    feature: 'cover_letter',
+    signature: cacheSignature,
+    version: COVER_LETTER_CACHE_VERSION,
+  })
+
+  if (cached) {
+    return NextResponse.json<APIResponse<GeneratedCoverLetterPayload>>({
+      success: true,
+      data: {
+        coverLetter: cached.coverLetter,
+        sender: cached.sender,
+        sourceMode,
+        sourceTitle,
+      },
+    })
+  }
+
   try {
     const result = await generateCoverLetterFromResumeData({
       resumeData: sourceResumeData,
       jobDescription,
       intensity,
+    })
+
+    await writeAIRequestCache<CachedCoverLetterResult>({
+      supabase: auth.supabase,
+      userId: auth.userId,
+      feature: 'cover_letter',
+      signature: cacheSignature,
+      version: COVER_LETTER_CACHE_VERSION,
+      data: {
+        coverLetter: result.coverLetter,
+        sender: result.sender,
+      },
     })
 
     return NextResponse.json<APIResponse<GeneratedCoverLetterPayload>>({

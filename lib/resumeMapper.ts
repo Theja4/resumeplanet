@@ -1,4 +1,4 @@
-import type { Resume, ResumeWorkExperience, ResumeEducation, ResumeProject, FeaturedSkill } from './open-resume-parser/types'
+import type { Resume, ResumeWorkExperience, ResumeEducation, ResumeProject } from './open-resume-parser/types'
 import type { ResumeData } from '@/types'
 
 /**
@@ -17,6 +17,7 @@ export function mapToResumeData(resume: Resume): ResumeData {
     linkedin: extractLinkedinUrl(resume.profile.url),
     website: extractWebsiteUrl(resume.profile.url),
     summary: resume.profile.summary || '',
+    currentRole: resume.workExperiences[0]?.jobTitle || '',
 
     // Experience
     experience: resume.workExperiences.map(mapWorkExperience),

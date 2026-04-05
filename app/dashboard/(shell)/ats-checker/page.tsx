@@ -22,5 +22,5 @@ export default async function ATSCheckerPage() {
   const resumes = (resumesResult.data ?? []) as Pick<Resume, 'id' | 'title' | 'raw_text' | 'parsed_data'>[]
   const profile = profileResult.data as Profile | null
 
-  return <ATSCheckerClient resumes={resumes} profile={profile} />
+  return <ATSCheckerClient resumes={resumes} profile={profile} mode="ats" />
 }

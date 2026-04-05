@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -20,12 +20,23 @@ import {
   sanitizeDocumentTitle,
   type GeneratedCoverLetterPayload,
 } from '@/lib/cv/shared'
+import { getCoverLetterDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
+import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import type { Resume, ResumeData, TailorIntensity } from '@/types'
 
 const PAGE_HEIGHT_PX = 1123
 
 type ResumePickerItem = Pick<Resume, 'id' | 'title' | 'parsed_data'>
 type SourceMode = 'saved' | 'upload'
+
+interface CoverLetterSessionDraft {
+  sourceMode: SourceMode
+  selectedResumeId: string
+  jobDescription: string
+  intensity: TailorIntensity
+  result: GeneratedCoverLetterPayload | null
+  errorMessage: string | null
+}
 
 const INTENSITY_OPTIONS: Array<{
   value: TailorIntensity
@@ -111,6 +122,7 @@ export default function CVGeneratorClient({
 }: {
   resumes: ResumePickerItem[]
 }) {
+  const draftKey = getCoverLetterDraftKey('dashboard')
   const availableResumes = useMemo(
     () =>
       resumes.filter(
@@ -129,11 +141,57 @@ export default function CVGeneratorClient({
   const [downloadState, setDownloadState] = useState<'pdf' | 'docx' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const previewRef = useRef<HTMLDivElement>(null)
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
 
   const canGenerate =
     jobDescription.trim().length >= 80 &&
     (sourceMode === 'saved' ? Boolean(selectedResumeId) : Boolean(selectedFile))
   const selectedIntensity = INTENSITY_OPTIONS.find(option => option.value === intensity) ?? INTENSITY_OPTIONS[2]
+
+  useEffect(() => {
+    const draft = readSessionDraft<CoverLetterSessionDraft>(draftKey)
+
+    if (draft) {
+      setSourceMode(draft.sourceMode)
+      setSelectedResumeId(draft.selectedResumeId)
+      setJobDescription(draft.jobDescription)
+      setIntensity(draft.intensity)
+      setResult(draft.result)
+      setErrorMessage(draft.errorMessage)
+    }
+
+    setHasRestoredDraft(true)
+  }, [draftKey])
+
+  useEffect(() => {
+    if (sourceMode !== 'saved') {
+      return
+    }
+
+    if (!selectedResumeId && availableResumes[0]?.id) {
+      setSelectedResumeId(availableResumes[0].id)
+      return
+    }
+
+    if (selectedResumeId && !availableResumes.some(resume => resume.id === selectedResumeId)) {
+      setSelectedResumeId(availableResumes[0]?.id ?? '')
+    }
+  }, [availableResumes, selectedResumeId, sourceMode])
+
+  useEffect(() => {
+    if (!hasRestoredDraft) {
+      return
+    }
+
+    writeSessionDraft(draftKey, {
+      sourceMode,
+      selectedResumeId,
+      jobDescription,
+      intensity,
+      result,
+      errorMessage,
+    } satisfies CoverLetterSessionDraft)
+  }, [draftKey, errorMessage, hasRestoredDraft, intensity, jobDescription, result, selectedResumeId, sourceMode])
 
   function resetGeneratedState(nextMode?: SourceMode) {
     setErrorMessage(null)
@@ -382,7 +440,7 @@ export default function CVGeneratorClient({
                           {selectedFile ? selectedFile.name : 'Choose a PDF or DOCX resume'}
                         </p>
                         <p className="mt-1 text-xs text-on-surface-variant">
-                          Max 5MB. The file is parsed for this generation run only.
+                          Max {MAX_RESUME_UPLOAD_LABEL}. The file is parsed for this generation run only.
                         </p>
                       </div>
                     </div>

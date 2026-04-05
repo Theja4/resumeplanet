@@ -5,17 +5,21 @@ import { Sparkles } from 'lucide-react'
 
 const PAGE_TITLES: [string, string][] = [
   ['/dashboard/ats-checker', 'ATS Checker'],
+  ['/dashboard/match-score', 'Match Score'],
   ['/dashboard/resumes', 'Your Library'],
   ['/dashboard/builder', 'Resume Builder'],
   ['/dashboard/orders', 'Orders'],
+  ['/dashboard/contact', 'Contact Us'],
   ['/dashboard/pricing', 'Pricing'],
   ['/dashboard', 'Dashboard'],
 ]
 
 const PAGE_SUBTITLES: [string, string][] = [
-  ['/dashboard/ats-checker', 'Run deeper analysis and tighten each application before it goes out.'],
+  ['/dashboard/ats-checker', 'Check resume structure, ATS readability, and keyword coverage without a job description.'],
+  ['/dashboard/match-score', 'Compare your resume against a specific role and surface the biggest fit gaps fast.'],
   ['/dashboard/resumes', 'Manage every role-specific version from one polished workspace.'],
   ['/dashboard/orders', 'Track recruiter rewrite orders and delivery status in one place.'],
+  ['/dashboard/contact', 'Reach the team by email for billing questions, account issues, and product support.'],
   ['/dashboard/pricing', 'Manage access, upgrades, and plan history without leaving the workspace.'],
   ['/dashboard/templates', 'Preview the customizable template system before opening the builder.'],
   ['/dashboard', 'Pick up where you left off and keep momentum across every application.'],

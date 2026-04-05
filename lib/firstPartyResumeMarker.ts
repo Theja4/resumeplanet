@@ -1,7 +1,7 @@
 import type { BuilderVisibility, ResumeData, UniversalConfig, ExperienceItem, EducationItem, CertificationItem, ProjectItem, AwardItem, PublicationItem, CustomSection } from '@/types'
 
 const MARKER_VERSION = 1
-const MARKER_FIELDS = ['keywords', 'subject', 'creator', 'producer'] as const
+const MARKER_FIELDS = ['keywords', 'subject', 'creator'] as const
 const MARKER_PREFIX = 'x1'
 const MARKER_CHUNK_SIZE = 6000
 

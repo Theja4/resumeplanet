@@ -1,4 +1,4 @@
-import type { ResumeData } from '@/types'
+import type { ATSRoadmapAction, ATSScoreRoadmap, ResumeData } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -22,6 +22,81 @@ export interface ScorerResult {
   scoreLabel: 'Poor' | 'Fair' | 'Good' | 'Excellent'
   breakdown: Record<string, ScorerBreakdown>
   weakAreas: WeakArea[]
+}
+
+type RoadmapSection = ATSRoadmapAction['section']
+type RoadmapLane = ATSRoadmapAction['lane']
+
+interface RoadmapBlueprint {
+  lane: RoadmapLane
+  section: RoadmapSection
+  title: string
+  reason: string
+}
+
+const ROADMAP_TARGET_SCORE = 90
+
+const ROADMAP_BLUEPRINTS: Record<string, RoadmapBlueprint> = {
+  contact: {
+    lane: 'fixable_now',
+    section: 'Header',
+    title: 'Complete the resume header',
+    reason: 'ATS and recruiters should see every core contact detail immediately in the top scan.',
+  },
+  summary: {
+    lane: 'fixable_now',
+    section: 'Professional Summary',
+    title: 'Sharpen the professional summary',
+    reason: 'The opening summary is still underselling role fit, focus, or the strongest value signal.',
+  },
+  exp_verbs: {
+    lane: 'fixable_now',
+    section: 'Work Experience',
+    title: 'Rewrite weak bullet openings',
+    reason: 'Task-based openings make the experience read flatter than it really is.',
+  },
+  exp_metrics: {
+    lane: 'needs_stronger_evidence',
+    section: 'Work Experience',
+    title: 'Add measurable business outcomes',
+    reason: 'This score will stay capped until more bullets prove impact with numbers, scale, or concrete outcomes.',
+  },
+  exp_depth: {
+    lane: 'fixable_now',
+    section: 'Work Experience',
+    title: 'Deepen the strongest roles',
+    reason: 'Thin role coverage leaves too little evidence of scope, ownership, and decision-making.',
+  },
+  skills: {
+    lane: 'fixable_now',
+    section: 'Skills',
+    title: 'Broaden and clean up the skills section',
+    reason: 'You can recover points by listing the real tools and methods you use most often, in a cleaner structure.',
+  },
+  structure: {
+    lane: 'fixable_now',
+    section: 'Resume Structure',
+    title: 'Restore a standard ATS-friendly structure',
+    reason: 'Missing or non-standard sections make the resume harder to parse and trust quickly.',
+  },
+  education: {
+    lane: 'fixable_now',
+    section: 'Education',
+    title: 'Complete the education entry',
+    reason: 'Education is still missing fields ATS systems expect in a consistent format.',
+  },
+  keywords: {
+    lane: 'fixable_now',
+    section: 'Work Experience',
+    title: 'Move skills into accomplishment bullets',
+    reason: 'Skills score rises when tools appear in real work evidence, not only in a skills list.',
+  },
+  polish: {
+    lane: 'fixable_now',
+    section: 'Resume-wide',
+    title: 'Tighten vague or placeholder language',
+    reason: 'Generic phrasing and unresolved placeholders suppress the score even when the underlying experience is solid.',
+  },
 }
 
 // ─── Action Verbs (~120, organized by category) ─────────────────────────────
@@ -270,6 +345,53 @@ function getScoreLabel(score: number): 'Poor' | 'Fair' | 'Good' | 'Excellent' {
   if (score <= 55) return 'Fair'
   if (score <= 80) return 'Good'
   return 'Excellent'
+}
+
+function uniqueEvidence(items: string[]): string[] {
+  const seen = new Set<string>()
+  const cleaned: string[] = []
+
+  for (const item of items) {
+    const value = item.trim()
+    if (!value) continue
+    if (seen.has(value.toLowerCase())) continue
+    seen.add(value.toLowerCase())
+    cleaned.push(value)
+  }
+
+  return cleaned
+}
+
+function estimateGain(gap: number, lane: RoadmapLane) {
+  if (gap <= 0) {
+    return { estimatedGainMin: 0, estimatedGainMax: 0 }
+  }
+
+  const floorMultiplier = lane === 'fixable_now' ? 0.6 : 0.45
+
+  return {
+    estimatedGainMin: Math.max(1, Math.ceil(gap * floorMultiplier)),
+    estimatedGainMax: gap,
+  }
+}
+
+function weakAreaToRoadmapAction(area: WeakArea): ATSRoadmapAction | null {
+  const blueprint = ROADMAP_BLUEPRINTS[area.criterionId]
+  if (!blueprint) return null
+
+  const gain = estimateGain(area.gap, blueprint.lane)
+  const evidence = uniqueEvidence(area.relevantText).slice(0, 3)
+
+  return {
+    criterionId: area.criterionId,
+    lane: blueprint.lane,
+    section: blueprint.section,
+    title: blueprint.title,
+    reason: blueprint.reason,
+    estimatedGainMin: gain.estimatedGainMin,
+    estimatedGainMax: gain.estimatedGainMax,
+    evidence,
+  }
 }
 
 // ─── Criterion Scorers ──────────────────────────────────────────────────────
@@ -781,5 +903,37 @@ export function scoreResume(data: ResumeData): ScorerResult {
     scoreLabel: getScoreLabel(totalScore),
     breakdown,
     weakAreas,
+  }
+}
+
+export function buildATSRoadmap(scorerResult: ScorerResult): ATSScoreRoadmap {
+  const actions = scorerResult.weakAreas
+    .map(weakAreaToRoadmapAction)
+    .filter((action): action is ATSRoadmapAction => Boolean(action))
+    .sort((left, right) => {
+      if (right.estimatedGainMax !== left.estimatedGainMax) {
+        return right.estimatedGainMax - left.estimatedGainMax
+      }
+      return right.estimatedGainMin - left.estimatedGainMin
+    })
+
+  const fixableNow = actions.filter(action => action.lane === 'fixable_now')
+  const evidenceBlockers = actions.filter(action => action.lane === 'needs_stronger_evidence')
+
+  const fixablePotential = fixableNow.reduce((sum, action) => sum + action.estimatedGainMax, 0)
+  const blockedPotential = evidenceBlockers.reduce((sum, action) => sum + action.estimatedGainMax, 0)
+  const truthfulCeiling = Math.min(100, scorerResult.score + fixablePotential)
+  const gapToTarget = Math.max(0, ROADMAP_TARGET_SCORE - scorerResult.score)
+
+  return {
+    currentScore: scorerResult.score,
+    targetScore: ROADMAP_TARGET_SCORE,
+    gapToTarget,
+    truthfulCeiling,
+    fixablePotential,
+    blockedPotential,
+    canReachTargetNow: truthfulCeiling >= ROADMAP_TARGET_SCORE,
+    fixableNow,
+    evidenceBlockers,
   }
 }

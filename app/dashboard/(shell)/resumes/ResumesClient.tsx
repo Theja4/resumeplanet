@@ -9,6 +9,7 @@ import EmptyState from '@/components/shared/EmptyState'
 import PaywallModal from '@/components/shared/PaywallModal'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import { deleteResume, renameResume } from './actions'
 import type { Resume, Profile } from '@/types'
 
@@ -93,7 +94,7 @@ export default function ResumesClient({
         <EmptyState
           icon={FileText}
           title="No resumes yet"
-          description="Upload your first resume to get started. We support PDF and DOCX files up to 5MB."
+          description={`Upload your first resume to get started. We support PDF and DOCX files up to ${MAX_RESUME_UPLOAD_LABEL}.`}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -121,7 +122,7 @@ export default function ResumesClient({
                     </p>
                   </div>
                   <button 
-                    onClick={() => router.push('/dashboard/ats-checker')}
+                    onClick={() => router.push('/dashboard/match-score')}
                     className="w-full rounded-full bg-zinc-950 py-3 text-sm font-bold uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95"
                   >
                     Try AI Tailoring

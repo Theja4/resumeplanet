@@ -1,11 +1,13 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics } from '@/lib/analytics'
+import { countWords } from '@/lib/text'
+import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
+import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
@@ -21,6 +23,9 @@ import {
   X,
   FileUp,
   CheckCircle2,
+  TrendingUp,
+  ShieldAlert,
+  Target,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -47,10 +52,30 @@ interface OptimiseResponse {
   resumeData: ResumeData
 }
 
+interface ATSCheckerSessionDraft {
+  inputMode: 'resume' | 'upload'
+  selectedResumeId: string
+  uploadedFile: { name: string; text: string } | null
+  jobDescription: string
+  scanError: string | null
+  scanResult: ScanResponse | null
+  scannedResumeId: string | null
+  customizeError: string | null
+  optimiseError: string | null
+  optimiseResult: OptimiseResponse | null
+  optimisedResumeId: string | null
+  openOptimisedError: string | null
+  activeTab: 'results' | 'optimised'
+}
+
+type AnalysisMode = 'ats' | 'match'
+
 interface ATSCheckerClientProps {
   resumes: ResumeOption[]
   profile: Profile | null
   publicMode?: boolean
+  mode?: AnalysisMode
+  showIntro?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -135,7 +160,7 @@ function resumeDataToText(data: ResumeData | null): string {
 
 const ERROR_MESSAGES: Record<string, string> = {
   RESUME_TOO_SHORT: 'Resume text is too short (minimum 100 characters).',
-  JOB_DESCRIPTION_TOO_SHORT: 'Job description is too short (minimum 50 characters).',
+  JOB_DESCRIPTION_TOO_SHORT: 'Add a fuller job description with at least 20 words.',
   FREE_LIMIT_REACHED: 'You have used all 3 free scans for today. Upgrade to Pro for unlimited scans.',
   CLAUDE_TIMEOUT: 'Analysis timed out. Please try again.',
   PARSE_FAILED: 'Failed to parse AI response. Please try again.',
@@ -177,7 +202,7 @@ function normalizeResumeTitle(title: string) {
   return trimmed.replace(/\.(pdf|docx)\s*$/i, '').trim() || 'Uploaded Resume'
 }
 
-function buildAtsBuilderHref(resumeId: string) {
+function buildAtsBuilderHref(resumeId: string, mode: AnalysisMode) {
   const params = new URLSearchParams({
     layout: ATS_PREVIEW_CONFIG.layout,
     header: ATS_PREVIEW_CONFIG.headerStyle,
@@ -185,7 +210,7 @@ function buildAtsBuilderHref(resumeId: string) {
     density: ATS_PREVIEW_CONFIG.density,
     accent: ATS_PREVIEW_CONFIG.accentColor,
     trimOverflow: '1',
-    source: 'ats',
+    source: mode === 'match' ? 'match' : 'ats',
   })
 
   return `/dashboard/builder/${resumeId}?${params.toString()}`
@@ -247,9 +272,191 @@ function getReviewSections(result: ScanResponse) {
   ]
 }
 
+function formatGainRange(min: number, max: number) {
+  if (max <= 0) return 'No gain'
+  if (min === max) return `+${max}`
+  return `+${min} to +${max}`
+}
+
+function RoadToNinetyPanel({
+  roadmap,
+}: {
+  roadmap: NonNullable<ATSResult['roadmap']>
+}) {
+  const fixableActions = roadmap.fixableNow.slice(0, 4)
+  const evidenceBlockers = roadmap.evidenceBlockers.slice(0, 3)
+
+  let headline = `Truthful presentation fixes can likely take this resume to ${roadmap.truthfulCeiling}.`
+  let subcopy = 'Start with the highest-impact fixes below. These are the fastest honest ways to move the score.'
+
+  if (roadmap.currentScore >= roadmap.targetScore) {
+    headline = `This resume is already above ${roadmap.targetScore}.`
+    subcopy = 'Keep the fundamentals stable and spend the effort on role fit, interviewing, and stronger real evidence.'
+  } else if (roadmap.canReachTargetNow) {
+    headline = `${roadmap.targetScore} is still reachable with truthful presentation fixes.`
+    subcopy = 'You do not need new credentials first. The biggest remaining gains are still in how the existing evidence is presented.'
+  } else if (roadmap.fixablePotential <= 0) {
+    headline = `Presentation fixes alone will not move this resume to ${roadmap.targetScore}.`
+    subcopy = 'The main limit is evidence strength now, not formatting polish.'
+  }
+
+  return (
+    <DashboardSurface variant="subtle" className="p-5">
+      <div className="space-y-5">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Road to 90</p>
+          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">{headline}</h3>
+          <p className="mt-2 text-sm leading-6 text-on-surface-variant">{subcopy}</p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4">
+            <div className="flex items-center gap-2 text-on-surface-variant">
+              <Target size={14} className="text-primary" strokeWidth={1.9} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em]">Current</span>
+            </div>
+            <p className="mt-3 text-3xl font-black tracking-tight text-on-background">{roadmap.currentScore}</p>
+          </div>
+          <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4">
+            <div className="flex items-center gap-2 text-on-surface-variant">
+              <TrendingUp size={14} className="text-primary" strokeWidth={1.9} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em]">Truthful ceiling</span>
+            </div>
+            <p className="mt-3 text-3xl font-black tracking-tight text-on-background">{roadmap.truthfulCeiling}</p>
+          </div>
+          <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4">
+            <div className="flex items-center gap-2 text-on-surface-variant">
+              <ShieldAlert size={14} className="text-primary" strokeWidth={1.9} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.16em]">Still blocked</span>
+            </div>
+            <p className="mt-3 text-3xl font-black tracking-tight text-on-background">{roadmap.blockedPotential}</p>
+          </div>
+        </div>
+
+        {fixableActions.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-bold tracking-tight text-on-background">Fixable now</p>
+              <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                These are presentation or structure changes the user can make without inventing new experience.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {fixableActions.map(action => (
+                <div key={action.criterionId} className="rounded-[1.2rem] border border-emerald-200 bg-white/92 px-4 py-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.85)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-base font-bold tracking-tight text-on-background">{action.title}</p>
+                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">
+                        {action.section}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
+                      {formatGainRange(action.estimatedGainMin, action.estimatedGainMax)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-on-surface-variant">{action.reason}</p>
+                  {action.evidence.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {action.evidence.map(item => (
+                        <span key={item} className="rounded-md bg-primary-container/35 px-2.5 py-1 text-xs font-medium text-on-primary-container">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {evidenceBlockers.length > 0 && (
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-bold tracking-tight text-on-background">Needs stronger evidence</p>
+              <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                These points usually require clearer impact proof, more scope, or stronger real experience, not just cleaner wording.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {evidenceBlockers.map(action => (
+                <div key={action.criterionId} className="rounded-[1.2rem] border border-amber-200 bg-amber-50/65 px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-base font-bold tracking-tight text-on-background">{action.title}</p>
+                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">
+                        {action.section}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-700">
+                      {formatGainRange(action.estimatedGainMin, action.estimatedGainMax)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-on-surface-variant">{action.reason}</p>
+                  {action.evidence.length > 0 && (
+                    <ul className="mt-3 space-y-1.5">
+                      {action.evidence.map(item => (
+                        <li key={item} className="flex items-start gap-2 text-xs leading-5 text-on-surface-variant">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardSurface>
+  )
+}
+
+function RoadToNinetyUpsell({
+  publicMode,
+}: {
+  publicMode: boolean
+}) {
+  const href = publicMode ? '/auth/register' : '/dashboard/pricing'
+  const ctaLabel = publicMode ? 'Create an account to unlock Pro' : 'Upgrade to Pro'
+
+  return (
+    <DashboardSurface variant="subtle" className="p-5">
+      <div className="space-y-4">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Road to 90</p>
+          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">
+            Unlock the exact fixes that will raise the score.
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+            Pro shows the ranked actions, expected score gains, and the honest ceiling for this resume so users know what to fix next.
+          </p>
+        </div>
+
+        <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4">
+          <p className="text-sm font-semibold text-on-background">
+            Upgrade to Pro to see suggestions on how to increase score.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+            See what is fixable right now, what still needs stronger evidence, and how close the resume can get to 90 honestly.
+          </p>
+          <a
+            href={href}
+            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+          >
+            {ctaLabel} <ChevronRight size={14} />
+          </a>
+        </div>
+      </div>
+    </DashboardSurface>
+  )
+}
+
 // ─── Score Ring ───────────────────────────────────────────────────────────────
 
-function ScoreRing({ score }: { score: number }) {
+function ScoreRing({ score, label = 'ATS Score' }: { score: number; label?: string }) {
   const r = 54
   const circumference = 2 * Math.PI * r
   const offset = circumference - (score / 100) * circumference
@@ -279,7 +486,7 @@ function ScoreRing({ score }: { score: number }) {
           {score}
         </text>
       </svg>
-      <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">ATS Score</span>
+      <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{label}</span>
     </div>
   )
 }
@@ -325,7 +532,7 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
 
   if (uploadedFile) {
     return (
-      <div className="flex-1 flex flex-col gap-3">
+      <div className="flex min-h-[280px] flex-1 flex-col justify-between gap-3">
         <div className="flex items-center justify-between p-4 bg-primary-container/20 rounded-xl">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 bg-primary-container/50 rounded-lg flex items-center justify-center shrink-0">
@@ -400,7 +607,7 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
               <p className="text-sm font-bold text-on-surface">Drop your resume here</p>
               <p className="text-xs text-on-surface-variant">or click to browse</p>
               <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mt-2">
-                PDF · DOCX · Max 5 MB
+                PDF · DOCX · Max {MAX_RESUME_UPLOAD_LABEL_SPACED}
               </p>
             </div>
           </>
@@ -413,14 +620,155 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
   )
 }
 
+function ATSModePreviewPanel() {
+  const checks = [
+    { label: 'ATS parse rate', value: '95%', tone: 'bg-emerald-500' },
+    { label: 'Keyword clarity', value: '81%', tone: 'bg-emerald-500' },
+    { label: 'Formatting', value: '68%', tone: 'bg-amber-400' },
+    { label: 'Section flow', value: 'Needs work', tone: 'bg-red-400' },
+  ]
+
+  return (
+    <div>
+      <DashboardSurface variant="default" className="min-h-[360px] p-5 lg:min-h-[420px] lg:p-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.24),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_42%)]" />
+        <div className="relative grid h-full gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
+          <div className="rounded-[1.4rem] border border-black/6 bg-white/86 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)]">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Resume score</p>
+            <div className="relative mx-auto mt-4 flex h-24 w-24 items-center justify-center">
+              <div className="ring-animation absolute inset-0 rounded-full border-4 border-[#A3FFB3]/60" />
+              <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(2,109,50,0.1)" strokeWidth="10" />
+                <circle
+                  cx="60"
+                  cy="60"
+                  r="46"
+                  fill="none"
+                  stroke="#14b86b"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray="289"
+                  strokeDashoffset="58"
+                />
+              </svg>
+              <div className="relative text-center">
+                <div className="text-3xl font-black tracking-tight text-[#026d32]">88</div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">ATS</div>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-2.5">
+              {checks.map(check => (
+                <div key={check.label} className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${check.tone} animate-pulse`} />
+                    <span className="text-[11px] font-semibold text-on-surface-variant">{check.label}</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+                    {check.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-black/6 bg-[linear-gradient(180deg,#eef4ef_0%,#f8fbf9_100%)] p-4">
+            <div className="scanning-animation" />
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Detected issues</p>
+              <span className="rounded-full bg-white/92 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant shadow-sm">
+                4 priority fixes
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-4">
+              <div className="rounded-[1.2rem] border border-black/6 bg-white/92 p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant">ATS parse rate</span>
+                  <span className="text-[11px] font-bold text-[#026d32]">Strong</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-2.5 overflow-hidden rounded-full bg-[#dfe5e4]">
+                    <div className="shimmer-effect h-full w-[92%] rounded-full bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]" />
+                  </div>
+                  <div className="h-2.5 rounded-full bg-[#e7ecea]" />
+                  <div className="h-2.5 w-[78%] rounded-full bg-[#e7ecea]" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-[1rem] border border-[#f4d7ad] bg-[#fff6e7] px-3.5 py-3 text-sm text-[#8b5d0b] shadow-sm">
+                  Add measurable outcomes to 2 experience bullets.
+                </div>
+                <div className="rounded-[1rem] border border-[#f3d0d0] bg-[#fef1f1] px-3.5 py-3 text-sm text-[#a43838] shadow-sm">
+                  Summary reads generic for the target role.
+                </div>
+                <div className="rounded-[1rem] border border-[#d8eadb] bg-[#effaf1] px-3.5 py-3 text-sm text-[#026d32] shadow-sm">
+                  Skills section is easy for ATS systems to parse.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DashboardSurface>
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ATSCheckerClient({ resumes, profile, publicMode = false }: ATSCheckerClientProps) {
+export default function ATSCheckerClient({
+  resumes,
+  profile,
+  publicMode = false,
+  mode = 'ats',
+  showIntro = true,
+}: ATSCheckerClientProps) {
   const router = useRouter()
   const supabase = createClient()
   const pro = isPro(profile)
   const initialScansLeft = publicMode ? Number.POSITIVE_INFINITY : getRemainingFreeScans(profile)
   const searchParams = useSearchParams()
+  const isMatchMode = mode === 'match'
+  const draftKey = getAtsCheckerDraftKey(publicMode ? 'public' : 'dashboard', mode)
+  const requiresJobDescription = isMatchMode
+  const resultsTitle = isMatchMode ? 'Your Match Score' : 'Your ATS Score'
+  const scoreRingLabel = isMatchMode ? 'Match Score' : 'ATS Score'
+  const scoreBadgeLabel = isMatchMode ? 'Role Match' : 'ATS Readiness'
+  const scanButtonLabel = isMatchMode ? 'Run Match Score' : 'Run ATS Scan'
+  const optimiseButtonLabel = isMatchMode ? 'AI Tailor Resume' : 'AI Improve Resume'
+  const optimiseButtonLoadingLabel = isMatchMode
+    ? 'AI Tailoring… can take 1-2 min'
+    : 'AI Improving… can take 1-2 min'
+  const keywordSectionTitle = isMatchMode ? 'Coverage against the target role.' : 'Coverage across your resume.'
+  const keywordSectionDescription = isMatchMode
+    ? 'The strongest signals and gaps against the pasted job description.'
+    : 'The strongest signals and missing ATS fundamentals detected in the resume itself.'
+  const missingKeywordLabel = isMatchMode ? 'Missing keywords' : 'Missing signals'
+  const presentKeywordLabel = isMatchMode ? 'Present keywords' : 'Detected strengths'
+  const mustHaveLabel = isMatchMode ? 'Must-have' : 'Priority gaps'
+  const niceToHaveLabel = isMatchMode ? 'Nice-to-have' : 'Existing strengths'
+  const reviewHeading = isMatchMode ? 'Review what is hurting fit.' : 'Review what to fix.'
+  const reviewDescription = isMatchMode
+    ? 'Start with the areas where the resume is missing direct evidence for the role.'
+    : 'Start with the highest-count areas to move the score fastest.'
+  const breakdownLabels = isMatchMode
+    ? {
+        keywordMatch: 'Requirement Fit',
+        formatting: 'Evidence Strength',
+        relevance: 'Domain Alignment',
+        completeness: 'Seniority Fit',
+        keywordDensity: 'Keyword Coverage',
+      }
+    : {
+        keywordMatch: 'Keyword Coverage',
+        formatting: 'Formatting',
+        relevance: 'Relevance',
+        completeness: 'Completeness',
+        keywordDensity: 'Keyword Density',
+      }
+  const notesHeading = isMatchMode ? 'Fit risks' : 'Formatting issues'
+  const insightHeading = isMatchMode ? 'Fit insight' : 'Industry insight'
 
   const [inputMode, setInputMode] = useState<'resume' | 'upload'>(resumes.length > 0 ? 'resume' : 'upload')
   const [selectedResumeId, setSelectedResumeId] = useState<string>(resumes[0]?.id ?? '')
@@ -446,6 +794,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
   const [optimiseResult, setOptimiseResult] = useState<OptimiseResponse | null>(null)
   const [activeTab, setActiveTab] = useState<'results' | 'optimised'>('results')
   const [previewViewportNode, setPreviewViewportNode] = useState<HTMLDivElement | null>(null)
+  const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const lastTrackedUpgradePromptScoreRef = useRef<number | null>(null)
@@ -477,6 +826,43 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
   }, [previewViewportNode])
 
   useEffect(() => {
+    const draft = readSessionDraft<ATSCheckerSessionDraft>(draftKey)
+
+    if (draft) {
+      setInputMode(draft.inputMode)
+      setSelectedResumeId(draft.selectedResumeId)
+      setUploadedFile(draft.uploadedFile)
+      setJobDescription(draft.jobDescription)
+      setScanError(draft.scanError)
+      setScanResult(draft.scanResult)
+      setScannedResumeId(draft.scannedResumeId)
+      setCustomizeError(draft.customizeError)
+      setOptimiseError(draft.optimiseError)
+      setOptimiseResult(draft.optimiseResult)
+      setOptimisedResumeId(draft.optimisedResumeId)
+      setOpenOptimisedError(draft.openOptimisedError)
+      setActiveTab(draft.activeTab)
+    }
+
+    setHasRestoredDraft(true)
+  }, [draftKey])
+
+  useEffect(() => {
+    if (inputMode !== 'resume') {
+      return
+    }
+
+    if (!selectedResumeId && resumes[0]?.id) {
+      setSelectedResumeId(resumes[0].id)
+      return
+    }
+
+    if (selectedResumeId && !resumes.some(resume => resume.id === selectedResumeId)) {
+      setSelectedResumeId(resumes[0]?.id ?? '')
+    }
+  }, [inputMode, resumes, selectedResumeId])
+
+  useEffect(() => {
     const requestedResumeId = searchParams.get('resumeId')
     if (!requestedResumeId) return
     const matchedResume = resumes.find(r => r.id === requestedResumeId)
@@ -498,6 +884,44 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
     })
   }, [pro, publicMode, scanResult])
 
+  useEffect(() => {
+    if (!hasRestoredDraft) {
+      return
+    }
+
+    writeSessionDraft(draftKey, {
+      inputMode,
+      selectedResumeId,
+      uploadedFile,
+      jobDescription,
+      scanError,
+      scanResult,
+      scannedResumeId,
+      customizeError,
+      optimiseError,
+      optimiseResult,
+      optimisedResumeId,
+      openOptimisedError,
+      activeTab,
+    } satisfies ATSCheckerSessionDraft)
+  }, [
+    activeTab,
+    customizeError,
+    draftKey,
+    hasRestoredDraft,
+    inputMode,
+    jobDescription,
+    openOptimisedError,
+    optimiseError,
+    optimiseResult,
+    optimisedResumeId,
+    scanError,
+    scanResult,
+    scannedResumeId,
+    selectedResumeId,
+    uploadedFile,
+  ])
+
   const getResumeText = (): string => {
     if (inputMode === 'upload') return uploadedFile?.text ?? ''
     const found = resumes.find(r => r.id === selectedResumeId)
@@ -508,11 +932,11 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
     ? (uploadedFile?.text.trim().split(/\s+/).filter(Boolean).length ?? 0)
     : (getResumeText().trim().split(/\s+/).filter(Boolean).length ?? 0)
 
-  const jobWordCount = jobDescription.trim().split(/\s+/).filter(Boolean).length
+  const jobWordCount = countWords(jobDescription)
 
   const canScan = !isScanning && !isExtracting && (
     inputMode === 'upload' ? (uploadedFile?.text.trim().length ?? 0) >= 100 : !!selectedResumeId
-  ) && (publicMode || pro || scansLeft > 0)
+  ) && (!requiresJobDescription || jobWordCount >= 20) && (publicMode || pro || scansLeft > 0)
 
   async function handleFileChange(file: File | null) {
     if (!file) return
@@ -528,7 +952,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
       if (!res.ok || !json.success) {
         const msgs: Record<string, string> = {
           INVALID_FILE_TYPE: 'Only PDF and DOCX files are supported.',
-          FILE_TOO_LARGE: 'File is too large (max 5 MB).',
+          FILE_TOO_LARGE: `File is too large (max ${MAX_RESUME_UPLOAD_LABEL_SPACED}).`,
           SCANNED_OR_EMPTY: 'Could not extract text — the file may be a scanned image or empty.',
           EXTRACTION_FAILED: 'Failed to read the file. Please try another.',
         }
@@ -578,7 +1002,12 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
       const res = await fetch('/api/ats/score', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resumeText, jobDescription: jobDescription || undefined, resumeId }),
+        body: JSON.stringify({
+          resumeText,
+          resumeId,
+          analysisMode: mode,
+          jobDescription: requiresJobDescription ? jobDescription || undefined : undefined,
+        }),
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
@@ -620,7 +1049,8 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resumeText,
-          jobDescription: jobDescription || undefined,
+          analysisMode: mode,
+          jobDescription: requiresJobDescription ? jobDescription || undefined : undefined,
           atsResult: scanResult,
           scoreId: scanResult.scoreId,
           resumeData: scanResult.resumeData,
@@ -684,7 +1114,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
     }
 
     if (scannedResumeId) {
-      router.push(buildAtsBuilderHref(scannedResumeId))
+      router.push(buildAtsBuilderHref(scannedResumeId, mode))
       return
     }
 
@@ -703,7 +1133,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
           title: normalizeResumeTitle(uploadedFile?.name ?? 'Uploaded Resume'),
           raw_text: getResumeText(),
           parsed_data: scanResult.resumeData,
-          ats_score: scanResult.score,
+          ats_score: isMatchMode ? null : scanResult.score,
           builder_visibility: {
             ...DEFAULT_VISIBILITY,
             density: ATS_PREVIEW_CONFIG.density,
@@ -719,7 +1149,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
       }
 
       setScannedResumeId(data.id)
-      router.push(buildAtsBuilderHref(data.id))
+      router.push(buildAtsBuilderHref(data.id, mode))
     } catch (error) {
       console.error('Failed to create ATS builder draft:', error)
       setCustomizeError('Could not open the builder for this upload. Please try again.')
@@ -747,7 +1177,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
     }
 
     if (optimisedResumeId) {
-      router.push(buildAtsBuilderHref(optimisedResumeId))
+      router.push(buildAtsBuilderHref(optimisedResumeId, mode))
       return
     }
 
@@ -762,7 +1192,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
           title: `${baseTitle} Optimised`,
           raw_text: optimiseResult.optimisedText,
           parsed_data: optimiseResult.resumeData,
-          ats_score: scanResult?.score ?? null,
+          ats_score: isMatchMode ? null : (scanResult?.score ?? null),
           builder_visibility: {
             ...DEFAULT_VISIBILITY,
             density: ATS_PREVIEW_CONFIG.density,
@@ -778,7 +1208,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
       }
 
       setOptimisedResumeId(data.id)
-      router.push(buildAtsBuilderHref(data.id))
+      router.push(buildAtsBuilderHref(data.id, mode))
     } catch (error) {
       console.error('Failed to open optimised resume in editor:', error)
       setOpenOptimisedError('Could not open the optimised resume in the editor. Please try again.')
@@ -789,54 +1219,137 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
 
   const previewFrameHeight = Math.round(ATS_PREVIEW_PAGE_HEIGHT * previewScale) + 28
   const previewFrameWidth = Math.round(ATS_PREVIEW_PAGE_WIDTH * previewScale)
+  const scanActionBlock = (
+    <>
+      {!pro && !publicMode && scansLeft === 0 && (
+        <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
+          You have used all 3 free scans today. Scans reset every 24 hours.{' '}
+          <a href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</a> for unlimited scans.
+        </div>
+      )}
+
+      {scanError && (
+        <div className="rounded-xl bg-red-50 px-5 py-3 text-sm text-red-700 text-center">
+          {scanError}
+        </div>
+      )}
+
+      <div className="flex justify-center pt-2">
+        <button
+          onClick={handleScan}
+          disabled={!canScan}
+          className="group flex items-center gap-3 rounded-full bg-zinc-950 px-12 py-4 text-base font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
+        >
+          {isScanning ? (
+            <>
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Analysing…
+            </>
+          ) : (
+            <>
+              <Sparkles size={18} strokeWidth={1.75} />
+              {scanButtonLabel}
+              <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
+            </>
+          )}
+        </button>
+      </div>
+
+      {!pro && !publicMode && (
+        <p className="text-center text-xs text-on-surface-variant">
+          Free plan: 3 {isMatchMode ? 'match' : 'ATS'} scans / day with basic analysis.{' '}
+          <a href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
+            Upgrade for advanced AI analysis + resume optimisation.
+          </a>
+        </p>
+      )}
+
+      {publicMode && (
+        <p className="text-center text-xs text-on-surface-variant">
+          {isMatchMode
+            ? 'Free match scoring is open here. Create an account when you want AI tailoring and builder editing.'
+            : 'Free ATS scoring is open here. Create an account when you want AI improve and builder editing.'}
+        </p>
+      )}
+    </>
+  )
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <DashboardPageIntro
-        kicker={publicMode ? 'Free ATS Score' : 'ATS Diagnostics'}
-        title={publicMode ? 'Scan your resume before you create an account.' : 'Refine your professional edge.'}
-        description={
-          publicMode
-            ? 'Upload your resume, compare it against a target role, and get an instant ATS score for free. Create an account only when you want AI optimisation and builder editing.'
-            : 'Compare your resume against target roles with the same calm, premium visual system across the rest of the app. The scanner highlights keyword gaps, semantic misses, and optimisation opportunities in one workspace.'
-        }
-        aside={
-          publicMode ? (
-            <div className="space-y-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Free Access</p>
-              <p className="text-lg font-black leading-tight text-on-background">ATS scoring is open before signup.</p>
-              <p className="text-sm leading-6 text-on-surface-variant">
-                AI optimise and template editing unlock after you create your account.
-              </p>
-            </div>
-          ) : pro ? (
-            <div className="space-y-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Pro Access</p>
-              <p className="text-lg font-black leading-tight text-on-background">Unlimited scans and advanced tailoring are active.</p>
-              <p className="text-sm leading-6 text-on-surface-variant">
-                Compare against every role without daily limits and unlock the deeper optimization flow.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Free Plan</p>
-              <p className="text-lg font-black leading-tight text-on-background">{scansLeft} of 3 scans remaining today.</p>
-              <a href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                Upgrade for unlimited <ChevronRight size={12} />
-              </a>
-            </div>
-          )
-        }
-      />
+      {showIntro && (
+        <DashboardPageIntro
+          kicker={
+            publicMode
+              ? (isMatchMode ? 'Free Match Score' : 'Free ATS Checker')
+              : (isMatchMode ? 'Resume-to-role fit' : 'ATS Diagnostics')
+          }
+          title={
+            publicMode
+              ? (isMatchMode ? 'Check your resume against a real job.' : 'Scan your resume before you create an account.')
+              : (isMatchMode ? 'Measure resume-to-role fit.' : 'Refine your ATS fundamentals.')
+          }
+          description={
+            publicMode
+              ? (
+                  isMatchMode
+                    ? 'Upload your resume, paste a full job description, and get a free match score before creating an account. Sign up only when you want AI tailoring and builder editing.'
+                    : 'Upload your resume and get a free ATS score before creating an account. Sign up only when you want AI optimisation and builder editing.'
+                )
+              : (
+                  isMatchMode
+                    ? 'Compare your resume against a target role and surface the biggest keyword, relevance, and evidence gaps in one calmer workspace.'
+                    : 'Run a resume-only ATS check to catch structural, keyword, and recruiter-readability issues before you tailor for a specific job.'
+                )
+          }
+          aside={
+            publicMode ? (
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Free Access</p>
+                <p className="text-lg font-black leading-tight text-on-background">
+                  {isMatchMode ? 'Match scoring is open before signup.' : 'ATS scoring is open before signup.'}
+                </p>
+                <p className="text-sm leading-6 text-on-surface-variant">
+                  {isMatchMode
+                    ? 'Paste the full JD now. AI tailoring and builder editing unlock after signup.'
+                    : 'AI improve and template editing unlock after you create your account.'}
+                </p>
+              </div>
+            ) : pro ? (
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary">Pro Access</p>
+                <p className="text-lg font-black leading-tight text-on-background">
+                  {isMatchMode ? 'Unlimited match scoring and AI tailoring are active.' : 'Unlimited ATS scans and AI improvement are active.'}
+                </p>
+                <p className="text-sm leading-6 text-on-surface-variant">
+                  {isMatchMode
+                    ? 'Compare against every role without daily limits and push strong fits straight into the optimization flow.'
+                    : 'Stress-test resume fundamentals without daily limits, then push the strongest draft into the builder.'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Free Plan</p>
+                <p className="text-lg font-black leading-tight text-on-background">{scansLeft} of 3 scans remaining today.</p>
+                <a href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                  Upgrade for unlimited <ChevronRight size={12} />
+                </a>
+              </div>
+            )
+          }
+        />
+      )}
 
       {/* Ad banner — free users only */}
       {!pro && !publicMode && <AdBanner size="leaderboard" className="mx-auto" />}
 
       {/* ── Scanning Workspace ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className={isMatchMode ? 'grid grid-cols-1 gap-8 lg:grid-cols-2' : 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,36rem)_minmax(18rem,1fr)] lg:items-start'}>
 
         {/* Your Resume */}
-        <div className="space-y-4">
+        <div className={isMatchMode ? 'space-y-4' : 'order-2 space-y-4'}>
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2.5">
               <FileText size={18} className="text-primary" strokeWidth={1.75} />
@@ -847,7 +1360,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
             </span>
           </div>
 
-          <DashboardSurface variant="default" className="min-h-[480px] p-6 flex flex-col gap-5">
+          <DashboardSurface variant="default" className={`${isMatchMode ? 'min-h-[480px]' : 'min-h-[360px]'} p-6 flex flex-col gap-5`}>
             {/* Mode toggle */}
             {resumes.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
@@ -893,9 +1406,9 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
             )}
 
             {/* Input area */}
-            <div className="flex-1 relative flex flex-col">
+            <div className="relative flex min-h-[280px] flex-1 flex-col">
               {inputMode === 'resume' && resumes.length > 0 ? (
-                <div className="space-y-3">
+                <div className="flex min-h-[280px] flex-1 flex-col rounded-xl border border-black/6 bg-[linear-gradient(180deg,rgba(244,248,245,0.72),rgba(255,255,255,0.92))] p-4">
                   <select
                     value={selectedResumeId}
                     onChange={e => {
@@ -907,11 +1420,17 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                       <option key={r.id} value={r.id}>{r.title}</option>
                     ))}
                   </select>
-                  {wordCount > 0 && (
-                    <span className="text-[10px] font-bold text-on-surface-variant px-1">
-                      Word count: {wordCount}
-                    </span>
-                  )}
+
+                  <div className="mt-auto space-y-2 px-1 pt-6">
+                    <p className="text-xs font-semibold text-on-surface-variant">
+                      Using a saved resume from your library.
+                    </p>
+                    {wordCount > 0 && (
+                      <span className="block text-[10px] font-bold text-on-surface-variant">
+                        Word count: {wordCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <UploadZone
@@ -925,106 +1444,75 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
               )}
             </div>
           </DashboardSurface>
+
+          {!isMatchMode && (
+            <div className="space-y-3">
+              {scanActionBlock}
+            </div>
+          )}
         </div>
 
-        {/* Job Description */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2.5">
-              <Briefcase size={18} className="text-primary" strokeWidth={1.75} />
-              <div className="flex items-baseline gap-2">
-                <h3 className="text-base font-bold tracking-tight text-on-surface">Job Description</h3>
-                <span className="text-xs font-medium text-on-surface-variant">(optional)</span>
+        {isMatchMode && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2.5">
+                <Briefcase size={18} className="text-primary" strokeWidth={1.75} />
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-base font-bold tracking-tight text-on-surface">Job Description</h3>
+                  <span className="text-xs font-medium text-on-surface-variant">(required)</span>
+                </div>
               </div>
+              <span className="text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-md">
+                Target Role
+              </span>
             </div>
-            <span className="text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-md">
-              Target Role
-            </span>
+
+            <DashboardSurface variant="default" className="min-h-[480px] p-6 flex flex-col gap-5">
+              <div className="flex items-start gap-3 p-3 bg-secondary-container/40 rounded-xl">
+                <Lightbulb size={16} className="text-on-secondary-container mt-0.5 shrink-0" strokeWidth={1.75} />
+                <p className="text-xs text-on-secondary-container leading-snug">
+                  Pro tip: Paste at least 20 words from the full requirements list so the score can judge real fit instead of just the title.
+                </p>
+              </div>
+
+              <div className="flex-1 relative">
+                <textarea
+                  value={jobDescription}
+                  onChange={e => setJobDescription(e.target.value)}
+                  placeholder="Paste the job title and full description here…"
+                  className="w-full h-full min-h-[320px] p-4 bg-surface-container-low border-none rounded-xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none placeholder:text-on-surface-variant/50 leading-relaxed"
+                />
+                <div className="absolute bottom-3 right-3">
+                  {jobWordCount > 0 && (
+                    <span className="text-[10px] font-bold text-on-surface-variant bg-white/80 backdrop-blur px-2 py-1 rounded-md">
+                      {jobWordCount} words
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {jobWordCount > 0 && jobWordCount < 20 ? (
+                <p className="text-sm text-red-600">
+                  Add at least {20 - jobWordCount} more words to run Match Score.
+                </p>
+              ) : null}
+            </DashboardSurface>
           </div>
+        )}
 
-          <DashboardSurface variant="default" className="min-h-[480px] p-6 flex flex-col gap-5">
-            {/* Pro tip */}
-            <div className="flex items-start gap-3 p-3 bg-secondary-container/40 rounded-xl">
-              <Lightbulb size={16} className="text-on-secondary-container mt-0.5 shrink-0" strokeWidth={1.75} />
-              <p className="text-xs text-on-secondary-container leading-snug">
-                Pro tip: Including the full requirements list increases keyword accuracy by 40%.
-              </p>
-            </div>
-
-            {/* Textarea */}
-            <div className="flex-1 relative">
-              <textarea
-                value={jobDescription}
-                onChange={e => setJobDescription(e.target.value)}
-                placeholder="Paste the job title and full description here…"
-                className="w-full h-full min-h-[320px] p-4 bg-surface-container-low border-none rounded-xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none placeholder:text-on-surface-variant/50 leading-relaxed"
-              />
-              <div className="absolute bottom-3 right-3">
-                {jobWordCount > 0 && (
-                  <span className="text-[10px] font-bold text-on-surface-variant bg-white/80 backdrop-blur px-2 py-1 rounded-md">
-                    {jobWordCount} words
-                  </span>
-                )}
-              </div>
-            </div>
-          </DashboardSurface>
-        </div>
+        {!isMatchMode && (
+          <div className="order-1">
+            <ATSModePreviewPanel />
+          </div>
+        )}
       </div>
 
       {/* ── Action Bar ───────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        {!pro && !publicMode && scansLeft === 0 && (
-          <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
-            You have used all 3 free scans today. Scans reset every 24 hours.{' '}
-            <a href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</a> for unlimited scans.
-          </div>
-        )}
-
-        {scanError && (
-          <div className="rounded-xl bg-red-50 px-5 py-3 text-sm text-red-700 text-center">
-            {scanError}
-          </div>
-        )}
-
-        <div className="flex justify-center pt-2">
-          <button
-            onClick={handleScan}
-            disabled={!canScan}
-            className="group flex items-center gap-3 rounded-full bg-zinc-950 px-12 py-4 text-base font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
-          >
-            {isScanning ? (
-              <>
-                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-                Analysing…
-              </>
-            ) : (
-              <>
-                <Sparkles size={18} strokeWidth={1.75} />
-                Run Precision Scan
-                <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
-              </>
-            )}
-          </button>
+      {isMatchMode && (
+        <div className="space-y-3">
+          {scanActionBlock}
         </div>
-
-        {!pro && !publicMode && (
-          <p className="text-center text-xs text-on-surface-variant">
-            Free plan: 3 scans / day with basic analysis.{' '}
-            <a href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
-              Upgrade for advanced AI analysis + resume optimisation.
-            </a>
-          </p>
-        )}
-
-        {publicMode && (
-          <p className="text-center text-xs text-on-surface-variant">
-            Free ATS scoring is open here. Create an account when you want AI optimise and builder editing.
-          </p>
-        )}
-      </div>
+      )}
 
       {/* ── Results ──────────────────────────────────────────────────────────── */}
       {scanResult && (
@@ -1053,13 +1541,13 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                 <DashboardSurface variant="default" className="p-5 sm:p-6">
                   <div className="space-y-6">
                     <div className="space-y-5">
-                      <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">Your Resume Check Score</h2>
+                      <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">{resultsTitle}</h2>
                       <div className="flex items-center gap-4">
-                        <ScoreRing score={scanResult.score} />
+                        <ScoreRing score={scanResult.score} label={scoreRingLabel} />
                         <div className="space-y-2">
                           <p className="text-4xl font-black tracking-tight text-on-background">{getScoreState(scanResult.score).label}</p>
                           <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${getScoreState(scanResult.score).toneClassName}`}>
-                            Resume Strength
+                            {scoreBadgeLabel}
                           </span>
                         </div>
                       </div>
@@ -1075,13 +1563,29 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                         {!pro && scanResult.scansRemaining !== null && (
                           <p className="text-xs text-on-surface-variant">{scanResult.scansRemaining} free scans remaining today.</p>
                         )}
+                        {!isMatchMode && !pro && scanResult.score < 70 && (
+                          <div className="rounded-[1.1rem] border border-red-200 bg-red-50 px-4 py-4">
+                            <p className="text-sm font-bold tracking-tight text-red-800">
+                              Industry-leading ATS systems would score this resume low.
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-red-700">
+                              Use AI insights to find the highest-impact fixes before you apply.
+                            </p>
+                            <a
+                              href={publicMode ? '/auth/register' : '/dashboard/pricing'}
+                              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-red-800 hover:underline"
+                            >
+                              Upgrade to Pro <ChevronRight size={14} />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="border-t border-black/6 pt-5">
-                      <p className="text-lg font-bold tracking-tight text-on-background">Review what to fix.</p>
+                      <p className="text-lg font-bold tracking-tight text-on-background">{reviewHeading}</p>
                       <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                        Start with the highest-count areas to move the score fastest.
+                        {reviewDescription}
                       </p>
                       <div className="mt-4 space-y-2.5">
                         {getReviewSections(scanResult).map(section => (
@@ -1117,6 +1621,12 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                   </div>
                 </DashboardSurface>
 
+                {!isMatchMode && (
+                  pro && scanResult.roadmap
+                    ? <RoadToNinetyPanel roadmap={scanResult.roadmap} />
+                    : <RoadToNinetyUpsell publicMode={publicMode} />
+                )}
+
                 {scanResult.scoreBreakdown && (
                   <DashboardSurface variant="subtle" className="p-5">
                     <div className="space-y-4">
@@ -1125,26 +1635,27 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                         <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">Where the score comes from.</h3>
                       </div>
                       <div className="space-y-3">
-                        <BreakdownBar label="Keyword Match" value={scanResult.scoreBreakdown.keywordMatch} />
-                        <BreakdownBar label="Formatting" value={scanResult.scoreBreakdown.formatting} />
-                        <BreakdownBar label="Relevance" value={scanResult.scoreBreakdown.relevance} />
-                        <BreakdownBar label="Completeness" value={scanResult.scoreBreakdown.completeness} />
-                        <BreakdownBar label="Keyword Density" value={scanResult.scoreBreakdown.keywordDensity} />
+                        <BreakdownBar label={breakdownLabels.keywordMatch} value={scanResult.scoreBreakdown.keywordMatch} />
+                        <BreakdownBar label={breakdownLabels.formatting} value={scanResult.scoreBreakdown.formatting} />
+                        <BreakdownBar label={breakdownLabels.relevance} value={scanResult.scoreBreakdown.relevance} />
+                        <BreakdownBar label={breakdownLabels.completeness} value={scanResult.scoreBreakdown.completeness} />
+                        <BreakdownBar label={breakdownLabels.keywordDensity} value={scanResult.scoreBreakdown.keywordDensity} />
                       </div>
                     </div>
                   </DashboardSurface>
                 )}
 
                 <DashboardSurface variant="subtle" className="p-5">
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keyword insights</p>
-                      <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">Coverage across the role.</h3>
-                    </div>
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keyword insights</p>
+                          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">{keywordSectionTitle}</h3>
+                          <p className="mt-2 text-sm leading-6 text-on-surface-variant">{keywordSectionDescription}</p>
+                        </div>
 
                     {scanResult.missingKeywords.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Missing keywords</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">{missingKeywordLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.missingKeywords.map(keyword => (
                             <span key={keyword} className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
@@ -1157,7 +1668,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
 
                     {scanResult.presentKeywords.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Present keywords</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{presentKeywordLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.presentKeywords.map(keyword => (
                             <span key={keyword} className="rounded-md bg-primary-container/45 px-2.5 py-1 text-xs font-medium text-on-primary-container">
@@ -1170,7 +1681,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
 
                     {scanResult.keywordAnalysis?.mustHave?.length ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">Must-have</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">{mustHaveLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.keywordAnalysis.mustHave.map(keyword => (
                             <span key={keyword} className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
@@ -1183,7 +1694,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
 
                     {scanResult.keywordAnalysis?.niceToHave?.length ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">Nice-to-have</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">{niceToHaveLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.keywordAnalysis.niceToHave.map(keyword => (
                             <span key={keyword} className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
@@ -1247,12 +1758,12 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                         </svg>
-                        AI Optimising… can take 1-2 min
+                        {optimiseButtonLoadingLabel}
                       </>
                     ) : (
                       <>
                         <Sparkles size={16} strokeWidth={2} />
-                        AI Optimise
+                        {optimiseButtonLabel}
                         <ArrowRight size={16} strokeWidth={2} className="transition-transform group-hover:translate-x-1" />
                       </>
                     )}
@@ -1290,7 +1801,9 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                   <div className="space-y-4">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Suggestions</p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-on-background">What to fix next.</h3>
+                      <h3 className="mt-2 text-2xl font-black tracking-tight text-on-background">
+                        {isMatchMode ? 'What to strengthen next.' : 'What to fix next.'}
+                      </h3>
                     </div>
                     <div className="space-y-4">
                       {scanResult.suggestions.map((suggestion, index) => (
@@ -1325,7 +1838,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
                     <div className="space-y-4">
                       {scanResult.formattingIssues && scanResult.formattingIssues.length > 0 && (
                         <div className="space-y-2.5">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Formatting issues</p>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{notesHeading}</p>
                           <ul className="space-y-2">
                             {scanResult.formattingIssues.map((issue, index) => (
                               <li key={index} className="flex items-start gap-2.5 text-sm leading-6 text-on-surface-variant">
@@ -1339,7 +1852,7 @@ export default function ATSCheckerClient({ resumes, profile, publicMode = false 
 
                       {scanResult.industryInsight && (
                         <div className="rounded-[1.2rem] bg-primary-container/25 px-4 py-4">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-primary-container">Industry insight</p>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-primary-container">{insightHeading}</p>
                           <p className="mt-2 text-sm leading-7 text-on-surface">{scanResult.industryInsight}</p>
                         </div>
                       )}

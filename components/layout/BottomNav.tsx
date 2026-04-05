@@ -8,7 +8,7 @@ const TABS: { href: string; label: string; Icon: LucideIcon; isCenter?: boolean 
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
   { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
   { href: '/dashboard/builder/new', label: 'Create', Icon: Plus, isCenter: true },
-  { href: '/dashboard/ats-checker', label: 'AI Tools', Icon: Sparkles },
+  { href: '/dashboard/ats-checker', label: 'ATS', Icon: Sparkles },
   { href: '/dashboard/job-board', label: 'Jobs', Icon: BriefcaseBusiness },
 ]
 

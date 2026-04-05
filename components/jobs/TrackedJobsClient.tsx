@@ -21,6 +21,7 @@ import {
   formatSalaryInput,
   formatJobSource,
   formatTrackerDate,
+  getTodayTrackerDate,
   isValidExternalUrl,
   parseTrackerDateInput,
   salarySortValue,
@@ -572,6 +573,46 @@ export default function TrackedJobsClient({
     }
   }
 
+  async function handleInlineAppliedToday(trackedJobId: string) {
+    const trackedJob = trackedJobs.find(job => job.id === trackedJobId)
+
+    if (!trackedJob) {
+      return
+    }
+
+    const currentValue = getDisplayedAppliedOn(trackedJob)
+    const today = getTodayTrackerDate()
+
+    setInlineDrafts(current => ({
+      ...current,
+      [trackedJobId]: {
+        ...current[trackedJobId],
+        appliedOn: today,
+      },
+    }))
+
+    if (today === currentValue) {
+      return
+    }
+
+    const didSave = await patchTrackedJob(
+      trackedJobId,
+      { appliedOn: today },
+      `applied-on:${trackedJobId}`,
+      'We could not save that application date right now.'
+    )
+
+    if (!didSave) {
+      setInlineDrafts(current => ({
+        ...current,
+        [trackedJobId]: {
+          ...current[trackedJobId],
+          appliedOn: currentValue,
+        },
+      }))
+    }
+  }
+
   async function handleSaveDrawer() {
     if (!selectedTrackedJobId || !drawerDraft) {
       return
@@ -925,26 +966,35 @@ export default function TrackedJobsClient({
                           />
                         </td>
                         <td className="border-b border-black/6 px-4 py-3">
-                          <input
-                            value={inlineDraft.appliedOn}
-                            onChange={event =>
-                              setInlineDrafts(current => ({
-                                ...current,
-                                [trackedJob.id]: {
-                                  ...current[trackedJob.id],
-                                  appliedOn: event.target.value,
-                                },
-                              }))
-                            }
-                            onBlur={() => handleInlineFieldSave(trackedJob.id, 'appliedOn')}
-                            onKeyDown={event => {
-                              if (event.key === 'Enter') {
-                                event.currentTarget.blur()
+                          <div className="flex items-center gap-2">
+                            <input
+                              value={inlineDraft.appliedOn}
+                              onChange={event =>
+                                setInlineDrafts(current => ({
+                                  ...current,
+                                  [trackedJob.id]: {
+                                    ...current[trackedJob.id],
+                                    appliedOn: event.target.value,
+                                  },
+                                }))
                               }
-                            }}
-                            placeholder="DD/MM/YY"
-                            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
-                          />
+                              onBlur={() => handleInlineFieldSave(trackedJob.id, 'appliedOn')}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter') {
+                                  event.currentTarget.blur()
+                                }
+                              }}
+                              placeholder="DD/MM/YY"
+                              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void handleInlineAppliedToday(trackedJob.id)}
+                              className="shrink-0 rounded-full border border-[#008f44]/18 bg-[#008f44]/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44] transition hover:bg-[#008f44]/16"
+                            >
+                              Today
+                            </button>
+                          </div>
                         </td>
                         <td className="border-b border-black/6 px-4 py-4 text-sm font-semibold text-on-surface-variant">
                           {job ? formatJobSource(job.source_provider) : 'Manual'}
@@ -1267,8 +1317,19 @@ export default function TrackedJobsClient({
                           </label>
 
                           <label className="space-y-2">
-                            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/70">
-                              Application date
+                            <span className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/70">
+                              <span>Application date</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDrawerDraft(current =>
+                                    current ? { ...current, appliedOn: getTodayTrackerDate() } : current
+                                  )
+                                }
+                                className="rounded-full border border-[#008f44]/18 bg-[#008f44]/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44] transition hover:bg-[#008f44]/16"
+                              >
+                                Today
+                              </button>
                             </span>
                             <input
                               value={drawerDraft.appliedOn}

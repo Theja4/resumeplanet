@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { ArrowUpRight, Briefcase, Loader2, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react'
+import { countWords } from '@/lib/text'
 import type { TailorAnalysis, TailorIntensity } from '@/types'
 
 const SECTION_LABELS: Record<string, string> = {
@@ -91,6 +92,7 @@ export default function TailorPanel({
   const selectedIntensity = INTENSITY_OPTIONS[getIntensityIndex(intensity)]
   const panelScrollRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const jobWordCount = countWords(jobDescription)
 
   useEffect(() => {
     if (!analysis || !panelScrollRef.current || !resultsRef.current) return
@@ -134,7 +136,7 @@ export default function TailorPanel({
             className="min-h-[220px] w-full resize-y rounded-[1rem] border border-black/8 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbf9_100%)] px-4 py-3 text-sm leading-6 text-zinc-900 outline-none transition focus:border-primary/25 focus:ring-2 focus:ring-primary/15 placeholder:text-zinc-400"
           />
           <div className="mt-3 text-[11px] font-medium text-zinc-500">
-            Stronger results come from pasting the full JD, not just the title.
+            Stronger results come from pasting the full JD, not just the title. Minimum 20 words.
           </div>
         </div>
 
@@ -195,7 +197,7 @@ export default function TailorPanel({
 
         <button
           onClick={onAnalyse}
-          disabled={isTailoring || jobDescription.trim().length < 80}
+          disabled={isTailoring || jobWordCount < 20}
           className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isTailoring ? (
@@ -215,6 +217,12 @@ export default function TailorPanel({
         {tailorError && (
           <div className="rounded-[1.1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
             {tailorError}
+          </div>
+        )}
+
+        {jobWordCount > 0 && jobWordCount < 20 && !tailorError && (
+          <div className="rounded-[1.1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
+            Add at least {20 - jobWordCount} more words to run Tailor Mode.
           </div>
         )}
 

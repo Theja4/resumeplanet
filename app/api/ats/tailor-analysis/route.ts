@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
 import { isPro } from '@/lib/planUtils'
+import { countWords } from '@/lib/text'
 import type { APIResponse, Profile, ResumeData, TailorAnalysis, TailorIntensity } from '@/types'
 
 const TAILOR_SYSTEM = `You are Rezoomed Tailor Engine, a senior recruiter + ATS strategist that rewrites resumes to maximize shortlist odds for a specific job description without ever fabricating facts.
@@ -239,9 +240,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const jobDescription = body.jobDescription?.trim() ?? ''
   const intensity: TailorIntensity = body.intensity ?? 'balanced'
 
-  if (!jobDescription || jobDescription.length < 80) {
+  if (countWords(jobDescription) < 20) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Job description too short' },
+      { success: false, error: 'Job description must contain at least 20 words.' },
       { status: 400 }
     )
   }

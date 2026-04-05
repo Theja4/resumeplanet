@@ -132,6 +132,10 @@ export function formatTrackerDate(value: string | null | undefined) {
   return `${day}/${month}/${year}`
 }
 
+export function getTodayTrackerDate() {
+  return formatTrackerDate(new Date().toISOString())
+}
+
 export function parseTrackerDateInput(value: string | null | undefined) {
   const trimmed = (value ?? '').trim()
 

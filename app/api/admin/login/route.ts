@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import {
   ADMIN_SESSION_COOKIE,
   createAdminSessionToken,
   getAdminSessionCookieOptions,
 } from '@/lib/admin-auth'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 interface AdminCredentialRecord {
   id: string
@@ -12,6 +13,17 @@ interface AdminCredentialRecord {
 }
 
 export async function POST(request: NextRequest) {
+  const loginRateLimit = await consumeRateLimit({
+    request,
+    scope: 'admin_login',
+    limit: 8,
+    windowSeconds: 15 * 60,
+  })
+
+  if (!loginRateLimit.allowed) {
+    return createRateLimitResponse(loginRateLimit, 'TOO_MANY_ADMIN_LOGIN_ATTEMPTS')
+  }
+
   let body: { username?: string; password?: string }
 
   try {
@@ -30,7 +42,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   const { data, error } = await supabase.rpc('verify_admin_credentials', {
     input_username: username,
     input_password: password,

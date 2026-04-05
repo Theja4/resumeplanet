@@ -123,6 +123,38 @@ export interface ATSSuggestion {
   example?: string  // only present in advanced scans
 }
 
+export type ATSRoadmapLane = 'fixable_now' | 'needs_stronger_evidence'
+
+export interface ATSRoadmapAction {
+  criterionId: string
+  lane: ATSRoadmapLane
+  section:
+    | 'Header'
+    | 'Professional Summary'
+    | 'Work Experience'
+    | 'Skills'
+    | 'Education'
+    | 'Resume Structure'
+    | 'Resume-wide'
+  title: string
+  reason: string
+  estimatedGainMin: number
+  estimatedGainMax: number
+  evidence: string[]
+}
+
+export interface ATSScoreRoadmap {
+  currentScore: number
+  targetScore: number
+  gapToTarget: number
+  truthfulCeiling: number
+  fixablePotential: number
+  blockedPotential: number
+  canReachTargetNow: boolean
+  fixableNow: ATSRoadmapAction[]
+  evidenceBlockers: ATSRoadmapAction[]
+}
+
 export interface ATSResult {
   score: number
   tier: ATSScanTier
@@ -144,6 +176,7 @@ export interface ATSResult {
     niceToHave: string[]
     overused: string[]
   }
+  roadmap?: ATSScoreRoadmap
   industryInsight?: string
   formattingIssues?: string[]
 }

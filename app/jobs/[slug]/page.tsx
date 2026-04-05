@@ -175,10 +175,10 @@ export default async function JobDetailPage({
                     Open tracker
                   </Link>
                   <Link
-                    href="/dashboard/ats-checker"
+                    href="/match-score"
                     className="inline-flex items-center justify-center rounded-full border border-[#008f44]/16 bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.14em] text-[#008f44] transition-all hover:bg-[#008f44]/6"
                   >
-                    Run ATS check
+                    Run match score
                   </Link>
                 </div>
               </div>

@@ -12,10 +12,10 @@ export interface AdminSession {
 }
 
 function getAdminSecret() {
-  const secret = process.env.ADMIN_SESSION_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+  const secret = process.env.ADMIN_SESSION_SECRET
 
   if (!secret) {
-    throw new Error('Missing ADMIN_SESSION_SECRET or SUPABASE_SERVICE_ROLE_KEY')
+    throw new Error('Missing ADMIN_SESSION_SECRET')
   }
 
   return new TextEncoder().encode(secret)

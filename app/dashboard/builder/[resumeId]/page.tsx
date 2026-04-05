@@ -25,6 +25,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useProGate } from '@/lib/hooks/useProGate'
 import { PlanProvider } from '@/lib/context/PlanContext'
+import { countWords } from '@/lib/text'
 import ProGateModal from '@/components/shared/ProGateModal'
 import TemplateCustomizerModal from '@/components/builder/TemplateCustomizerModal'
 import TailorPanel from '@/components/builder/TailorPanel'
@@ -47,6 +48,17 @@ import type { BuilderSource } from '@/lib/analytics'
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
+}
+
+function downloadBlobFile(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 type ViewTransitionCapableDocument = Document & {
@@ -852,6 +864,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   async function handleAnalyse() {
     if (!visibleData) return
+    if (countWords(jobDescription) < 20) {
+      setTailorError('Job description must contain at least 20 words.')
+      return
+    }
     setTailorError(null)
     setIsTailoring(true)
     try {
@@ -951,31 +967,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
     setIsDownloadOpen(false)
     if (!visibleData) return
+    const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
+    const orderedSections = getOrderedSections(visibility)
+    const orderedSidebarSections = getOrderedSidebarSections(visibility)
 
     try {
       const blob = await generateResumePdfBlob({
         data: visibleData,
         config: templateConfig,
-        sectionOrder: getOrderedSections(visibility),
-        sidebarSectionOrder: getOrderedSidebarSections(visibility),
+        sectionOrder: orderedSections,
+        sidebarSectionOrder: orderedSidebarSections,
       })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      downloadBlobFile(blob, filename)
       builderAnalytics.trackDownload('completed', 'pdf')
     } catch (error) {
-      console.error('Generated PDF export failed, falling back to print dialog.', error)
+      console.error('PDF export failed.', error)
       builderAnalytics.trackDownload(
         'failed',
         'pdf',
         error instanceof Error ? error.message : 'PDF export failed'
       )
-      window.print()
+      window.alert('PDF download failed. Please try again.')
     }
   }
 

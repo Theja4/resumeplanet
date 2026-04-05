@@ -34,6 +34,7 @@ function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeDat
   if (!part || typeof part !== 'object') return base
   
   const merged = { ...base } as ResumeData
+  const mergedArrays = merged as unknown as Record<ResumeArrayField, unknown[]>
   
   // Merge arrays by concatenation
   const arrayFields: ResumeArrayField[] = [
@@ -44,8 +45,8 @@ function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeDat
   for (const field of arrayFields) {
     const partArr = part[field]
     if (Array.isArray(partArr) && partArr.length > 0) {
-      const currentArr = Array.isArray(merged[field]) ? merged[field] : []
-      merged[field] = [...currentArr, ...partArr] as ResumeData[typeof field]
+      const currentArr = Array.isArray(mergedArrays[field]) ? mergedArrays[field] : []
+      mergedArrays[field] = [...currentArr, ...partArr]
     }
   }
   

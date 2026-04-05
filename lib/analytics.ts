@@ -392,7 +392,9 @@ export function getBlogAttributionEvent(
 
   if (
     pathname === '/ats-checker' ||
+    pathname === '/match-score' ||
     pathname === '/dashboard/ats-checker' ||
+    pathname === '/dashboard/match-score' ||
     pathname === '/dashboard/resumes'
   ) {
     return {

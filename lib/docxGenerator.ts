@@ -19,7 +19,7 @@ export async function generateDOCX(
 ): Promise<void> {
   const {
     Document, Packer, Paragraph, TextRun,
-    BorderStyle, WidthType,
+    BorderStyle,
   } = await import('docx')
 
   const accent = hexToDocx(config?.accentColor ?? '#4F46E5')
@@ -38,7 +38,7 @@ export async function generateDOCX(
 
   const body = (text: string, opts: { bold?: boolean; italic?: boolean; color?: string; size?: number } = {}) =>
     new Paragraph({
-      children: [new TextRun({ text, font, size: opts.size ?? 20, bold: opts.bold, italic: opts.italic, color: opts.color })],
+      children: [new TextRun({ text, font, size: opts.size ?? 20, bold: opts.bold, italics: opts.italic, color: opts.color })],
       spacing: { after: spacingAfter / 2 },
     })
 
@@ -56,18 +56,18 @@ export async function generateDOCX(
 
   // ── Section renderers ──────────────────────────────────────────────────────
 
-  function renderSection(id: string): Paragraph[] {
+  function renderSection(id: string): Array<InstanceType<typeof Paragraph>> {
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
       if (!custom) return []
-      const out: Paragraph[] = [sectionHeading(custom.title)]
+        const out: Array<InstanceType<typeof Paragraph>> = [sectionHeading(custom.title)]
       if (custom.type === 'text' && custom.text) out.push(body(custom.text))
       if (custom.type === 'tags' && custom.tags?.length) out.push(body(custom.tags.join(', ')))
       if (custom.type === 'complex' && custom.items?.length) {
-        custom.items.forEach((item: any) => {
-          out.push(body(item.title || item.name || '', { bold: true }))
+        custom.items.forEach((item) => {
+          out.push(body(item.title || '', { bold: true }))
           if (item.company) out.push(body(item.company, { color: '666666' }))
-          ;(item.bullets || item.highlights || []).forEach((b: string) => out.push(bullet(b)))
+          item.bullets.forEach((bulletText) => out.push(bullet(bulletText)))
           out.push(gap())
         })
       }
@@ -191,7 +191,7 @@ export async function generateDOCX(
   const contact = [data.email, data.phone, data.location, data.linkedin, data.website]
     .filter(Boolean).join('  ·  ')
 
-  const headerParas: Paragraph[] = [
+  const headerParas: Array<InstanceType<typeof Paragraph>> = [
     new Paragraph({
       children: [new TextRun({ text: data.name || 'Your Name', bold: true, font, size: 48, color: '111111' })],
       spacing: { after: 60 },
@@ -206,7 +206,7 @@ export async function generateDOCX(
     })] : []),
   ]
 
-  const bodyParas: Paragraph[] = allSections.flatMap(id => renderSection(id))
+  const bodyParas: Array<InstanceType<typeof Paragraph>> = allSections.flatMap(id => renderSection(id))
 
   const doc = new Document({
     styles: {

@@ -6,14 +6,15 @@ import { Progress } from '@/components/ui/progress'
 import type { Resume, ResumeData } from '@/types'
 import { parsePdfClient } from '@/lib/clientParser'
 import { Analytics } from '@/lib/analytics'
+import { MAX_RESUME_UPLOAD_BYTES, MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 
 type UploadState = 'idle' | 'uploading' | 'parsing' | 'done' | 'error'
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_FILE_TYPE: 'Only PDF files are accepted.',
-  FILE_TOO_LARGE: 'File must be under 5MB.',
+  FILE_TOO_LARGE: `File must be under ${MAX_RESUME_UPLOAD_LABEL}.`,
   INVALID_PARSED_DATA: 'Parsing failed — please try again.',
   DUPLICATE_FILE: 'This file was already uploaded recently.',
   STORAGE_UPLOAD_FAILED: 'Storage error — make sure the "resumes" bucket exists in Supabase Storage.',
@@ -66,7 +67,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
       return 'Only PDF files are accepted.'
     }
     if (file.size > MAX_FILE_SIZE) {
-      return 'File must be under 5MB.'
+      return `File must be under ${MAX_RESUME_UPLOAD_LABEL}.`
     }
     return null
   }
@@ -309,7 +310,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         <div className="mt-10 flex items-center gap-6 text-[11px] font-bold text-outline uppercase tracking-widest opacity-60">
           <span>PDF only</span>
           <span className="w-1 h-1 bg-outline rounded-full"></span>
-          <span>Max size: 5MB</span>
+          <span>Max size: {MAX_RESUME_UPLOAD_LABEL}</span>
         </div>
       </div>
     </section>

@@ -99,25 +99,28 @@ export const FREE_PLAN = {
 
   limits: {
     atsScansPerDay: 3,
-    maxResumes: 1,
+    maxResumes: 3,
     maxTrackedJobs: 5,
   },
 
   features: [
     '3 ATS scans per day',
-    'Basic AI analysis',
-    '1 resume stored',
-    'Custom template preview',
-    'Ads shown',
+    'Up to 3 saved resumes',
+    'Resume Builder with PDF export',
+    'Basic ATS analysis',
+    'Job board beta + track up to 5 jobs',
   ],
 
   lockedFeatures: [
-    'Advanced AI analysis (Claude Opus)',
+    'Match Score against any job description',
+    'AI-generated cover letters',
     'Unlimited ATS scans',
     'Unlimited resumes',
-    'Custom template downloads',
-    'Resume auto-optimiser',
-    'Ad-free experience',
+    'AI - insights (Claude Opus)',
+    'Tailor Mode rewrites',
+    'Editable DOCX exports',
+    'Track up to 3,000 jobs',
+    'Ad-free workspace',
   ],
 }
 
@@ -190,13 +193,14 @@ export const PRO_PLAN = {
 
   features: [
     'Unlimited ATS scans',
-    'Advanced AI analysis (Claude Opus)',
-    'Unlimited resumes stored',
-    'Highly customizable template + PDF & DOCX download',
-    'Resume auto-optimiser',
-    'Ad-free experience',
-    'Full resume builder with reordering',
-    'Tailor mode (job-specific suggestions)',
+    'Match Score against any job description',
+    'AI-generated cover letters',
+    'AI - insights (Claude Opus)',
+    'Tailor Mode rewrites',
+    'Unlimited saved resumes',
+    'PDF + editable DOCX exports',
+    'Track up to 3,000 jobs',
+    'Ad-free workspace',
   ],
 
   get visiblePrices() {

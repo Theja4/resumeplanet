@@ -180,6 +180,8 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
   const authErrorMessage =
     localError || (errorCode ? ERROR_MESSAGES[errorCode] ?? errorDescription ?? errorCode : null)
 
+  const getAuthOrigin = () => window.location.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
   const authHighlights: Array<{ title: string; description: string; icon: LucideIcon }> = [
     {
       title: 'Tailor Mode',
@@ -327,7 +329,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       })
 
       const supabase = createClient()
-      const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      const origin = getAuthOrigin()
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -353,7 +355,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       const supabase = createClient()
 
       if (isForgot) {
-        const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+        const origin = getAuthOrigin()
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${origin}/auth/reset-password`,
         })
@@ -405,7 +407,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
-        const origin = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+        const origin = getAuthOrigin()
         const { data, error } = await supabase.auth.signUp({
           email,
           password,

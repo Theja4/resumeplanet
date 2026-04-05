@@ -1,4 +1,5 @@
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 let _paddle: Paddle | null = null
 
@@ -69,7 +70,9 @@ export async function getOrCreatePaddleCustomer(
     customData: { supabase_user_id: userId },
   })
 
-  await supabase
+  const serviceSupabase = createServiceRoleClient()
+
+  await serviceSupabase
     .from('profiles')
     .update({ paddle_customer_id: customer.id })
     .eq('id', userId)

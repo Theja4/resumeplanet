@@ -66,14 +66,13 @@ export default function PricingCard({
   delay = '0ms',
 }: Props) {
   if (variant === 'free') {
-    const visibleFreeFeatures = compact ? FREE_PLAN.features.slice(0, 4) : FREE_PLAN.features
-    const lockedPreview = compact ? FREE_PLAN.lockedFeatures.slice(0, 3) : FREE_PLAN.lockedFeatures
+    const visibleFreeFeatures = FREE_PLAN.features
 
     return (
       <div
         className={cn(
           'relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(245,248,246,0.92))] shadow-[0_24px_70px_rgba(25,28,29,0.07)] opacity-0 [animation:card-enter_0.5s_ease_forwards]',
-          compact ? 'min-h-[31rem] p-6' : 'min-h-[42rem] p-7'
+          compact ? 'min-h-[28.5rem] p-6' : 'min-h-[38rem] p-7'
         )}
         style={{ animationDelay: delay }}
       >
@@ -133,40 +132,6 @@ export default function PricingCard({
                 ))}
               </ul>
             </div>
-
-            {compact ? (
-              <div className="mt-auto rounded-[1.4rem] border border-black/6 bg-white/70 p-4">
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                  Pro unlocks
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {lockedPreview.map((feature) => (
-                    <span
-                      key={feature}
-                      className="rounded-full border border-black/6 bg-slate-50 px-3 py-1.5 text-[12px] font-medium text-slate-500"
-                    >
-                      {feature}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-3 text-[12px] text-slate-400">
-                  +{FREE_PLAN.lockedFeatures.length - lockedPreview.length} more premium tools
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-[1.4rem] border border-black/6 bg-white/70 p-4">
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
-                  Unlock with Pro
-                </p>
-                <ul className="space-y-3">
-                  {lockedPreview.map((feature) => (
-                    <FeatureListItem key={feature} tone="neutral" locked>
-                      {feature}
-                    </FeatureListItem>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -178,16 +143,7 @@ export default function PricingCard({
     const display = getEffectiveDisplay(priceOption, activePromo)
     const formatted = formatPriceDisplay(display, priceOption)
     const promoBadge = !isCurrentPlan && activePromo?.badge ? activePromo.badge : null
-    const proFeatures = compact
-      ? [
-          'Unlimited ATS scans',
-          'Advanced AI analysis (Claude Opus)',
-          'Unlimited resumes stored',
-          'PDF & DOCX download',
-          'Resume auto-optimiser',
-          'Tailor mode suggestions',
-        ]
-      : PRO_PLAN.features
+    const proFeatures = PRO_PLAN.features
 
     return (
       <div className="relative opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
@@ -200,7 +156,7 @@ export default function PricingCard({
         )}
         <div className={cn(
           'relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-[linear-gradient(155deg,#026d32_0%,#0b7a3d_42%,#0d3d25_100%)] text-white shadow-[0_30px_80px_rgba(2,109,50,0.32)]',
-          compact ? 'min-h-[31rem] p-6' : 'min-h-[42rem] p-7'
+          compact ? 'min-h-[28.5rem] p-6' : 'min-h-[38rem] p-7'
         )}>
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute inset-y-0 right-[-15%] w-1/2 rounded-full bg-white/10 blur-3xl" />
@@ -268,11 +224,6 @@ export default function PricingCard({
                   </FeatureListItem>
                 ))}
               </ul>
-              {compact && (
-                <p className="mt-3 text-[12px] text-emerald-100/65">
-                  +{PRO_PLAN.features.length - proFeatures.length} more premium tools
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -280,20 +231,13 @@ export default function PricingCard({
     )
   }
 
-  const professionalFeatures = compact
-    ? [
-        'Written by a former recruiter',
-        'ATS-optimised formatting',
-        'Tailored to your target role',
-        '48-hour delivery',
-      ]
-    : PROFESSIONAL_ORDER.features
+  const professionalFeatures = PROFESSIONAL_ORDER.features
 
   return (
     <div
       className={cn(
         'relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,249,238,0.94))] shadow-[0_24px_70px_rgba(28,24,18,0.08)] opacity-0 [animation:card-enter_0.5s_ease_forwards]',
-        compact ? 'min-h-[31rem] p-6' : 'min-h-[42rem] p-7'
+        compact ? 'min-h-[28.5rem] p-6' : 'min-h-[38rem] p-7'
       )}
       style={{ animationDelay: delay }}
     >
@@ -350,11 +294,6 @@ export default function PricingCard({
               </FeatureListItem>
             ))}
           </ul>
-          {compact && (
-            <p className="mt-3 text-[12px] text-slate-400">
-              + recruiter revision included
-            </p>
-          )}
         </div>
       </div>
     </div>

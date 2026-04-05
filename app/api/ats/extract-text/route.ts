@@ -1,13 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
+import { createClient } from '@/lib/supabase/server'
+import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
 export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const extractRateLimit = await consumeRateLimit({
+    request,
+    userId: user?.id ?? null,
+    scope: user ? 'ats_extract_authenticated' : 'ats_extract_anonymous',
+    limit: user ? 60 : 10,
+    windowSeconds: 60 * 60,
+  })
+
+  if (!extractRateLimit.allowed) {
+    return createRateLimitResponse(extractRateLimit, 'TOO_MANY_EXTRACTION_REQUESTS')
+  }
+
   let formData: FormData
   try {
     formData = await request.formData()

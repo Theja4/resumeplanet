@@ -173,10 +173,10 @@ export default function JobsBoardDirectory({
                 Open tracker
               </Link>
               <Link
-                href="/dashboard/ats-checker"
+                href="/dashboard/match-score"
                 className="inline-flex items-center gap-2 rounded-full border border-primary/10 bg-white/86 px-6 py-3 text-sm font-bold text-on-surface transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white"
               >
-                Tailor for a role
+                Open Match Score
               </Link>
             </>
           }

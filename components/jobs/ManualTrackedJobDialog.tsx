@@ -8,7 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { formatSalaryInput, formatTrackerDate, parseTrackerDateInput } from '@/lib/jobs/shared'
+import {
+  formatSalaryInput,
+  formatTrackerDate,
+  getTodayTrackerDate,
+  parseTrackerDateInput,
+} from '@/lib/jobs/shared'
 import type { TrackedJob, TrackedJobStatus } from '@/types'
 
 const MANUAL_STATUS_OPTIONS: Array<{ value: TrackedJobStatus; label: string }> = [
@@ -336,8 +341,15 @@ export default function ManualTrackedJobDialog({
                     </label>
 
                     <label className="space-y-2">
-                      <span className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/70">
-                        Application date
+                      <span className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/70">
+                        <span>Application date</span>
+                        <button
+                          type="button"
+                          onClick={() => updateField('appliedOn', getTodayTrackerDate())}
+                          className="rounded-full border border-[#008f44]/18 bg-[#008f44]/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44] transition hover:bg-[#008f44]/16"
+                        >
+                          Today
+                        </button>
                       </span>
                       <input
                         value={form.appliedOn}

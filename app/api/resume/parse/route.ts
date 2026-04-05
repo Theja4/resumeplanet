@@ -11,9 +11,10 @@ import {
   shouldAttemptRepair,
   type ResumeParseCandidate,
 } from '@/lib/parserConfidence'
+import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
 
 const ALLOWED_MIME_TYPE = 'application/pdf'
-const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 
 function buildParseCandidate(data: ResumeData | null, source: ResumeParseCandidate['source']): ResumeParseCandidate | null {
   if (!data) return null
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Validate file type (PDF only)
   if (file.type !== ALLOWED_MIME_TYPE && !file.name.toLowerCase().endsWith('.pdf')) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'INVALID_FILE_TYPE', message: 'Only PDF files are supported' },
+      { success: false, error: 'INVALID_FILE_TYPE' },
       { status: 400 }
     )
   }

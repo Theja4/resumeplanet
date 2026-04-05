@@ -8,6 +8,7 @@ export const SAMPLE_RESUME: ResumeData = {
   linkedin: 'linkedin.com/in/alexjohnson',
   website: 'alexjohnson.dev',
   summary: 'Product manager with 6 years of experience leading cross-functional teams to ship consumer and enterprise software. Proven track record of driving growth through data-informed decisions.',
+  currentRole: 'Senior Product Manager',
   experience: [
     {
       company: 'Acme Corp',

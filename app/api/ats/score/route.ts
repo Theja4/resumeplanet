@@ -1,25 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache, type AIRequestCacheFeature } from '@/lib/aiRequestCache'
 import { getRemainingFreeScans, isPro } from '@/lib/planUtils'
 import { FREE_PLAN } from '@/lib/pricing'
-import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import { buildMatchScoreResult } from '@/lib/match-score'
 import { parseResumeText } from '@/lib/resumeParser'
+import { countWords } from '@/lib/text'
 import type { APIResponse, ATSResult, ATSSuggestion, ATSScanTier, Profile, ResumeData } from '@/types'
 
 type ATSScoreResponse = ATSResult & {
-  pipeline: 'free_ats' | 'pro_ats'
+  pipeline: 'free_ats' | 'pro_ats' | 'free_match' | 'pro_match'
   scansRemaining: number | null
   scoreId: string
   scanTier: ATSScanTier
   resumeData: ResumeData
 }
 
+type CachedATSScoreResponse = Omit<ATSScoreResponse, 'scansRemaining'>
+
 interface ScoreBody {
   resumeText?: string
   resumeId?: string
   jobDescription?: string
+  analysisMode?: 'ats' | 'match'
 }
+
+const ATS_SCORE_CACHE_VERSION = 1
 
 const KEYWORD_STOPWORDS = new Set([
   'about', 'across', 'after', 'also', 'and', 'any', 'are', 'based', 'been', 'being', 'build',
@@ -396,6 +406,7 @@ function buildATSResult(
   }))
 
   const suggestions = [...baseSuggestions, ...keywordGapSuggestions].slice(0, pro ? 10 : 5)
+  const roadmap = pro ? buildATSRoadmap(scorerResult) : undefined
 
   return {
     score: scorerResult.score,
@@ -404,6 +415,7 @@ function buildATSResult(
     presentKeywords,
     suggestions,
     summary: buildATSCheckerSummary(scorerResult, missingKeywords, jobKeywords),
+    roadmap,
     scoreBreakdown: {
       keywordMatch: Math.round(((breakdown.keywords.score + breakdown.skills.score) / (breakdown.keywords.max + breakdown.skills.max)) * 100),
       formatting: averagePercent([breakdown.structure, breakdown.polish]),
@@ -458,7 +470,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   let { resumeText } = body
-  const { resumeId, jobDescription } = body
+  const { resumeId, jobDescription, analysisMode } = body
 
   let storedParsedData: ResumeData | null = null
   if (user && resumeId) {
@@ -483,6 +495,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
+  if (analysisMode === 'match' && countWords(jobDescription) < 20) {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'JOB_DESCRIPTION_TOO_SHORT' },
+      { status: 400 }
+    )
+  }
+
   const profile = user
     ? ((await supabase
         .from('profiles')
@@ -492,13 +511,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     : null
   const pro = isPro(profile)
 
+  if (analysisMode === 'match' && (!user || !pro)) {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PRO_REQUIRED' },
+      { status: 403 }
+    )
+  }
+
+  const scoreRateLimit = await consumeRateLimit({
+    request,
+    userId: user?.id ?? null,
+    scope: analysisMode === 'match'
+      ? 'match_score_authenticated'
+      : user
+        ? 'ats_score_authenticated'
+        : 'ats_score_anonymous',
+    limit: analysisMode === 'match'
+      ? 30
+      : user
+        ? 60
+        : 10,
+    windowSeconds: 60 * 60,
+  })
+
+  if (!scoreRateLimit.allowed) {
+    return createRateLimitResponse(scoreRateLimit, 'TOO_MANY_ATS_REQUESTS')
+  }
+
   if (user && !pro) {
     const now = new Date()
     const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
     const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60)
+    const serviceSupabase = createServiceRoleClient()
 
     if (hoursSinceReset >= 24) {
-      await supabase
+      await serviceSupabase
         .from('profiles')
         .update({ ats_scans_today: 0, ats_scans_reset_at: now.toISOString() })
         .eq('id', user.id)
@@ -507,23 +554,68 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         profile.ats_scans_reset_at = now.toISOString()
       }
     }
+  }
 
-    if ((profile?.ats_scans_today ?? 0) >= FREE_PLAN.limits.atsScansPerDay) {
-      return NextResponse.json(
+  const isMatchMode = analysisMode === 'match'
+  const scoringData = await getScoringResumeData(resumeText, storedParsedData)
+  const pipeline: ATSScoreResponse['pipeline'] = isMatchMode
+    ? (pro ? 'pro_match' : 'free_match')
+    : (pro ? 'pro_ats' : 'free_ats')
+  const cacheFeature: AIRequestCacheFeature = isMatchMode
+    ? 'match_pro'
+    : (pro ? 'ats_pro' : 'ats_basic')
+  const cacheSignature = user
+    ? buildAIRequestSignature({
+        version: ATS_SCORE_CACHE_VERSION,
+        feature: cacheFeature,
+        resumeData: scoringData,
+        jobDescription: jobDescription?.trim() ?? '',
+        pipeline,
+      })
+    : ''
+
+  if (user) {
+    const cached = await readAIRequestCache<CachedATSScoreResponse>({
+      supabase,
+      userId: user.id,
+      feature: cacheFeature,
+      signature: cacheSignature,
+      version: ATS_SCORE_CACHE_VERSION,
+    })
+
+    if (cached) {
+      return NextResponse.json<APIResponse<ATSScoreResponse>>(
         {
-          success: false,
-          error: 'FREE_LIMIT_REACHED',
-          scansUsed: FREE_PLAN.limits.atsScansPerDay,
-          resetAt: profile?.ats_scans_reset_at,
+          success: true,
+          data: {
+            ...cached,
+            scansRemaining: pro ? null : getRemainingFreeScans(profile),
+          },
         },
-        { status: 429 }
+        { status: 200 }
       )
     }
   }
 
-  const scoringData = await getScoringResumeData(resumeText, storedParsedData)
-  const scorerResult = scoreResume(scoringData)
-  const normalizedResult = buildATSResult(scorerResult, scoringData, pro, jobDescription)
+  if (user && !pro && (profile?.ats_scans_today ?? 0) >= FREE_PLAN.limits.atsScansPerDay) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'FREE_LIMIT_REACHED',
+        scansUsed: FREE_PLAN.limits.atsScansPerDay,
+        resetAt: profile?.ats_scans_reset_at,
+      },
+      { status: 429 }
+    )
+  }
+
+  const normalizedResult = isMatchMode
+    ? await buildMatchScoreResult({
+        resumeData: scoringData,
+        jobDescription: jobDescription?.trim() ?? '',
+        pro,
+      })
+    : buildATSResult(scoreResume(scoringData), scoringData, pro, jobDescription)
 
   let savedScoreId = ''
   if (user) {
@@ -543,11 +635,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     savedScoreId = savedScore?.id ?? ''
 
-    if (resumeId) {
+    if (resumeId && !isMatchMode) {
       await supabase
         .from('resumes')
         .update({
-          ats_score: scorerResult.score,
+          ats_score: normalizedResult.score,
           updated_at: new Date().toISOString(),
         })
         .eq('id', resumeId)
@@ -555,13 +647,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     revalidatePath('/dashboard')
-    revalidatePath('/dashboard/resumes')
-    if (resumeId) {
-      revalidatePath(`/dashboard/resumes/${resumeId}`)
+      revalidatePath('/dashboard/resumes')
+      if (resumeId) {
+        revalidatePath(`/dashboard/resumes/${resumeId}`)
     }
 
     if (!pro) {
-      await supabase
+      const serviceSupabase = createServiceRoleClient()
+      await serviceSupabase
         .from('profiles')
         .update({ ats_scans_today: (profile?.ats_scans_today ?? 0) + 1 })
         .eq('id', user.id)
@@ -569,18 +662,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const scansRemaining = user ? (pro ? null : getRemainingFreeScans(profile) - 1) : null
+  const responseData: ATSScoreResponse = {
+    ...normalizedResult,
+    pipeline,
+    scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
+    scoreId: savedScoreId,
+    scanTier: pro ? 'advanced' : 'basic',
+    resumeData: scoringData,
+  }
+
+  if (user) {
+    const cacheableData = Object.fromEntries(
+      Object.entries(responseData).filter(([key]) => key !== 'scansRemaining')
+    ) as CachedATSScoreResponse
+    await writeAIRequestCache<CachedATSScoreResponse>({
+      supabase,
+      userId: user.id,
+      feature: cacheFeature,
+      signature: cacheSignature,
+      version: ATS_SCORE_CACHE_VERSION,
+      data: cacheableData,
+    })
+  }
 
   return NextResponse.json<APIResponse<ATSScoreResponse>>(
     {
       success: true,
-      data: {
-        ...normalizedResult,
-        pipeline: pro ? 'pro_ats' : 'free_ats',
-        scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
-        scoreId: savedScoreId,
-        scanTier: pro ? 'advanced' : 'basic',
-        resumeData: scoringData,
-      },
+      data: responseData,
     },
     { status: 200 }
   )
