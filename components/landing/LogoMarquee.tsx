@@ -21,6 +21,7 @@ function LogoWordmark({ company }: { company: Company }) {
   return (
     <div className="flex min-w-[11rem] shrink-0 items-center gap-4 rounded-[1.6rem] border border-black/5 bg-white/88 px-5 py-4 shadow-[0_18px_40px_rgba(25,28,29,0.06)] backdrop-blur-xl">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(145deg,rgba(243,255,246,0.96),rgba(255,255,255,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_10px_22px_rgba(2,109,50,0.08)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`https://cdn.simpleicons.org/${company.slug}/${company.color}`}
           alt={company.name}
