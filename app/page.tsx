@@ -234,14 +234,14 @@ export default async function LandingPage() {
         </section>
 
         {/* ── CTA Footer ─────────────────────────────────────────────────── */}
-        <section className="py-28 px-6 bg-[#026d32] overflow-hidden relative">
+        <section className="py-28 px-6 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #022c14 0%, #026d32 50%, #019a47 100%)' }}>
           <div className="absolute inset-0 pointer-events-none opacity-20">
             <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/10 blur-3xl translate-x-1/3 -translate-y-1/2" />
             <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full bg-white/10 blur-3xl -translate-x-1/3 translate-y-1/3" />
           </div>
           <div className="relative max-w-3xl mx-auto text-center space-y-8 reveal-on-scroll active">
             <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
-              Ready to get hired faster?
+              Ready to get <em>hired faster?</em>
             </h2>
             <p className="text-lg text-white/75">
               Join 50,000+ professionals who use Rezoomed to get more callbacks.
