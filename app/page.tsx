@@ -201,7 +201,7 @@ export default async function LandingPage() {
             <div className="testimonial-track flex w-max gap-6 px-6">
               {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
                 <div
-                  key={i}
+                  key={`${t.name}-${i}`}
                   className={`w-[340px] shrink-0 rounded-3xl p-7 flex flex-col justify-between space-y-5 ${
                     t.featured
                       ? 'bg-[#026d32] border border-[#026d32]'
@@ -219,7 +219,7 @@ export default async function LandingPage() {
                     </p>
                   </div>
                   <div className={`flex items-center gap-3 pt-2 border-t ${t.featured ? 'border-white/20' : 'border-zinc-100'}`}>
-                    <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-[11px] font-black text-zinc-800 shrink-0`}>
+                    <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-[11px] font-black ${t.featured ? 'text-white' : 'text-zinc-800'} shrink-0`}>
                       {t.initials}
                     </div>
                     <div>
