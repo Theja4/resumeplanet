@@ -51,7 +51,7 @@ export default async function LandingPage() {
         <div className="relative z-10 flex items-center gap-4">
           <Link
             href="/auth/login"
-            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full"
+            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 rounded-full"
           >
             Sign In
           </Link>
@@ -59,7 +59,7 @@ export default async function LandingPage() {
             href="/auth/register"
             className="inline-flex items-center justify-center text-sm font-bold text-primary-landing border-2 border-primary-container bg-primary-container/10 px-6 py-2 rounded-full hover:bg-primary-container/20 transition-all"
           >
-            Sign Up
+            Sign Up Free →
           </Link>
         </div>
       </nav>
@@ -127,7 +127,9 @@ export default async function LandingPage() {
               <span className="text-[#008f44]">Land 5× more interviews.</span>
             </h1>
             <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
-              Rezoomed uses optic precision to analyze and amplify your career milestones. Stand out with AI-driven clarity and premium design.
+              In this brutal job market, do not gamble with your career. Use
+              industry-leading <strong className="font-bold text-on-background">Frontier AI</strong>{' '}
+              models tuned by Rezoomed to land the interview.
             </p>
             <div className="flex flex-wrap justify-center gap-4 pt-2">
               <Link href="/auth/register">
