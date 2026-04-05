@@ -29,7 +29,7 @@ function AmazonLogo() {
   return (
     <svg width="22" height="22" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <text x="50" y="58" textAnchor="middle" fontSize="52" fontWeight="900" fontFamily="Georgia, serif" fill="#000">a</text>
-      <path fill="#FF9900" d="M18 75 Q50 90 82 75" stroke="#FF9900" strokeWidth="5" fill="none" strokeLinecap="round"/>
+      <path d="M18 75 Q50 90 82 75" stroke="#FF9900" strokeWidth="5" fill="none" strokeLinecap="round"/>
       <polyline points="76,70 82,75 76,80" fill="none" stroke="#FF9900" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
