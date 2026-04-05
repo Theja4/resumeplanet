@@ -1,16 +1,17 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { WandSparkles, Star } from 'lucide-react'
+import { WandSparkles } from 'lucide-react'
 import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 
 const TESTIMONIALS = [
   {
-    quote: "Rezoomed didn't just fix my resume — it helped me understand my own worth. I landed a Senior Role within two weeks.",
-    name: 'Sarah Jenkins',
-    role: 'Senior Product Designer',
-    initials: 'SJ',
-    color: 'from-[#A3FFB3] to-[#80da92]',
+    quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
+    name: 'Priya Sharma',
+    role: 'Data Scientist at Meta',
+    initials: 'PS',
+    color: 'from-[#dbeafe] to-[#93c5fd]',
+    featured: true,
   },
   {
     quote: "The AI identified achievements I hadn't even thought to include. The ATS score jumped from 62% to 94% on my first try.",
@@ -18,13 +19,15 @@ const TESTIMONIALS = [
     role: 'Marketing Director',
     initials: 'MK',
     color: 'from-[#ffe8bd] to-[#f5c87a]',
+    featured: false,
   },
   {
-    quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
-    name: 'Priya Sharma',
-    role: 'Data Scientist at Meta',
-    initials: 'PS',
-    color: 'from-[#dbeafe] to-[#93c5fd]',
+    quote: "Rezoomed didn't just fix my resume — it helped me understand my own worth. I landed a Senior Role within two weeks.",
+    name: 'Sarah Jenkins',
+    role: 'Senior Product Designer',
+    initials: 'SJ',
+    color: 'from-[#A3FFB3] to-[#80da92]',
+    featured: false,
   },
   {
     quote: "Switched from Jobscan. Night and day difference. Rezoomed actually shows you what to fix, not just a score.",
@@ -32,6 +35,39 @@ const TESTIMONIALS = [
     role: 'Engineering Manager',
     initials: 'JO',
     color: 'from-[#fce7f3] to-[#f9a8d4]',
+    featured: false,
+  },
+  {
+    quote: "I was skeptical about AI resume tools, but Rezoomed surfaced keywords I'd never have thought to include. Got an offer 3 weeks later.",
+    name: 'Aisha Thompson',
+    role: 'UX Researcher at Spotify',
+    initials: 'AT',
+    color: 'from-[#d1fae5] to-[#6ee7b7]',
+    featured: false,
+  },
+  {
+    quote: "Applied to 12 roles, heard back from 9. My recruiter actually complimented my resume format — that's never happened before.",
+    name: 'Daniel Park',
+    role: 'Software Engineer at Stripe',
+    initials: 'DP',
+    color: 'from-[#ede9fe] to-[#c4b5fd]',
+    featured: false,
+  },
+  {
+    quote: "The tailor feature is insane. I paste a job description and it tells me exactly what's missing. Interviews went from 10% to 60% callback rate.",
+    name: 'Leila Nasser',
+    role: 'Product Manager at Shopify',
+    initials: 'LN',
+    color: 'from-[#fff7ed] to-[#fed7aa]',
+    featured: false,
+  },
+  {
+    quote: "I used three other tools before this. Rezoomed is the only one that felt like it actually understood what recruiters are looking for.",
+    name: 'Ryan Okafor',
+    role: 'Operations Lead at Airbnb',
+    initials: 'RO',
+    color: 'from-[#fef9c3] to-[#fde047]',
+    featured: false,
   },
 ]
 
@@ -151,34 +187,44 @@ export default async function LandingPage() {
         <FeatureShowcaseSection />
 
         {/* ── Testimonials ───────────────────────────────────────────────── */}
-        <section className="py-28 px-6 bg-[#f8faf9]">
-          <div className="max-w-7xl mx-auto">
+        <section className="py-28 bg-[#f8faf9] overflow-hidden">
+          <div className="max-w-7xl mx-auto px-6">
             <div className="text-center space-y-4 mb-16 reveal-on-scroll active">
               <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">What people say</p>
               <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
                 Trusted by job seekers worldwide.
               </h2>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {TESTIMONIALS.map((t, i) => (
+          <div className="testimonial-mask">
+            <div className="testimonial-track flex w-max gap-6 px-6">
+              {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
                 <div
-                  key={t.name}
-                  className={`p-8 bg-white rounded-3xl border border-zinc-100 shadow-sm space-y-6 flex flex-col justify-between card-hover reveal-on-scroll active stagger-${i + 1}`}
+                  key={i}
+                  className={`w-[340px] shrink-0 rounded-3xl p-7 flex flex-col justify-between space-y-5 ${
+                    t.featured
+                      ? 'bg-[#026d32] border border-[#026d32]'
+                      : 'bg-white border border-zinc-100 shadow-sm'
+                  }`}
                 >
                   <div className="space-y-4">
                     <div className="flex">
-                      {[...Array(5)].map((_, j) => <Star key={j} size={14} fill="#FFB800" stroke="none" />)}
+                      {[...Array(5)].map((_, j) => (
+                        <span key={j} className="text-[#FFB800] text-sm">★</span>
+                      ))}
                     </div>
-                    <p className="text-base leading-7 text-zinc-700">&ldquo;{t.quote}&rdquo;</p>
+                    <p className={`text-base leading-7 ${t.featured ? 'text-white/90' : 'text-zinc-700'}`}>
+                      &ldquo;{t.quote}&rdquo;
+                    </p>
                   </div>
-                  <div className="flex items-center gap-3 pt-2 border-t border-zinc-100">
+                  <div className={`flex items-center gap-3 pt-2 border-t ${t.featured ? 'border-white/20' : 'border-zinc-100'}`}>
                     <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-[11px] font-black text-zinc-800 shrink-0`}>
                       {t.initials}
                     </div>
                     <div>
-                      <p className="text-sm font-black text-zinc-900">{t.name}</p>
-                      <p className="text-xs text-zinc-500">{t.role}</p>
+                      <p className={`text-sm font-black ${t.featured ? 'text-white' : 'text-zinc-900'}`}>{t.name}</p>
+                      <p className={`text-xs ${t.featured ? 'text-white/60' : 'text-zinc-500'}`}>{t.role}</p>
                     </div>
                   </div>
                 </div>
