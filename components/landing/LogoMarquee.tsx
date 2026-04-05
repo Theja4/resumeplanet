@@ -24,10 +24,21 @@ function MicrosoftLogo() {
   )
 }
 
+function AmazonLogo() {
+  // Amazon's "a" mark with orange smile arrow
+  return (
+    <svg width="22" height="22" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <text x="50" y="58" textAnchor="middle" fontSize="52" fontWeight="900" fontFamily="Georgia, serif" fill="#000">a</text>
+      <path fill="#FF9900" d="M18 75 Q50 90 82 75" stroke="#FF9900" strokeWidth="5" fill="none" strokeLinecap="round"/>
+      <polyline points="76,70 82,75 76,80" fill="none" stroke="#FF9900" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 // ── CDN img for single-color brand logos (Simple Icons) ───────────────────────
 
 type CdnCompany = { name: string; slug: string; color: string }
-type InlineCompany = { name: string; slug: 'google' | 'microsoft' }
+type InlineCompany = { name: string; slug: 'google' | 'microsoft' | 'amazon' }
 type Company = CdnCompany | InlineCompany
 
 function isCdn(c: Company): c is CdnCompany {
@@ -37,7 +48,7 @@ function isCdn(c: Company): c is CdnCompany {
 const COMPANIES: Company[] = [
   { name: 'Google',    slug: 'google' },
   { name: 'Microsoft', slug: 'microsoft' },
-  { name: 'Amazon',    slug: 'amazon',    color: 'FF9900' },
+  { name: 'Amazon',    slug: 'amazon' },
   { name: 'Meta',      slug: 'meta',      color: '0866FF' },
   { name: 'Stripe',    slug: 'stripe',    color: '635BFF' },
   { name: 'Figma',     slug: 'figma',     color: 'F24E1E' },
@@ -49,6 +60,7 @@ function LogoIcon({ company }: { company: Company }) {
   if (!isCdn(company)) {
     if (company.slug === 'google')    return <GoogleLogo />
     if (company.slug === 'microsoft') return <MicrosoftLogo />
+    if (company.slug === 'amazon')    return <AmazonLogo />
   }
   const c = company as CdnCompany
   return (
