@@ -1,5 +1,6 @@
 import React from 'react'
 import { Document, Link, Page, StyleSheet, Text, View, pdf } from 'open-resume/node_modules/@react-pdf/renderer'
+import { buildFirstPartyResumeMetadata } from '@/lib/firstPartyResumeMarker'
 
 const styles = StyleSheet.create({
   page: {
@@ -237,6 +238,12 @@ function GeneratedResumePdf({ data, config, sectionOrder, sidebarSectionOrder })
   const mergedSections = [...mainSections, ...sidebarSectionOrder.filter((id) => !mainSections.includes(id))]
   const contactLines = buildContactLines(data)
   const sidebarWidth = config.density === 'compressed' ? '24%' : '30%'
+  const hiddenMetadata = buildFirstPartyResumeMetadata({
+    data,
+    config,
+    sectionOrder,
+    sidebarSectionOrder,
+  })
 
   const renderSection = (id, sidebarContext) => {
     switch (id) {
@@ -377,7 +384,14 @@ function GeneratedResumePdf({ data, config, sectionOrder, sidebarSectionOrder })
   }
 
   return (
-    <Document title={`${data.name || 'Resume'} Resume`} author={data.name || 'ResumePlanet'}>
+    <Document
+      title={`${data.name || 'Resume'} Resume`}
+      author={data.name || ''}
+      subject={hiddenMetadata.subject || ''}
+      keywords={hiddenMetadata.keywords || ''}
+      creator={hiddenMetadata.creator || ''}
+      producer={hiddenMetadata.producer || ''}
+    >
       <Page size="A4" style={styles.page}>
         {showBanner ? (
           <View style={[styles.banner, { backgroundColor: accent }]}>

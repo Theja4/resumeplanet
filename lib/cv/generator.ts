@@ -1,125 +1,89 @@
 import { callClaudeJSONRace } from '@/lib/claude'
-import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
 import {
+  coverLetterSenderFromResumeData,
+  normalizeCoverLetterDraft,
   normalizeResumeData,
-  normalizeTailorAnalysis,
   resumeDataToGeneratorContext,
+  type CoverLetterDraft,
 } from '@/lib/cv/shared'
-import type { ResumeData, TailorAnalysis, TailorIntensity } from '@/types'
+import type { ResumeData, TailorIntensity } from '@/types'
 
-const CV_ANALYSIS_MODELS = Array.from(
-  new Set([
-    process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2',
-    'google/gemini-2.5-flash',
-  ].filter(Boolean))
-)
+const CV_ANALYSIS_CHAIN = [
+  {
+    model: process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2',
+    timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000,
+  },
+  {
+    model: 'google/gemini-2.5-flash',
+    timeoutMs: Number(process.env.CV_FALLBACK_TIMEOUT_MS) || 120000,
+  },
+].filter((entry, index, array) => array.findIndex(candidate => candidate.model === entry.model) === index)
 
-const CV_GENERATOR_SYSTEM = `You are Rezoomed CV Generator, an elite recruiter, hiring manager, and ATS strategist.
+const COVER_LETTER_SYSTEM = `You are Rezoomed Cover Letter Generator, an elite recruiter, hiring manager, and application strategist.
 
-You are generating the strongest possible interview-winning CV for a specific job description while staying completely truthful to the candidate's actual background.
+Your task is to write a strong, truthful, role-specific cover letter based on a candidate's actual resume data and a target job description.
 
-PRIMARY OBJECTIVE:
-- Maximize shortlist odds for this exact role.
-- Make the document feel sharp, specific, modern, and credible.
-- Improve both ATS keyword alignment and recruiter skim quality.
+PRIMARY GOAL:
+- Produce a cover letter that materially improves the candidate's chance of landing an interview.
+- Sound sharp, credible, concise, and human.
+- Make the letter feel specific to the role and company without inventing anything.
 
 NON-NEGOTIABLE HONESTY RULES:
-- Never invent employers, titles, dates, promotions, budgets, teams, products, tools, certifications, metrics, education, projects, or responsibilities.
-- Never imply hands-on experience with a skill or tool unless there is evidence in the resume.
-- Never upgrade seniority or scope beyond the source material.
-- Never hide major experience just to make the profile look cleaner.
-- Never use placeholders like [X], TBD, lorem ipsum, or bracketed filler.
+- Never invent employers, titles, dates, tools, responsibilities, certifications, projects, metrics, or outcomes.
+- Never exaggerate seniority or claim hands-on experience not supported by the resume.
+- Never flatter the company with made-up product knowledge.
+- Never use placeholders like [Company], [X], TBD, lorem ipsum, or bracketed filler.
 
-CV QUALITY STANDARD:
-- Rewrite the positioning so it feels tailored to this role, not generic.
-- Summary must be concise, sharp, and role-aligned.
-- Headline must position the candidate for the target role without overstating experience.
-- Reorder and rewrite bullets so the strongest role-relevant evidence appears first.
-- Bullets should highlight ownership, execution, collaboration, scale, and outcome whenever the source supports it.
-- Skills should be front-loaded by relevance, but only with truthful additions genuinely implied by the resume.
-- Keep language clean, persuasive, professional, and readable by humans.
+LETTER STANDARD:
+- Write in first person.
+- Keep it to one page and generally 4-5 paragraphs.
+- Avoid bullet points in the final letter body.
+- Keep sentences direct and recruiter-readable.
+- Use evidence from the resume to explain fit instead of generic enthusiasm.
+- If the company name or role title is unclear from the job description, make a best effort. If still unclear, stay generic and professional.
 
-STRETCH ROLE BEHAVIOR:
-- If the role is a stretch, still optimize the CV around transferable strengths.
-- Be honest in the assessment and probability fields.
-- Do not pretend the candidate is a perfect fit.
+INTENSITY GUIDANCE:
+- conservative: polished and formal, with minimal rhetorical flair.
+- balanced: clearly tailored, confident, and practical.
+- aggressive: stronger positioning and sharper persuasion while still fully truthful.
+- overboard: maximum persuasive energy without becoming cheesy, inflated, or dishonest.
 
-OUTPUT CONTRACT:
-- Return ONLY valid JSON.
-- Use exact original bullet text in bulletRewrites.original so it can be matched back safely.
-- sectionId must be one of: summary, skills, experience, projects, education, volunteer.
-- bulletRewrites.sectionId must be one of: experience, volunteer, projects.
-- bulletOrderPlans.sectionId must be one of: experience, volunteer.
-- If a section does not need changes, omit it from sectionFocus or keep arrays empty.
-- Prefer a smaller number of very strong rewrites over a large number of weak edits.
-
-Return JSON matching exactly this shape:
+RETURN ONLY VALID JSON matching exactly this shape:
 {
-  "intensity": "conservative | balanced | aggressive | overboard",
-  "matchScore": 0,
-  "matchTier": "STRONG_FIT | MODERATE_FIT | STRETCH | LONG_SHOT",
-  "shortlistingProbability": "LOW | MODERATE | HIGH | VERY_HIGH",
-  "overallStrategy": "2-4 sentences",
-  "honestAssessment": "1-3 sentences",
-  "tailoredHeadline": "string",
-  "tailoredSummary": "string",
-  "matchedKeywords": [
-    { "keyword": "string", "evidence": "string" }
-  ],
-  "missingKeywords": [
-    { "keyword": "string", "suggestion": "string" }
-  ],
-  "skillsPlan": {
-    "recommendedOrder": ["string"],
-    "add": ["string"],
-    "deprioritize": ["string"],
-    "rationale": "string"
-  },
-  "sectionFocus": [
-    {
-      "sectionId": "summary | skills | experience | projects | education | volunteer",
-      "priority": "high | medium | low",
-      "title": "string",
-      "reason": "string"
-    }
-  ],
-  "bulletRewrites": [
-    {
-      "sectionId": "experience | volunteer | projects",
-      "companyOrProject": "string",
-      "original": "string",
-      "tailored": "string",
-      "keywordsHit": ["string"],
-      "rationale": "string",
-      "impact": "high | medium | low"
-    }
-  ],
-  "bulletOrderPlans": [
-    {
-      "sectionId": "experience | volunteer",
-      "companyOrProject": "string",
-      "orderedOriginalBullets": ["string"],
-      "reason": "string"
-    }
-  ]
-}`
+  "roleTitle": "string",
+  "companyName": "string",
+  "suggestedSubject": "string",
+  "greeting": "string",
+  "openingParagraph": "string",
+  "bodyParagraphs": ["string"],
+  "closingParagraph": "string",
+  "signOff": "string",
+  "strategySummary": "string",
+  "fitHighlights": ["string"]
+}
 
-async function requestCVAnalysis(prompt: string) {
+RULES:
+- "fitHighlights" must be short phrases, max 5 items.
+- "bodyParagraphs" should usually contain 2 or 3 paragraphs.
+- The final output must be usable as a real application letter with no editing required.
+- Return JSON only. No markdown. No explanation.`
+
+async function requestCoverLetter(prompt: string) {
   const failures: Array<{ model: string; reason: string }> = []
 
-  for (const model of CV_ANALYSIS_MODELS) {
+  for (const { model, timeoutMs } of CV_ANALYSIS_CHAIN) {
     try {
-      return await callClaudeJSONRace<Partial<TailorAnalysis>>({
+      return await callClaudeJSONRace<Partial<CoverLetterDraft>>({
         model,
-        system: CV_GENERATOR_SYSTEM,
+        system: COVER_LETTER_SYSTEM,
         prompt,
-        maxTokens: 5000,
-        timeoutMs: 180000,
+        maxTokens: 3500,
+        timeoutMs,
       })
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)
       failures.push({ model, reason })
-      console.error(`CV generation model failed (${model}):`, reason)
+      console.warn(`Cover letter model failed (${model}):`, reason)
     }
   }
 
@@ -140,11 +104,11 @@ async function requestCVAnalysis(prompt: string) {
   }
 
   throw new Error(
-    `CV_MODEL_CHAIN_FAILED: ${failures.map(failure => `${failure.model}: ${failure.reason}`).join(' | ')}`
+    `COVER_LETTER_MODEL_CHAIN_FAILED: ${failures.map(failure => `${failure.model}: ${failure.reason}`).join(' | ')}`
   )
 }
 
-export async function generateCVFromResumeData({
+export async function generateCoverLetterFromResumeData({
   resumeData,
   jobDescription,
   intensity = 'aggressive',
@@ -154,7 +118,8 @@ export async function generateCVFromResumeData({
   intensity?: TailorIntensity
 }) {
   const normalizedResumeData = normalizeResumeData(resumeData)
-  const prompt = `TARGET ROLE JOB DESCRIPTION:
+  const sender = coverLetterSenderFromResumeData(normalizedResumeData)
+  const prompt = `TARGET JOB DESCRIPTION:
 ---
 ${jobDescription.trim()}
 ---
@@ -164,19 +129,16 @@ CANDIDATE RESUME DATA:
 ${resumeDataToGeneratorContext(normalizedResumeData)}
 ---
 
-Generate the strongest truthful CV edits for this role.
-Intensity: ${intensity}.`
+WRITE A COVER LETTER.
+Intensity: ${intensity}.
+Candidate name: ${sender.name || 'Unknown'}.
+Candidate current role: ${sender.currentRole || 'Unknown'}.`
 
-  const rawAnalysis = await requestCVAnalysis(prompt)
-
-  const analysis = normalizeTailorAnalysis(rawAnalysis, intensity)
-  const applied = applyTailorAnalysisToResumeData(normalizedResumeData, analysis)
+  const rawDraft = await requestCoverLetter(prompt)
+  const coverLetter = normalizeCoverLetterDraft(rawDraft, sender, intensity)
 
   return {
-    analysis,
-    generatedResumeData: applied.data,
-    changed: applied.changed,
-    scoreDelta: applied.scoreDelta,
-    touchedSections: applied.touchedSections,
+    coverLetter,
+    sender,
   }
 }

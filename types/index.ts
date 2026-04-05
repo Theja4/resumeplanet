@@ -100,6 +100,7 @@ export interface Resume {
   title: string
   raw_text: string | null
   parsed_data: ResumeData | null
+  builder_visibility?: BuilderVisibility | null
   ats_score?: number | null
   ai_insights_signature?: string | null
   ai_insights_cache?: unknown | null

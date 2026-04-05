@@ -1,9 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { ResumeData, APIResponse, Resume } from '@/types'
+import pdfjsParser from '@/lib/parsers/pdfjs'
+import claudeParser from '@/lib/parsers/claude'
+import { buildRoundTripVisibility, type FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
+import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
+import {
+  assessResumeParseConfidence,
+  chooseBetterParseCandidate,
+  shouldAttemptRepair,
+  type ResumeParseCandidate,
+} from '@/lib/parserConfidence'
 
 const ALLOWED_MIME_TYPE = 'application/pdf'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
+
+function buildParseCandidate(data: ResumeData | null, source: ResumeParseCandidate['source']): ResumeParseCandidate | null {
+  if (!data) return null
+
+  return {
+    data,
+    source,
+    confidence: assessResumeParseConfidence(data),
+  }
+}
+
+function buildMarkerCandidate(snapshot: FirstPartyResumeSnapshot | null): ResumeParseCandidate | null {
+  if (!snapshot) return null
+
+  return {
+    data: snapshot.data,
+    source: 'marker',
+    confidence: {
+      score: 100,
+      level: 'high',
+      issues: [],
+    },
+  }
+}
+
+function canUseDeepSeekRepairParser(): boolean {
+  return Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient()
@@ -53,17 +91,81 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Parsed resume data from client (open-resume parser)
   const parsedDataStr = formData.get('parsedData')
-  let parsedData: ResumeData
-  try {
-    parsedData = JSON.parse(parsedDataStr as string)
-  } catch {
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'INVALID_PARSED_DATA' },
-      { status: 400 }
-    )
+  let clientParsedData: ResumeData | null = null
+  if (typeof parsedDataStr === 'string' && parsedDataStr.trim()) {
+    try {
+      clientParsedData = JSON.parse(parsedDataStr) as ResumeData
+    } catch {
+      clientParsedData = null
+    }
   }
 
   const originalFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const fileType = file.type || ALLOWED_MIME_TYPE
+
+  let markerSnapshot: FirstPartyResumeSnapshot | null = null
+  if (fileType === ALLOWED_MIME_TYPE) {
+    markerSnapshot = await extractFirstPartyResumeSnapshotFromPdf(buffer)
+  }
+
+  const markerCandidate = buildMarkerCandidate(markerSnapshot)
+
+  let parsedData: ResumeData | null = null
+  let serverParseError: unknown = null
+
+  if (!markerCandidate) {
+    try {
+      parsedData = await pdfjsParser.parse(buffer, fileType)
+    } catch (error) {
+      serverParseError = error
+      parsedData = null
+    }
+  }
+
+  if (!markerCandidate && !parsedData && !clientParsedData) {
+    console.error('Resume parsing failed:', serverParseError)
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PARSE_FAILED' },
+      { status: 422 }
+    )
+  }
+
+  const fastCandidate = buildParseCandidate(parsedData, 'fast')
+  const clientCandidate = buildParseCandidate(clientParsedData, 'client')
+
+  let selectedCandidate = chooseBetterParseCandidate(
+    markerCandidate,
+    chooseBetterParseCandidate(fastCandidate, clientCandidate),
+  )
+
+  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
+    try {
+      const repairedData = await claudeParser.parse(buffer, fileType)
+      const repairCandidate = buildParseCandidate(repairedData, 'repair')
+      selectedCandidate = chooseBetterParseCandidate(selectedCandidate, repairCandidate)
+    } catch (repairError) {
+      console.error('DeepSeek resume repair failed:', repairError)
+    }
+  }
+
+  if (!selectedCandidate) {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PARSE_FAILED' },
+      { status: 422 }
+    )
+  }
+
+  parsedData = selectedCandidate.data
+
+  console.info('Resume parse selection:', {
+    selectedSource: selectedCandidate.source,
+    selectedScore: selectedCandidate.confidence.score,
+    selectedIssues: selectedCandidate.confidence.issues,
+    markerDetected: Boolean(markerSnapshot),
+    fastScore: fastCandidate?.confidence.score ?? null,
+    clientScore: clientCandidate?.confidence.score ?? null,
+  })
 
   // ── Duplicate check (same user + title in last 24h) ────────────────────────
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
@@ -84,7 +186,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // ── Upload to Supabase storage ─────────────────────────────────────────────
   const storagePath = `${user.id}/${Date.now()}-${originalFilename}`
-  const buffer = Buffer.from(await file.arrayBuffer())
   const { error: uploadError } = await supabase.storage
     .from('resumes')
     .upload(storagePath, buffer, {
@@ -100,7 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Save to database (no server-side parsing — client already parsed) ──────
+  // ── Save to database (server-side parser is authoritative) ─────────────────
   const { data: resume, error: dbError } = await supabase
     .from('resumes')
     .insert({
@@ -109,6 +210,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       raw_text: '',
       parsed_data: parsedData,
       original_file_url: storagePath,
+      template_config: markerSnapshot?.config ?? null,
+      builder_visibility: markerSnapshot
+        ? buildRoundTripVisibility(
+            markerSnapshot.data,
+            markerSnapshot.sectionOrder,
+            markerSnapshot.sidebarSectionOrder,
+            markerSnapshot.config?.density ?? 'relaxed',
+          )
+        : null,
     })
     .select()
     .single()

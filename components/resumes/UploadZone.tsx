@@ -109,7 +109,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         fileType: file.type || 'application/pdf',
       })
 
-      let parsedData: Awaited<ReturnType<typeof parsePdfClient>>
+      let parsedData: Awaited<ReturnType<typeof parsePdfClient>> | null = null
       try {
         parsedData = await parsePdfClient(file)
         Analytics.resumeParseCompleted({
@@ -117,14 +117,10 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
           durationMs: Math.round(performance.now() - parseStartedAt),
         })
       } catch (err) {
-        stopAnimation()
         const errMsg = err instanceof Error ? err.message : String(err)
         Analytics.resumeParseFailed({
           error: errMsg,
         })
-        setErrorMessage(`Could not parse PDF: ${errMsg}`)
-        setState('error')
-        return
       }
 
       setProgress(30)
@@ -136,7 +132,9 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
 
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('parsedData', JSON.stringify(parsedData))
+      if (parsedData) {
+        formData.append('parsedData', JSON.stringify(parsedData))
+      }
 
       const xhr = new XMLHttpRequest()
 

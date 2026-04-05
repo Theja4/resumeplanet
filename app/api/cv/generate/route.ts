@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/planEnforcement'
 import { parseResume } from '@/lib/parsers'
-import { generateCVFromResumeData } from '@/lib/cv/generator'
+import { generateCoverLetterFromResumeData } from '@/lib/cv/generator'
 import {
   normalizeResumeData,
   resumeHasMeaningfulContent,
   sanitizeDocumentTitle,
 } from '@/lib/cv/shared'
+import type { GeneratedCoverLetterPayload } from '@/lib/cv/shared'
 import type { APIResponse, Resume, ResumeData, TailorIntensity } from '@/types'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  let sourceTitle = 'Generated CV'
+  let sourceTitle = 'Generated Cover Letter'
   let sourceMode: 'saved' | 'upload' = 'saved'
   let sourceResumeData: ResumeData | null = null
 
@@ -118,41 +119,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!sourceResumeData || !resumeHasMeaningfulContent(sourceResumeData)) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Resume content is too thin to generate a useful CV' },
+      { success: false, error: 'Resume content is too thin to generate a useful cover letter' },
       { status: 400 },
     )
   }
 
   try {
-    const result = await generateCVFromResumeData({
+    const result = await generateCoverLetterFromResumeData({
       resumeData: sourceResumeData,
       jobDescription,
       intensity,
     })
 
-    return NextResponse.json<APIResponse<{
-      analysis: typeof result.analysis
-      generatedResumeData: ResumeData
-      sourceMode: 'saved' | 'upload'
-      sourceTitle: string
-      changed: boolean
-      scoreDelta: number
-      touchedSections: string[]
-    }>>({
+    return NextResponse.json<APIResponse<GeneratedCoverLetterPayload>>({
       success: true,
       data: {
-        analysis: result.analysis,
-        generatedResumeData: result.generatedResumeData,
+        coverLetter: result.coverLetter,
+        sender: result.sender,
         sourceMode,
         sourceTitle,
-        changed: result.changed,
-        scoreDelta: result.scoreDelta,
-        touchedSections: result.touchedSections,
       },
     })
   } catch (error) {
-    console.error('CV generation failed:', error)
-    const message = error instanceof Error ? error.message : 'CV generation failed'
+    console.error('Cover letter generation failed:', error)
+    const message = error instanceof Error ? error.message : 'Cover letter generation failed'
 
     if (message === 'CLAUDE_TIMEOUT') {
       return NextResponse.json<APIResponse<never>>(

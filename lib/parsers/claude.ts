@@ -1,8 +1,33 @@
 import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
-import { callClaudeJSONRace, callClaudeJSON, CLAUDE_STANDARD } from '@/lib/claude'
+import { callClaudeJSON } from '@/lib/claude'
 import { extractPDFText } from '@/lib/pdfExtractor'
 import { normalizeText, chunkText, postProcessResume } from './utils'
+
+const DEEPSEEK_RESUME_PARSER_MODEL = 'deepseek/deepseek-v3.2'
+type ResumeArrayField =
+  | 'experience'
+  | 'education'
+  | 'skills'
+  | 'certifications'
+  | 'projects'
+  | 'customSections'
+  | 'languages'
+  | 'volunteer'
+  | 'interests'
+  | 'awards'
+  | 'publications'
+  | 'references'
+
+type ResumeScalarField =
+  | 'name'
+  | 'email'
+  | 'phone'
+  | 'location'
+  | 'linkedin'
+  | 'website'
+  | 'summary'
+  | 'currentRole'
 
 // Helper to merge partial ResumeData objects (simple shallow merge for arrays)
 function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeData {
@@ -11,30 +36,30 @@ function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeDat
   const merged = { ...base } as ResumeData
   
   // Merge arrays by concatenation
-  const arrayFields: (keyof ResumeData)[] = [
+  const arrayFields: ResumeArrayField[] = [
     'experience', 'education', 'skills', 'certifications', 'projects', 'customSections',
     'languages', 'volunteer', 'interests', 'awards', 'publications', 'references',
   ]
   
   for (const field of arrayFields) {
-    const partArr = (part as any)[field]
+    const partArr = part[field]
     if (Array.isArray(partArr) && partArr.length > 0) {
-      const currentArr = (merged as any)[field] || []
-      ;(merged as any)[field] = [...currentArr, ...partArr]
+      const currentArr = Array.isArray(merged[field]) ? merged[field] : []
+      merged[field] = [...currentArr, ...partArr] as ResumeData[typeof field]
     }
   }
   
   // Overwrite scalar fields if present and not empty
-  const scalarFields: (keyof ResumeData)[] = [
+  const scalarFields: ResumeScalarField[] = [
     'name', 'email', 'phone', 'location', 'linkedin', 'website', 'summary', 'currentRole',
   ]
   
   for (const field of scalarFields) {
-    const val = (part as any)[field]
+    const val = part[field]
     if (val && typeof val === 'string' && val.trim().length > 0) {
       // For name/email etc, only overwrite if base is empty or the new one looks better
-      if (!(merged as any)[field] || (merged as any)[field].length < val.length) {
-         ;(merged as any)[field] = val.trim()
+      if (!merged[field] || merged[field].length < val.length) {
+        merged[field] = val.trim()
       }
     }
   }
@@ -220,7 +245,7 @@ const claudeParser: ResumeParser = {
 
     const chunkPromises = chunks.map((chunk, i) =>
       callClaudeJSON<Partial<ResumeData>>({
-        model: CLAUDE_STANDARD,
+        model: DEEPSEEK_RESUME_PARSER_MODEL,
         system: SYSTEM_PROMPT,
         prompt: `Extract resume data from this chunk (${i+1}/${chunks.length}):\n\n${chunk}`,
         timeoutMs: 180000,

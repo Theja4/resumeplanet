@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
+import { flushSync } from 'react-dom'
 import { FONT_OPTIONS } from '@/lib/templateOptions'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -34,7 +35,7 @@ import type { BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
-import { generateResumePdfBlobFromElement } from '@/lib/domPdf'
+import { generateResumePdfBlob } from '@/lib/generatedResumePdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
@@ -46,6 +47,30 @@ import type { BuilderSource } from '@/lib/analytics'
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
+}
+
+type ViewTransitionCapableDocument = Document & {
+  startViewTransition?: (update: () => void) => unknown
+}
+
+function runPreviewViewTransition(update: () => void) {
+  if (typeof document === 'undefined') {
+    update()
+    return
+  }
+
+  const transitionDocument = document as ViewTransitionCapableDocument
+
+  if (typeof transitionDocument.startViewTransition === 'function') {
+    transitionDocument.startViewTransition(() => {
+      flushSync(() => {
+        update()
+      })
+    })
+    return
+  }
+
+  update()
 }
 
 function getBuilderAnalyticsSource(searchParams: ReturnType<typeof useSearchParams>): BuilderSource {
@@ -730,7 +755,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       ...(updated.sidebarSectionOrder ?? []),
     ]
 
-    if (JSON.stringify(previousOrder) !== JSON.stringify(nextOrder)) {
+    const didReorder = JSON.stringify(previousOrder) !== JSON.stringify(nextOrder)
+
+    if (didReorder) {
       const movedSection =
         nextOrder.find(sectionId => previousOrder.indexOf(sectionId) !== nextOrder.indexOf(sectionId)) ??
         expandedSection ??
@@ -742,6 +769,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         builderAnalytics.trackDragReorder(movedSection, fromIndex, toIndex)
         builderAnalytics.trackSectionEdit(movedSection, 'reorder')
       }
+    }
+
+    if (didReorder) {
+      runPreviewViewTransition(() => {
+        setVisibility(updated)
+      })
+      return
     }
 
     setVisibility(updated)
@@ -919,15 +953,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (!visibleData) return
 
     try {
-      const printWrapper = document.getElementById('builder-print-wrapper')
-      if (!(printWrapper instanceof HTMLElement)) return
-
-      const blob = await generateResumePdfBlobFromElement(printWrapper, {
-        pageWidthPx: 794,
-        pageHeightPx: PAGE_H,
-        firstPageBreakPx: effectivePageBreakY,
-        secondPageTopOffsetPx: PAGE_H - effectivePageBreakY,
-        contentHeightPx: effectiveContentHeight,
+      const blob = await generateResumePdfBlob({
+        data: visibleData,
+        config: templateConfig,
+        sectionOrder: getOrderedSections(visibility),
+        sidebarSectionOrder: getOrderedSidebarSections(visibility),
       })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -1292,6 +1322,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               }}
             >
               <div
+                className="builder-preview-transition"
                 style={{
                   width: '794px',
                   height: `${(renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)}px`,

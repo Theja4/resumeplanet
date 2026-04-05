@@ -10,17 +10,16 @@ import {
   Sparkles,
   Upload,
 } from 'lucide-react'
-import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { generateResumePdfBlobFromElement } from '@/lib/domPdf'
-import { generateDOCX } from '@/lib/docxGenerator'
+import { generateCoverLetterDOCX } from '@/lib/cv/docx'
 import {
-  CV_SECTION_ORDER,
-  CV_SIDEBAR_SECTION_ORDER,
-  CV_TEMPLATE_CONFIG,
+  buildCoverLetterDownloadName,
+  formatCoverLetterContact,
+  formatCoverLetterDate,
   sanitizeDocumentTitle,
+  type GeneratedCoverLetterPayload,
 } from '@/lib/cv/shared'
-import type { GeneratedCVPayload } from '@/lib/cv/shared'
 import type { Resume, ResumeData, TailorIntensity } from '@/types'
 
 const PAGE_HEIGHT_PX = 1123
@@ -36,27 +35,75 @@ const INTENSITY_OPTIONS: Array<{
   {
     value: 'conservative',
     label: 'Conservative',
-    hint: 'Light cleanup with minimal rewriting.',
+    hint: 'Formal and polished with restrained persuasion.',
   },
   {
     value: 'balanced',
     label: 'Balanced',
-    hint: 'Sharper positioning without straying far from the source.',
+    hint: 'Tailored and confident without sounding overworked.',
   },
   {
     value: 'aggressive',
     label: 'Aggressive',
-    hint: 'Heavier summary and bullet rewrites for stronger fit.',
+    hint: 'Sharper positioning and stronger persuasion for the role.',
   },
   {
     value: 'overboard',
     label: 'Overboard',
-    hint: 'Maximum truthful reprioritization for the target role.',
+    hint: 'Maximum truthful persuasion while staying professional.',
   },
 ]
 
-function buildDownloadName(sourceTitle: string) {
-  return `${sanitizeDocumentTitle(sourceTitle) || 'generated-cv'}-cv`
+function CoverLetterPreview({
+  result,
+}: {
+  result: GeneratedCoverLetterPayload
+}) {
+  const contactLine = formatCoverLetterContact(result.sender)
+
+  return (
+    <div className="rounded-[1.5rem] border border-black/6 bg-white/92 p-16 shadow-[0_22px_60px_rgba(25,28,29,0.08)]">
+      <div className="space-y-8 text-[15px] leading-8 text-[#1a221d]">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-black tracking-tight text-[#10251d]">
+            {result.sender.name || 'Your Name'}
+          </h1>
+          {result.sender.currentRole ? (
+            <p className="text-base font-semibold text-[#008f44]">{result.sender.currentRole}</p>
+          ) : null}
+          {contactLine ? (
+            <p className="text-sm font-medium text-[#5e6962]">{contactLine}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-1 text-[15px] leading-8">
+          <p>{formatCoverLetterDate()}</p>
+          {result.coverLetter.companyName ? <p>{result.coverLetter.companyName}</p> : null}
+          {result.coverLetter.roleTitle ? <p>{result.coverLetter.roleTitle}</p> : null}
+        </div>
+
+        {result.coverLetter.suggestedSubject ? (
+          <div className="rounded-2xl border border-[#008f44]/14 bg-[#008f44]/[0.04] px-4 py-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#008f44]">Subject</p>
+            <p className="mt-2 text-sm font-semibold text-[#173126]">{result.coverLetter.suggestedSubject}</p>
+          </div>
+        ) : null}
+
+        <div className="space-y-6">
+          <p>{result.coverLetter.greeting}</p>
+          <p>{result.coverLetter.openingParagraph}</p>
+          {result.coverLetter.bodyParagraphs.map((paragraph, index) => (
+            <p key={`${paragraph.slice(0, 24)}-${index}`}>{paragraph}</p>
+          ))}
+          <p>{result.coverLetter.closingParagraph}</p>
+          <div className="space-y-2 pt-2">
+            <p>{result.coverLetter.signOff}</p>
+            <p className="font-semibold">{result.sender.name || 'Your Name'}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function CVGeneratorClient({
@@ -65,7 +112,10 @@ export default function CVGeneratorClient({
   resumes: ResumePickerItem[]
 }) {
   const availableResumes = useMemo(
-    () => resumes.filter((resume): resume is ResumePickerItem & { parsed_data: ResumeData } => Boolean(resume.parsed_data)),
+    () =>
+      resumes.filter(
+        (resume): resume is ResumePickerItem & { parsed_data: ResumeData } => Boolean(resume.parsed_data)
+      ),
     [resumes],
   )
 
@@ -74,7 +124,7 @@ export default function CVGeneratorClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [jobDescription, setJobDescription] = useState('')
   const [intensity, setIntensity] = useState<TailorIntensity>('aggressive')
-  const [result, setResult] = useState<GeneratedCVPayload | null>(null)
+  const [result, setResult] = useState<GeneratedCoverLetterPayload | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [downloadState, setDownloadState] = useState<'pdf' | 'docx' | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -121,27 +171,27 @@ export default function CVGeneratorClient({
       const payload = (await response.json().catch(() => null)) as
         | {
             success?: boolean
-            data?: GeneratedCVPayload
+            data?: GeneratedCoverLetterPayload
             error?: string
           }
         | null
 
       if (!response.ok || !payload?.success || !payload.data) {
         if (payload?.error === 'CLAUDE_TIMEOUT') {
-          setErrorMessage('The CV generation request took too long. Try again or drop the intensity one step.')
+          setErrorMessage('The cover letter request took too long. Try again or drop the intensity one step.')
         } else if (payload?.error === 'PARSE_FAILED') {
           setErrorMessage('The model returned an invalid draft. Try again and keep the same job description.')
         } else if (payload?.error === 'OPENROUTER_PRIVACY_POLICY_BLOCK') {
           setErrorMessage('OpenRouter is blocking all allowed providers for this request. Keep DeepSeek v3.2 enabled or relax the privacy policy in your OpenRouter settings.')
         } else {
-          setErrorMessage(payload?.error ?? 'We could not generate a CV for that role.')
+          setErrorMessage(payload?.error ?? 'We could not generate a cover letter for that role.')
         }
         return
       }
 
       setResult(payload.data)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'We could not generate a CV for that role.')
+      setErrorMessage(error instanceof Error ? error.message : 'We could not generate a cover letter for that role.')
     } finally {
       setIsGenerating(false)
     }
@@ -167,7 +217,7 @@ export default function CVGeneratorClient({
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${buildDownloadName(result.sourceTitle)}.pdf`
+      link.download = `${buildCoverLetterDownloadName(result.sourceTitle)}.pdf`
       document.body.appendChild(link)
       link.click()
       link.remove()
@@ -185,13 +235,11 @@ export default function CVGeneratorClient({
     setDownloadState('docx')
 
     try {
-      await generateDOCX(
-        result.generatedResumeData,
-        `${buildDownloadName(result.sourceTitle)}.docx`,
-        CV_TEMPLATE_CONFIG,
-        CV_SECTION_ORDER,
-        CV_SIDEBAR_SECTION_ORDER,
-      )
+      await generateCoverLetterDOCX({
+        coverLetter: result.coverLetter,
+        sender: result.sender,
+        filename: `${buildCoverLetterDownloadName(result.sourceTitle)}.docx`,
+      })
     } finally {
       setDownloadState(null)
     }
@@ -201,8 +249,8 @@ export default function CVGeneratorClient({
     <div className="space-y-8">
       <DashboardPageIntro
         kicker="Resume Tools"
-        title="Generate a targeted CV from a saved resume or fresh upload."
-        description="Drop in a job description and Rezoomed will turn your source resume into a sharper, role-specific CV you can export as PDF or DOCX the moment the draft is ready."
+        title="Generate a tailored cover letter from a saved resume or fresh upload."
+        description="Drop in a job description and Rezoomed will turn your resume into a truthful, role-specific cover letter you can export as PDF or DOCX the moment the draft is ready."
         actions={
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
@@ -229,7 +277,7 @@ export default function CVGeneratorClient({
                 className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} strokeWidth={2.4} />}
-                {isGenerating ? 'Generating CV (1-2 min)' : 'Generate CV'}
+                {isGenerating ? 'Generating Letter (1-2 min)' : 'Generate Cover Letter'}
               </button>
               <p className="text-xs text-on-surface-variant">{selectedIntensity.hint}</p>
             </div>
@@ -243,7 +291,7 @@ export default function CVGeneratorClient({
             </div>
             <div className="rounded-[1.2rem] border border-black/6 bg-white/82 px-4 py-3">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">Engine</p>
-              <p className="mt-2 text-sm font-black text-on-background">Role-specific CV rewrite</p>
+              <p className="mt-2 text-sm font-black text-on-background">Role-specific cover letter</p>
             </div>
             <div className="rounded-[1.2rem] border border-black/6 bg-white/82 px-4 py-3">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">Exports</p>
@@ -357,25 +405,25 @@ export default function CVGeneratorClient({
 
               <div className="space-y-3">
                 <label
-                  htmlFor="cv-job-description"
+                  htmlFor="cover-letter-job-description"
                   className="text-[11px] font-black uppercase tracking-[0.18em] text-on-surface-variant/70"
                 >
                   Job description
                 </label>
                 <textarea
-                  id="cv-job-description"
+                  id="cover-letter-job-description"
                   value={jobDescription}
                   onChange={event => {
                     setJobDescription(event.target.value)
                     setResult(null)
                     setErrorMessage(null)
                   }}
-                  placeholder="Paste the full role description so the CV can be tuned to the actual responsibilities, requirements, and keywords."
+                  placeholder="Paste the full role description so the cover letter can focus on the actual responsibilities, requirements, and hiring signals."
                   rows={14}
                   className="min-h-[18rem] w-full rounded-[1.4rem] border border-black/8 bg-white px-4 py-4 text-sm leading-6 text-on-background shadow-[0_16px_38px_rgba(25,28,29,0.04)] outline-none transition focus:border-[#008f44]/30"
                 />
                 <div className="flex items-center justify-between text-xs text-on-surface-variant">
-                  <span>A longer job description produces a much better CV.</span>
+                  <span>A richer job description produces a much stronger letter.</span>
                   <span>{jobDescription.trim().length} chars</span>
                 </div>
               </div>
@@ -395,17 +443,17 @@ export default function CVGeneratorClient({
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
                     How it works
                   </p>
-                  <p className="mt-2 text-lg font-black text-on-background">Role-specific CV generation</p>
+                  <p className="mt-2 text-lg font-black text-on-background">Role-specific cover letter generation</p>
                 </div>
                 <div className="rounded-full border border-[#008f44]/18 bg-[#008f44]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#008f44]">
-                  Interview ready
+                  Hiring ready
                 </div>
               </div>
               <div className="space-y-3 text-sm leading-7 text-on-surface-variant">
                 <p>1. Pick a saved resume or upload one just for this run.</p>
                 <p>2. Paste the exact job description.</p>
-                <p>3. Rezoomed rewrites the CV around the role without inventing facts.</p>
-                <p>4. Export the finished draft as PDF or editable DOCX.</p>
+                <p>3. Rezoomed writes a truthful cover letter tuned to the role.</p>
+                <p>4. Review the draft, then export it as PDF or editable DOCX.</p>
               </div>
             </div>
           </DashboardSurface>
@@ -416,76 +464,52 @@ export default function CVGeneratorClient({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#026d32]/70">
-                      CV brief
+                      Letter brief
                     </p>
                     <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">
-                      {result.analysis.tailoredHeadline || 'Targeted CV generated'}
+                      {result.coverLetter.roleTitle
+                        ? `${result.coverLetter.roleTitle}${result.coverLetter.companyName ? ` · ${result.coverLetter.companyName}` : ''}`
+                        : 'Targeted cover letter generated'}
                     </h2>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#008f44]">
-                      Match {result.analysis.matchScore}
+                      {result.coverLetter.intensity}
                     </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">
-                      {result.analysis.matchTier.replace('_', ' ')}
-                    </span>
-                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">
-                      {result.analysis.shortlistingProbability.replace('_', ' ')}
-                    </span>
+                    {result.coverLetter.companyName ? (
+                      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">
+                        {result.coverLetter.companyName}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-[1.2rem] bg-white/82 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
-                      Strategy
-                    </p>
-                    <p className="mt-2 text-sm leading-7 text-on-background">
-                      {result.analysis.overallStrategy || 'The CV was reoriented toward the most important hiring signals in the role.'}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.2rem] bg-white/82 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
-                      Honest read
-                    </p>
-                    <p className="mt-2 text-sm leading-7 text-on-background">
-                      {result.analysis.honestAssessment || 'This draft stays truthful while pushing the strongest role-relevant evidence forward.'}
-                    </p>
-                  </div>
+                <div className="rounded-[1.2rem] bg-white/82 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
+                    Strategy
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-on-background">
+                    {result.coverLetter.strategySummary}
+                  </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                {result.coverLetter.fitHighlights.length > 0 ? (
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
-                      Matched keywords
+                      What the letter emphasizes
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {result.analysis.matchedKeywords.slice(0, 10).map(item => (
+                      {result.coverLetter.fitHighlights.map(item => (
                         <span
-                          key={`${item.keyword}:${item.evidence}`}
+                          key={item}
                           className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-on-background"
                         >
-                          {item.keyword}
+                          {item}
                         </span>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
-                      Missing or weaker signals
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {result.analysis.missingKeywords.slice(0, 8).map(item => (
-                        <span
-                          key={`${item.keyword}:${item.suggestion}`}
-                          className="rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-on-background"
-                        >
-                          {item.keyword}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                ) : null}
               </div>
             </DashboardSurface>
           ) : null}
@@ -495,10 +519,10 @@ export default function CVGeneratorClient({
           <div className="flex flex-col gap-4 border-b border-black/5 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/65">
-                Live CV preview
+                Live cover letter preview
               </p>
               <p className="mt-2 text-lg font-black text-on-background">
-                {result ? `${result.sourceTitle} tuned for the role` : 'Generate first to unlock preview'}
+                {result ? `${sanitizeDocumentTitle(result.sourceTitle)} cover letter` : 'Generate first to unlock preview'}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -527,16 +551,8 @@ export default function CVGeneratorClient({
             {result ? (
               <div className="overflow-auto rounded-[1.5rem] border border-black/6 bg-white/68 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                 <div className="mx-auto w-[794px] min-w-[794px]">
-                  <div ref={previewRef} id="cv-generator-print-wrapper">
-                    <UniversalTemplate
-                      data={result.generatedResumeData}
-                      isEditing={false}
-                      onFieldChange={() => {}}
-                      config={CV_TEMPLATE_CONFIG}
-                      density={CV_TEMPLATE_CONFIG.density}
-                      sectionOrder={CV_SECTION_ORDER}
-                      sidebarSectionOrder={CV_SIDEBAR_SECTION_ORDER}
-                    />
+                  <div ref={previewRef} id="cover-letter-print-wrapper">
+                    <CoverLetterPreview result={result} />
                   </div>
                 </div>
               </div>
@@ -548,10 +564,10 @@ export default function CVGeneratorClient({
                   </div>
                   <div>
                     <h3 className="text-2xl font-black tracking-tight text-on-background">
-                      Your generated CV will appear here
+                      Your generated cover letter will appear here
                     </h3>
                     <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-                      Once the draft is generated you can review the role-specific rewrite, then export it as PDF or DOCX immediately.
+                      Once the draft is generated you can review the full letter, then export it as PDF or DOCX immediately.
                     </p>
                   </div>
                 </div>
@@ -564,10 +580,12 @@ export default function CVGeneratorClient({
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full bg-[#008f44]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#008f44]">
                   <ArrowUpRight size={12} strokeWidth={2.4} />
-                  {result.changed ? 'Tailored draft ready' : 'Generated with light edits'}
+                  Cover letter ready
                 </span>
-                <span>Sections touched: {result.touchedSections.length ? result.touchedSections.join(', ') : 'minimal changes'}</span>
-                <span>Score delta: {result.scoreDelta >= 0 ? `+${result.scoreDelta}` : result.scoreDelta}</span>
+                {result.coverLetter.suggestedSubject ? <span>Subject: {result.coverLetter.suggestedSubject}</span> : null}
+                {result.coverLetter.fitHighlights.length ? (
+                  <span>Focus: {result.coverLetter.fitHighlights.join(', ')}</span>
+                ) : null}
               </div>
             </div>
           ) : null}

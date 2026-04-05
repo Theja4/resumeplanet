@@ -27,17 +27,27 @@ export interface ExtractedPage {
   height: number
 }
 
-// Extract text items with full positional metadata
-export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> {
+export interface ExtractedPDFMetadata {
+  info?: Record<string, unknown>
+  metadata?: {
+    get?: (name: string) => unknown
+  } | null
+}
+
+function createLoadingTask(buffer: Buffer) {
   const uint8Array = new Uint8Array(buffer)
 
-  const loadingTask = pdfjsLib.getDocument({
+  return pdfjsLib.getDocument({
     data: uint8Array,
     useSystemFonts: true,
     disableFontFace: true,
-    // Suppress password prompts and verbose logging
     verbosity: 0,
   })
+}
+
+// Extract text items with full positional metadata
+export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> {
+  const loadingTask = createLoadingTask(buffer)
 
   const pdf = await loadingTask.promise
   const pages: ExtractedPage[] = []
@@ -106,6 +116,17 @@ export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> 
   return pages
 }
 
+export async function extractPDFMetadata(buffer: Buffer): Promise<ExtractedPDFMetadata> {
+  const loadingTask = createLoadingTask(buffer)
+  const pdf = await loadingTask.promise
+  const metadata = await pdf.getMetadata()
+
+  return {
+    info: metadata.info as Record<string, unknown> | undefined,
+    metadata: metadata.metadata ?? null,
+  }
+}
+
 // Group items on the same horizontal line and merge into structured lines
 export function pagesToLines(pages: ExtractedPage[]): Array<{
   text: string
@@ -123,6 +144,40 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
     y: number
     pageNumber: number
   }> = []
+
+  function pushClusterLine(cluster: TextItem[]) {
+    if (cluster.length === 0) return
+
+    let mergedText = ''
+    let lastItemEnd = -1
+
+    for (const item of cluster) {
+      if (lastItemEnd === -1) {
+        mergedText = item.text
+      } else {
+        const gap = item.x - lastItemEnd
+        if (gap > 1) {
+          mergedText += ' '
+        }
+        mergedText += item.text
+      }
+      lastItemEnd = item.x + item.width
+    }
+
+    const dominantFontSize = Math.max(...cluster.map(item => item.fontSize))
+    const hasBold = cluster.some(item => item.isBold)
+
+    if (mergedText.trim()) {
+      lines.push({
+        text: mergedText.trim(),
+        isBold: hasBold,
+        fontSize: dominantFontSize,
+        x: cluster[0].x,
+        y: cluster[0].y,
+        pageNumber: cluster[0].pageNumber,
+      })
+    }
+  }
 
   for (const page of pages) {
     if (page.items.length === 0) continue
@@ -154,38 +209,29 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
 
       group.sort((a, b) => a.x - b.x)
 
-      let mergedText = ''
+      const clusters: TextItem[][] = []
+      let currentCluster: TextItem[] = []
       let lastItemEnd = -1
-
       for (const item of group) {
         if (lastItemEnd === -1) {
-          mergedText = item.text
+          currentCluster.push(item)
         } else {
           const gap = item.x - lastItemEnd
-          // Large gap suggests column separator
           if (gap > avgCharWidth * 3) {
-            mergedText += '  |  ' + item.text
-          } else if (gap > avgCharWidth) {
-            mergedText += ' ' + item.text
+            clusters.push(currentCluster)
+            currentCluster = [item]
           } else {
-            mergedText += item.text
+            currentCluster.push(item)
           }
         }
         lastItemEnd = item.x + item.width
       }
+      if (currentCluster.length > 0) {
+        clusters.push(currentCluster)
+      }
 
-      const dominantFontSize = Math.max(...group.map(i => i.fontSize))
-      const hasBold = group.some(i => i.isBold)
-
-      if (mergedText.trim()) {
-        lines.push({
-          text: mergedText.trim(),
-          isBold: hasBold,
-          fontSize: dominantFontSize,
-          x: group[0].x,
-          y: group[0].y,
-          pageNumber: page.pageNumber,
-        })
+      for (const cluster of clusters) {
+        pushClusterLine(cluster)
       }
     }
   }

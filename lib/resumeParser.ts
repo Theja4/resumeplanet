@@ -38,27 +38,148 @@ function normalise(text: string): string {
     .trim()
 }
 
+function normalizeHeading(text: string): string {
+  return normalise(text)
+    .replace(/[:#•*]+/g, '')
+    .replace(/[()]/g, ' ')
+    .replace(/&/g, ' and ')
+    .replace(/[\/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
 // ─── Section detection ────────────────────────────────────────────────────────
 
-const SECTION_PATTERNS: Array<{ pattern: RegExp; name: SectionName }> = [
-  { pattern: /^(work\s+)?experience|employment(\s+history)?|work\s+history$/i, name: 'experience' },
-  { pattern: /^education(al\s+background)?|academic(\s+background)?$/i, name: 'education' },
-  { pattern: /^(technical\s+)?skills?(\s+&\s+expertise)?|competencies|technologies$/i, name: 'skills' },
-  { pattern: /^(professional\s+)?(summary|profile|objective|about(\s+me)?)$/i, name: 'summary' },
-  { pattern: /^certifications?|certificates?|licenses?$/i, name: 'certifications' },
-  { pattern: /^(personal\s+|academic\s+|side\s+)?projects?$/i, name: 'projects' },
-  { pattern: /^languages?$/i, name: 'languages' },
-  { pattern: /^volunteer(\s+work|\s+experience)?|community(\s+service)?$/i, name: 'volunteer' },
-  { pattern: /^interests?|hobbies|activities|extracurricular$/i, name: 'interests' },
-  { pattern: /^awards?(\s+and\s+honors?)?|honors?|achievements?|accomplishments?$/i, name: 'awards' },
-  { pattern: /^publications?|research|papers?$/i, name: 'publications' },
-  { pattern: /^references?$/i, name: 'references' },
-]
+const SECTION_ALIASES: Record<SectionName, string[]> = {
+  summary: [
+    'summary',
+    'professional summary',
+    'career summary',
+    'executive summary',
+    'profile',
+    'professional profile',
+    'career profile',
+    'objective',
+    'career objective',
+    'professional objective',
+    'about me',
+    'about',
+  ],
+  experience: [
+    'experience',
+    'work experience',
+    'professional experience',
+    'relevant experience',
+    'employment',
+    'employment history',
+    'work history',
+    'career history',
+    'positions',
+    'positions held',
+    'professional background',
+  ],
+  education: [
+    'education',
+    'educational background',
+    'academic background',
+    'academic history',
+    'academics',
+    'academia',
+    'qualifications',
+    'qualification',
+    'academic qualifications',
+    'education and training',
+    'degrees',
+  ],
+  skills: [
+    'skills',
+    'technical skills',
+    'core skills',
+    'key skills',
+    'technical proficiencies',
+    'proficiencies',
+    'expertise',
+    'areas of expertise',
+    'core competencies',
+    'competencies',
+    'technologies',
+    'technical stack',
+    'tool stack',
+    'tools and technologies',
+  ],
+  certifications: [
+    'certifications',
+    'certification',
+    'certificates',
+    'certificate',
+    'licenses',
+    'license',
+    'credentials',
+    'professional certifications',
+  ],
+  projects: [
+    'projects',
+    'project experience',
+    'selected projects',
+    'personal projects',
+    'academic projects',
+    'side projects',
+    'key projects',
+  ],
+  languages: [
+    'languages',
+    'language',
+    'language proficiency',
+    'spoken languages',
+  ],
+  volunteer: [
+    'volunteer',
+    'volunteer experience',
+    'volunteer work',
+    'community service',
+    'community involvement',
+  ],
+  interests: [
+    'interests',
+    'interest',
+    'hobbies',
+    'activities',
+    'extracurricular',
+    'extracurriculars',
+    'personal interests',
+  ],
+  awards: [
+    'awards',
+    'award',
+    'honors',
+    'honours',
+    'awards and honors',
+    'awards and honours',
+    'achievements',
+    'accomplishments',
+  ],
+  publications: [
+    'publications',
+    'publication',
+    'research',
+    'research publications',
+    'papers',
+    'journal articles',
+  ],
+  references: [
+    'references',
+    'reference',
+  ],
+}
 
 function detectSection(line: string): SectionName | null {
-  const stripped = line.replace(/[:#\-*•]+/g, '').trim()
-  for (const { pattern, name } of SECTION_PATTERNS) {
-    if (pattern.test(stripped)) return name
+  const segments = line.split(/\s+\|\s+/).map(segment => normalizeHeading(segment))
+
+  for (const stripped of segments) {
+    for (const [name, aliases] of Object.entries(SECTION_ALIASES) as Array<[SectionName, string[]]>) {
+      if (aliases.includes(stripped)) return name
+    }
   }
   return null
 }
@@ -71,9 +192,12 @@ const LINKEDIN_RE = /linkedin\.com\/in\/([\w\-]+)/i
 const WEBSITE_EXCLUDE = /gmail|outlook|yahoo|apple\.com|google\.com|microsoft|linkedin/i
 const URL_RE = /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi
 const DATE_MONTH_RE = /(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[a-z]*[\s,]+\d{4}/i
+const DATE_NUMERIC_RE = /\b\d{1,2}\/\d{4}\b/i
 const DATE_YEAR_RANGE_RE = /\d{4}\s*[-–—]\s*(\d{4}|Present|Current|Now)/i
+const DATE_NUMERIC_RANGE_RE = /\b\d{1,2}\/\d{4}\s*[-–—]\s*(?:\d{1,2}\/\d{4}|Present|Current|Now)\b/i
 const YEAR_RE = /\b(19|20)\d{2}\b/
 const LOCATION_RE = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/
+const HEADER_SPLIT_RE = /\s+\|\s+|\s+[–—]\s+|\s+@\s+|\s+\bat\b\s+/i
 
 function extractEmail(text: string): string {
   return EMAIL_RE.exec(text)?.[0] ?? ''
@@ -96,7 +220,16 @@ function extractWebsite(text: string): string {
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+function isLikelyDateLine(text: string): boolean {
+  return DATE_NUMERIC_RANGE_RE.test(text) || DATE_YEAR_RANGE_RE.test(text) || DATE_MONTH_RE.test(text) || DATE_NUMERIC_RE.test(text)
+}
+
 function extractDateRange(text: string): { start: string; end: string } {
+  const numericRangeMatch = DATE_NUMERIC_RANGE_RE.exec(text)
+  if (numericRangeMatch) {
+    const parts = numericRangeMatch[0].split(/[-–—]/).map(segment => segment.trim())
+    return { start: parts[0] ?? '', end: parts[1] ?? '' }
+  }
   const rangeMatch = DATE_YEAR_RANGE_RE.exec(text)
   if (rangeMatch) {
     const parts = rangeMatch[0].split(/[-–—]/).map(s => s.trim())
@@ -109,11 +242,74 @@ function extractDateRange(text: string): { start: string; end: string } {
   if (monthMatches.length === 1) {
     return { start: monthMatches[0][0], end: '' }
   }
+  const numericMatch = DATE_NUMERIC_RE.exec(text)
+  if (numericMatch) {
+    return { start: numericMatch[0], end: '' }
+  }
   const yearMatch = YEAR_RE.exec(text)
   return { start: yearMatch?.[0] ?? '', end: '' }
 }
 
 const isBulletLine = (l: string) => /^\s*[•\-*›▸▹]/.test(l) || /^\s{4,}/.test(l)
+
+function isContactLikeLine(text: string): boolean {
+  return EMAIL_RE.test(text) || PHONE_RE.test(text) || URL_RE.test(text) || LINKEDIN_RE.test(text) || LOCATION_RE.test(text)
+}
+
+function splitHeaderLine(line: string): string[] {
+  return line
+    .split(HEADER_SPLIT_RE)
+    .map(segment => segment.trim())
+    .filter(Boolean)
+}
+
+function isLikelyExperienceHeader(line: string): boolean {
+  const parts = splitHeaderLine(line)
+  if (parts.length < 2 || parts.length > 4) return false
+  if (isContactLikeLine(line) || isLikelyDateLine(line) || isBulletLine(line)) return false
+  return parts.every(part => part.length > 1 && part.length <= 60)
+}
+
+function inferHeaderFields(headerLines: string[]): { title: string; company: string; location: string } {
+  if (headerLines.length === 0) {
+    return { title: '', company: '', location: '' }
+  }
+
+  const primaryLine = headerLines[0]
+  const locationFromPrimary = LOCATION_RE.exec(primaryLine)?.[0] ?? ''
+  const normalizedPrimary = locationFromPrimary ? primaryLine.replace(locationFromPrimary, '').replace(/\s{2,}/g, ' ').trim() : primaryLine
+  const primaryTokens = splitHeaderLine(normalizedPrimary)
+
+  if (headerLines.length >= 2) {
+    return {
+      title: primaryTokens[0] || normalizedPrimary,
+      company: headerLines[1],
+      location: locationFromPrimary,
+    }
+  }
+
+  if (primaryTokens.length >= 3) {
+    return {
+      title: primaryTokens[0],
+      company: primaryTokens[1],
+      location: locationFromPrimary || primaryTokens[2],
+    }
+  }
+
+  if (primaryTokens.length === 2) {
+    return {
+      title: primaryTokens[0],
+      company: primaryTokens[1],
+      location: locationFromPrimary,
+    }
+  }
+
+  return {
+    title: normalizedPrimary,
+    company: '',
+    location: locationFromPrimary,
+  }
+}
 
 // ─── Experience parser (two-pass) ─────────────────────────────────────────────
 // The old single-pass parser dropped title/company because they appear BEFORE
@@ -127,7 +323,7 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
   const dateIndices: number[] = []
   for (let i = 0; i < lines.length; i++) {
     const t = lines[i].trim()
-    if (t && (DATE_MONTH_RE.test(t) || DATE_YEAR_RANGE_RE.test(t))) {
+    if (t && isLikelyDateLine(t)) {
       dateIndices.push(i)
     }
   }
@@ -161,8 +357,10 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
     const locInDate = LOCATION_RE.exec(dateLine)?.[0] ?? ''
     // Strip date and location from date line to get any inline title fragment
     const inlineFrag = dateLine
+      .replace(DATE_NUMERIC_RANGE_RE, '')
       .replace(DATE_YEAR_RANGE_RE, '')
-      .replace(DATE_MONTH_RE, '')
+      .replace(new RegExp(DATE_MONTH_RE.source, 'gi'), '')
+      .replace(DATE_NUMERIC_RE, '')
       .replace(locInDate, '')
       .replace(/[-–—|,]+/g, ' ')
       .trim()
@@ -181,17 +379,19 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       scanBack--
     }
 
-    // title: first header line, or inline fragment from the date line
-    const title = headerLines[0] ?? inlineFrag
+    const headerFields = inferHeaderFields(headerLines)
 
-    // company: second header line (if it's not a location)
-    let company = ''
-    if (headerLines.length > 1) {
+    // title: parsed header title, first header line, or inline fragment from the date line
+    const title = headerFields.title || headerLines[0] || inlineFrag
+
+    // company: parsed header company or second header line
+    let company = headerFields.company
+    if (!company && headerLines.length > 1) {
       company = headerLines[1]
     }
 
     // location: from the date line, or scan header lines
-    let location = locInDate
+    let location = locInDate || headerFields.location
     if (!location) {
       for (const h of headerLines) {
         const m = LOCATION_RE.exec(h)
@@ -214,8 +414,15 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
     }
 
     // If we got no company from header, a non-bullet line after the date (before bullets) may be the company
-    if (!company && afterDateNonBullets.length > 0 && bullets.length === 0) {
-      company = afterDateNonBullets[0]
+    if (!company && afterDateNonBullets.length > 0) {
+      const companyCandidate = afterDateNonBullets[0]
+      if (
+        companyCandidate.length <= 80 &&
+        !isLikelyDateLine(companyCandidate) &&
+        !LOCATION_RE.test(companyCandidate)
+      ) {
+        company = companyCandidate
+      }
     }
 
     if (title || bullets.length > 0) {
@@ -228,12 +435,63 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
 
 // ─── Section parsers ──────────────────────────────────────────────────────────
 
-function parseSummary(lines: string[], preamble: string[]): string {
-  if (lines.length > 0) {
-    return lines.map(l => l.trim()).filter(Boolean).join(' ').trim()
+function extractSummaryFromPreamble(preamble: string[], name: string, currentRole: string): string {
+  const candidateLines: string[] = []
+
+  for (const rawLine of preamble) {
+    const line = rawLine.trim()
+    if (!line) continue
+    if (line === name || line === currentRole) continue
+    if (isContactLikeLine(line) || isLikelyDateLine(line) || isBulletLine(line)) continue
+    if (detectSection(line) || looksLikeCustomHeadingText(line)) continue
+    if (candidateLines.length > 0) {
+      if (detectSection(line) || looksLikeCustomHeadingText(line) || isLikelyExperienceHeader(line)) {
+        break
+      }
+    }
+
+    if (line.length < 35) continue
+
+    candidateLines.push(line)
+    if (candidateLines.length >= 3) break
   }
-  const para = preamble.map(l => l.trim()).filter(Boolean).join(' ')
-  return para.split(/\s+/).filter(Boolean).length >= 15 ? para : ''
+
+  const candidate = candidateLines.join(' ').trim()
+  const words = candidate.split(/\s+/).filter(Boolean)
+  if (words.length < 12 || words.length > 120) return ''
+
+  return candidate
+}
+
+function sanitizeSummaryText(summary: string): string {
+  const trimmed = summary.trim()
+  if (!trimmed) return ''
+
+  const headingLeak = /(experience|education|skills|projects|certifications|languages|volunteer|interests|awards|publications|references)\s*:?\s+/gi
+  const dateHits = trimmed.match(new RegExp(`${DATE_MONTH_RE.source}|${DATE_YEAR_RANGE_RE.source}|${DATE_NUMERIC_RANGE_RE.source}`, 'gi')) ?? []
+  const headingHits = trimmed.match(headingLeak) ?? []
+
+  if (headingHits.length >= 2) return ''
+  if (dateHits.length >= 2 && trimmed.length > 220) return ''
+
+  return trimmed
+}
+
+function parseSummary(lines: string[], preamble: string[], name: string, currentRole: string): string {
+  if (lines.length > 0) {
+    const collected: string[] = []
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (!line) continue
+      if (collected.length > 0 && (detectSection(line) || looksLikeCustomHeadingText(line) || isLikelyExperienceHeader(line))) {
+        break
+      }
+      if (isContactLikeLine(line) && collected.length > 0) break
+      collected.push(line)
+    }
+    return sanitizeSummaryText(collected.join(' ').trim())
+  }
+  return sanitizeSummaryText(extractSummaryFromPreamble(preamble, name, currentRole))
 }
 
 function parseSkills(lines: string[]): string[] {
@@ -261,37 +519,71 @@ function parseVolunteer(lines: string[]): ResumeData['volunteer'] {
 
 function parseEducation(lines: string[]): ResumeData['education'] {
   const entries: ResumeData['education'] = []
-  let current: ResumeData['education'][0] | null = null
   const DEGREE_RE = /Bachelor|Master|PhD|Doctorate|MBA|B\.?S\.?|M\.?S\.?|B\.?E\.?|B\.?Tech|M\.?Tech|Associate/i
   const INSTITUTION_RE = /University|College|Institute|School|Academy/i
+  const cleanedLines = lines.map(line => line.trim()).filter(Boolean)
+  let index = 0
 
-  for (const line of lines) {
-    const t = line.trim()
-    if (!t) continue
-    if (DEGREE_RE.test(t) || INSTITUTION_RE.test(t)) {
-      if (current) entries.push(current)
-      const yearMatch = YEAR_RE.exec(t)
-      const gpaMatch = /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(t)
-      current = {
-        institution: INSTITUTION_RE.test(t) ? t : '',
-        degree: DEGREE_RE.test(t) ? t.replace(/,.*$/, '').trim() : '',
-        field: '',
-        graduationDate: yearMatch?.[0] ?? '',
-        gpa: gpaMatch?.[1] ?? '',
-      }
-    } else if (current) {
-      if (!current.institution && INSTITUTION_RE.test(t)) {
-        current.institution = t
-      } else if (!current.degree && DEGREE_RE.test(t)) {
-        current.degree = t.replace(/,.*$/, '').trim()
-      } else if (!current.graduationDate) {
-        const y = YEAR_RE.exec(t)
-        if (y) current.graduationDate = y[0]
-      }
+  while (index < cleanedLines.length) {
+    const line = cleanedLines[index]
+    const degreeMatch = DEGREE_RE.test(line)
+    const institutionMatch = INSTITUTION_RE.test(line)
+
+    if (!degreeMatch && !institutionMatch && !isLikelyDateLine(line)) {
+      index += 1
+      continue
     }
+
+    const entry: ResumeData['education'][0] = {
+      institution: institutionMatch ? line : '',
+      degree: degreeMatch ? line.replace(/,.*$/, '').trim() : '',
+      field: '',
+      graduationDate: '',
+      gpa: /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(line)?.[1] ?? '',
+    }
+
+    if (isLikelyDateLine(line)) {
+      entry.graduationDate = extractDateRange(line).end || extractDateRange(line).start
+    } else {
+      const inlineDate = extractDateRange(line)
+      entry.graduationDate = inlineDate.end || inlineDate.start
+    }
+
+    let consumed = 1
+    while (index + consumed < cleanedLines.length) {
+      const nextLine = cleanedLines[index + consumed]
+      if (detectSection(nextLine)) break
+
+      const nextLooksLikeNewEntry =
+        (INSTITUTION_RE.test(nextLine) && Boolean(entry.institution)) ||
+        (DEGREE_RE.test(nextLine) && Boolean(entry.degree))
+
+      if (nextLooksLikeNewEntry && !isLikelyDateLine(nextLine)) {
+        break
+      }
+
+      if (!entry.institution && INSTITUTION_RE.test(nextLine)) {
+        entry.institution = nextLine
+      } else if (!entry.degree && DEGREE_RE.test(nextLine)) {
+        entry.degree = nextLine.replace(/,.*$/, '').trim()
+      } else if (!entry.graduationDate && isLikelyDateLine(nextLine)) {
+        const dates = extractDateRange(nextLine)
+        entry.graduationDate = dates.end || dates.start
+      } else if (!entry.gpa) {
+        entry.gpa = /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(nextLine)?.[1] ?? ''
+      } else if (!entry.field && entry.degree && nextLine.length <= 100 && !isBulletLine(nextLine)) {
+        entry.field = nextLine
+      }
+
+      consumed += 1
+    }
+
+    if (entry.institution || entry.degree || entry.graduationDate) {
+      entries.push(entry)
+    }
+    index += consumed
   }
 
-  if (current) entries.push(current)
   return entries
 }
 
@@ -402,27 +694,156 @@ function parseReferences(lines: string[]): string[] {
 
 // ─── Spatial section splitter ─────────────────────────────────────────────────
 
-function splitStructuredLines(
-  lines: StructuredLine[]
-): Record<string, string[]> {
-  const sections: Record<string, string[]> = { preamble: [] }
-  let current = 'preamble'
+function buildCustomSectionKey(title: string): string {
+  return `custom:${title}`
+}
 
-  for (const line of lines) {
-    const t = line.text.trim()
-    if (!t) continue
+function getCustomSectionTitle(key: string): string {
+  return key.slice('custom:'.length)
+}
 
-    const knownSection = detectSection(t)
-    if (knownSection) {
-      current = knownSection
-      sections[current] = sections[current] ?? []
-    } else {
-      sections[current] = sections[current] ?? []
-      sections[current].push(t)
+function looksLikeCustomHeadingText(text: string): boolean {
+  const heading = normalizeHeading(text)
+  if (!heading) return false
+  if (detectSection(heading)) return false
+  if (EMAIL_RE.test(heading) || PHONE_RE.test(heading) || URL_RE.test(heading)) return false
+  if (LOCATION_RE.test(heading) || isLikelyDateLine(heading) || isBulletLine(heading)) return false
+  if (heading.length > 42) return false
+
+  const words = heading.split(/\s+/).filter(Boolean)
+  if (words.length === 0 || words.length > 5) return false
+
+  const allCaps = heading === heading.toUpperCase()
+  const titleCase = words.every(word => /^[A-Z][A-Za-z0-9&/+\-]*$/.test(word))
+  return allCaps || titleCase
+}
+
+function isPotentialCustomHeadingLine(line: StructuredLine, medianFontSize: number): boolean {
+  return looksLikeCustomHeadingText(line.text) && (line.isBold || line.fontSize >= medianFontSize * 1.05)
+}
+
+function detectColumnThreshold(lines: StructuredLine[], medianFontSize: number): number | null {
+  const candidates = lines
+    .filter(line => {
+      const text = line.text.trim()
+      if (!text || text.length < 3) return false
+      if (EMAIL_RE.test(text) || PHONE_RE.test(text) || URL_RE.test(text)) return false
+      if (isLikelyDateLine(text)) return false
+      return true
+    })
+    .sort((a, b) => a.x - b.x)
+
+  if (candidates.length < 16) return null
+
+  const clusters: Array<{
+    min: number
+    max: number
+    center: number
+    count: number
+    headingCount: number
+  }> = []
+
+  for (const line of candidates) {
+    const headingHit = detectSection(line.text) || isPotentialCustomHeadingLine(line, medianFontSize)
+    const lastCluster = clusters[clusters.length - 1]
+
+    if (lastCluster && Math.abs(line.x - lastCluster.center) <= 48) {
+      lastCluster.count += 1
+      lastCluster.min = Math.min(lastCluster.min, line.x)
+      lastCluster.max = Math.max(lastCluster.max, line.x)
+      lastCluster.center = Math.round((lastCluster.min + lastCluster.max) / 2)
+      if (headingHit) lastCluster.headingCount += 1
+      continue
+    }
+
+    clusters.push({
+      min: line.x,
+      max: line.x,
+      center: line.x,
+      count: 1,
+      headingCount: headingHit ? 1 : 0,
+    })
+  }
+
+  const stableClusters = clusters.filter(cluster => cluster.count >= 6)
+  if (stableClusters.length < 2) return null
+
+  let bestThreshold: number | null = null
+  let largestGap = 0
+
+  for (let index = 0; index < stableClusters.length - 1; index += 1) {
+    const left = stableClusters[index]
+    const right = stableClusters[index + 1]
+    const gap = right.min - left.max
+
+    if (gap < 150) continue
+    if (left.headingCount === 0 || right.headingCount === 0) continue
+
+    if (gap > largestGap) {
+      largestGap = gap
+      bestThreshold = Math.round((left.max + right.min) / 2)
     }
   }
 
+  return bestThreshold
+}
+
+function splitColumnStructuredLines(
+  lines: StructuredLine[],
+  medianFontSize: number
+): Record<string, string[]> {
+  const sections: Record<string, string[]> = { preamble: [] }
+  let current = 'preamble'
+  let hasStartedSectionFlow = false
+
+  for (const line of lines) {
+    const text = line.text.trim()
+    if (!text) continue
+
+    const knownSection = detectSection(text)
+    if (knownSection) {
+      current = knownSection
+      sections[current] = sections[current] ?? []
+      hasStartedSectionFlow = true
+      continue
+    }
+
+    if (hasStartedSectionFlow && isPotentialCustomHeadingLine(line, medianFontSize)) {
+      current = buildCustomSectionKey(normalizeHeading(text))
+      sections[current] = sections[current] ?? []
+      continue
+    }
+
+    sections[current] = sections[current] ?? []
+    sections[current].push(text)
+  }
+
   return sections
+}
+
+function splitStructuredLines(
+  lines: StructuredLine[],
+  medianFontSize: number
+): Record<string, string[]> {
+  const threshold = detectColumnThreshold(lines, medianFontSize)
+  if (threshold === null) {
+    return splitColumnStructuredLines(lines, medianFontSize)
+  }
+
+  const sectionMaps = [
+    splitColumnStructuredLines(lines.filter(line => line.x <= threshold), medianFontSize),
+    splitColumnStructuredLines(lines.filter(line => line.x > threshold), medianFontSize),
+  ]
+
+  const mergedSections: Record<string, string[]> = { preamble: [] }
+  for (const sectionMap of sectionMaps) {
+    for (const [sectionName, sectionLines] of Object.entries(sectionMap)) {
+      mergedSections[sectionName] = mergedSections[sectionName] ?? []
+      mergedSections[sectionName].push(...sectionLines)
+    }
+  }
+
+  return mergedSections
 }
 
 // ─── Spatial name extraction ──────────────────────────────────────────────────
@@ -468,6 +889,66 @@ function extractNameFromLines(
   return ''
 }
 
+function extractCurrentRoleFromPreamble(preamble: string[], name: string): string {
+  for (const rawLine of preamble) {
+    const line = rawLine.trim()
+    if (!line || line === name) continue
+    if (EMAIL_RE.test(line) || PHONE_RE.test(line) || URL_RE.test(line)) continue
+    if (LOCATION_RE.test(line) || isLikelyDateLine(line) || detectSection(line)) continue
+    if (line.length > 80) continue
+    return line
+  }
+
+  return ''
+}
+
+function buildCustomSections(sections: Record<string, string[]>): ResumeData['customSections'] {
+  return Object.entries(sections)
+    .filter(([key, lines]) => key.startsWith('custom:') && lines.some(line => line.trim()))
+    .map(([key, lines], index) => {
+      const title = getCustomSectionTitle(key)
+      const titleLower = title.toLowerCase()
+      const compactLines = lines.map(line => line.trim()).filter(Boolean)
+      const hasComplexSignals = compactLines.some(line => isBulletLine(line) || isLikelyDateLine(line))
+      const prefersTags = /(coursework|stack|tools|toolkit|domains|competencies|strengths|expertise)/i.test(titleLower)
+      const prefersComplex = /(leadership|affiliations?|organizations?|memberships?|involvement|activities|engagement|training)/i.test(titleLower)
+
+      if (hasComplexSignals || prefersComplex) {
+        const items = parseJobLines(compactLines)
+        if (items.length > 0) {
+          return {
+            id: `custom_${index + 1}`,
+            title,
+            type: 'complex' as const,
+            items,
+          }
+        }
+      }
+
+      const tagCandidates = compactLines
+        .join('\n')
+        .split(/[,\n|•]+/)
+        .map(line => line.trim())
+        .filter(line => line.length > 0 && line.length <= 40)
+
+      if ((prefersTags && tagCandidates.length >= 1) || (tagCandidates.length >= 2 && compactLines.length <= 5)) {
+        return {
+          id: `custom_${index + 1}`,
+          title,
+          type: 'tags' as const,
+          tags: Array.from(new Set(tagCandidates)),
+        }
+      }
+
+      return {
+        id: `custom_${index + 1}`,
+        title,
+        type: 'text' as const,
+        text: compactLines.join(' ').trim(),
+      }
+    })
+}
+
 // ─── Shared result builder ────────────────────────────────────────────────────
 
 function buildResumeData(
@@ -480,6 +961,8 @@ function buildResumeData(
   website: string
 ): ResumeData {
   const experience = parseExperience(sections['experience'] ?? [])
+  const customSections = buildCustomSections(sections)
+  const currentRole = experience[0]?.title ?? extractCurrentRoleFromPreamble(sections['preamble'] ?? [], name)
 
   return {
     name,
@@ -488,8 +971,8 @@ function buildResumeData(
     location,
     linkedin,
     website,
-    currentRole: experience[0]?.title ?? '',
-    summary: parseSummary(sections['summary'] ?? [], sections['preamble'] ?? []),
+    currentRole,
+    summary: parseSummary(sections['summary'] ?? [], sections['preamble'] ?? [], name, currentRole),
     experience,
     education: parseEducation(sections['education'] ?? []),
     skills: parseSkills(sections['skills'] ?? []),
@@ -501,7 +984,7 @@ function buildResumeData(
     awards: parseAwards(sections['awards'] ?? []),
     publications: parsePublications(sections['publications'] ?? []),
     references: parseReferences(sections['references'] ?? []),
-    customSections: [],
+    customSections,
   }
 }
 
@@ -531,7 +1014,7 @@ export async function parseResumeFromPages(pages: ExtractedPage[]): Promise<Resu
     return ''
   })()
 
-  const sections = splitStructuredLines(lines)
+  const sections = splitStructuredLines(lines, medianFontSize)
   const result = buildResumeData(sections, name, email, phone, location, linkedin, website)
 
   const populated = [result.name, result.email, result.experience.length > 0, result.education.length > 0, result.skills.length > 0].filter(Boolean).length
@@ -548,10 +1031,16 @@ export async function parseResumeText(rawText: string): Promise<ResumeData> {
 
   const sections: Record<string, string[]> = { preamble: [] }
   let current = 'preamble'
+  let hasStartedSectionFlow = false
   for (const line of lines) {
-    const section = detectSection(line.trim())
+    const trimmedLine = line.trim()
+    const section = detectSection(trimmedLine)
     if (section) {
       current = section
+      sections[current] = sections[current] ?? []
+      hasStartedSectionFlow = true
+    } else if (hasStartedSectionFlow && looksLikeCustomHeadingText(trimmedLine)) {
+      current = buildCustomSectionKey(normalizeHeading(trimmedLine))
       sections[current] = sections[current] ?? []
     } else {
       sections[current] = sections[current] ?? []

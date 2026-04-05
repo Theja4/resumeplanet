@@ -249,6 +249,41 @@
     -webkit-mask-image: linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%);
 }
 
+.builder-preview-transition {
+    view-transition-name: builder-preview;
+}
+
+::view-transition-old(builder-preview),
+::view-transition-new(builder-preview) {
+    animation-duration: 360ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(builder-preview) {
+    animation-name: builder-preview-fade-out;
+}
+
+::view-transition-new(builder-preview) {
+    animation-name: builder-preview-fade-in;
+}
+
+@keyframes builder-preview-fade-out {
+    from { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    to { opacity: 0.72; transform: translateY(8px) scale(0.995); filter: blur(0.5px); }
+}
+
+@keyframes builder-preview-fade-in {
+    from { opacity: 0.72; transform: translateY(-8px) scale(1.005); filter: blur(0.5px); }
+    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(builder-preview),
+    ::view-transition-new(builder-preview) {
+        animation-duration: 1ms;
+    }
+}
+
 .card-hover {
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }

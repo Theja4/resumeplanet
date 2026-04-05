@@ -10,7 +10,7 @@ import {
   WandSparkles,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PRO_FEATURES } from '@/lib/proFeatures'
 import { FREE_PLAN } from '@/lib/pricing'
 
@@ -382,6 +382,17 @@ export function FeatureShowcase({
   className?: string
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  useEffect(() => {
+    if (isPaused) return
+
+    const timer = window.setTimeout(() => {
+      setActiveIndex(previousIndex => (previousIndex + 1) % FEATURE_SLIDES.length)
+    }, 4800)
+
+    return () => window.clearTimeout(timer)
+  }, [activeIndex, isPaused])
 
   function handleFeatureSelect(index: number) {
     setActiveIndex(index)
@@ -393,7 +404,17 @@ export function FeatureShowcase({
   const desktopLayoutClass = 'lg:grid lg:h-full lg:grid-rows-[13.5rem_minmax(0,1fr)] lg:gap-4'
 
   return (
-    <div className={joinClasses('flex flex-col gap-4', className)}>
+    <div
+      className={joinClasses('flex flex-col gap-4', className)}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsPaused(false)
+        }
+      }}
+    >
       <div
         className={`relative overflow-hidden rounded-[2rem] border border-white/75 bg-white/78 backdrop-blur-2xl shadow-[0_26px_70px_rgba(25,28,29,0.08)] ${carouselCardHeightClass} ${
           compact ? 'p-5' : 'p-6 xl:p-7'

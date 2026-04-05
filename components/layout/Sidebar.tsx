@@ -34,9 +34,9 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     title: 'Resume Tools',
     items: [
       { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
-      { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
-      { href: '/dashboard/cv-generator', label: 'CV Generator', Icon: FileUser },
       { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
+      { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
+      { href: '/dashboard/cv-generator', label: 'Cover Letter', Icon: FileUser },
     ],
   },
   {
