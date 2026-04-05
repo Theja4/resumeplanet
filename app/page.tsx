@@ -264,9 +264,9 @@ export default async function LandingPage() {
       </main>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="w-full py-12 px-8 border-t border-zinc-800 bg-zinc-950">
+      <footer className="w-full py-12 px-8 border-t border-zinc-800/60 bg-[#0a0f0b]">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto text-sm text-zinc-500 font-medium">
-          <span className="font-black text-white text-lg">Rezoomed</span>
+          <span className="font-black text-white text-xl tracking-tight">Rezoomed</span>
           <div className="flex items-center gap-8">
             <Link className="hover:text-white transition-colors" href="#">Privacy Policy</Link>
             <Link className="hover:text-white transition-colors" href="#">Terms of Service</Link>
