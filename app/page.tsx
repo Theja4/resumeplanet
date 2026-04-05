@@ -67,6 +67,8 @@ export default async function LandingPage() {
       <main className="pt-16">
         {/* Hero Section */}
         <section className="relative min-h-[90vh] flex flex-col items-center justify-start pt-16 pb-24 px-6 overflow-hidden grid-bg gradient-glow-hero">
+          {/* Green glow orb */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[radial-gradient(ellipse,rgba(163,255,179,0.25)_0%,transparent_70%)] pointer-events-none z-0" />
           <div className="absolute inset-0 z-0 flex justify-center items-start pointer-events-none fade-mask">
             <div className="hero-resume-animation relative w-full max-w-[98rem] translate-y-40 scale-[1.015] opacity-100">
               <div className="overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_40px_120px_rgba(15,23,18,0.18)]">
@@ -86,30 +88,25 @@ export default async function LandingPage() {
               <div className="absolute inset-x-0 bottom-0 h-56 bg-[linear-gradient(180deg,rgba(248,250,249,0)_0%,rgba(248,250,249,0.42)_100%)]" />
             </div>
           </div>
-          <div className="absolute inset-0 z-[12] pointer-events-none hidden lg:block">
-            <div className="absolute left-[9%] bottom-[11%] w-52 rounded-2xl border border-surface-container-highest bg-white/98 p-4 shadow-[0_28px_60px_rgba(15,23,18,0.18)] backdrop-blur-sm">
+          <div className="absolute inset-0 z-[12] pointer-events-none hidden md:block">
+            <div className="absolute left-[6%] bottom-[11%] w-52 rounded-2xl border border-surface-container-highest bg-white/98 p-4 shadow-[0_28px_60px_rgba(15,23,18,0.18)] backdrop-blur-sm">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">ATS Score</span>
                   <span className="text-sm font-black text-primary-landing">98%</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-low">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: '98%',
-                      backgroundImage: 'var(--signature-gradient)',
-                    }}
-                  />
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <div className="h-3 w-10 rounded bg-primary-landing/10"></div>
-                  <div className="h-3 w-12 rounded bg-primary-landing/10"></div>
-                  <div className="h-3 w-8 rounded bg-primary-landing/10"></div>
+                  <div className="h-full rounded-full" style={{ width: '98%', backgroundImage: 'var(--signature-gradient)' }} />
                 </div>
               </div>
             </div>
-            <div className="absolute right-[11%] bottom-[15%] flex items-center gap-3 ai-optimizing-float">
+            <div className="absolute left-[6%] bottom-[26%] w-44 rounded-2xl border border-surface-container-highest bg-white/98 p-4 shadow-[0_28px_60px_rgba(15,23,18,0.18)] backdrop-blur-sm">
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">More Callbacks</span>
+                <p className="text-2xl font-black text-primary-landing leading-none">5×</p>
+              </div>
+            </div>
+            <div className="absolute right-[8%] bottom-[15%] flex items-center gap-3 ai-optimizing-float">
               <div className="ai-label whitespace-nowrap rounded-full bg-zinc-900 px-4 py-2 text-[10px] font-bold text-white flex items-center gap-2 shadow-[0_20px_40px_rgba(15,23,18,0.22)]">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
                 AI OPTIMIZING...
@@ -124,17 +121,27 @@ export default async function LandingPage() {
             <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-6xl md:text-[6.5rem] lg:text-[7.5rem]">
               Build your resume.
               <br />
-              <span className="text-[#008f44]">Land 5× more interviews.</span>
+              <span className="text-[#008f44] italic">Land 5× more interviews.</span>
             </h1>
             <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
               In this brutal job market, do not gamble with your career. Use
               industry-leading <strong className="font-bold text-on-background">Frontier AI</strong>{' '}
               models tuned by Rezoomed to land the interview.
             </p>
-            <div className="flex flex-wrap justify-center gap-4 pt-2">
-              <Link href="/auth/register">
-                <button className="px-12 py-5 text-white text-lg font-black shadow-2xl btn-hover flex items-center shimmer-effect justify-center relative z-10 tracking-wider transition-all duration-300 rounded-full glow-on-hover bg-black hover:bg-[#00a84d] cursor-pointer">GET STARTED NOW</button>
-              </Link>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href="/auth/register">
+                  <button className="px-10 py-4 text-white text-base font-black shadow-2xl btn-hover flex items-center shimmer-effect justify-center relative z-10 tracking-wider transition-all duration-300 rounded-full glow-on-hover bg-black hover:bg-[#00a84d] cursor-pointer">
+                    GET STARTED FREE →
+                  </button>
+                </Link>
+                <Link href="/ats-checker">
+                  <button className="px-8 py-4 text-base font-bold rounded-full border-2 border-primary-container bg-primary-container/20 text-primary-landing hover:bg-primary-container/30 transition-all cursor-pointer">
+                    Check My ATS Score
+                  </button>
+                </Link>
+              </div>
+              <p className="text-sm text-on-surface-variant">No credit card · Free plan · Cancel anytime</p>
             </div>
           </div>
         </section>
