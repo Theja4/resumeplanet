@@ -4,7 +4,10 @@ import {
   AFFILIATE_REFERRAL_COOKIE_MAX_AGE,
   normalizeAffiliateCode,
 } from '@/lib/affiliate'
-import { findAffiliateByDiscountCode } from '@/lib/affiliate-server'
+import {
+  findAffiliateByDiscountCode,
+  logAffiliateInfrastructureError,
+} from '@/lib/affiliate-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export const dynamic = 'force-dynamic'
@@ -20,10 +23,17 @@ export async function GET(
     return new NextResponse('Not Found', { status: 404 })
   }
 
-  const affiliate = await findAffiliateByDiscountCode(
-    createServiceRoleClient(),
-    normalizedCode
-  )
+  let affiliate = null
+
+  try {
+    affiliate = await findAffiliateByDiscountCode(
+      createServiceRoleClient(),
+      normalizedCode
+    )
+  } catch (error) {
+    logAffiliateInfrastructureError('path-referral-affiliate-lookup', error)
+    return NextResponse.redirect(new URL('/', request.url))
+  }
 
   if (!affiliate) {
     return new NextResponse('Not Found', { status: 404 })

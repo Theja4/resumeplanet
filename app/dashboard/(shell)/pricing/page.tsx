@@ -5,6 +5,7 @@ import {
 } from '@/lib/affiliate'
 import {
   findAffiliateByDiscountCode,
+  logAffiliateInfrastructureError,
   readAffiliateReferralCodeFromCookies,
 } from '@/lib/affiliate-server'
 import { redirect } from 'next/navigation'
@@ -70,19 +71,23 @@ export default async function PricingPage({
   if (!profile) redirect('/auth/login')
 
   const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
-  const serviceSupabase = createServiceRoleClient()
   const affiliateLookupCandidates = params.promo
     ? [params.promo]
     : [cookieAffiliateCode, storedAffiliateCode].filter((value): value is string => Boolean(value))
 
   let affiliateAttribution: Affiliate | null = null
+  try {
+    const serviceSupabase = createServiceRoleClient()
 
-  for (const candidateCode of affiliateLookupCandidates) {
-    affiliateAttribution = await findAffiliateByDiscountCode(serviceSupabase, candidateCode)
+    for (const candidateCode of affiliateLookupCandidates) {
+      affiliateAttribution = await findAffiliateByDiscountCode(serviceSupabase, candidateCode)
 
-    if (affiliateAttribution) {
-      break
+      if (affiliateAttribution) {
+        break
+      }
     }
+  } catch (error) {
+    logAffiliateInfrastructureError('pricing-page-affiliate-lookup', error)
   }
 
   const promoCode =

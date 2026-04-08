@@ -16,6 +16,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    console.error('[supabase] Missing browser configuration in proxy; skipping session refresh')
+    return NextResponse.next()
+  }
+
   return await updateSession(request)
 }
 

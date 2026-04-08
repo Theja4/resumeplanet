@@ -11,6 +11,7 @@ import {
 } from '@/lib/affiliate'
 import {
   findAffiliateByDiscountCode,
+  logAffiliateInfrastructureError,
   readAffiliateReferralCodeFromCookies,
 } from '@/lib/affiliate-server'
 import { getActivePromotion } from '@/lib/pricing'
@@ -94,9 +95,16 @@ const TESTIMONIALS: Testimonial[] = [
 
 export default async function LandingPage() {
   const affiliateCode = await readAffiliateReferralCodeFromCookies()
-  const affiliate = affiliateCode
-    ? await findAffiliateByDiscountCode(createServiceRoleClient(), affiliateCode)
-    : null
+  let affiliate = null
+
+  if (affiliateCode) {
+    try {
+      affiliate = await findAffiliateByDiscountCode(createServiceRoleClient(), affiliateCode)
+    } catch (error) {
+      logAffiliateInfrastructureError('landing-page-affiliate-lookup', error)
+    }
+  }
+
   const pricingPromo = buildAffiliatePricingPromo(affiliate) ?? getActivePromotion()
 
   return (

@@ -28,6 +28,10 @@ export interface AffiliateAuthContext {
   serviceSupabase: ServiceRoleClient
 }
 
+export function logAffiliateInfrastructureError(scope: string, error: unknown) {
+  console.error(`[affiliate] ${scope}`, error)
+}
+
 function roundCurrencyAmount(value: number) {
   return Math.round(value * 100) / 100
 }
