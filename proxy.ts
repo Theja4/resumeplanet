@@ -4,6 +4,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 // Routes that bypass auth (webhooks, public API endpoints)
 const publicRoutes = [
   '/api/paddle/webhook',
+  '/api/webhooks/paddle',
   '/api/auth/callback',
 ]
 

@@ -1,7 +1,8 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/app/dashboard/(shell)/actions'
 import { Analytics } from '@/lib/analytics'
 import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
@@ -17,6 +18,7 @@ import {
   Target,
   ShoppingBag,
   CreditCard,
+  Wallet,
   CircleHelp,
   LogOut,
   type LucideIcon,
@@ -27,6 +29,7 @@ type NavItem = {
   label: string
   Icon: LucideIcon
   badge?: string
+  builderMode?: 'tailor'
 }
 
 const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
@@ -44,6 +47,13 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
       { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
       { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
       { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
+      {
+        href: '/dashboard/builder?mode=tailor',
+        label: 'Tailor Mode',
+        Icon: Sparkles,
+        badge: 'Pro',
+        builderMode: 'tailor',
+      },
       {
         href: '/dashboard/match-score',
         label: 'Match Score',
@@ -63,6 +73,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/dashboard/orders', label: 'Orders', Icon: ShoppingBag },
       { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
+      { href: '/affiliate/dashboard', label: 'Affiliate', Icon: Wallet },
     ],
   },
 ]
@@ -102,8 +113,18 @@ interface SidebarProps {
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  function isActive(href: string) {
+  function isActive(item: NavItem) {
+    if (item.builderMode === 'tailor') {
+      return pathname.startsWith('/dashboard/builder') && searchParams.get('mode') === 'tailor'
+    }
+
+    if (item.href === '/dashboard/builder') {
+      return pathname.startsWith('/dashboard/builder') && searchParams.get('mode') !== 'tailor'
+    }
+
+    const href = item.href
     if (href === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(href)
   }
@@ -112,8 +133,9 @@ export default function Sidebar({ profile }: SidebarProps) {
     <aside className="dashboard-card-hover fixed left-4 top-4 z-30 hidden h-[calc(100vh-2rem)] w-[17rem] flex-col rounded-[2rem] border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.92),rgba(243,247,244,0.88))] p-6 shadow-[0_28px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl md:flex">
       <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.2),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.07),transparent_30%)]" />
       {/* Branding */}
-      <div className="relative mb-10 flex items-center gap-3">
-        <span className="text-lg font-black tracking-tighter text-primary">Rezoomed</span>
+      <div className="relative mb-10 flex items-center gap-3 px-2">
+        <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
+        <span className="text-xl font-black tracking-tighter text-primary">Rezoomed</span>
       </div>
 
       {/* Nav */}
@@ -124,8 +146,9 @@ export default function Sidebar({ profile }: SidebarProps) {
               {section.title}
             </p>
             <div className="space-y-1.5">
-              {section.items.map(({ href, label, Icon, badge }) => {
-                const active = isActive(href)
+              {section.items.map((item) => {
+                const { href, label, Icon, badge } = item
+                const active = isActive(item)
                 const itemClassName = `dashboard-card-hover flex w-full items-center gap-3 rounded-[1rem] px-3.5 py-3 text-left transition-all duration-200 ${
                   active
                     ? 'bg-[linear-gradient(145deg,rgba(163,255,179,0.45),rgba(255,255,255,0.96))] font-semibold text-on-primary-container shadow-[0_14px_32px_rgba(2,109,50,0.08)]'

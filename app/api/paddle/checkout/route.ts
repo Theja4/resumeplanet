@@ -1,11 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
+  resolveAffiliateSourceCodeFromProfile,
+} from '@/lib/affiliate'
+import {
+  findAffiliateByDiscountCode,
+  readAffiliateReferralCodeFromCookies,
+} from '@/lib/affiliate-server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import {
   PADDLE_PRICES,
   isValidPaddlePriceId,
   getOrCreatePaddleCustomer,
 } from '@/lib/paddle'
-import { PROFESSIONAL_ORDER, PRO_PLAN, getActivePromotion } from '@/lib/pricing'
+import {
+  PROFESSIONAL_ORDER,
+  PRO_PLAN,
+  getActivePromotion,
+  getActivePromotionByCode,
+  getActivePromotionById,
+  type PromoConfig,
+} from '@/lib/pricing'
 
 function ok(data: Record<string, unknown>) {
   return NextResponse.json({ success: true, data })
@@ -99,17 +114,23 @@ export async function POST(request: NextRequest) {
       return err('Already subscribed to Pro')
     }
 
-    const priceId = body.priceId as string | undefined
-    const couponId = body.couponId as string | undefined
+    const requestedPriceId = typeof body.priceId === 'string' ? body.priceId : undefined
+    const promotionId = typeof body.promotionId === 'string' ? body.promotionId : undefined
+    const requestedPromotionCode =
+      typeof body.promotionCode === 'string' ? body.promotionCode : undefined
 
-    // Resolve: plan ID like 'annual'/'monthly' → paddlePriceId, or pass-through if already a pri_...
-    const resolvedFromPlan = PRO_PLAN.getPriceById(priceId ?? '')?.paddlePriceId
-    const validPriceId =
-      resolvedFromPlan ||
-      (priceId && isValidPaddlePriceId(priceId) ? priceId : '') ||
-      PADDLE_PRICES.proMonthly
+    const selectedPriceOption =
+      requestedPriceId
+        ? (PRO_PLAN.getPriceById(requestedPriceId) ?? PRO_PLAN.getPriceByPaddleId(requestedPriceId))
+        : PRO_PLAN.defaultPrice
 
-    if (!validPriceId) {
+    if (!selectedPriceOption) {
+      return err('Invalid Pro plan selection')
+    }
+
+    const validPriceId = selectedPriceOption.paddlePriceId
+
+    if (!validPriceId || !isValidPaddlePriceId(validPriceId)) {
       return err('Pro plan not configured — missing Paddle price ID', 500)
     }
 
@@ -120,22 +141,73 @@ export async function POST(request: NextRequest) {
       supabase
     )
 
-    // Resolve discount: explicit > auto-apply promo
     const activePromo = getActivePromotion()
-    const effectiveDiscountId: string | undefined =
-      couponId ||
-      (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined) ||
-      undefined
+    let selectedPromotion: PromoConfig | null = null
+    let discountCode: string | null = null
+    let affiliateDiscountCode: string | null = null
+    const serviceSupabase = createServiceRoleClient()
+    const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
+    const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
+
+    if (requestedPromotionCode) {
+      const affiliate = await findAffiliateByDiscountCode(serviceSupabase, requestedPromotionCode)
+
+      if (affiliate) {
+        discountCode = affiliate.discount_code
+        affiliateDiscountCode = affiliate.discount_code
+      } else {
+        selectedPromotion = getActivePromotionByCode(requestedPromotionCode)
+        if (!selectedPromotion || !selectedPromotion.paddleDiscountId) {
+          return err('Invalid or expired promotion')
+        }
+      }
+    } else {
+      const fallbackAffiliateCodes = [cookieAffiliateCode, storedAffiliateCode].filter(
+        (value): value is string => Boolean(value)
+      )
+
+      for (const fallbackCode of fallbackAffiliateCodes) {
+        const affiliate = await findAffiliateByDiscountCode(serviceSupabase, fallbackCode)
+
+        if (!affiliate) {
+          continue
+        }
+
+        discountCode = affiliate.discount_code
+        affiliateDiscountCode = affiliate.discount_code
+        break
+      }
+    }
+
+    if (!discountCode && promotionId) {
+      selectedPromotion = getActivePromotionById(promotionId)
+      if (!selectedPromotion || !selectedPromotion.paddleDiscountId) {
+        return err('Invalid or expired promotion')
+      }
+    } else if (!discountCode && activePromo?.isAutoApply && activePromo.paddleDiscountId) {
+      selectedPromotion = activePromo
+    }
+
+    if (
+      selectedPromotion &&
+      selectedPromotion.appliesTo !== 'all' &&
+      selectedPromotion.appliesTo !== selectedPriceOption.id
+    ) {
+      return err('Promotion does not apply to the selected plan')
+    }
 
     return ok({
       mode: 'subscription',
       priceId: validPriceId,
       customerId,
       customerEmail: profile.email,
-      discountId: effectiveDiscountId ?? null,
+      discountId: discountCode ? null : (selectedPromotion?.paddleDiscountId ?? null),
+      discountCode,
       customData: {
         userId: user.id,
+        userEmail: profile.email,
         mode: 'subscription',
+        affiliateDiscountCode,
         posthogDistinctId: distinctId,
         blogReferrerSlug,
         blogReferrerCta,

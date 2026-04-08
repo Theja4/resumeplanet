@@ -1,3 +1,4 @@
+import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { BuilderVisibility, ResumeData, UniversalConfig, ExperienceItem, EducationItem, CertificationItem, ProjectItem, AwardItem, PublicationItem, CustomSection } from '@/types'
 
 const MARKER_VERSION = 1
@@ -164,47 +165,35 @@ function normalizeResumeData(value: unknown): ResumeData | null {
 
 function normalizeConfig(value: unknown): UniversalConfig | null {
   if (!isRecord(value)) return null
+  const hasAnyConfigField = [
+    'layout',
+    'headerStyle',
+    'bulletStyle',
+    'skillsStyle',
+    'sectionHeadingStyle',
+    'contactStyle',
+    'dateLayout',
+    'nameSize',
+    'accentColor',
+    'fontFamily',
+    'density',
+  ].some((key) => key in value)
 
-  const layout = value.layout
-  const headerStyle = value.headerStyle
-  const bulletStyle = value.bulletStyle
-  const skillsStyle = value.skillsStyle
-  const density = value.density
+  if (!hasAnyConfigField) return null
 
-  if (
-    layout !== 'single-column' &&
-    layout !== 'sidebar-left' &&
-    layout !== 'sidebar-right' &&
-    layout !== 'sidebar'
-  ) {
-    return null
-  }
-
-  if (headerStyle !== 'banner' && headerStyle !== 'sidebar-integrated' && headerStyle !== 'minimal') {
-    return null
-  }
-
-  if (bulletStyle !== 'plain' && bulletStyle !== 'timeline') {
-    return null
-  }
-
-  if (skillsStyle !== 'inline' && skillsStyle !== 'badges') {
-    return null
-  }
-
-  if (density !== 'compressed' && density !== 'relaxed') {
-    return null
-  }
-
-  return {
-    layout,
-    headerStyle,
-    bulletStyle,
-    skillsStyle,
+  return sanitizeUniversalConfig({
+    layout: stringValue(value.layout) as UniversalConfig['layout'],
+    headerStyle: stringValue(value.headerStyle) as UniversalConfig['headerStyle'],
+    bulletStyle: stringValue(value.bulletStyle) as UniversalConfig['bulletStyle'],
+    skillsStyle: stringValue(value.skillsStyle) as UniversalConfig['skillsStyle'],
+    sectionHeadingStyle: stringValue(value.sectionHeadingStyle) as UniversalConfig['sectionHeadingStyle'],
+    contactStyle: stringValue(value.contactStyle) as UniversalConfig['contactStyle'],
+    dateLayout: stringValue(value.dateLayout) as UniversalConfig['dateLayout'],
+    nameSize: stringValue(value.nameSize) as UniversalConfig['nameSize'],
     accentColor: stringValue(value.accentColor),
     fontFamily: stringValue(value.fontFamily),
-    density,
-  }
+    density: stringValue(value.density) as UniversalConfig['density'],
+  })
 }
 
 function bytesToBase64Url(bytes: Uint8Array): string {

@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { paddle } from '@/lib/paddle'
 import { createClient } from '@/lib/supabase/server'
-import type { Discount } from '@paddle/paddle-node-sdk'
+import { findAffiliateByDiscountCode } from '@/lib/affiliate-server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { getActivePromotionByCode } from '@/lib/pricing'
+
+function buildDisplayLabel(discountType: 'percent' | 'fixed', discountValue: number) {
+  if (discountType === 'percent') {
+    return `${discountValue}% off`
+  }
+
+  return `$${discountValue.toFixed(2)} off`
+}
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>
@@ -23,55 +32,35 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const discountCollection = paddle.discounts.list()
-    let discount: Discount | undefined
+    const serviceSupabase = createServiceRoleClient()
+    const affiliate = await findAffiliateByDiscountCode(serviceSupabase, code)
 
-    for await (const d of discountCollection) {
-      if (d.code?.toUpperCase() === code && d.status === 'active') {
-        discount = d
-        break
-      }
+    if (affiliate) {
+      return NextResponse.json({
+        valid: true,
+        discountCode: affiliate.discount_code,
+        discountType: 'percent',
+        discountValue: affiliate.discount_percent,
+        displayLabel: buildDisplayLabel('percent', affiliate.discount_percent),
+      })
     }
 
-    if (!discount) {
+    const promo = getActivePromotionByCode(code)
+
+    if (!promo || !promo.paddleDiscountId) {
       return NextResponse.json({
         valid: false,
         errorMessage: 'Invalid or expired promo code',
       })
     }
 
-    // Check expiry
-    if (discount.expiresAt) {
-      const expires = new Date(discount.expiresAt)
-      if (expires < new Date()) {
-        return NextResponse.json({
-          valid: false,
-          errorMessage: 'This promo code has expired',
-        })
-      }
-    }
-
-    // Build display label
-    let displayLabel = ''
-    if (discount.type === 'percentage') {
-      displayLabel = `${discount.amount}% off`
-    } else if (discount.type === 'flat') {
-      displayLabel = `$${(Number(discount.amount) / 100).toFixed(2)} off`
-    } else if (discount.type === 'flat_per_seat') {
-      displayLabel = `$${(Number(discount.amount) / 100).toFixed(2)} off per seat`
-    }
-
-    if (!discount.recur) {
-      displayLabel += ' your first payment'
-    }
-
     return NextResponse.json({
       valid: true,
-      discountId: discount.id,
-      discountCode: discount.code,
-      discountType: discount.type,
-      discountValue: Number(discount.amount),
-      displayLabel: displayLabel || 'Discount applied',
+      promotionId: promo.id,
+      discountCode: promo.paddleDiscountCode ?? code,
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
     })
   } catch (err) {
     console.error('Promo validation error:', err)

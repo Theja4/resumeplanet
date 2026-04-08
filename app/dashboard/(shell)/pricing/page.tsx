@@ -1,14 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import {
+  buildAffiliatePricingPromo,
+  resolveAffiliateSourceCodeFromProfile,
+} from '@/lib/affiliate'
+import {
+  findAffiliateByDiscountCode,
+  readAffiliateReferralCodeFromCookies,
+} from '@/lib/affiliate-server'
 import { redirect } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import BillingUpgradeSection from './BillingUpgradeSection'
 import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
 import UpgradePoller from '@/components/shared/UpgradePoller'
-import { PROFESSIONAL_ORDER, getActiveExitIntentPromo } from '@/lib/pricing'
+import { PROFESSIONAL_ORDER, getActiveExitIntentPromo, getActivePromotion } from '@/lib/pricing'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import PricingPageTracker from '@/components/analytics/PricingPageTracker'
-import type { Profile, Order } from '@/types'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import type { Affiliate, Profile, Order } from '@/types'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -39,8 +48,8 @@ export default async function PricingPage({
 }) {
   const params = await searchParams
   const upgraded = params.upgraded === 'true'
-  const promoCode = params.promo
   const pricingSource = params.source ?? 'dashboard'
+  const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -60,6 +69,25 @@ export default async function PricingPage({
   const profile = profileResult.data as Profile | null
   if (!profile) redirect('/auth/login')
 
+  const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
+  const serviceSupabase = createServiceRoleClient()
+  const affiliateLookupCandidates = params.promo
+    ? [params.promo]
+    : [cookieAffiliateCode, storedAffiliateCode].filter((value): value is string => Boolean(value))
+
+  let affiliateAttribution: Affiliate | null = null
+
+  for (const candidateCode of affiliateLookupCandidates) {
+    affiliateAttribution = await findAffiliateByDiscountCode(serviceSupabase, candidateCode)
+
+    if (affiliateAttribution) {
+      break
+    }
+  }
+
+  const promoCode =
+    params.promo ?? affiliateAttribution?.discount_code ?? storedAffiliateCode ?? undefined
+  const pricingPromo = buildAffiliatePricingPromo(affiliateAttribution) ?? getActivePromotion()
   const isPro = profile.plan === 'pro'
   const paidOrders = (ordersResult.data ?? []) as Order[]
   const exitPromo = getActiveExitIntentPromo()
@@ -98,7 +126,12 @@ export default async function PricingPage({
           </div>
 
           <div className="border-t border-black/6 pt-4">
-            <BillingUpgradeSection autoFillPromo={promoCode} isPro={isPro} compact />
+            <BillingUpgradeSection
+              autoFillPromo={promoCode}
+              displayPromo={pricingPromo}
+              isPro={isPro}
+              compact
+            />
           </div>
         </DashboardSurface>
 

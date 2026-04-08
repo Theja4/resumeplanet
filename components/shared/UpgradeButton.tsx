@@ -8,7 +8,8 @@ import { Analytics } from '@/lib/analytics'
 interface Props {
   label?: string
   priceId?: string
-  couponId?: string
+  promotionId?: string
+  promotionCode?: string
   variant?: 'button' | 'link'
   className?: string
   onSuccess?: () => void
@@ -19,7 +20,8 @@ interface Props {
 export default function UpgradeButton({
   label,
   priceId,
-  couponId,
+  promotionId,
+  promotionCode,
   variant = 'button',
   className = '',
   onSuccess,
@@ -38,8 +40,9 @@ export default function UpgradeButton({
       })
     }
     await openSubscriptionCheckout({
-      priceId: priceId ?? PRO_PLAN.defaultPrice.paddlePriceId,
-      couponId,
+      priceId: priceId ?? PRO_PLAN.defaultPrice.id,
+      promotionId,
+      promotionCode,
       onSuccess: () => {
         setIsLoading(false)
         onSuccess?.()

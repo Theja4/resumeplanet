@@ -9,6 +9,8 @@ type RateLimitScope =
   | 'ats_score_authenticated'
   | 'ats_score_anonymous'
   | 'match_score_authenticated'
+  | 'resume_parse_authenticated'
+  | 'cover_letter_generate_authenticated'
 
 interface ConsumeRateLimitOptions {
   request: NextRequest

@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { Sparkles } from 'lucide-react'
 
@@ -37,8 +38,8 @@ export default function DashboardHeader() {
       <div className="rounded-[1.8rem] border border-white/70 bg-white/80 px-7 py-5 shadow-[0_18px_44px_rgba(25,28,29,0.07)] backdrop-blur-2xl">
         <div className="flex items-end justify-between gap-6">
           <div className="space-y-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-              <Sparkles size={14} strokeWidth={2.4} />
+            <span className="inline-flex items-center gap-2.5 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
+              <Image src="/icon.png" alt="Rezoomed logo" width={20} height={20} className="rounded-sm" />
               Rezoomed Workspace
             </span>
             <div>

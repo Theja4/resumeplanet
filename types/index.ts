@@ -10,9 +10,84 @@ export interface Profile {
   paddle_subscription_id: string | null
   subscription_status: string | null
   subscription_interval: 'monthly' | 'annual' | null
+  affiliate_source_code: string | null
+  affiliate_source_recorded_at: string | null
   ats_scans_today: number
   ats_scans_reset_at: string
   created_at: string
+}
+
+// ─── Affiliate Program ───────────────────────────────────────────────────────
+
+export type AffiliateReferralStatus = 'active' | 'trialing' | 'churned'
+export type AffiliatePayoutStatus = 'pending' | 'paid' | 'rejected'
+
+export interface Affiliate {
+  id: string
+  user_id: string
+  name: string
+  email: string
+  discount_code: string
+  discount_percent: number
+  commission_percent: number
+  paypal_email: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AffiliateReferral {
+  id: string
+  affiliate_id: string
+  referred_user_email: string
+  paddle_subscription_id: string
+  plan_name: string
+  status: AffiliateReferralStatus
+  mrr: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AffiliatePayout {
+  id: string
+  affiliate_id: string
+  amount: number
+  paypal_email: string
+  status: AffiliatePayoutStatus
+  requested_at: string
+  paid_at: string | null
+}
+
+export interface AffiliateCommission {
+  id: string
+  affiliate_id: string
+  referral_id: string | null
+  paddle_transaction_id: string
+  gross_amount: number
+  commission_amount: number
+  discount_code: string | null
+  created_at: string
+}
+
+export interface AffiliateMonthlySignup {
+  monthKey: string
+  label: string
+  signups: number
+}
+
+export interface AffiliateDashboardStats {
+  totalSignups: number
+  activeSubscriptions: number
+  totalEarned: number
+  pendingPayout: number
+  monthlySignups: AffiliateMonthlySignup[]
+}
+
+export interface AffiliateReferralPage {
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  referrals: AffiliateReferral[]
 }
 
 // ─── Resume ───────────────────────────────────────────────────────────────────
@@ -330,11 +405,30 @@ export interface TemplateProps {
 
 // ─── Universal Template ─────────────────────────────────────────────────────────
 
+export type UniversalLayout = 'single-column' | 'sidebar-left' | 'sidebar-right' | 'sidebar'
+export type UniversalHeaderStyle =
+  | 'minimal'
+  | 'banner'
+  | 'sidebar-integrated'
+  | 'classic'
+  | 'centered'
+  | 'compact'
+export type UniversalBulletStyle = 'plain' | 'timeline' | 'dash' | 'square'
+export type UniversalSkillsStyle = 'inline' | 'badges' | 'divider' | 'stacked'
+export type UniversalSectionHeadingStyle = 'rule' | 'label' | 'minimal'
+export type UniversalContactStyle = 'inline' | 'stacked'
+export type UniversalDateLayout = 'right' | 'inline'
+export type UniversalNameSize = 'standard' | 'large' | 'hero'
+
 export interface UniversalConfig {
-  layout: 'single-column' | 'sidebar-left' | 'sidebar-right' | 'sidebar' // 'sidebar' is deprecated
-  headerStyle: 'banner' | 'sidebar-integrated' | 'minimal'
-  bulletStyle: 'plain' | 'timeline'
-  skillsStyle: 'inline' | 'badges'
+  layout: UniversalLayout // legacy sidebar values are sanitized back to single-column
+  headerStyle: UniversalHeaderStyle
+  bulletStyle: UniversalBulletStyle
+  skillsStyle: UniversalSkillsStyle
+  sectionHeadingStyle: UniversalSectionHeadingStyle
+  contactStyle: UniversalContactStyle
+  dateLayout: UniversalDateLayout
+  nameSize: UniversalNameSize
   accentColor: string
   fontFamily: string
   density: 'compressed' | 'relaxed'
@@ -342,9 +436,13 @@ export interface UniversalConfig {
 
 export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
   layout: 'single-column',
-  headerStyle: 'minimal',
+  headerStyle: 'classic',
   bulletStyle: 'plain',
   skillsStyle: 'inline',
+  sectionHeadingStyle: 'rule',
+  contactStyle: 'inline',
+  dateLayout: 'right',
+  nameSize: 'large',
   accentColor: '#4F46E5', // indigo
   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
   density: 'relaxed',

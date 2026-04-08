@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight,
@@ -41,7 +42,8 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 function BrandLockup() {
   return (
-    <Link href="/" className="inline-flex items-center">
+    <Link href="/" className="inline-flex items-center gap-2">
+      <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
       <span className="text-lg font-black tracking-tighter text-on-background">Rezoomed</span>
     </Link>
   )
@@ -460,10 +462,18 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       Analytics.loginCompleted({ method: 'email' })
 
       if (data.user?.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('plan, full_name')
+          .eq('id', data.user.id)
+          .maybeSingle()
+
         Analytics.identify(data.user.id, {
           email: data.user.email,
-          fullName: data.user.user_metadata?.full_name as string | undefined,
-          plan: 'free',
+          fullName:
+            (profile?.full_name as string | undefined) ??
+            (data.user.user_metadata?.full_name as string | undefined),
+          plan: profile?.plan === 'pro' ? 'pro' : 'free',
           signupDate: data.user.created_at,
         })
       }

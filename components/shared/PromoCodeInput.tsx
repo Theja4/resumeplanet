@@ -5,7 +5,7 @@ import { CheckCircle, XCircle } from 'lucide-react'
 
 export interface PromoValidationResult {
   valid: boolean
-  discountId?: string
+  promotionId?: string
   discountCode?: string
   discountType?: string
   discountValue?: number

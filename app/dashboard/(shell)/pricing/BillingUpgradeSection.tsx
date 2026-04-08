@@ -13,32 +13,49 @@ import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   autoFillPromo?: string
+  displayPromo?: PromoConfig | null
   isPro: boolean
   compact?: boolean
 }
 
-export default function BillingUpgradeSection({ autoFillPromo, isPro, compact = false }: Props) {
+export default function BillingUpgradeSection({
+  autoFillPromo,
+  displayPromo,
+  isPro,
+  compact = false,
+}: Props) {
   const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
-  const [appliedDiscountId, setAppliedDiscountId] = useState<string | undefined>(undefined)
+  const [appliedPromotionId, setAppliedPromotionId] = useState<string | undefined>(undefined)
+  const [appliedPromotionCode, setAppliedPromotionCode] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const activePromo: PromoConfig | null = getActivePromotion()
+  const activePromo: PromoConfig | null = displayPromo ?? getActivePromotion()
   const { openSubscriptionCheckout } = usePaddleCheckout()
 
   function handlePromoApply(result: PromoValidationResult) {
-    setAppliedDiscountId(result.valid ? result.discountId : undefined)
+    setAppliedPromotionId(result.valid ? result.promotionId : undefined)
+    setAppliedPromotionCode(result.valid ? result.discountCode : undefined)
   }
 
-  const effectiveDiscountId =
-    appliedDiscountId ??
-    (activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined)
+  const hasAppliedPromotion =
+    appliedPromotionId !== undefined || appliedPromotionCode !== undefined
+
+  const effectivePromotionId =
+    hasAppliedPromotion
+      ? appliedPromotionId
+      : (activePromo?.isAutoApply && activePromo.paddleDiscountId ? activePromo.id : undefined)
+  const effectivePromotionCode =
+    hasAppliedPromotion
+      ? appliedPromotionCode
+      : (activePromo?.isAutoApply ? activePromo.paddleDiscountCode : undefined)
 
   async function handleUpgrade() {
     setIsLoading(true)
     setCheckoutError(null)
     await openSubscriptionCheckout({
       priceId: selectedPriceId,
-      couponId: effectiveDiscountId,
+      promotionId: effectivePromotionId,
+      promotionCode: effectivePromotionCode,
       onSuccess: () => setIsLoading(false),
       onError: (err) => {
         setIsLoading(false)

@@ -128,7 +128,8 @@ export default function PaywallModal({ isOpen, onClose, feature, reason }: Paywa
           <div className="space-y-4 text-center sm:text-left relative z-20">
             <UpgradeButton
               label={ctaLabel}
-              couponId={activePromo?.isAutoApply ? activePromo.paddleDiscountId : undefined}
+              promotionId={activePromo?.isAutoApply ? activePromo.id : undefined}
+              promotionCode={activePromo?.isAutoApply ? activePromo.paddleDiscountCode : undefined}
               analyticsLocation={`paywall:${feature}`}
               analyticsVariant="modal"
               className="!bg-[#a3ffb3] !hover:bg-[#9bf7ac] !text-[#19793c] !py-4 !px-8 !font-bold !text-lg !rounded-full !shadow-none !border-none !inline-flex !items-center !justify-center !gap-2 !w-full"

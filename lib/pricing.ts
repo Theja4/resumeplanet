@@ -98,13 +98,13 @@ export const FREE_PLAN = {
   name: 'Free',
 
   limits: {
-    atsScansPerDay: 3,
+    atsScansPerDay: 5,
     maxResumes: 3,
     maxTrackedJobs: 5,
   },
 
   features: [
-    '3 ATS scans per day',
+    '5 ATS scans per day',
     'Up to 3 saved resumes',
     'Resume Builder with PDF export',
     'Basic ATS analysis',
@@ -343,20 +343,43 @@ export const PROMOTIONS: PromoConfig[] = [
 // RUNTIME HELPERS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+export function isPromotionActive(promo: PromoConfig, now = new Date()) {
+  const current = new Date(now)
+  current.setHours(0, 0, 0, 0)
+
+  const start = promo.startDate ? new Date(promo.startDate) : null
+  const end = promo.endDate ? new Date(promo.endDate) : null
+
+  if (start && current < start) return false
+  if (end && current > end) return false
+
+  return true
+}
+
+export function getPromotionById(id: string) {
+  return PROMOTIONS.find(promo => promo.id === id) ?? null
+}
+
+export function getActivePromotionById(id: string) {
+  const promo = getPromotionById(id)
+  return promo && isPromotionActive(promo) ? promo : null
+}
+
+export function getActivePromotionByCode(code: string) {
+  const normalizedCode = code.trim().toUpperCase()
+  if (!normalizedCode) return null
+
+  return (
+    PROMOTIONS.find(
+      promo =>
+        promo.paddleDiscountCode?.trim().toUpperCase() === normalizedCode &&
+        isPromotionActive(promo)
+    ) ?? null
+  )
+}
+
 export function getActivePromotion(): PromoConfig | null {
-  const now = new Date()
-  now.setHours(0, 0, 0, 0)
-
-  for (const promo of PROMOTIONS) {
-    const start = promo.startDate ? new Date(promo.startDate) : null
-    const end = promo.endDate ? new Date(promo.endDate) : null
-
-    if (start && now < start) continue
-    if (end && now > end) continue
-
-    return promo
-  }
-  return null
+  return PROMOTIONS.find(promo => isPromotionActive(promo)) ?? null
 }
 
 export function getActiveBannerPromo(): PromoConfig | null {
@@ -369,14 +392,26 @@ export function getActiveExitIntentPromo(): PromoConfig | null {
   return active?.isExitIntent ? active : null
 }
 
+function roundDisplayPrice(value: number) {
+  return Math.round(value * 100) / 100
+}
+
+function formatCurrencyAmount(value: number) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2)
+}
+
 export function getEffectiveDisplay(
   option: PriceOption,
   promo: PromoConfig | null
 ): PriceDisplay {
-  if (
-    promo?.overrideDisplay &&
-    (promo.appliesTo === 'all' || promo.appliesTo === option.id)
-  ) {
+  const appliesToOption =
+    promo && (promo.appliesTo === 'all' || promo.appliesTo === option.id)
+
+  if (!appliesToOption) {
+    return option.display
+  }
+
+  if (promo.overrideDisplay) {
     return {
       displayPrice: promo.overrideDisplay.displayPrice,
       actualPrice: promo.overrideDisplay.actualPrice,
@@ -384,7 +419,19 @@ export function getEffectiveDisplay(
       currencySymbol: option.display.currencySymbol,
     }
   }
-  return option.display
+
+  const basePrice = option.display.displayPrice
+  const discountedPrice =
+    promo.discountType === 'percent'
+      ? basePrice * (1 - promo.discountValue / 100)
+      : Math.max(0, basePrice - promo.discountValue)
+
+  return {
+    displayPrice: roundDisplayPrice(discountedPrice),
+    actualPrice: basePrice,
+    currency: option.display.currency,
+    currencySymbol: option.display.currencySymbol,
+  }
 }
 
 export function formatPriceDisplay(
@@ -392,11 +439,15 @@ export function formatPriceDisplay(
   option: PriceOption
 ) {
   const sym = display.currencySymbol
-  const main = `${sym}${display.displayPrice}`
-  const actual = display.actualPrice != null ? `${sym}${display.actualPrice}` : null
-  const perMonth = option.perMonthEquivalent
-    ? `${sym}${option.perMonthEquivalent.toFixed(2)}/mo`
-    : null
+  const main = `${sym}${formatCurrencyAmount(display.displayPrice)}`
+  const actual =
+    display.actualPrice != null ? `${sym}${formatCurrencyAmount(display.actualPrice)}` : null
+  const perMonth =
+    option.interval === 'year'
+      ? `${sym}${(display.displayPrice / (12 * option.intervalCount)).toFixed(2)}/mo`
+      : option.perMonthEquivalent
+        ? `${sym}${option.perMonthEquivalent.toFixed(2)}/mo`
+        : null
 
   return {
     main,

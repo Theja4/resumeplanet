@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { paddle } from '@/lib/paddle'
 import { PRO_PLAN } from '@/lib/pricing'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
   if (!priceId) return null
@@ -53,12 +53,9 @@ export async function POST() {
   const subscriptionInterval = resolveInterval(priceId)
 
   // Update profile with service client (same pattern as webhook handler)
-  const serviceSupabase = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const serviceSupabase = createServiceRoleClient()
 
-  await serviceSupabase
+  const { error: updateError } = await serviceSupabase
     .from('profiles')
     .update({
       plan: 'pro',
@@ -67,6 +64,11 @@ export async function POST() {
       subscription_interval: subscriptionInterval,
     })
     .eq('id', user.id)
+
+  if (updateError) {
+    console.error('sync-subscription: profile update error', updateError)
+    return NextResponse.json({ isPro: false }, { status: 500 })
+  }
 
   console.log(`sync-subscription: user ${user.id} synced to Pro, interval: ${subscriptionInterval}`)
   return NextResponse.json({ isPro: true })

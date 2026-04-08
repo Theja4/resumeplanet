@@ -4,16 +4,10 @@ import { DEFAULT_UNIVERSAL_CONFIG } from '@/types'
 import { SAMPLE_RESUME } from '@/lib/sampleResumeData'
 import Link from 'next/link'
 import { ArrowRight, LayoutDashboard, Palette, Type } from 'lucide-react'
-import dynamic from 'next/dynamic'
 import type { LucideIcon } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { TemplateGalleryLink, TemplateGalleryTracker } from '@/components/analytics/TemplateGalleryAnalytics'
-
-// Dynamically import UniversalTemplate to avoid SSR issues
-const UniversalTemplate = dynamic(
-  () => import('@/components/templates/UniversalTemplate').then(mod => mod.default),
-  { ssr: false }
-)
+import UniversalTemplatePreview from '@/components/templates/UniversalTemplatePreview'
 
 export default async function TemplatesPage() {
   const supabase = await createClient()
@@ -143,12 +137,9 @@ export default async function TemplatesPage() {
                 pointerEvents: 'none',
               }}
             >
-              <UniversalTemplate
+              <UniversalTemplatePreview
                 data={SAMPLE_RESUME}
-                isEditing={false}
-                onFieldChange={() => {}}
                 config={DEFAULT_UNIVERSAL_CONFIG}
-                density={DEFAULT_UNIVERSAL_CONFIG.density}
               />
             </div>
           </div>

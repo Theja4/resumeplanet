@@ -27,6 +27,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 interface UploadZoneProps {
   onUploadSuccess: (resume: Resume) => void
   disabled?: boolean
+  variant?: 'hero' | 'compact'
 }
 
 type ParsedResumeLike = ResumeData | null | undefined
@@ -53,7 +54,11 @@ function countResumeSections(parsedData: ParsedResumeLike): number {
   return sections.filter(Boolean).length
 }
 
-export default function UploadZone({ onUploadSuccess, disabled = false }: UploadZoneProps) {
+export default function UploadZone({
+  onUploadSuccess,
+  disabled = false,
+  variant = 'hero',
+}: UploadZoneProps) {
   const [state, setState] = useState<UploadState>('idle')
   const [progress, setProgress] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -223,11 +228,14 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
   }
 
   const isActive = state === 'uploading' || state === 'parsing'
+  const isCompact = variant === 'compact'
 
   return (
-    <section className="relative group w-full mb-12">
+    <section className={`relative group w-full ${isCompact ? 'h-full' : 'mb-12'}`}>
       {/* Background glow effect */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary-container/20 to-secondary-container/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+      {!isCompact ? (
+        <div className="absolute -inset-1 bg-gradient-to-r from-primary-container/20 to-secondary-container/20 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+      ) : null}
       
       <div
         onDragOver={(e) => {
@@ -237,10 +245,11 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         className={`
-          relative bg-surface-container-lowest p-10 rounded-3xl flex flex-col items-center justify-center 
+          relative flex flex-col items-center justify-center rounded-3xl border-2 border-dashed transition-all
           transition-all border-2 border-dashed 
           ${isDragging ? 'border-primary/40 bg-primary/5' : 'border-outline-variant/20 hover:border-primary/30'}
           ${disabled || isActive ? 'cursor-default' : 'cursor-pointer'}
+          ${isCompact ? 'h-full bg-white px-5 py-6 sm:px-6 sm:py-7' : 'bg-surface-container-lowest p-10'}
         `}
         onClick={() => {
           if (!disabled && !isActive) inputRef.current?.click()
@@ -256,32 +265,34 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
         />
 
         {state === 'done' ? (
-          <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle2 size={40} className="text-green-500" />
+          <div className={`${isCompact ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'} rounded-full bg-green-50 flex items-center justify-center`}>
+            <CheckCircle2 size={isCompact ? 28 : 40} className="text-green-500" />
           </div>
         ) : (
-          <div className="w-20 h-20 bg-primary/5 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110">
+          <div className={`${isCompact ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'} bg-primary/5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110`}>
             {state === 'parsing' ? (
-              <FileText size={36} className="text-primary animate-pulse" />
+              <FileText size={isCompact ? 24 : 36} className="text-primary animate-pulse" />
             ) : (
-              <Upload size={36} className={`text-primary ${isDragging ? 'scale-110' : ''}`} />
+              <Upload size={isCompact ? 24 : 36} className={`text-primary ${isDragging ? 'scale-110' : ''}`} />
             )}
           </div>
         )}
 
-        <h2 className="text-2xl font-extrabold text-on-surface mb-2 tracking-tight">
-          {state === 'parsing' ? 'Analyzing with AI…' : 'Upload Your Resume'}
+        <h2 className={`${isCompact ? 'text-xl' : 'text-2xl'} mb-2 font-extrabold tracking-tight text-on-surface`}>
+          {state === 'parsing' ? 'Analyzing with AI…' : isCompact ? 'Upload your resume' : 'Upload Your Resume'}
         </h2>
         
-        <p className="text-on-surface-variant text-center max-w-md mb-8">
+        <p className={`max-w-md text-center text-on-surface-variant ${isCompact ? 'mb-5 text-sm leading-6' : 'mb-8'}`}>
           {state === 'parsing' 
             ? "We're extracting your skills and experience to build your professional profile."
-            : "Drag and drop your PDF here to start optimizing. We'll automatically parse your data."}
+            : isCompact
+              ? "Drop a PDF here or click to upload. After parsing, we’ll open Tailor Mode for that resume."
+              : "Drag and drop your PDF here to start optimizing. We'll automatically parse your data."}
         </p>
 
         {(state === 'idle' || state === 'error') && (
           <button 
-            className="px-10 py-3.5 bg-[var(--signature-gradient)] text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
+            className={`${isCompact ? 'px-6 py-3 text-sm' : 'px-10 py-3.5'} bg-[var(--signature-gradient)] text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2`}
             disabled={disabled}
           >
             <Upload size={18} />
@@ -307,7 +318,7 @@ export default function UploadZone({ onUploadSuccess, disabled = false }: Upload
           </div>
         )}
 
-        <div className="mt-10 flex items-center gap-6 text-[11px] font-bold text-outline uppercase tracking-widest opacity-60">
+        <div className={`${isCompact ? 'mt-6 gap-4 text-[10px]' : 'mt-10 gap-6 text-[11px]'} flex items-center font-bold text-outline uppercase tracking-widest opacity-60`}>
           <span>PDF only</span>
           <span className="w-1 h-1 bg-outline rounded-full"></span>
           <span>Max size: {MAX_RESUME_UPLOAD_LABEL}</span>

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import type { Profile } from '@/types'
-import { Upload, ClipboardCheck, BriefcaseBusiness, Search } from 'lucide-react'
+import { Upload, ClipboardCheck, BriefcaseBusiness, Search, Wallet } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,6 +55,11 @@ export default async function DashboardPage() {
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false }),
   ])
+  const { data: affiliateRecord } = await supabase
+    .from('affiliates')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
   const profile = profileResult.data as Profile | null
   const resumeCount = resumesResult.count ?? 0
@@ -147,7 +152,7 @@ export default async function DashboardPage() {
       {/* Quick Actions Bento */}
       <div>
         <h3 className="mb-4 text-lg font-bold text-on-surface">Quick Actions</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {/* Action Card 1: Upload */}
           <Link href="/dashboard/resumes" className="dashboard-card-hover group relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] p-8 shadow-[0_20px_50px_rgba(25,28,29,0.06)] transition-all duration-300 hover:-translate-y-1">
             <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -198,6 +203,23 @@ export default async function DashboardPage() {
               </div>
               <h4 className="text-xl font-bold mb-2">Browse Job Board</h4>
               <p className="text-sm text-on-surface-variant leading-relaxed">Search live openings from connected sources and push the best ones straight into your tracker.</p>
+            </div>
+          </Link>
+
+          <Link href="/affiliate/dashboard" className="dashboard-card-hover group relative overflow-hidden rounded-[1.75rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] p-8 shadow-[0_20px_50px_rgba(25,28,29,0.06)] transition-all duration-300 hover:-translate-y-1">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-container/0 to-primary-container/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="relative z-10 text-left">
+              <div className="w-12 h-12 bg-primary-container/50 rounded-xl flex items-center justify-center text-primary mb-6 group-hover:scale-110 transition-transform">
+                <Wallet size={22} strokeWidth={1.75} />
+              </div>
+              <h4 className="text-xl font-bold mb-2">
+                {affiliateRecord?.id ? 'Affiliate Dashboard' : 'Activate Affiliate'}
+              </h4>
+              <p className="text-sm text-on-surface-variant leading-relaxed">
+                {affiliateRecord?.id
+                  ? 'Review referrals, copy your code, and request payouts from the same workspace shell.'
+                  : 'Create your code once, unlock the affiliate area, and start tracking referrals and earnings.'}
+              </p>
             </div>
           </Link>
         </div>

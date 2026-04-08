@@ -3,12 +3,111 @@ import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
+import pdfjsParser from '@/lib/parsers/pdfjs'
+import claudeParser from '@/lib/parsers/claude'
+import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
+import {
+  assessResumeParseConfidence,
+  chooseBetterParseCandidate,
+  shouldAttemptRepair,
+  type ResumeParseCandidate,
+} from '@/lib/parserConfidence'
+import type { ResumeData } from '@/types'
+import type { FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
 
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
+
+function buildParseCandidate(
+  data: ResumeData | null,
+  source: ResumeParseCandidate['source'],
+): ResumeParseCandidate | null {
+  if (!data) return null
+
+  return {
+    data,
+    source,
+    confidence: assessResumeParseConfidence(data),
+  }
+}
+
+function buildMarkerCandidate(snapshot: FirstPartyResumeSnapshot | null): ResumeParseCandidate | null {
+  if (!snapshot) return null
+
+  return {
+    data: snapshot.data,
+    source: 'marker',
+    confidence: {
+      score: 100,
+      level: 'high',
+      issues: [],
+    },
+  }
+}
+
+function canUseDeepSeekRepairParser() {
+  return Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
+}
+
+function resumeDataToText(data: ResumeData | null): string {
+  if (!data) return ''
+
+  const parts: string[] = [
+    data.name,
+    data.currentRole,
+    data.summary,
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedin,
+    data.website,
+  ]
+
+  for (const item of data.experience) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.education) {
+    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
+  }
+
+  parts.push(...data.skills)
+
+  for (const item of data.projects) {
+    parts.push(item.name, item.description, ...(item.technologies ?? []))
+  }
+
+  for (const item of data.certifications) {
+    parts.push(item.name, item.issuer, item.date)
+  }
+
+  for (const item of data.volunteer) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.awards) parts.push(item.title, item.issuer, item.date)
+  for (const item of data.publications) parts.push(item.title, item.publisher, item.date)
+  parts.push(...data.languages, ...data.interests, ...data.references)
+
+  for (const section of data.customSections ?? []) {
+    parts.push(section.title)
+    if (section.type === 'text') parts.push(section.text ?? '')
+    if (section.type === 'tags') parts.push(...(section.tags ?? []))
+    if (section.type === 'complex') {
+      for (const item of section.items ?? []) {
+        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+        parts.push(...(item.bullets ?? []))
+      }
+    }
+  }
+
+  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -49,27 +148,77 @@ export async function POST(request: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
+  const fileType = file.type
 
-  let text: string
+  let extractedText: string
   let pageCount = 1
   try {
-    if (file.type === 'application/pdf') {
+    if (fileType === 'application/pdf') {
       const pages = await extractPDFItems(buffer)
       pageCount = pages.length || 1
-      text = pagesToLines(pages).map(line => line.text).join('\n')
+      extractedText = pagesToLines(pages).map(line => line.text).join('\n')
     } else {
       const mammoth = await import('mammoth')
       const result = await mammoth.extractRawText({ buffer })
-      text = result.value
+      extractedText = result.value
     }
   } catch (err) {
     console.error('Text extraction error:', err)
     return NextResponse.json({ success: false, error: 'EXTRACTION_FAILED' }, { status: 500 })
   }
 
+  let markerSnapshot: FirstPartyResumeSnapshot | null = null
+  if (fileType === 'application/pdf') {
+    markerSnapshot = await extractFirstPartyResumeSnapshotFromPdf(buffer)
+  }
+
+  const markerCandidate = buildMarkerCandidate(markerSnapshot)
+
+  let parsedData: ResumeData | null = null
+  let serverParseError: unknown = null
+
+  if (!markerCandidate) {
+    try {
+      parsedData = await pdfjsParser.parse(buffer, fileType)
+    } catch (error) {
+      serverParseError = error
+      parsedData = null
+    }
+  }
+
+  let selectedCandidate = chooseBetterParseCandidate(
+    markerCandidate,
+    buildParseCandidate(parsedData, 'fast'),
+  )
+
+  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
+    try {
+      const repairedData = await claudeParser.parse(buffer, fileType)
+      selectedCandidate = chooseBetterParseCandidate(
+        selectedCandidate,
+        buildParseCandidate(repairedData, 'repair'),
+      )
+    } catch (repairError) {
+      console.error('ATS extract repair parse failed:', repairError)
+    }
+  }
+
+  const text = extractedText.trim().length >= 50
+    ? extractedText
+    : resumeDataToText(selectedCandidate?.data ?? null)
+
   if (text.trim().length < 50) {
     return NextResponse.json({ success: false, error: 'SCANNED_OR_EMPTY' }, { status: 422 })
   }
 
-  return NextResponse.json({ success: true, text, pageCount })
+  if (!selectedCandidate && serverParseError) {
+    console.warn('ATS extract structured parse unavailable:', serverParseError)
+  }
+
+  return NextResponse.json({
+    success: true,
+    text,
+    pageCount,
+    parsedData: selectedCandidate?.data ?? null,
+  })
 }

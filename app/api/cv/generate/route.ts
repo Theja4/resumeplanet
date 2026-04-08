@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache } from '@/lib/aiRequestCache'
 import { requirePro } from '@/lib/planEnforcement'
 import { parseResume } from '@/lib/parsers'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { generateCoverLetterFromResumeData } from '@/lib/cv/generator'
 import {
   normalizeResumeData,
@@ -39,6 +40,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (auth instanceof NextResponse) {
     return auth
+  }
+
+  // ── Rate Limit ─────────────────────────────────────────────────────────────
+  const rateLimit = await consumeRateLimit({
+    request,
+    userId: auth.userId,
+    scope: 'cover_letter_generate_authenticated',
+    limit: 20,
+    windowSeconds: 60 * 60,
+  })
+
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit, 'TOO_MANY_COVER_LETTER_REQUESTS')
   }
 
   let formData: FormData

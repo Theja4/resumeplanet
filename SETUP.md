@@ -1,4 +1,4 @@
-# ResumAI — Local Setup Guide
+# Rezoomed — Local Setup Guide
 
 Follow these steps in order. After completing all steps you will have a working local dev environment with Google OAuth login.
 
@@ -56,14 +56,14 @@ To verify, click **Table Editor** in the left sidebar — you should see: `profi
 3. In the search bar, search for **"OAuth consent screen"** and click it.
 4. Select **External**, click **Create**.
 5. Fill in:
-   - App name: `ResumAI`
+   - App name: `Rezoomed`
    - User support email: your email
    - Developer contact: your email
 6. Click **Save and Continue** through all steps (no scopes needed yet).
 7. In the search bar, search for **"Credentials"** and click it.
 8. Click **+ Create Credentials → OAuth client ID**.
 9. Application type: **Web application**.
-10. Name: `ResumAI Local`.
+10. Name: `Rezoomed Local`.
 11. Under **Authorised redirect URIs**, click **+ Add URI** and paste:
     ```
     https://<your-supabase-project-ref>.supabase.co/auth/v1/callback
@@ -97,7 +97,27 @@ To verify, click **Table Editor** in the left sidebar — you should see: `profi
 
 ---
 
-## 6. Run the dev server and test login
+## 6. Production branding for Google OAuth
+
+If you want Google sign-in to show your brand instead of the raw Supabase project ref, finish the production branding setup outside the app code:
+
+1. In **Google Auth Platform → Branding**, set:
+   - App name: `Rezoomed`
+   - Homepage: your production site URL
+   - Privacy policy: your production `/privacy-policy`
+   - Terms of service: your production `/terms`
+2. Submit and publish Google branding verification. Until branding is verified and published, Google may still show only the application domain.
+3. In **Supabase**, activate either:
+   - a custom domain such as `auth.rezoomed.com`, or
+   - a vanity subdomain such as `rezoomed.supabase.co`
+4. Add the branded Supabase callback URL to your Google OAuth client alongside the default project callback URL. Example:
+   - `https://mdqxzihgairxpwrbibbp.supabase.co/auth/v1/callback`
+   - `https://auth.rezoomed.com/auth/v1/callback`
+5. After the branded domain is active, set `NEXT_PUBLIC_SUPABASE_URL` to that branded domain so the app uses it consistently.
+
+---
+
+## 7. Run the dev server and test login
 
 ```bash
 npm run dev
@@ -106,7 +126,7 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 **Test checklist:**
-- [ ] Visit `http://localhost:3000` — see the ResumAI landing stub
+- [ ] Visit `http://localhost:3000` — see the Rezoomed landing page
 - [ ] Visit `http://localhost:3000/auth/login` — see the login page with Google button
 - [ ] Click "Continue with Google" — complete the OAuth consent flow
 - [ ] Land on `http://localhost:3000/dashboard` — see the dashboard with your name and avatar
@@ -121,7 +141,7 @@ If login redirects back to `/auth/login?error=access_denied`, check that:
 
 ---
 
-## 7. Set up Stripe payments
+## 8. Set up Stripe payments
 
 ### Step A — Create a Stripe account and get API keys
 
@@ -157,7 +177,7 @@ For production, create a webhook endpoint in the Stripe dashboard (**Developers 
 ### Step C — Create a Pro subscription product
 
 1. In the Stripe dashboard, click **Product catalogue → Add product**.
-2. Name: `ResumAI Pro`
+2. Name: `Rezoomed Pro`
 3. Pricing model: **Recurring**, **Monthly**, price: `$12.00 USD`.
 4. Click **Save product**.
 5. On the product page, copy the **Price ID** (starts with `price_`) into your `.env.local`:

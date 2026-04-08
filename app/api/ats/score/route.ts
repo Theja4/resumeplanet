@@ -22,9 +22,17 @@ type ATSScoreResponse = ATSResult & {
 
 type CachedATSScoreResponse = Omit<ATSScoreResponse, 'scansRemaining'>
 
+interface ConsumedAtsScanState {
+  allowed: boolean
+  scansUsed: number
+  scansRemaining: number
+  resetAt: string
+}
+
 interface ScoreBody {
   resumeText?: string
   resumeId?: string
+  parsedResumeData?: Partial<ResumeData> | null
   jobDescription?: string
   analysisMode?: 'ats' | 'match'
 }
@@ -58,6 +66,30 @@ const PHRASE_KEYWORDS = [
   'account management',
   'user research',
 ]
+
+async function consumeAuthenticatedFreeAtsScan(userId: string): Promise<ConsumedAtsScanState> {
+  const serviceSupabase = createServiceRoleClient()
+  const { data, error } = await serviceSupabase.rpc('consume_daily_ats_scan', {
+    p_user_id: userId,
+    p_limit: FREE_PLAN.limits.atsScansPerDay,
+  })
+
+  if (error) {
+    throw new Error(`FAILED_TO_CONSUME_ATS_SCAN: ${error.message}`)
+  }
+
+  const row = Array.isArray(data) ? data[0] : data
+
+  return {
+    allowed: Boolean(row?.allowed),
+    scansUsed: Number(row?.scans_used ?? 0),
+    scansRemaining: Math.max(0, Number(row?.scans_remaining ?? 0)),
+    resetAt:
+      typeof row?.reset_at === 'string'
+        ? row.reset_at
+        : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  }
+}
 
 function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
   const normalized: ResumeData = {
@@ -439,9 +471,11 @@ function buildATSResult(
 
 async function getScoringResumeData(
   resumeText: string,
-  storedParsedData: ResumeData | null
+  storedParsedData: ResumeData | null,
+  providedParsedData: ResumeData | null,
 ) {
   if (storedParsedData) return normalizeResumeData(storedParsedData)
+  if (providedParsedData) return normalizeResumeData(providedParsedData)
 
   try {
     const parsed = await parseResumeText(resumeText)
@@ -471,6 +505,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let { resumeText } = body
   const { resumeId, jobDescription, analysisMode } = body
+  const providedParsedData = body.parsedResumeData ? normalizeResumeData(body.parsedResumeData) : null
 
   let storedParsedData: ResumeData | null = null
   if (user && resumeId) {
@@ -484,6 +519,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     storedParsedData = normalizeResumeData((resume?.parsed_data as ResumeData | null) ?? null)
     const fallbackText = resume?.raw_text?.trim() || resumeDataToText(storedParsedData)
     if ((!resumeText || resumeText.trim().length < 50) && fallbackText.trim().length > 0) {
+      resumeText = fallbackText
+    }
+  }
+
+  if ((!resumeText || resumeText.trim().length < 50) && providedParsedData) {
+    const fallbackText = resumeDataToText(providedParsedData)
+    if (fallbackText.trim().length > 0) {
       resumeText = fallbackText
     }
   }
@@ -538,26 +580,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return createRateLimitResponse(scoreRateLimit, 'TOO_MANY_ATS_REQUESTS')
   }
 
-  if (user && !pro) {
-    const now = new Date()
-    const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
-    const hoursSinceReset = (now.getTime() - resetAt.getTime()) / (1000 * 60 * 60)
-    const serviceSupabase = createServiceRoleClient()
-
-    if (hoursSinceReset >= 24) {
-      await serviceSupabase
-        .from('profiles')
-        .update({ ats_scans_today: 0, ats_scans_reset_at: now.toISOString() })
-        .eq('id', user.id)
-      if (profile) {
-        profile.ats_scans_today = 0
-        profile.ats_scans_reset_at = now.toISOString()
-      }
-    }
-  }
-
   const isMatchMode = analysisMode === 'match'
-  const scoringData = await getScoringResumeData(resumeText, storedParsedData)
+  const scoringData = await getScoringResumeData(resumeText, storedParsedData, providedParsedData)
   const pipeline: ATSScoreResponse['pipeline'] = isMatchMode
     ? (pro ? 'pro_match' : 'free_match')
     : (pro ? 'pro_ats' : 'free_ats')
@@ -597,18 +621,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  if (user && !pro && (profile?.ats_scans_today ?? 0) >= FREE_PLAN.limits.atsScansPerDay) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'FREE_LIMIT_REACHED',
-        scansUsed: FREE_PLAN.limits.atsScansPerDay,
-        resetAt: profile?.ats_scans_reset_at,
-      },
-      { status: 429 }
-    )
-  }
-
   const normalizedResult = isMatchMode
     ? await buildMatchScoreResult({
         resumeData: scoringData,
@@ -616,6 +628,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         pro,
       })
     : buildATSResult(scoreResume(scoringData), scoringData, pro, jobDescription)
+
+  let consumedFreeScan: ConsumedAtsScanState | null = null
+  if (user && !pro && !isMatchMode) {
+    consumedFreeScan = await consumeAuthenticatedFreeAtsScan(user.id)
+
+    if (!consumedFreeScan.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'FREE_LIMIT_REACHED',
+          scansUsed: FREE_PLAN.limits.atsScansPerDay,
+          resetAt: consumedFreeScan.resetAt,
+        },
+        { status: 429 }
+      )
+    }
+
+    if (profile) {
+      profile.ats_scans_today = consumedFreeScan.scansUsed
+      profile.ats_scans_reset_at = consumedFreeScan.resetAt
+    }
+  }
 
   let savedScoreId = ''
   if (user) {
@@ -651,17 +685,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (resumeId) {
         revalidatePath(`/dashboard/resumes/${resumeId}`)
     }
-
-    if (!pro) {
-      const serviceSupabase = createServiceRoleClient()
-      await serviceSupabase
-        .from('profiles')
-        .update({ ats_scans_today: (profile?.ats_scans_today ?? 0) + 1 })
-        .eq('id', user.id)
-    }
   }
 
-  const scansRemaining = user ? (pro ? null : getRemainingFreeScans(profile) - 1) : null
+  const scansRemaining = user
+    ? (
+        pro
+          ? null
+          : consumedFreeScan?.scansRemaining ?? getRemainingFreeScans(profile)
+      )
+    : null
   const responseData: ATSScoreResponse = {
     ...normalizedResult,
     pipeline,

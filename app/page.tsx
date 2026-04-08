@@ -1,8 +1,20 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { WandSparkles } from 'lucide-react'
+import PricingSection from '@/components/landing/PricingSection'
 import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
+import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
+import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import {
+  buildAffiliatePricingPromo,
+} from '@/lib/affiliate'
+import {
+  findAffiliateByDiscountCode,
+  readAffiliateReferralCodeFromCookies,
+} from '@/lib/affiliate-server'
+import { getActivePromotion } from '@/lib/pricing'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 type Testimonial = {
   quote: string
@@ -81,33 +93,15 @@ const TESTIMONIALS: Testimonial[] = [
 ]
 
 export default async function LandingPage() {
+  const affiliateCode = await readAffiliateReferralCodeFromCookies()
+  const affiliate = affiliateCode
+    ? await findAffiliateByDiscountCode(createServiceRoleClient(), affiliateCode)
+    : null
+  const pricingPromo = buildAffiliatePricingPromo(affiliate) ?? getActivePromotion()
+
   return (
     <div className="bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
-      {/* Top Navigation */}
-      <nav className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-white/70 backdrop-blur-xl dark:bg-zinc-900/70 shadow-[0_8px_24px_rgba(0,0,0,0.06)] font-['Plus_Jakarta_Sans'] tracking-tight">
-        <div className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-          <span className="tracking-tighter">Rezoomed</span>
-        </div>
-        <div className="pointer-events-none hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 group">
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-[#026d32] dark:text-[#A3FFB3] border-[#A3FFB3] group-hover:text-zinc-500 group-hover:border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#">Home</Link>
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="#features">Features</Link>
-          <Link className="pointer-events-auto font-semibold border-b-2 pb-1 transition-all text-zinc-500 dark:text-zinc-400 border-transparent hover:!text-[#026d32] dark:hover:!text-[#A3FFB3] hover:!border-[#A3FFB3]" href="/blog">Blog</Link>
-        </div>
-        <div className="relative z-10 flex items-center gap-4">
-          <Link
-            href="/auth/login"
-            className="inline-flex cursor-pointer items-center justify-center text-sm font-bold text-zinc-500 hover:text-white hover:bg-black transition-all px-6 py-2 border-2 border-transparent rounded-full"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center justify-center text-sm font-bold text-primary-landing border-2 border-primary-container bg-primary-container/10 px-6 py-2 rounded-full hover:bg-primary-container/20 transition-all"
-          >
-            Sign Up Free →
-          </Link>
-        </div>
-      </nav>
+      <PublicSiteHeader active="home" />
 
       <main className="pt-16">
         {/* Hero Section */}
@@ -187,7 +181,7 @@ export default async function LandingPage() {
                   </button>
                 </Link>
               </div>
-              <p className="text-sm text-on-surface-variant">No credit card · Free plan · Cancel anytime</p>
+              <p className="text-sm text-on-surface-variant">No credit card · Free plan</p>
             </div>
           </div>
         </section>
@@ -195,6 +189,13 @@ export default async function LandingPage() {
         <LogoMarqueeSection />
 
         <FeatureShowcaseSection />
+
+        <section className="bg-[linear-gradient(180deg,#f8faf9_0%,#eef7f1_100%)] py-8">
+          <PricingSection
+            activePromo={pricingPromo}
+            autoApplyCode={affiliate?.discount_code}
+          />
+        </section>
 
         {/* ── Testimonials ───────────────────────────────────────────────── */}
         <section className="py-28 bg-[#f8faf9] overflow-hidden">
@@ -268,23 +269,12 @@ export default async function LandingPage() {
                 </button>
               </Link>
             </div>
-            <p className="text-sm text-white/50">No credit card · Free plan · Cancel anytime</p>
+            <p className="text-sm text-white/50">No credit card · Free plan</p>
           </div>
         </section>
       </main>
 
-      {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="w-full py-12 px-8 border-t border-zinc-800/60 bg-[#0a0f0b]">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-6 max-w-7xl mx-auto text-sm text-zinc-500 font-medium">
-          <span className="font-black text-white text-xl tracking-tight">Rezoomed</span>
-          <div className="flex items-center gap-8">
-            <Link className="hover:text-white transition-colors" href="#">Privacy Policy</Link>
-            <Link className="hover:text-white transition-colors" href="#">Terms of Service</Link>
-            <Link className="hover:text-white transition-colors" href="/blog">Blog</Link>
-          </div>
-          <div>© 2026 Rezoomed. All rights reserved.</div>
-        </div>
-      </footer>
+      <PublicSiteFooter />
     </div>
   )
 }

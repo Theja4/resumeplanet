@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Lock, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
+import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 
 export default async function PublicMatchScorePage() {
   const supabase = await createClient()
@@ -15,25 +17,7 @@ export default async function PublicMatchScorePage() {
 
   return (
     <div className="min-h-screen bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
-      <nav className="fixed top-0 z-50 flex h-16 w-full items-center justify-between bg-white/70 px-8 shadow-[0_8px_24px_rgba(0,0,0,0.06)] backdrop-blur-xl font-['Plus_Jakarta_Sans'] tracking-tight">
-        <Link href="/" className="text-xl font-bold tracking-tighter text-zinc-900">
-          Rezoomed
-        </Link>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/auth/login"
-            className="inline-flex items-center justify-center rounded-full border-2 border-transparent px-6 py-2 text-sm font-bold text-zinc-500 transition-all hover:bg-black hover:text-white"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center justify-center rounded-full border-2 border-primary-container bg-primary-container/10 px-6 py-2 text-sm font-bold text-primary-landing transition-all hover:bg-primary-container/20"
-          >
-            Create Account
-          </Link>
-        </div>
-      </nav>
+      <PublicSiteHeader />
 
       <main className="mx-auto flex min-h-screen max-w-6xl items-center px-6 pb-20 pt-28">
         <div className="w-full rounded-[2rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.88))] p-8 shadow-[0_24px_60px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:p-10">
@@ -89,6 +73,8 @@ export default async function PublicMatchScorePage() {
           </div>
         </div>
       </main>
+
+      <PublicSiteFooter />
     </div>
   )
 }

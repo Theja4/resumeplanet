@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics, clearAuthIntent, readAuthIntent } from '@/lib/analytics'
+import Image from 'next/image'
 
 const MIN_LOADER_MS = 950
 
@@ -25,6 +26,19 @@ export default function AuthCallbackPage() {
       if (data.session) {
         const authIntent = readAuthIntent()
         const provider = (data.session.user.app_metadata?.provider as string | undefined) ?? 'google'
+        const [profileResult, resumesResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('plan, full_name')
+            .eq('id', data.session.user.id)
+            .maybeSingle(),
+          supabase
+            .from('resumes')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', data.session.user.id),
+        ])
+        const profile = profileResult.data
+        const resumeCount = resumesResult.count ?? 0
 
         if (authIntent?.mode === 'register') {
           Analytics.signupCompleted({ method: authIntent.method })
@@ -34,11 +48,18 @@ export default function AuthCallbackPage() {
 
         Analytics.identify(data.session.user.id, {
           email: data.session.user.email,
-          fullName: data.session.user.user_metadata?.full_name as string | undefined,
-          plan: 'free',
+          fullName:
+            (profile?.full_name as string | undefined) ??
+            (data.session.user.user_metadata?.full_name as string | undefined),
+          plan: profile?.plan === 'pro' ? 'pro' : 'free',
           signupDate: data.session.user.created_at,
         })
         clearAuthIntent()
+        if (authIntent?.mode === 'register' && resumeCount === 0) {
+          router.replace('/dashboard/onboarding')
+          return
+        }
+
         router.replace('/dashboard')
       } else {
         clearAuthIntent()
@@ -54,7 +75,16 @@ export default function AuthCallbackPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(163,255,179,0.34),transparent_26%),radial-gradient(circle_at_84%_16%,rgba(2,109,50,0.08),transparent_22%),radial-gradient(circle_at_50%_92%,rgba(163,255,179,0.24),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(180deg,transparent,rgba(163,255,179,0.18))]" />
 
-      <div className="callback-loader relative z-10 flex flex-col items-center px-6 text-center">
+      <div className="callback-loader relative z-10 flex items-center justify-center gap-6 px-6">
+        <div className="callback-logo-wrap shrink-0">
+          <Image 
+            src="/icon.png" 
+            alt="Rezoomed logo" 
+            width={80} 
+            height={80} 
+            className="rounded-[1.4rem] shadow-[0_20px_50px_rgba(2,109,50,0.18)] ring-1 ring-white/20" 
+          />
+        </div>
         <div className="callback-wordmark-wrap">
           <div className="callback-wordmark-glow" />
           <div className="callback-wordmark">Rezoomed</div>
@@ -71,13 +101,26 @@ export default function AuthCallbackPage() {
           animation: callback-rise 1.1s cubic-bezier(0.2, 0.9, 0.24, 1) forwards;
         }
 
+        .callback-logo-wrap {
+          animation: callback-bounce 2.25s ease-in-out infinite 0.4s;
+        }
+
+        @keyframes callback-bounce {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-8px);
+          }
+        }
+
         .callback-wordmark-wrap {
           position: relative;
           display: inline-flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           min-height: 5rem;
-          min-width: min(78vw, 24rem);
+          min-width: min-content;
         }
 
         .callback-wordmark {

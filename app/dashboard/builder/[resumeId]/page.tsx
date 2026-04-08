@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { flushSync } from 'react-dom'
-import { FONT_OPTIONS } from '@/lib/templateOptions'
-import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import { FONT_OPTIONS, sanitizeUniversalConfig } from '@/lib/templateOptions'
+import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   ChevronDown,
   ChevronLeft,
@@ -226,9 +227,17 @@ interface BuilderInnerProps {
 }
 
 function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
+  const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
+  const requestedMode = searchParams.get('mode')
+  const accentParam = searchParams.get('accent')
+  const fontParam = searchParams.get('font')
+  const layoutParam = searchParams.get('layout')
+  const headerParam = searchParams.get('header')
+  const bulletParam = searchParams.get('bullet')
+  const densityParam = searchParams.get('density')
 
   const { requirePro, blockedFeature, clearBlockedFeature } = useProGate()
 
@@ -266,12 +275,18 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         templateConfig.headerStyle,
         templateConfig.density,
         templateConfig.bulletStyle,
+        templateConfig.sectionHeadingStyle,
+        templateConfig.skillsStyle,
+        templateConfig.dateLayout,
       ].join(':'),
     [
       templateConfig.bulletStyle,
+      templateConfig.dateLayout,
       templateConfig.density,
       templateConfig.headerStyle,
       templateConfig.layout,
+      templateConfig.sectionHeadingStyle,
+      templateConfig.skillsStyle,
     ]
   )
   const builderAnalytics = useBuilderAnalytics({
@@ -285,6 +300,20 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   useEffect(() => {
     setVisibility(prev => ({ ...prev, density: templateConfig.density }))
   }, [templateConfig.density])
+
+  useEffect(() => {
+    if (requestedMode !== 'tailor') {
+      setActiveMode('builder')
+      return
+    }
+
+    if (!requirePro('tailor')) {
+      setActiveMode('builder')
+      return
+    }
+
+    setActiveMode('tailor')
+  }, [requestedMode, requirePro])
 
   const [resumeHeight, setResumeHeight] = useState(0)
   const [contentHeight, setContentHeight] = useState(0)
@@ -460,29 +489,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
 
       // Build final config: start with saved or default, then apply direct URL overrides
-      const config: UniversalConfig = savedTemplateConfig
-        ? { ...savedTemplateConfig }
-        : { ...DEFAULT_UNIVERSAL_CONFIG }
+      const config: UniversalConfig = sanitizeUniversalConfig(savedTemplateConfig ?? DEFAULT_UNIVERSAL_CONFIG)
 
       // Apply URL param overrides
-      const accentParam = searchParams.get('accent')
       if (accentParam) config.accentColor = accentParam
-      const fontParam = searchParams.get('font')
       if (fontParam) {
         const font = FONT_OPTIONS.find((f) => f.id === fontParam)
         if (font) config.fontFamily = font.value
       }
-      const layoutParam = searchParams.get('layout') as 'single-column' | 'sidebar' | undefined
-      if (layoutParam) config.layout = layoutParam
-      const headerParam = searchParams.get('header') as 'banner' | 'sidebar-integrated' | 'minimal' | undefined
-      if (headerParam) config.headerStyle = headerParam
-      const bulletParam = searchParams.get('bullet') as 'plain' | 'timeline' | undefined
-      if (bulletParam) config.bulletStyle = bulletParam
-      const densityParam = searchParams.get('density') as 'compressed' | 'relaxed' | undefined
-      if (densityParam) config.density = densityParam
+      if (layoutParam) config.layout = layoutParam as UniversalConfig['layout']
+      if (headerParam) config.headerStyle = headerParam as UniversalConfig['headerStyle']
+      if (bulletParam) config.bulletStyle = bulletParam as UniversalConfig['bulletStyle']
+      if (densityParam) config.density = densityParam as UniversalConfig['density']
 
-      setTemplateConfig(config)
-      setSavedTemplateConfig(config)
+      const safeConfig = sanitizeUniversalConfig(config)
+      setTemplateConfig(safeConfig)
+      setSavedTemplateConfig(safeConfig)
 
       // Load saved visibility, merging with defaults to handle new fields
       const savedVis = (resume as Record<string, unknown>).builder_visibility as Partial<BuilderVisibility> | null
@@ -509,7 +531,23 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setIsLoading(false)
     }
     load()
-  }, [resumeId, userId, supabase, router, searchParams])
+  }, [accentParam, bulletParam, densityParam, fontParam, headerParam, layoutParam, resumeId, router, supabase, userId])
+
+  const setBuilderMode = useCallback((mode: BuilderMode) => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    if (mode === 'tailor') {
+      params.set('mode', 'tailor')
+    } else {
+      params.delete('mode')
+    }
+
+    const nextQuery = params.toString()
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+
+    setActiveMode(mode)
+    router.replace(nextUrl, { scroll: false })
+  }, [pathname, router, searchParams])
 
   const hasUnsavedChanges =
     !!resumeData && (
@@ -859,7 +897,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   function handleTailorClick() {
     if (!requirePro('tailor')) return
-    setActiveMode('tailor')
+    setBuilderMode('tailor')
   }
 
   async function handleAnalyse() {
@@ -1098,7 +1136,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               <ArrowLeft size={16} />
               <span>Back</span>
             </Link>
-            <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
+            <div className="flex items-center gap-2">
+              <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
+              <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
+            </div>
             <div className="w-px h-4 bg-zinc-200" />
             <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 px-3 py-1.5 shadow-[0_8px_24px_rgba(16,185,129,0.08)]">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
@@ -1127,7 +1168,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           {/* Builder / Tailor Toggle */}
           <div className="absolute left-1/2 -translate-x-1/2 flex bg-surface-container-low p-1 rounded-full">
             <button
-              onClick={() => setActiveMode('builder')}
+              onClick={() => setBuilderMode('builder')}
               className={`px-6 py-1.5 text-xs font-bold tracking-tight rounded-full transition-all ${
                 activeMode === 'builder' 
                   ? 'bg-white text-emerald-700 shadow-sm' 

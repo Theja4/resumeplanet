@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 import pdfjsParser from '@/lib/parsers/pdfjs'
 import claudeParser from '@/lib/parsers/claude'
@@ -56,6 +58,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
+  // ── Rate Limit ─────────────────────────────────────────────────────────────
+  const rateLimit = await consumeRateLimit({
+    request,
+    userId: user.id,
+    scope: 'resume_parse_authenticated',
+    limit: 30,
+    windowSeconds: 60 * 60,
+  })
+
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit, 'TOO_MANY_PARSE_REQUESTS')
+  }
+
   // ── Parse FormData ──────────────────────────────────────────────────────────
   let formData: FormData
   try {
@@ -104,6 +119,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const originalFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const buffer = Buffer.from(await file.arrayBuffer())
   const fileType = file.type || ALLOWED_MIME_TYPE
+
+  // Content-based duplicate detection
+  const fileHash = createHash('sha256').update(buffer).digest('hex')
 
   let markerSnapshot: FirstPartyResumeSnapshot | null = null
   if (fileType === ALLOWED_MIME_TYPE) {
@@ -168,13 +186,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     clientScore: clientCandidate?.confidence.score ?? null,
   })
 
-  // ── Duplicate check (same user + title in last 24h) ────────────────────────
+  // ── Duplicate check (same user + title or user + hash in last 24h) ─────────
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { data: existing } = await supabase
     .from('resumes')
     .select('id')
     .eq('user_id', user.id)
-    .eq('title', originalFilename)
+    .or(`title.eq."${originalFilename}",file_hash.eq."${fileHash}"`)
     .gte('created_at', since)
     .maybeSingle()
 
@@ -208,6 +226,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .insert({
       user_id: user.id,
       title: originalFilename,
+      file_hash: fileHash,
       raw_text: '',
       parsed_data: parsedData,
       original_file_url: storagePath,

@@ -1,4 +1,5 @@
 import type { PostHog, CaptureOptions } from 'posthog-js'
+import { COOKIE_CONSENT_COOKIE, parseCookieConsentPreference } from '@/lib/cookie-consent'
 
 export type AuthMethod = 'email' | 'google' | 'github'
 export type AtsTier = 'basic' | 'advanced'
@@ -116,6 +117,16 @@ function isBrowser() {
   return typeof window !== 'undefined'
 }
 
+function isAnalyticsAllowed() {
+  if (!isBrowser()) return false
+
+  const consent = parseCookieConsentPreference(readCookie(COOKIE_CONSENT_COOKIE))
+  if (consent === 'all') return true
+  if (consent === 'essential') return false
+
+  return document.documentElement.dataset.analyticsDefault === 'granted'
+}
+
 function readCookie(name: string) {
   if (!isBrowser()) return null
   const prefix = `${name}=`
@@ -175,7 +186,7 @@ async function getPostHogInstance() {
 function queueBrowserAnalytics(
   callback: (posthog: PostHog) => void
 ) {
-  if (!isBrowser()) return
+  if (!isBrowser() || !isAnalyticsAllowed()) return
 
   void getPostHogInstance()
     .then(posthog => {
@@ -217,6 +228,7 @@ function captureNativePageview(properties: AnalyticsEventMap['page_viewed']) {
 }
 
 export function readAnalyticsAttribution() {
+  if (!isAnalyticsAllowed()) return null
   return safeParseJson<AnalyticsAttribution>(readCookie(ANALYTICS_ATTRIBUTION_COOKIE))
 }
 
@@ -225,10 +237,16 @@ export function clearAnalyticsAttribution() {
 }
 
 export function readPostHogDistinctIdFromCookie() {
+  if (!isAnalyticsAllowed()) return null
   return readCookie(POSTHOG_DISTINCT_ID_COOKIE)
 }
 
 export function syncDistinctIdCookie(distinctId: string | null | undefined) {
+  if (!isAnalyticsAllowed()) {
+    writeSessionCookie(POSTHOG_DISTINCT_ID_COOKIE, null)
+    return
+  }
+
   if (!distinctId) {
     writeSessionCookie(POSTHOG_DISTINCT_ID_COOKIE, null)
     return
@@ -238,7 +256,7 @@ export function syncDistinctIdCookie(distinctId: string | null | undefined) {
 }
 
 export function setAuthIntent(intent: { mode: 'login' | 'register'; method: AuthMethod }) {
-  if (!isBrowser()) return
+  if (!isBrowser() || !isAnalyticsAllowed()) return
 
   window.sessionStorage.setItem(
     AUTH_INTENT_STORAGE_KEY,
@@ -250,7 +268,7 @@ export function setAuthIntent(intent: { mode: 'login' | 'register'; method: Auth
 }
 
 export function readAuthIntent() {
-  if (!isBrowser()) return null
+  if (!isBrowser() || !isAnalyticsAllowed()) return null
   return safeParseJson<{ mode: 'login' | 'register'; method: AuthMethod; capturedAt?: string }>(
     window.sessionStorage.getItem(AUTH_INTENT_STORAGE_KEY)
   )
@@ -267,7 +285,7 @@ export function setCheckoutContext(context: {
   discountCode?: string
   step?: string
 }) {
-  if (!isBrowser()) return
+  if (!isBrowser() || !isAnalyticsAllowed()) return
 
   window.sessionStorage.setItem(
     CHECKOUT_CONTEXT_STORAGE_KEY,
@@ -279,7 +297,7 @@ export function setCheckoutContext(context: {
 }
 
 export function readCheckoutContext() {
-  if (!isBrowser()) return null
+  if (!isBrowser() || !isAnalyticsAllowed()) return null
   return safeParseJson<{
     product: CheckoutProduct
     price: number
@@ -299,6 +317,11 @@ export function persistAnalyticsAttribution(
   pathname: string,
   referrer?: string
 ) {
+  if (!isAnalyticsAllowed()) {
+    clearAnalyticsAttribution()
+    return null
+  }
+
   const existing = readAnalyticsAttribution() ?? {}
 
   const next: AnalyticsAttribution = {
@@ -328,6 +351,56 @@ export function persistAnalyticsAttribution(
 
   writeSessionCookie(ANALYTICS_ATTRIBUTION_COOKIE, JSON.stringify(next))
   return next
+}
+
+export async function clearAnalyticsClientState() {
+  clearAnalyticsAttribution()
+  syncDistinctIdCookie(null)
+  clearAuthIntent()
+  clearCheckoutContext()
+
+  if (!isBrowser()) return
+
+  try {
+    window.localStorage.removeItem(COOKIE_CONSENT_COOKIE)
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+
+  try {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith('ph_') || key.includes('posthog')) {
+        window.localStorage.removeItem(key)
+      }
+    }
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+
+  try {
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith('ph_') || key.includes('posthog')) {
+        window.sessionStorage.removeItem(key)
+      }
+    }
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+
+  try {
+    const importedModule = await import('posthog-js')
+    const posthog = importedModule.default
+
+    if (typeof posthog.opt_out_capturing === 'function') {
+      posthog.opt_out_capturing()
+    }
+
+    if (typeof posthog.reset === 'function') {
+      posthog.reset()
+    }
+  } catch {
+    // Ignore PostHog cleanup failures.
+  }
 }
 
 export function buildBlogAttributionHref(

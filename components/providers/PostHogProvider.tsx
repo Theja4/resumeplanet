@@ -47,8 +47,10 @@ function RouteAnalyticsTracker() {
 
 export default function PostHogProvider({
   children,
+  enabled = true,
 }: {
   children: React.ReactNode
+  enabled?: boolean
 }) {
   const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
   const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
@@ -66,7 +68,7 @@ export default function PostHogProvider({
   )
 
   useEffect(() => {
-    if (!apiKey) return
+    if (!apiKey || !enabled) return
 
     const posthogWithState = posthog as typeof posthog & { __loaded?: boolean }
     if (posthogWithState.__loaded) {
@@ -76,9 +78,9 @@ export default function PostHogProvider({
 
     posthog.init(apiKey, options as Parameters<typeof posthog.init>[1])
     posthogWithState.__loaded = true
-  }, [apiKey, options])
+  }, [apiKey, enabled, options])
 
-  if (!apiKey) {
+  if (!apiKey || !enabled) {
     return <>{children}</>
   }
 

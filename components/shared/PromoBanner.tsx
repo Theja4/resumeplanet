@@ -27,8 +27,9 @@ export default function PromoBanner({ promo }: Props) {
     if (promo.isAutoApply) {
       const priceOption = PRO_PLAN.getPriceById(promo.appliesTo) ?? PRO_PLAN.defaultPrice
       await openSubscriptionCheckout({
-        priceId: priceOption.paddlePriceId,
-        couponId: promo.paddleDiscountId,
+        priceId: priceOption.id,
+        promotionId: promo.id,
+        promotionCode: promo.paddleDiscountCode,
         onError: () => {
           window.location.href = `/dashboard/pricing?promo=${promo.id}`
         },

@@ -1,3 +1,4 @@
+import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { ResumeData, UniversalConfig } from '@/types'
 
 // Convert #RRGGBB hex to the 6-char hex string docx expects (no #)
@@ -18,14 +19,20 @@ export async function generateDOCX(
   sidebarSectionOrder?: string[],
 ): Promise<void> {
   const {
+    AlignmentType,
     Document, Packer, Paragraph, TextRun,
     BorderStyle,
   } = await import('docx')
 
-  const accent = hexToDocx(config?.accentColor ?? '#4F46E5')
-  const font = primaryFont(config?.fontFamily ?? 'Calibri')
-  const isCompressed = config?.density === 'compressed'
+  const safeConfig = sanitizeUniversalConfig(config)
+  const accent = hexToDocx(safeConfig.accentColor ?? '#4F46E5')
+  const font = primaryFont(safeConfig.fontFamily ?? 'Calibri')
+  const isCompressed = safeConfig.density === 'compressed'
   const spacingAfter = isCompressed ? 80 : 160
+  const bulletMarker = safeConfig.bulletStyle === 'dash' ? '- ' : safeConfig.bulletStyle === 'square' ? '▪ ' : '• '
+  const headerAlignment = safeConfig.headerStyle === 'centered' ? AlignmentType.CENTER : AlignmentType.LEFT
+  const nameSize = safeConfig.nameSize === 'hero' ? 56 : safeConfig.nameSize === 'large' ? 48 : 42
+  const skillSeparator = safeConfig.skillsStyle === 'divider' ? '  •  ' : ', '
 
   // ── Style helpers ──────────────────────────────────────────────────────────
 
@@ -33,7 +40,13 @@ export async function generateDOCX(
     new Paragraph({
       children: [new TextRun({ text: text.toUpperCase(), bold: true, color: accent, font, size: 18 })],
       spacing: { before: isCompressed ? 160 : 240, after: 40 },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC', space: 2 } },
+      ...(safeConfig.sectionHeadingStyle === 'rule'
+        ? {
+            border: {
+              bottom: { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC', space: 2 },
+            },
+          }
+        : {}),
     })
 
   const body = (text: string, opts: { bold?: boolean; italic?: boolean; color?: string; size?: number } = {}) =>
@@ -45,7 +58,7 @@ export async function generateDOCX(
   const bullet = (text: string) =>
     new Paragraph({
       children: [
-        new TextRun({ text: '• ', font, size: 20, color: accent }),
+        new TextRun({ text: bulletMarker, font, size: 20, color: accent }),
         new TextRun({ text, font, size: 20 }),
       ],
       indent: { left: 360 },
@@ -119,7 +132,13 @@ export async function generateDOCX(
 
       case 'skills':
         if (!data.skills.length) return []
-        return [sectionHeading('Skills'), body(data.skills.join('  ·  ')), gap()]
+        return [
+          sectionHeading('Skills'),
+          ...(safeConfig.skillsStyle === 'stacked'
+            ? data.skills.map(skill => bullet(skill))
+            : [body(data.skills.join(skillSeparator))]),
+          gap(),
+        ]
 
       case 'projects':
         if (!data.projects.length) return []
@@ -189,21 +208,32 @@ export async function generateDOCX(
   // ── Header ─────────────────────────────────────────────────────────────────
 
   const contact = [data.email, data.phone, data.location, data.linkedin, data.website]
-    .filter(Boolean).join('  ·  ')
+    .filter(Boolean)
 
   const headerParas: Array<InstanceType<typeof Paragraph>> = [
     new Paragraph({
-      children: [new TextRun({ text: data.name || 'Your Name', bold: true, font, size: 48, color: '111111' })],
+      children: [new TextRun({ text: data.name || 'Your Name', bold: true, font, size: nameSize, color: '111111' })],
+      alignment: headerAlignment,
       spacing: { after: 60 },
     }),
     ...(data.currentRole ? [new Paragraph({
       children: [new TextRun({ text: data.currentRole, font, size: 22, color: accent })],
+      alignment: headerAlignment,
       spacing: { after: 60 },
     })] : []),
-    ...(contact ? [new Paragraph({
-      children: [new TextRun({ text: contact, font, size: 18, color: '666666' })],
-      spacing: { after: 200 },
-    })] : []),
+    ...(contact.length
+      ? safeConfig.contactStyle === 'stacked'
+        ? contact.map((item, index) => new Paragraph({
+            children: [new TextRun({ text: item ?? '', font, size: 18, color: '666666' })],
+            alignment: headerAlignment,
+            spacing: { after: index === contact.length - 1 ? 200 : 40 },
+          }))
+        : [new Paragraph({
+            children: [new TextRun({ text: contact.join('  ·  '), font, size: 18, color: '666666' })],
+            alignment: headerAlignment,
+            spacing: { after: 200 },
+          })]
+      : []),
   ]
 
   const bodyParas: Array<InstanceType<typeof Paragraph>> = allSections.flatMap(id => renderSection(id))

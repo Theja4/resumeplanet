@@ -83,8 +83,9 @@ export default function ExitIntentModal({ promo, onClose }: Props) {
       })
     }
     await openSubscriptionCheckout({
-      priceId: PRO_PLAN.defaultPrice.paddlePriceId,
-      couponId: promo.paddleDiscountId,
+      priceId: PRO_PLAN.defaultPrice.id,
+      promotionId: promo.id,
+      promotionCode: promo.paddleDiscountCode,
       onSuccess: () => setIsLoading(false),
       onError: () => setIsLoading(false),
     })

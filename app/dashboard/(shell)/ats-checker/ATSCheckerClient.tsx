@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
+import { FREE_PLAN } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics } from '@/lib/analytics'
 import { countWords } from '@/lib/text'
@@ -52,10 +53,40 @@ interface OptimiseResponse {
   resumeData: ResumeData
 }
 
+interface UploadedResumeFile {
+  name: string
+  text: string
+  parsedData: ResumeData | null
+}
+
+type PublicAuthPromptReason = 'rescan' | 'another_resume'
+
+const PUBLIC_ATS_SCAN_STORAGE_KEY = 'rezoomed:public-ats-scan-used:v1'
+
+function readPublicAtsScanUsage() {
+  if (typeof window === 'undefined') return false
+
+  try {
+    return window.sessionStorage.getItem(PUBLIC_ATS_SCAN_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writePublicAtsScanUsage() {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem(PUBLIC_ATS_SCAN_STORAGE_KEY, 'true')
+  } catch {
+    // Ignore storage failures and keep the rest of the flow working.
+  }
+}
+
 interface ATSCheckerSessionDraft {
   inputMode: 'resume' | 'upload'
   selectedResumeId: string
-  uploadedFile: { name: string; text: string } | null
+  uploadedFile: UploadedResumeFile | null
   jobDescription: string
   scanError: string | null
   scanResult: ScanResponse | null
@@ -161,7 +192,7 @@ function resumeDataToText(data: ResumeData | null): string {
 const ERROR_MESSAGES: Record<string, string> = {
   RESUME_TOO_SHORT: 'Resume text is too short (minimum 100 characters).',
   JOB_DESCRIPTION_TOO_SHORT: 'Add a fuller job description with at least 20 words.',
-  FREE_LIMIT_REACHED: 'You have used all 3 free scans for today. Upgrade to Pro for unlimited scans.',
+  FREE_LIMIT_REACHED: `You have used all ${FREE_PLAN.limits.atsScansPerDay} free scans for today. Upgrade to Pro for unlimited scans.`,
   CLAUDE_TIMEOUT: 'Analysis timed out. Please try again.',
   PARSE_FAILED: 'Failed to parse AI response. Please try again.',
   PRO_REQUIRED: 'Resume optimisation is a Pro feature. Upgrade to unlock it.',
@@ -172,11 +203,15 @@ const ERROR_MESSAGES: Record<string, string> = {
 const ATS_PREVIEW_CONFIG: UniversalConfig = {
   ...DEFAULT_UNIVERSAL_CONFIG,
   layout: 'single-column',
-  headerStyle: 'banner',
+  headerStyle: 'classic',
+  sectionHeadingStyle: 'rule',
   accentColor: '#0B7A3D',
   density: 'compressed',
   skillsStyle: 'inline',
   bulletStyle: 'plain',
+  contactStyle: 'inline',
+  dateLayout: 'right',
+  nameSize: 'large',
 }
 
 const ATS_PREVIEW_SECTION_ORDER = [
@@ -423,31 +458,42 @@ function RoadToNinetyUpsell({
   const ctaLabel = publicMode ? 'Create an account to unlock Pro' : 'Upgrade to Pro'
 
   return (
-    <DashboardSurface variant="subtle" className="p-5">
-      <div className="space-y-4">
+    <DashboardSurface
+      variant="default"
+      className="group overflow-hidden border border-emerald-400/20 bg-[linear-gradient(155deg,#026d32_0%,#0b7a3d_42%,#0d3d25_100%)] p-5 text-white shadow-[0_28px_64px_rgba(2,109,50,0.22)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-emerald-300/35 hover:shadow-[0_38px_82px_rgba(2,109,50,0.3)]"
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute inset-y-0 right-[-16%] w-1/2 rounded-full bg-white/10 blur-3xl transition-transform duration-500 group-hover:scale-110 group-hover:-translate-x-3" />
+        <div className="absolute left-8 top-8 h-20 w-20 rounded-full bg-emerald-300/12 blur-2xl transition-all duration-500 group-hover:scale-125 group-hover:bg-emerald-300/20" />
+        <div className="absolute inset-y-0 left-0 w-24 -translate-x-[140%] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 blur-xl transition-all duration-700 group-hover:translate-x-[520%] group-hover:opacity-100" />
+      </div>
+
+      <div className="relative space-y-5">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Road to 90</p>
-          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-100/78">Road to 90</p>
+          <h3 className="mt-2 text-xl font-black tracking-tight text-white">
             Unlock the exact fixes that will raise the score.
           </h3>
-          <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+          <p className="mt-2 text-sm leading-6 text-emerald-100/84">
             Pro shows the ranked actions, expected score gains, and the honest ceiling for this resume so users know what to fix next.
           </p>
         </div>
 
-        <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4">
-          <p className="text-sm font-semibold text-on-background">
-            Upgrade to Pro to see suggestions on how to increase score.
-          </p>
-          <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-            See what is fixable right now, what still needs stronger evidence, and how close the resume can get to 90 honestly.
-          </p>
-          <a
-            href={href}
-            className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
-          >
-            {ctaLabel} <ChevronRight size={14} />
-          </a>
+        <div className="rounded-[1.25rem] border border-white/12 bg-black/10 p-4 backdrop-blur-xl">
+          <div>
+            <p className="text-sm font-semibold text-white transition-transform duration-300 group-hover:translate-x-0.5">
+              Upgrade to Pro to see suggestions on how to increase score.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-emerald-100/84">
+              See what is fixable right now, what still needs stronger evidence, and how close the resume can get to 90 honestly.
+            </p>
+            <a
+              href={href}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white px-4 py-2 text-sm font-semibold text-[#026d32] shadow-[0_18px_34px_rgba(8,15,10,0.18)] transition-all duration-300 hover:bg-emerald-50 group-hover:border-white/25"
+            >
+              {ctaLabel} <ChevronRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+            </a>
+          </div>
         </div>
       </div>
     </DashboardSurface>
@@ -511,15 +557,26 @@ function BreakdownBar({ label, value }: { label: string; value: number }) {
 // ─── Upload Zone ─────────────────────────────────────────────────────────────
 
 interface UploadZoneProps {
-  uploadedFile: { name: string; text: string } | null
+  uploadedFile: UploadedResumeFile | null
   isExtracting: boolean
   extractError: string | null
   wordCount: number
   onFile: (file: File) => void
   onClear: () => void
+  publicMode?: boolean
+  compact?: boolean
 }
 
-function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFile, onClear }: UploadZoneProps) {
+function UploadZone({
+  uploadedFile,
+  isExtracting,
+  extractError,
+  wordCount,
+  onFile,
+  onClear,
+  publicMode = false,
+  compact = false,
+}: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -532,20 +589,20 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
 
   if (uploadedFile) {
     return (
-      <div className="flex min-h-[280px] flex-1 flex-col justify-between gap-3">
-        <div className="flex items-center justify-between p-4 bg-primary-container/20 rounded-xl">
+      <div className={`flex ${compact ? 'min-h-[280px]' : publicMode ? 'min-h-[200px]' : 'min-h-[280px]'} flex-1 flex-col justify-between gap-4`}>
+        <div className={`flex items-center justify-between rounded-xl bg-primary-container/20 ${compact ? 'p-4' : 'p-4'}`}>
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-primary-container/50 rounded-lg flex items-center justify-center shrink-0">
+            <div className={`${compact ? 'h-10 w-10 rounded-lg' : 'h-10 w-10 rounded-lg'} flex shrink-0 items-center justify-center bg-primary-container/50`}>
               <FileUp size={18} className="text-primary" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-on-surface truncate">{uploadedFile.name}</p>
+              <p className="truncate text-sm font-semibold text-on-surface">{uploadedFile.name}</p>
               <p className="text-[10px] text-on-surface-variant">{wordCount} words extracted</p>
             </div>
           </div>
           <button
             onClick={onClear}
-            className="ml-3 w-7 h-7 flex items-center justify-center rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors shrink-0"
+            className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
             aria-label="Remove file"
           >
             <X size={14} />
@@ -553,7 +610,7 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
         </div>
         <button
           onClick={() => inputRef.current?.click()}
-          className="text-xs text-primary font-semibold hover:underline text-left px-1"
+          className="px-1 text-left text-xs font-semibold text-primary hover:underline"
         >
           Upload a different file
         </button>
@@ -584,7 +641,7 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         disabled={isExtracting}
-        className={`flex-1 min-h-[280px] flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed transition-all ${
+        className={`flex-1 ${compact ? 'min-h-[360px] gap-5 py-10' : publicMode ? 'min-h-[180px] py-8' : 'min-h-[280px]'} flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${
           isDragging
             ? 'border-primary bg-primary-container/15 scale-[1.01]'
             : 'border-outline-variant hover:border-primary/50 hover:bg-primary-container/5'
@@ -600,13 +657,18 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
           </>
         ) : (
           <>
-            <div className="w-14 h-14 bg-primary-container/30 rounded-2xl flex items-center justify-center">
-              <Upload size={26} className="text-primary" strokeWidth={1.5} />
+            <div className={`${compact ? 'h-16 w-16 rounded-[1.35rem]' : 'h-14 w-14 rounded-2xl'} flex items-center justify-center bg-primary-container/30`}>
+              <Upload size={compact ? 30 : 26} className="text-primary" strokeWidth={1.5} />
             </div>
-            <div className="text-center space-y-1">
-              <p className="text-sm font-bold text-on-surface">Drop your resume here</p>
-              <p className="text-xs text-on-surface-variant">or click to browse</p>
-              <p className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest mt-2">
+            <div className={`text-center ${compact ? 'space-y-1' : 'space-y-1'}`}>
+              <p className={`${compact ? 'text-lg' : 'text-sm'} font-bold text-on-surface`}>
+                {compact ? 'Upload resume' : 'Drop your resume here'}
+              </p>
+              {!compact && (
+                <p className="text-xs text-on-surface-variant">or click to browse</p>
+              )}
+              {compact && <p className="text-sm text-on-surface-variant">Drop a PDF or DOCX, or click to browse</p>}
+              <p className={`${compact ? 'mt-3 text-xs' : 'mt-2 text-[10px]'} font-semibold uppercase tracking-widest text-on-surface-variant/60`}>
                 PDF · DOCX · Max {MAX_RESUME_UPLOAD_LABEL_SPACED}
               </p>
             </div>
@@ -620,20 +682,33 @@ function UploadZone({ uploadedFile, isExtracting, extractError, wordCount, onFil
   )
 }
 
-function ATSModePreviewPanel() {
+function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
   const checks = [
     { label: 'ATS parse rate', value: '95%', tone: 'bg-emerald-500' },
     { label: 'Keyword clarity', value: '81%', tone: 'bg-emerald-500' },
     { label: 'Formatting', value: '68%', tone: 'bg-amber-400' },
     { label: 'Section flow', value: 'Needs work', tone: 'bg-red-400' },
   ]
+  const scoreSnapshot = [
+    { label: 'Top blocker', value: 'Section flow', tone: 'bg-red-100 text-red-700' },
+    { label: 'Quick wins', value: '3 fixes', tone: 'bg-emerald-100 text-emerald-700' },
+  ]
+  const liveChecks = [
+    { label: 'Section headings', value: 'Clear', tone: 'bg-emerald-100 text-emerald-700' },
+    { label: 'Keyword match', value: 'Building', tone: 'bg-primary-container/45 text-on-primary-container' },
+    { label: 'Metrics coverage', value: 'Thin', tone: 'bg-amber-100 text-amber-700' },
+    { label: 'Readability', value: 'Stable', tone: 'bg-emerald-100 text-emerald-700' },
+  ]
 
   return (
     <div>
-      <DashboardSurface variant="default" className="min-h-[360px] p-5 lg:min-h-[420px] lg:p-6">
+      <DashboardSurface
+        variant="default"
+        className={publicMode ? 'flex min-h-[440px] p-5 lg:min-h-[540px] lg:p-6' : 'flex min-h-[360px] p-5 lg:min-h-[420px] lg:p-6'}
+      >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.24),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_42%)]" />
-        <div className="relative grid h-full gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
-          <div className="rounded-[1.4rem] border border-black/6 bg-white/86 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)]">
+        <div className="relative grid flex-1 gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
+          <div className="flex h-full flex-col rounded-[1.4rem] border border-black/6 bg-white/86 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)]">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Resume score</p>
             <div className="relative mx-auto mt-4 flex h-24 w-24 items-center justify-center">
               <div className="ring-animation absolute inset-0 rounded-full border-4 border-[#A3FFB3]/60" />
@@ -670,9 +745,30 @@ function ATSModePreviewPanel() {
                 </div>
               ))}
             </div>
+
+            {publicMode && (
+              <div className="mt-auto rounded-[1rem] border border-black/6 bg-[linear-gradient(180deg,rgba(247,250,248,0.94),rgba(255,255,255,0.92))] p-3 shadow-sm">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">Scan snapshot</p>
+                <div className="mt-3 space-y-2.5">
+                  {scoreSnapshot.map(item => (
+                    <div key={item.label} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{item.label}</span>
+                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.tone}`}>
+                          {item.value}
+                        </span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[#e1e7e2]">
+                        <div className={`h-full rounded-full ${item.label === 'Top blocker' ? 'w-[36%] bg-[linear-gradient(90deg,#ff8898,#ffb1b9)]' : 'w-[72%] bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]'}`} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-black/6 bg-[linear-gradient(180deg,#eef4ef_0%,#f8fbf9_100%)] p-4">
+          <div className="relative flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-black/6 bg-[linear-gradient(180deg,#eef4ef_0%,#f8fbf9_100%)] p-4">
             <div className="scanning-animation" />
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Detected issues</p>
@@ -681,7 +777,7 @@ function ATSModePreviewPanel() {
               </span>
             </div>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 flex flex-1 flex-col space-y-4">
               <div className="rounded-[1.2rem] border border-black/6 bg-white/92 p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant">ATS parse rate</span>
@@ -707,6 +803,33 @@ function ATSModePreviewPanel() {
                   Skills section is easy for ATS systems to parse.
                 </div>
               </div>
+
+              {publicMode && (
+                <div className="mt-auto rounded-[1.1rem] border border-black/6 bg-white/88 p-4 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">Live scan checks</p>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-on-primary-container">
+                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      Scanning
+                    </span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {liveChecks.map(item => (
+                      <div key={item.label} className="rounded-[0.95rem] border border-black/6 bg-[rgba(247,250,248,0.96)] px-3 py-3">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{item.label}</p>
+                        <div className="mt-2 flex items-center justify-between gap-3">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e2e8e3]">
+                            <div className="shimmer-effect h-full w-[72%] rounded-full bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]" />
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.tone}`}>
+                            {item.value}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -730,6 +853,7 @@ export default function ATSCheckerClient({
   const initialScansLeft = publicMode ? Number.POSITIVE_INFINITY : getRemainingFreeScans(profile)
   const searchParams = useSearchParams()
   const isMatchMode = mode === 'match'
+  const isAnonymousAtsMode = publicMode && !isMatchMode
   const draftKey = getAtsCheckerDraftKey(publicMode ? 'public' : 'dashboard', mode)
   const requiresJobDescription = isMatchMode
   const resultsTitle = isMatchMode ? 'Your Match Score' : 'Your ATS Score'
@@ -769,10 +893,11 @@ export default function ATSCheckerClient({
       }
   const notesHeading = isMatchMode ? 'Fit risks' : 'Formatting issues'
   const insightHeading = isMatchMode ? 'Fit insight' : 'Industry insight'
+  const compactPublicUploadCard = publicMode && !showIntro && !isMatchMode
 
   const [inputMode, setInputMode] = useState<'resume' | 'upload'>(resumes.length > 0 ? 'resume' : 'upload')
   const [selectedResumeId, setSelectedResumeId] = useState<string>(resumes[0]?.id ?? '')
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; text: string } | null>(null)
+  const [uploadedFile, setUploadedFile] = useState<UploadedResumeFile | null>(null)
   const [isExtracting, setIsExtracting] = useState(false)
   const [extractError, setExtractError] = useState<string | null>(null)
   const [jobDescription, setJobDescription] = useState('')
@@ -795,9 +920,14 @@ export default function ATSCheckerClient({
   const [activeTab, setActiveTab] = useState<'results' | 'optimised'>('results')
   const [previewViewportNode, setPreviewViewportNode] = useState<HTMLDivElement | null>(null)
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
+  const [hasUsedPublicAtsScan, setHasUsedPublicAtsScan] = useState(false)
+  const [publicAuthPromptReason, setPublicAuthPromptReason] = useState<PublicAuthPromptReason | null>(null)
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const lastTrackedUpgradePromptScoreRef = useRef<number | null>(null)
+  const shouldAutoScrollResultsRef = useRef(false)
+  const hasTriggeredAutoRunRef = useRef(false)
+  const handleScanRef = useRef<null | (() => Promise<void>)>(null)
   const previewViewportRef = useCallback((node: HTMLDivElement | null) => {
     setPreviewViewportNode(node)
   }, [])
@@ -831,7 +961,15 @@ export default function ATSCheckerClient({
     if (draft) {
       setInputMode(draft.inputMode)
       setSelectedResumeId(draft.selectedResumeId)
-      setUploadedFile(draft.uploadedFile)
+      setUploadedFile(
+        draft.uploadedFile
+          ? {
+              name: draft.uploadedFile.name,
+              text: draft.uploadedFile.text,
+              parsedData: draft.uploadedFile.parsedData ?? null,
+            }
+          : null
+      )
       setJobDescription(draft.jobDescription)
       setScanError(draft.scanError)
       setScanResult(draft.scanResult)
@@ -846,6 +984,25 @@ export default function ATSCheckerClient({
 
     setHasRestoredDraft(true)
   }, [draftKey])
+
+  useEffect(() => {
+    if (!isAnonymousAtsMode) {
+      setHasUsedPublicAtsScan(false)
+      setPublicAuthPromptReason(null)
+      return
+    }
+
+    setHasUsedPublicAtsScan(readPublicAtsScanUsage())
+  }, [isAnonymousAtsMode])
+
+  useEffect(() => {
+    if (!isAnonymousAtsMode || !scanResult) {
+      return
+    }
+
+    writePublicAtsScanUsage()
+    setHasUsedPublicAtsScan(true)
+  }, [isAnonymousAtsMode, scanResult])
 
   useEffect(() => {
     if (inputMode !== 'resume') {
@@ -868,9 +1025,23 @@ export default function ATSCheckerClient({
     const matchedResume = resumes.find(r => r.id === requestedResumeId)
     if (!matchedResume) return
 
+    if (scanResult && scannedResumeId !== requestedResumeId) {
+      setScanError(null)
+      setScanResult(null)
+      setScannedResumeId(null)
+      setCustomizeError(null)
+      setOptimiseError(null)
+      setOptimiseResult(null)
+      setOptimisedResumeId(null)
+      setOpenOptimisedError(null)
+      setActiveTab('results')
+    }
+
+    setUploadedFile(null)
+    setExtractError(null)
     setSelectedResumeId(requestedResumeId)
     setInputMode('resume')
-  }, [searchParams, resumes])
+  }, [resumes, scanResult, scannedResumeId, searchParams])
 
   useEffect(() => {
     if (!scanResult) return
@@ -883,6 +1054,29 @@ export default function ATSCheckerClient({
       location: publicMode ? 'public_ats_results' : 'dashboard_ats_results',
     })
   }, [pro, publicMode, scanResult])
+
+  useEffect(() => {
+    if (!scanResult || !shouldAutoScrollResultsRef.current) {
+      return
+    }
+
+    shouldAutoScrollResultsRef.current = false
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      const secondFrame = window.requestAnimationFrame(() => {
+        resultsRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: publicMode ? 'start' : 'nearest',
+        })
+      })
+
+      return () => window.cancelAnimationFrame(secondFrame)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+    }
+  }, [publicMode, scanResult])
 
   useEffect(() => {
     if (!hasRestoredDraft) {
@@ -923,7 +1117,7 @@ export default function ATSCheckerClient({
   ])
 
   const getResumeText = (): string => {
-    if (inputMode === 'upload') return uploadedFile?.text ?? ''
+    if (inputMode === 'upload') return uploadedFile?.text?.trim() || resumeDataToText(uploadedFile?.parsedData ?? null)
     const found = resumes.find(r => r.id === selectedResumeId)
     return found?.raw_text?.trim() || resumeDataToText(found?.parsed_data ?? null)
   }
@@ -940,6 +1134,12 @@ export default function ATSCheckerClient({
 
   async function handleFileChange(file: File | null) {
     if (!file) return
+    if (isAnonymousAtsMode && hasUsedPublicAtsScan) {
+      setPublicAuthPromptReason('another_resume')
+      return
+    }
+
+    setPublicAuthPromptReason(null)
     setExtractError(null)
     setUploadedFile(null)
     setIsExtracting(true)
@@ -971,7 +1171,11 @@ export default function ATSCheckerClient({
         sectionCount: Math.max(1, String(json.text ?? '').split(/\n{2,}/).filter(Boolean).length),
         durationMs: Math.round(performance.now() - extractionStartedAt),
       })
-      setUploadedFile({ name: file.name, text: json.text })
+      setUploadedFile({
+        name: file.name,
+        text: String(json.text ?? ''),
+        parsedData: (json.parsedData as ResumeData | null | undefined) ?? null,
+      })
     } catch {
       Analytics.resumeParseFailed({
         error: 'EXTRACTION_FAILED',
@@ -983,6 +1187,13 @@ export default function ATSCheckerClient({
   }
 
   async function handleScan() {
+    if (isAnonymousAtsMode && hasUsedPublicAtsScan) {
+      setPublicAuthPromptReason('rescan')
+      setScanError(null)
+      return
+    }
+
+    setPublicAuthPromptReason(null)
     setScanError(null)
     setCustomizeError(null)
     setOpenOptimisedError(null)
@@ -1005,6 +1216,7 @@ export default function ATSCheckerClient({
         body: JSON.stringify({
           resumeText,
           resumeId,
+          parsedResumeData: inputMode === 'upload' ? uploadedFile?.parsedData ?? undefined : undefined,
           analysisMode: mode,
           jobDescription: requiresJobDescription ? jobDescription || undefined : undefined,
         }),
@@ -1015,6 +1227,7 @@ export default function ATSCheckerClient({
         return
       }
       setScanResult(json.data)
+      shouldAutoScrollResultsRef.current = true
       Analytics.atsScoreViewed({
         tier: json.data.scanTier === 'advanced' ? 'advanced' : 'basic',
         score: json.data.score,
@@ -1028,13 +1241,30 @@ export default function ATSCheckerClient({
         void router.prefetch('/dashboard')
         void router.prefetch('/dashboard/resumes')
       }
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     } catch {
       setScanError(ERROR_MESSAGES['INTERNAL_ERROR'])
     } finally {
       setIsScanning(false)
     }
   }
+  handleScanRef.current = handleScan
+
+  useEffect(() => {
+    const shouldAutoRun = searchParams.get('autoRun') === '1'
+
+    if (!shouldAutoRun) {
+      hasTriggeredAutoRunRef.current = false
+      return
+    }
+
+    if (hasTriggeredAutoRunRef.current) return
+    if (!hasRestoredDraft) return
+    if (inputMode !== 'resume' || !selectedResumeId) return
+    if (isScanning || !!scanResult) return
+
+    hasTriggeredAutoRunRef.current = true
+    void handleScanRef.current?.()
+  }, [hasRestoredDraft, inputMode, isScanning, scanResult, searchParams, selectedResumeId])
 
   async function handleOptimise() {
     if (!scanResult) return
@@ -1223,8 +1453,32 @@ export default function ATSCheckerClient({
     <>
       {!pro && !publicMode && scansLeft === 0 && (
         <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
-          You have used all 3 free scans today. Scans reset every 24 hours.{' '}
+          You have used all {FREE_PLAN.limits.atsScansPerDay} free scans today. Scans reset every 24 hours.{' '}
           <a href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</a> for unlimited scans.
+        </div>
+      )}
+
+      {isAnonymousAtsMode && publicAuthPromptReason && (
+        <div className="rounded-[1.4rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950 shadow-[0_18px_42px_rgba(2,109,50,0.08)]">
+          <p className="font-semibold">
+            {publicAuthPromptReason === 'another_resume'
+              ? 'Your free pre-signup ATS scan is already used. Log in or create a free account to check another resume.'
+              : 'Your free pre-signup ATS scan is already used. Log in or create a free account to run another scan.'}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <a
+              href="/auth/login"
+              className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:border-emerald-400 hover:text-emerald-900"
+            >
+              Log in
+            </a>
+            <a
+              href="/auth/register"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+            >
+              Create free account
+            </a>
+          </div>
         </div>
       )}
 
@@ -1234,11 +1488,11 @@ export default function ATSCheckerClient({
         </div>
       )}
 
-      <div className="flex justify-center pt-2">
+      <div className={`flex justify-center ${compactPublicUploadCard ? 'pt-0' : publicMode ? 'pt-0' : 'pt-2'}`}>
         <button
           onClick={handleScan}
           disabled={!canScan}
-          className="group flex items-center gap-3 rounded-full bg-zinc-950 px-12 py-4 text-base font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)] active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-none"
+          className={`group flex items-center justify-center gap-3 bg-zinc-950 font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none ${compactPublicUploadCard ? 'w-full rounded-2xl px-8 py-5 text-lg' : 'rounded-full px-12 py-4 text-base'} ${publicMode ? 'shadow-[0_20px_40px_rgba(2,109,50,0.12)] hover:shadow-[0_24px_48px_rgba(2,109,50,0.2)]' : 'hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)]'}`}
         >
           {isScanning ? (
             <>
@@ -1251,7 +1505,7 @@ export default function ATSCheckerClient({
           ) : (
             <>
               <Sparkles size={18} strokeWidth={1.75} />
-              {scanButtonLabel}
+              {compactPublicUploadCard ? 'Run ATS scan' : scanButtonLabel}
               <ArrowRight size={18} strokeWidth={2} className="group-hover:translate-x-1 transition-transform" />
             </>
           )}
@@ -1260,25 +1514,25 @@ export default function ATSCheckerClient({
 
       {!pro && !publicMode && (
         <p className="text-center text-xs text-on-surface-variant">
-          Free plan: 3 {isMatchMode ? 'match' : 'ATS'} scans / day with basic analysis.{' '}
+          Free plan: {FREE_PLAN.limits.atsScansPerDay} {isMatchMode ? 'match' : 'ATS'} scans / day with basic analysis.{' '}
           <a href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
             Upgrade for advanced AI analysis + resume optimisation.
           </a>
         </p>
       )}
 
-      {publicMode && (
+      {publicMode && !compactPublicUploadCard && (
         <p className="text-center text-xs text-on-surface-variant">
           {isMatchMode
             ? 'Free match scoring is open here. Create an account when you want AI tailoring and builder editing.'
-            : 'Free ATS scoring is open here. Create an account when you want AI improve and builder editing.'}
+            : 'One ATS scan is available before signup. Create an account to rescan, upload another resume, and unlock AI improve + builder editing.'}
         </p>
       )}
     </>
   )
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className={publicMode ? "space-y-6" : "max-w-7xl mx-auto space-y-8"}>
       {showIntro && (
         <DashboardPageIntro
           kicker={
@@ -1346,21 +1600,36 @@ export default function ATSCheckerClient({
       {!pro && !publicMode && <AdBanner size="leaderboard" className="mx-auto" />}
 
       {/* ── Scanning Workspace ────────────────────────────────────────────────── */}
-      <div className={isMatchMode ? 'grid grid-cols-1 gap-8 lg:grid-cols-2' : 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,36rem)_minmax(18rem,1fr)] lg:items-start'}>
+      <div className={
+        isMatchMode 
+          ? 'grid grid-cols-1 gap-8 lg:grid-cols-2' 
+          : (publicMode 
+              ? 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start'
+              : 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,36rem)_minmax(18rem,1fr)] lg:items-start')
+      }>
 
         {/* Your Resume */}
-        <div className={isMatchMode ? 'space-y-4' : 'order-2 space-y-4'}>
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2.5">
-              <FileText size={18} className="text-primary" strokeWidth={1.75} />
-              <h3 className="text-base font-bold tracking-tight text-on-surface">Your Resume</h3>
+        <div
+          className={
+            isMatchMode
+              ? 'space-y-4'
+              : compactPublicUploadCard
+                ? 'order-2 w-full space-y-4'
+                : 'order-2 space-y-4'
+          }
+        >
+          {!compactPublicUploadCard && (
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2.5">
+                <FileText size={18} className="text-primary" strokeWidth={1.75} />
+                <h3 className="text-base font-bold tracking-tight text-on-surface">Your Resume</h3>
+              </div>
+              <span className="text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-md">
+                Required
+              </span>
             </div>
-            <span className="text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-md">
-              Required
-            </span>
-          </div>
-
-          <DashboardSurface variant="default" className={`${isMatchMode ? 'min-h-[480px]' : 'min-h-[360px]'} p-6 flex flex-col gap-5`}>
+          )}
+          <DashboardSurface variant="default" className={`${isMatchMode ? (publicMode ? 'min-h-[400px]' : 'min-h-[480px]') : compactPublicUploadCard ? 'min-h-[520px]' : publicMode ? 'h-full' : 'min-h-[360px]'} ${compactPublicUploadCard ? 'p-7' : 'p-6'} flex flex-col ${compactPublicUploadCard ? 'gap-6' : 'gap-4'} shadow-[0_12px_44px_rgba(18,24,21,0.06)] border-white/60 backdrop-blur-sm`}>
             {/* Mode toggle */}
             {resumes.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
@@ -1406,7 +1675,7 @@ export default function ATSCheckerClient({
             )}
 
             {/* Input area */}
-            <div className="relative flex min-h-[280px] flex-1 flex-col">
+            <div className={`relative flex ${compactPublicUploadCard ? 'min-h-[380px]' : publicMode ? 'h-auto' : 'min-h-[280px]'} flex-1 flex-col`}>
               {inputMode === 'resume' && resumes.length > 0 ? (
                 <div className="flex min-h-[280px] flex-1 flex-col rounded-xl border border-black/6 bg-[linear-gradient(180deg,rgba(244,248,245,0.72),rgba(255,255,255,0.92))] p-4">
                   <select
@@ -1440,6 +1709,8 @@ export default function ATSCheckerClient({
                   wordCount={wordCount}
                   onFile={handleFileChange}
                   onClear={() => { setUploadedFile(null); setExtractError(null) }}
+                  publicMode={publicMode}
+                  compact={compactPublicUploadCard}
                 />
               )}
             </div>
@@ -1502,7 +1773,7 @@ export default function ATSCheckerClient({
 
         {!isMatchMode && (
           <div className="order-1">
-            <ATSModePreviewPanel />
+            <ATSModePreviewPanel publicMode={publicMode} />
           </div>
         )}
       </div>
@@ -1516,7 +1787,7 @@ export default function ATSCheckerClient({
 
       {/* ── Results ──────────────────────────────────────────────────────────── */}
       {scanResult && (
-        <div ref={resultsRef} className="space-y-5">
+        <div ref={resultsRef} className="scroll-mt-24 space-y-5">
           {optimiseResult && (
             <div className="flex flex-wrap gap-2">
               {(['results', 'optimised'] as const).map(tab => (
@@ -1536,7 +1807,7 @@ export default function ATSCheckerClient({
           )}
 
           {activeTab === 'results' && (
-            <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <div className={publicMode ? 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]' : 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]'}>
               <div className="space-y-5">
                 <DashboardSurface variant="default" className="p-5 sm:p-6">
                   <div className="space-y-6">
@@ -1552,31 +1823,32 @@ export default function ATSCheckerClient({
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                          scanResult.scanTier === 'advanced'
-                            ? 'bg-primary-container/40 text-on-primary-container'
-                            : 'bg-surface-container-high text-on-surface-variant'
-                        }`}>
-                          {scanResult.scanTier === 'advanced' ? 'Advanced analysis' : 'Basic analysis'}
-                        </span>
                         <p className="text-sm leading-6 text-on-surface-variant">{scanResult.summary}</p>
                         {!pro && scanResult.scansRemaining !== null && (
                           <p className="text-xs text-on-surface-variant">{scanResult.scansRemaining} free scans remaining today.</p>
                         )}
                         {!isMatchMode && !pro && scanResult.score < 70 && (
-                          <div className="rounded-[1.1rem] border border-red-200 bg-red-50 px-4 py-4">
-                            <p className="text-sm font-bold tracking-tight text-red-800">
-                              Industry-leading ATS systems would score this resume low.
-                            </p>
-                            <p className="mt-2 text-sm leading-6 text-red-700">
-                              Use AI insights to find the highest-impact fixes before you apply.
-                            </p>
-                            <a
-                              href={publicMode ? '/auth/register' : '/dashboard/pricing'}
-                              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-red-800 hover:underline"
-                            >
-                              Upgrade to Pro <ChevronRight size={14} />
-                            </a>
+                          <div className="group relative overflow-hidden rounded-[1.25rem] border border-[#8f3144]/40 bg-[linear-gradient(155deg,#5b1625_0%,#7b2034_42%,#2b0f17_100%)] px-4 py-4 text-white shadow-[0_24px_48px_rgba(91,22,37,0.22)] transition-all duration-300 ease-out hover:-translate-y-1 hover:border-[#bf5a70]/60 hover:shadow-[0_34px_72px_rgba(91,22,37,0.34)]">
+                            <div className="pointer-events-none absolute inset-0">
+                              <div className="absolute inset-y-0 right-[-18%] w-1/2 rounded-full bg-white/10 blur-3xl transition-transform duration-500 group-hover:scale-110 group-hover:-translate-x-3" />
+                              <div className="absolute left-6 top-5 h-16 w-16 rounded-full bg-[#f7b0bf]/10 blur-2xl transition-all duration-500 group-hover:scale-125 group-hover:bg-[#f7b0bf]/20" />
+                              <div className="absolute inset-y-0 left-0 w-20 -translate-x-[140%] bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 blur-xl transition-all duration-700 group-hover:translate-x-[520%] group-hover:opacity-100" />
+                            </div>
+                            <div className="relative">
+                              <p className="text-sm font-bold tracking-tight text-white transition-transform duration-300 group-hover:translate-x-0.5">
+                                Industry-leading ATS systems would score this resume low.
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-rose-100/88">
+                                Use AI insights to find the highest-impact fixes before you apply.
+                              </p>
+                              <a
+                                href={publicMode ? '/auth/register' : '/dashboard/pricing'}
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white shadow-[0_14px_30px_rgba(19,8,12,0.22)] transition-all duration-300 hover:bg-white hover:text-[#5b1625] group-hover:border-white/25"
+                              >
+                                Upgrade to Pro
+                                <ChevronRight size={15} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                              </a>
+                            </div>
                           </div>
                         )}
                       </div>

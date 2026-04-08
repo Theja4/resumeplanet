@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { BarChart3, CreditCard, FilePenLine, LayoutDashboard, Shield } from 'lucide-react'
+import { BarChart3, CreditCard, FilePenLine, LayoutDashboard, Shield, Users } from 'lucide-react'
 import AdminLogoutButton from '@/components/admin/AdminLogoutButton'
 import { getAdminSession } from '@/lib/admin-auth'
 
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', Icon: LayoutDashboard },
   { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 },
   { href: '/admin/billing', label: 'Billing', Icon: CreditCard },
+  { href: '/admin/influencers', label: 'Influencers', Icon: Users },
   { href: '/admin/blog', label: 'Blog', Icon: FilePenLine },
 ]
 

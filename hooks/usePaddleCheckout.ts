@@ -81,7 +81,8 @@ export function usePaddleCheckout() {
 
   const openSubscriptionCheckout = async (params: {
     priceId?: string
-    couponId?: string
+    promotionId?: string
+    promotionCode?: string
     onSuccess?: () => void
     onError?: (error: string) => void
   }) => {
@@ -95,7 +96,8 @@ export function usePaddleCheckout() {
         body: JSON.stringify({
           mode: 'subscription',
           priceId: params.priceId,
-          couponId: params.couponId,
+          promotionId: params.promotionId,
+          promotionCode: params.promotionCode,
           distinctId,
           blogReferrerSlug: attribution?.ref === 'blog' ? attribution.slug : undefined,
           blogReferrerCta: attribution?.ref === 'blog' ? attribution.cta : undefined,
@@ -104,7 +106,7 @@ export function usePaddleCheckout() {
       const json = await res.json()
       if (!json.success) throw new Error(json.error ?? 'Checkout failed')
 
-      const { priceId, customerId, customerEmail, discountId, customData } = json.data
+      const { priceId, customerId, customerEmail, discountId, discountCode, customData } = json.data
 
       const paddle = getPaddle()
       if (!paddle) throw new Error('Paddle not initialized')
@@ -115,12 +117,12 @@ export function usePaddleCheckout() {
       Analytics.checkoutStarted({
         product: 'pro_subscription',
         price: checkoutPrice,
-        discountCode: params.couponId,
+        discountCode: params.promotionCode,
       })
       setCheckoutContext({
         product: 'pro_subscription',
         price: checkoutPrice,
-        discountCode: params.couponId,
+        discountCode: params.promotionCode,
         step: 'overlay_opened',
       })
 
@@ -134,11 +136,13 @@ export function usePaddleCheckout() {
           displayMode: 'overlay',
           theme: 'light',
           locale: 'en',
-          successUrl: `${window.location.origin}/dashboard/billing?upgraded=true`,
+          successUrl: `${window.location.origin}/dashboard/pricing?upgraded=true`,
         },
       }
 
-      if (discountId) {
+      if (discountCode) {
+        checkoutParams.discountCode = discountCode
+      } else if (discountId) {
         checkoutParams.discountId = discountId
       }
 
