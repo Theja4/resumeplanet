@@ -1,10 +1,17 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { WandSparkles } from 'lucide-react'
+import type { Metadata } from 'next'
 import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+
+export const metadata: Metadata = {
+  title: 'Rezoomed | AI Resume Builder & ATS Checker',
+  description:
+    'Build role-targeted resumes, improve ATS performance, and export recruiter-ready files with Rezoomed.',
+}
 
 type Testimonial = {
   quote: string

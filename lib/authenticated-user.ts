@@ -21,6 +21,10 @@ const readAuthenticatedUserContext = cache(async (): Promise<AuthenticatedUserCo
   } = await supabase.auth.getUser()
 
   if (userError) {
+    if (userError.message.toLowerCase().includes('auth session missing')) {
+      return null
+    }
+
     throw new Error(`Failed to load authenticated user: ${userError.message}`)
   }
 

@@ -40,6 +40,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   server_error: 'Something went wrong. Please try again.',
 }
 
+function sanitizeAuthNextPath(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return null
+  }
+
+  return value
+}
+
 function BrandLockup() {
   return (
     <Link href="/" className="inline-flex items-center gap-2">
@@ -181,6 +193,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
   const authErrorMessage =
     localError || (errorCode ? ERROR_MESSAGES[errorCode] ?? errorDescription ?? errorCode : null)
+  const nextPath = sanitizeAuthNextPath(searchParams.get('next'))
 
   const getAuthOrigin = () => window.location.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -335,7 +348,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/auth/callback`,
+          redirectTo: `${origin}/auth/callback${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`,
         },
       })
 
@@ -414,7 +427,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${origin}/auth/callback`,
+            emailRedirectTo: `${origin}/auth/callback${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`,
             data: {
               full_name: fullName.trim() || undefined,
             },
@@ -438,7 +451,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
         }
 
         if (data.session) {
-          router.replace('/dashboard')
+          router.replace(nextPath ?? '/dashboard')
           router.refresh()
           return
         }
@@ -478,7 +491,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
         })
       }
 
-      router.replace('/dashboard')
+      router.replace(nextPath ?? '/dashboard')
       router.refresh()
     } finally {
       setIsPasswordLoading(false)

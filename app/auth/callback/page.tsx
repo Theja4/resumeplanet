@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics, clearAuthIntent, readAuthIntent } from '@/lib/analytics'
 import Image from 'next/image'
@@ -10,9 +10,15 @@ const MIN_LOADER_MS = 950
 
 export default function AuthCallbackPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const startedAt = Date.now()
+    const requestedNext = searchParams.get('next')
+    const nextPath =
+      requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+        ? requestedNext
+        : null
 
     async function handleCallback() {
       const supabase = createClient()
@@ -55,12 +61,12 @@ export default function AuthCallbackPage() {
           signupDate: data.session.user.created_at,
         })
         clearAuthIntent()
-        if (authIntent?.mode === 'register' && resumeCount === 0) {
+        if (!nextPath && authIntent?.mode === 'register' && resumeCount === 0) {
           router.replace('/dashboard/onboarding')
           return
         }
 
-        router.replace('/dashboard')
+        router.replace(nextPath ?? '/dashboard')
       } else {
         clearAuthIntent()
         router.replace('/auth/login?error=server_error')
@@ -68,7 +74,7 @@ export default function AuthCallbackPage() {
     }
 
     void handleCallback()
-  }, [router])
+  }, [router, searchParams])
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_52%,#f2f7f3_100%)]">
@@ -77,12 +83,12 @@ export default function AuthCallbackPage() {
 
       <div className="callback-loader relative z-10 flex items-center justify-center gap-6 px-6">
         <div className="callback-logo-wrap shrink-0">
-          <Image 
-            src="/icon.png" 
-            alt="Rezoomed logo" 
-            width={80} 
-            height={80} 
-            className="rounded-[1.4rem] shadow-[0_20px_50px_rgba(2,109,50,0.18)] ring-1 ring-white/20" 
+          <Image
+            src="/icon.png"
+            alt="Rezoomed logo"
+            width={80}
+            height={80}
+            className="rounded-full shadow-[0_20px_50px_rgba(2,109,50,0.18)]"
           />
         </div>
         <div className="callback-wordmark-wrap">

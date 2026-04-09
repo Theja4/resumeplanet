@@ -9,8 +9,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { profile: typedProfile } = await getAuthenticatedUserContext()
+  const { profile: typedProfile, supabase, userId } = await getAuthenticatedUserContext()
   const proUser = typedProfile.plan === 'pro'
+  const { data: affiliateRecord } = await supabase
+    .from('affiliates')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const showAffiliateNav = Boolean(affiliateRecord?.id)
 
   return (
     <PlanProvider isPro={proUser} profile={typedProfile}>
@@ -21,11 +27,14 @@ export default async function DashboardLayout({
         <div className="dashboard-shell-aurora dashboard-shell-aurora-three pointer-events-none absolute bottom-16 left-1/3 h-64 w-64 rounded-full bg-[#eff8f1]" />
 
         {/* Desktop sidebar */}
-        <Sidebar profile={typedProfile} />
+        <Sidebar profile={typedProfile} showAffiliateNav={showAffiliateNav} />
 
         {/* Main content — offset by sidebar width on md+ */}
         <div className="relative flex min-h-screen flex-col md:ml-[18.5rem]">
-          <MobileAppBar initials={(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()} />
+          <MobileAppBar
+            initials={(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()}
+            showAffiliateNav={showAffiliateNav}
+          />
 
           {/* Page content */}
           <main className="relative flex-1 px-3 py-5 pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-8 md:pb-10 xl:px-10">

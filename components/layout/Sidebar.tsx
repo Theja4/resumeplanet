@@ -73,7 +73,6 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { href: '/dashboard/orders', label: 'Orders', Icon: ShoppingBag },
       { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
-      { href: '/affiliate/dashboard', label: 'Affiliate', Icon: Wallet },
     ],
   },
 ]
@@ -109,11 +108,24 @@ function getAvatarColor(name: string | null, email: string): string {
 
 interface SidebarProps {
   profile: Profile
+  showAffiliateNav?: boolean
 }
 
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, showAffiliateNav = false }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const navSections = NAV_SECTIONS.map(section => {
+    if (section.title !== 'Account') {
+      return section
+    }
+
+    return {
+      ...section,
+      items: showAffiliateNav
+        ? [...section.items, { href: '/affiliate/dashboard', label: 'Affiliate', Icon: Wallet }]
+        : section.items,
+    }
+  })
 
   function isActive(item: NavItem) {
     if (item.builderMode === 'tailor') {
@@ -140,7 +152,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* Nav */}
       <nav className="relative flex flex-grow flex-col gap-5">
-        {NAV_SECTIONS.map(section => (
+        {navSections.map(section => (
           <div key={section.title} className="space-y-2">
             <p className="px-3 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/55">
               {section.title}
@@ -178,11 +190,11 @@ export default function Sidebar({ profile }: SidebarProps) {
       </nav>
 
       {/* Bottom section */}
-      <div className="relative mt-auto space-y-3 pt-4">
+      <div className="relative mt-auto space-y-1.5 pt-2">
         <Link
           href="/dashboard/contact"
           prefetch
-          className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2.5 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
+          className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
         >
           <CircleHelp size={16} />
           <span className="text-sm font-medium">Help</span>
@@ -190,7 +202,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
         <form
           action={logout}
-          className="border-t border-outline-variant/10 pt-3"
+          className="border-t border-outline-variant/10 pt-2"
           onSubmit={() => {
             clearWorkspaceSessionDrafts()
             Analytics.reset()
@@ -198,7 +210,7 @@ export default function Sidebar({ profile }: SidebarProps) {
         >
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2.5 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
+            className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
           >
             <LogOut size={16} />
             <span className="text-sm font-medium">Log out</span>
