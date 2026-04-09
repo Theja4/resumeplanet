@@ -1,35 +1,14 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { PlanProvider } from '@/lib/context/PlanContext'
 import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
-import type { Profile } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/auth/login')
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile) {
-    redirect('/auth/login')
-  }
-
-  const typedProfile = profile as Profile
+  const { profile: typedProfile } = await getAuthenticatedUserContext()
   const proUser = typedProfile.plan === 'pro'
 
   return (

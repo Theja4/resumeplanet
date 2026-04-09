@@ -1,26 +1,19 @@
-import { createClient } from '@/lib/supabase/server'
 import ATSCheckerClient from './ATSCheckerClient'
-import type { Resume, Profile } from '@/types'
+import type { Resume } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 export default async function ATSCheckerPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  if (!user) return null
-
-  const [resumesResult, profileResult] = await Promise.all([
+  const [resumesResult] = await Promise.all([
     supabase
       .from('resumes')
       .select('id, title, raw_text, parsed_data')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false }),
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
   ])
 
   const resumes = (resumesResult.data ?? []) as Pick<Resume, 'id' | 'title' | 'raw_text' | 'parsed_data'>[]
-  const profile = profileResult.data as Profile | null
 
   return <ATSCheckerClient resumes={resumes} profile={profile} mode="ats" />
 }

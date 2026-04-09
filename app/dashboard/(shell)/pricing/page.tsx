@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import {
   buildAffiliatePricingPromo,
   resolveAffiliateSourceCodeFromProfile,
@@ -8,7 +7,6 @@ import {
   logAffiliateInfrastructureError,
   readAffiliateReferralCodeFromCookies,
 } from '@/lib/affiliate-server'
-import { redirect } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import BillingUpgradeSection from './BillingUpgradeSection'
@@ -18,7 +16,8 @@ import { PROFESSIONAL_ORDER, getActiveExitIntentPromo, getActivePromotion } from
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import PricingPageTracker from '@/components/analytics/PricingPageTracker'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import type { Affiliate, Profile, Order } from '@/types'
+import type { Affiliate, Order } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -51,24 +50,17 @@ export default async function PricingPage({
   const upgraded = params.upgraded === 'true'
   const pricingSource = params.source ?? 'dashboard'
   const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
-
-  const [profileResult, ordersResult] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  const [ordersResult] = await Promise.all([
     supabase
       .from('orders')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .in('status', ['paid', 'in_progress', 'delivered'])
       .order('created_at', { ascending: false })
       .limit(10),
   ])
-
-  const profile = profileResult.data as Profile | null
-  if (!profile) redirect('/auth/login')
 
   const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
   const affiliateLookupCandidates = params.promo

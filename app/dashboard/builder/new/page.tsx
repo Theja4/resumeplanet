@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 function buildRedirectQuery(params: Record<string, string | string[] | undefined>) {
   const query = new URLSearchParams()
@@ -24,27 +24,14 @@ export default async function NewBlankResumePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
   const redirectQuery = buildRedirectQuery(await searchParams)
-
-  if (!user) {
-    redirect('/auth/login')
-  }
 
   // Check resume limit for free users
   const { count } = await supabase
     .from('resumes')
     .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('plan')
-    .eq('id', user.id)
-    .single()
+    .eq('user_id', userId)
 
   if (profile?.plan === 'free' && (count ?? 0) >= 3) {
     redirect('/dashboard/resumes?status=limit-reached')

@@ -82,6 +82,12 @@ export interface AffiliateDashboardStats {
   monthlySignups: AffiliateMonthlySignup[]
 }
 
+export interface DashboardOverview {
+  resumeCount: number
+  lastScore: number | null
+  hasAffiliate: boolean
+}
+
 export interface AffiliateReferralPage {
   page: number
   pageSize: number

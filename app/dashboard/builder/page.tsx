@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import TailorModeEntryDialog from '@/components/builder/TailorModeEntryDialog'
 import ProFeaturePageGate from '@/components/shared/ProFeaturePageGate'
-import type { Profile, Resume } from '@/types'
+import type { Resume } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 function buildRedirectQuery(params: Record<string, string | string[] | undefined>) {
   const query = new URLSearchParams()
@@ -35,25 +35,15 @@ export default async function BuilderIndexPage({
     redirect(`/dashboard/builder/new${buildRedirectQuery(resolvedSearchParams)}`)
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  if (!user) {
-    redirect('/auth/login')
-  }
-
-  const [profileResult, resumesResult] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  const [resumesResult] = await Promise.all([
     supabase
       .from('resumes')
       .select('id, title, created_at, updated_at')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false }),
   ])
-
-  const profile = profileResult.data as Profile | null
 
   if (profile?.plan !== 'pro') {
     return (

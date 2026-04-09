@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { DEFAULT_UNIVERSAL_CONFIG } from '@/types'
 import { SAMPLE_RESUME } from '@/lib/sampleResumeData'
 import Link from 'next/link'
@@ -8,16 +6,15 @@ import type { LucideIcon } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { TemplateGalleryLink, TemplateGalleryTracker } from '@/components/analytics/TemplateGalleryAnalytics'
 import UniversalTemplatePreview from '@/components/templates/UniversalTemplatePreview'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 export default async function TemplatesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/dashboard/resumes')
+  const { supabase, userId } = await getAuthenticatedUserContext()
 
   const { data: resumesData } = await supabase
     .from('resumes')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(1)
 

@@ -1,30 +1,18 @@
-import { createClient } from '@/lib/supabase/server'
 import CVGeneratorClient from '@/components/cv/CVGeneratorClient'
 import ProFeaturePageGate from '@/components/shared/ProFeaturePageGate'
-import type { Resume, Profile } from '@/types'
-
-export const dynamic = 'force-dynamic'
+import type { Resume } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 export default async function CVGeneratorPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  if (!user) {
-    return null
-  }
-
-  const [profileResult, resumesResult] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  const [resumesResult] = await Promise.all([
     supabase
       .from('resumes')
       .select('id, title, parsed_data')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false }),
   ])
-
-  const profile = profileResult.data as Profile | null
 
   if (profile?.plan !== 'pro') {
     return (

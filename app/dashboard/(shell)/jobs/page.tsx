@@ -1,8 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import TrackedJobsClient from '@/components/jobs/TrackedJobsClient'
-import type { Job, Profile, TrackedJob } from '@/types'
-
-export const dynamic = 'force-dynamic'
+import type { Job, TrackedJob } from '@/types'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 type TrackedJobRow = Omit<TrackedJob, 'job'> & {
   job: Job | Job[] | null
@@ -13,25 +11,18 @@ export default async function DashboardJobsPage({
 }: {
   searchParams: Promise<{ status?: string }>
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  if (!user) return null
-
-  const [profileResult, trackedJobsResult] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  const [trackedJobsResult] = await Promise.all([
     supabase
       .from('tracked_jobs')
       .select(
         'id, user_id, job_id, status, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
       )
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false }),
   ])
 
-  const profile = profileResult.data as Profile | null
   const trackedJobs = ((trackedJobsResult.data ?? []) as unknown as TrackedJobRow[]).map(
     trackedJob => ({
       ...trackedJob,

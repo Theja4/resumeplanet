@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Check, Clock, Download } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 import OrderStatusPoller from './OrderStatusPoller'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -65,15 +65,13 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
   const { id } = await params
   const { success } = await searchParams
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const { supabase, userId } = await getAuthenticatedUserContext()
 
   const { data: order } = await supabase
     .from('orders')
     .select('*, resumes(title, id)')
     .eq('id', id)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   if (!order) notFound()

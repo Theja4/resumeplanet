@@ -1,25 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
 import ResumesClient from './ResumesClient'
 import type { Resume, Profile } from '@/types'
-
-export const dynamic = 'force-dynamic'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 export default async function ResumesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  if (!user) return null
-
-  // Fetch resumes + profile in parallel
-  const [resumesResult, profileResult] = await Promise.all([
+  const [resumesResult] = await Promise.all([
     supabase
       .from('resumes')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false }),
-    supabase.from('profiles').select('plan').eq('id', user.id).single(),
   ])
 
   const resumes = (resumesResult.data ?? []) as Resume[]
@@ -49,7 +40,7 @@ export default async function ResumesPage() {
     }
   }
 
-  const plan = (profileResult.data?.plan ?? 'free') as Profile['plan']
+  const plan = (profile.plan ?? 'free') as Profile['plan']
 
   return (
     <ResumesClient

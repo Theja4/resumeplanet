@@ -1,10 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ShoppingBag, Plus, ArrowRight } from 'lucide-react'
 import type { Order } from '@/types'
 import { PROFESSIONAL_ORDER } from '@/lib/pricing'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 
 const STATUS_STYLES: Record<string, string> = {
   pending:     'bg-gray-100 text-gray-600',
@@ -25,14 +24,12 @@ function formatDate(d: string) {
 }
 
 export default async function OrdersPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
+  const { supabase, userId } = await getAuthenticatedUserContext()
 
   const { data: orders } = await supabase
     .from('orders')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false })
 
   const typedOrders = (orders ?? []) as Order[]

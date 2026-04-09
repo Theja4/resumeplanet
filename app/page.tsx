@@ -1,21 +1,10 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { WandSparkles } from 'lucide-react'
-import PricingSection from '@/components/landing/PricingSection'
 import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
-import {
-  buildAffiliatePricingPromo,
-} from '@/lib/affiliate'
-import {
-  findAffiliateByDiscountCode,
-  logAffiliateInfrastructureError,
-  readAffiliateReferralCodeFromCookies,
-} from '@/lib/affiliate-server'
-import { getActivePromotion } from '@/lib/pricing'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 type Testimonial = {
   quote: string
@@ -94,19 +83,6 @@ const TESTIMONIALS: Testimonial[] = [
 ]
 
 export default async function LandingPage() {
-  const affiliateCode = await readAffiliateReferralCodeFromCookies()
-  let affiliate = null
-
-  if (affiliateCode) {
-    try {
-      affiliate = await findAffiliateByDiscountCode(createServiceRoleClient(), affiliateCode)
-    } catch (error) {
-      logAffiliateInfrastructureError('landing-page-affiliate-lookup', error)
-    }
-  }
-
-  const pricingPromo = buildAffiliatePricingPromo(affiliate) ?? getActivePromotion()
-
   return (
     <div className="bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
       <PublicSiteHeader active="home" />
@@ -197,13 +173,6 @@ export default async function LandingPage() {
         <LogoMarqueeSection />
 
         <FeatureShowcaseSection />
-
-        <section className="bg-[linear-gradient(180deg,#f8faf9_0%,#eef7f1_100%)] py-8">
-          <PricingSection
-            activePromo={pricingPromo}
-            autoApplyCode={affiliate?.discount_code}
-          />
-        </section>
 
         {/* ── Testimonials ───────────────────────────────────────────────── */}
         <section className="py-28 bg-[#f8faf9] overflow-hidden">
