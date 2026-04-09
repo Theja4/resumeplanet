@@ -16,7 +16,6 @@ import {
   PlusCircle,
   ShoppingBag,
   CreditCard,
-  Wallet,
   LogOut,
   type LucideIcon,
 } from 'lucide-react'
@@ -37,18 +36,9 @@ const BASE_MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
 ]
 
-export default function MobileAppBar({
-  initials,
-  showAffiliateNav = false,
-}: {
-  initials: string
-  showAffiliateNav?: boolean
-}) {
+export default function MobileAppBar({ initials }: { initials: string }) {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
-  const mobileNavItems = showAffiliateNav
-    ? [...BASE_MOBILE_NAV_ITEMS, { href: '/affiliate/dashboard', label: 'Affiliate', Icon: Wallet }]
-    : BASE_MOBILE_NAV_ITEMS
 
   useEffect(() => {
     setMenuOpen(false)
@@ -77,7 +67,7 @@ export default function MobileAppBar({
       {menuOpen ? (
         <div className="mt-2 rounded-[1.25rem] border border-white/75 bg-white/95 p-2.5 shadow-[0_18px_40px_rgba(25,28,29,0.1)] backdrop-blur-2xl">
           <nav className="grid grid-cols-1 gap-1.5">
-            {mobileNavItems.map(({ href, label, Icon }) => {
+            {BASE_MOBILE_NAV_ITEMS.map(({ href, label, Icon }) => {
               const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href)
               return (
                 <Link

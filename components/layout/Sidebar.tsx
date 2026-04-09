@@ -18,7 +18,6 @@ import {
   Target,
   ShoppingBag,
   CreditCard,
-  Wallet,
   CircleHelp,
   LogOut,
   type LucideIcon,
@@ -108,24 +107,11 @@ function getAvatarColor(name: string | null, email: string): string {
 
 interface SidebarProps {
   profile: Profile
-  showAffiliateNav?: boolean
 }
 
-export default function Sidebar({ profile, showAffiliateNav = false }: SidebarProps) {
+export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const navSections = NAV_SECTIONS.map(section => {
-    if (section.title !== 'Account') {
-      return section
-    }
-
-    return {
-      ...section,
-      items: showAffiliateNav
-        ? [...section.items, { href: '/affiliate/dashboard', label: 'Affiliate', Icon: Wallet }]
-        : section.items,
-    }
-  })
 
   function isActive(item: NavItem) {
     if (item.builderMode === 'tailor') {
@@ -152,7 +138,7 @@ export default function Sidebar({ profile, showAffiliateNav = false }: SidebarPr
 
       {/* Nav */}
       <nav className="relative flex flex-grow flex-col gap-5">
-        {navSections.map(section => (
+        {NAV_SECTIONS.map(section => (
           <div key={section.title} className="space-y-2">
             <p className="px-3 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/55">
               {section.title}
