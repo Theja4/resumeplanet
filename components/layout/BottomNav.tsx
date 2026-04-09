@@ -28,6 +28,7 @@ export default function BottomNav() {
             <div key={href} className="relative -top-6">
               <Link
                 href={href}
+                prefetch
                 className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_18px_38px_rgba(24,24,27,0.22)] transition-transform hover:scale-110 active:scale-95"
               >
                 <Icon size={28} />
@@ -40,6 +41,7 @@ export default function BottomNav() {
           <Link
             key={href}
             href={href}
+            prefetch
             className={`flex flex-col items-center gap-1 rounded-xl px-2 py-1 transition-colors ${
               isActive(href) ? 'text-primary font-bold' : 'text-on-surface-variant'
             }`}

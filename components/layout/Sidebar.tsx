@@ -159,6 +159,7 @@ export default function Sidebar({ profile }: SidebarProps) {
                   <Link
                     key={href}
                     href={href}
+                    prefetch
                     className={itemClassName}
                   >
                     <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
@@ -180,6 +181,7 @@ export default function Sidebar({ profile }: SidebarProps) {
       <div className="relative mt-auto space-y-3 pt-4">
         <Link
           href="/dashboard/contact"
+          prefetch
           className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2.5 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
         >
           <CircleHelp size={16} />
