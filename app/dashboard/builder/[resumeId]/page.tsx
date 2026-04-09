@@ -1598,17 +1598,9 @@ function MobileFallback({ resumeId }: { resumeId: string }) {
       <p className="text-sm text-zinc-500 mb-6">
         The resume builder requires a larger screen. Use a laptop or desktop to edit your resume.
       </p>
-      <div className="flex flex-col gap-3">
-        <Link href={`/dashboard/resumes/${resumeId}`} className="text-sm font-semibold text-primary hover:underline">
-          View Resume
-        </Link>
-        <Link href="/dashboard/ats-checker" className="text-sm font-semibold text-primary hover:underline">
-          Run ATS Check
-        </Link>
-        <Link href="/dashboard/templates" className="text-sm font-semibold text-primary hover:underline">
-          Customize Template
-        </Link>
-      </div>
+      <Link href="/dashboard" className="text-sm font-semibold text-primary hover:underline">
+        Go back to Home
+      </Link>
     </div>
   )
 }
