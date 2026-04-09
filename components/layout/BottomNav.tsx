@@ -21,17 +21,17 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-4 left-4 right-4 z-50 flex items-center justify-between rounded-[1.8rem] border border-white/70 bg-white/84 px-6 py-3 shadow-[0_22px_48px_rgba(25,28,29,0.1)] backdrop-blur-2xl md:hidden">
+    <nav className="fixed bottom-[max(0.5rem,env(safe-area-inset-bottom,0px))] left-3 right-3 z-50 flex items-center justify-between rounded-[1.45rem] border border-white/75 bg-white/90 px-4 py-2.5 shadow-[0_20px_40px_rgba(25,28,29,0.12)] backdrop-blur-2xl md:hidden">
       {TABS.map(({ href, label, Icon, isCenter }) => {
         if (isCenter) {
           return (
-            <div key={href} className="relative -top-6">
+            <div key={href} className="relative -top-5">
               <Link
                 href={href}
                 prefetch
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_18px_38px_rgba(24,24,27,0.22)] transition-transform hover:scale-110 active:scale-95"
+                className="flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_18px_34px_rgba(24,24,27,0.24)] transition-transform hover:scale-110 active:scale-95"
               >
-                <Icon size={28} />
+                <Icon size={24} />
               </Link>
             </div>
           )
@@ -42,11 +42,11 @@ export default function BottomNav() {
             key={href}
             href={href}
             prefetch
-            className={`flex flex-col items-center gap-1 rounded-xl px-2 py-1 transition-colors ${
+            className={`flex flex-col items-center gap-0.5 rounded-xl px-1.5 py-1 transition-colors ${
               isActive(href) ? 'text-primary font-bold' : 'text-on-surface-variant'
             }`}
           >
-            <Icon size={22} strokeWidth={isActive(href) ? 2.5 : 1.75} />
+            <Icon size={20} strokeWidth={isActive(href) ? 2.4 : 1.75} />
             <span className={`text-[10px] ${isActive(href) ? 'font-bold' : 'font-medium'}`}>
               {label}
             </span>

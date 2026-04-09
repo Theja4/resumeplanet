@@ -484,10 +484,12 @@
     border-color 0.35s ease;
 }
 
-.dashboard-card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 26px 58px rgba(25, 28, 29, 0.09);
-  border-color: rgba(2, 109, 50, 0.12);
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 26px 58px rgba(25, 28, 29, 0.09);
+    border-color: rgba(2, 109, 50, 0.12);
+  }
 }
 
 .logo-marquee-mask {

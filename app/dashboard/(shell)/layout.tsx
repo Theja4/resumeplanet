@@ -25,7 +25,7 @@ export default async function DashboardLayout({
         {/* Main content — offset by sidebar width on md+ */}
         <div className="relative flex min-h-screen flex-col md:ml-[18.5rem]">
           {/* Mobile App Bar */}
-          <header className="md:hidden sticky top-0 z-40 mx-4 mt-4 flex items-center justify-between rounded-[1.6rem] border border-white/70 bg-white/84 px-5 py-4 shadow-[0_18px_44px_rgba(25,28,29,0.07)] backdrop-blur-2xl">
+          <header className="md:hidden sticky top-0 z-40 mx-3 mt-3 flex items-center justify-between rounded-[1.35rem] border border-white/70 bg-white/88 px-4 py-3.5 shadow-[0_16px_36px_rgba(25,28,29,0.07)] backdrop-blur-2xl">
             <span className="text-sm font-black tracking-tighter text-primary">Rezoomed</span>
             <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary-container/60 bg-primary-container/50 font-bold text-xs uppercase text-on-primary-container shadow-[0_10px_24px_rgba(2,109,50,0.08)]">
               {(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()}
@@ -33,7 +33,7 @@ export default async function DashboardLayout({
           </header>
 
           {/* Page content */}
-          <main className="relative flex-1 px-4 py-6 pb-28 md:px-8 md:py-8 md:pb-10 xl:px-10">
+          <main className="relative flex-1 px-3 py-5 pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-8 md:pb-10 xl:px-10">
             <div className="mx-auto w-full max-w-[1240px]">
               {children}
             </div>
