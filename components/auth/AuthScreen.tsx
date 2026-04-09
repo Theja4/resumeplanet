@@ -500,8 +500,8 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       <div className="login-aurora login-aurora-two pointer-events-none absolute -right-10 top-1/4 h-80 w-80 rounded-full bg-[#cde4d1]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(163,255,179,0.2),transparent_65%)]" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1320px] items-center px-4 py-4 sm:px-5 sm:py-5 lg:h-screen lg:px-6 lg:py-6">
-        <div className="grid w-full gap-4 rounded-[2rem] border border-white/70 bg-white/40 p-4 shadow-[0_30px_100px_rgba(25,28,29,0.08)] backdrop-blur-2xl lg:h-[calc(100vh-3rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden xl:grid-cols-[minmax(0,0.94fr)_430px]">
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1320px] items-start px-3 py-3 sm:px-5 sm:py-5 lg:h-screen lg:items-center lg:px-6 lg:py-6">
+        <div className="grid w-full gap-3 rounded-[1.7rem] border border-white/70 bg-white/40 p-3 shadow-[0_30px_100px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:gap-4 sm:rounded-[2rem] sm:p-4 lg:h-[calc(100vh-3rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden xl:grid-cols-[minmax(0,0.94fr)_430px]">
           <section className="relative hidden overflow-hidden rounded-[1.8rem] bg-[linear-gradient(160deg,rgba(255,255,255,0.9),rgba(243,244,245,0.92))] p-8 lg:flex xl:p-10">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.2),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_30%)]" />
 
@@ -540,7 +540,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
             </div>
           </section>
 
-          <aside className="rounded-[1.8rem] bg-white/88 p-6 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center">
+          <aside className="rounded-[1.5rem] bg-white/88 p-5 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center">
             <div className="flex items-center lg:hidden">
               <BrandLockup />
             </div>
@@ -554,7 +554,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
               </div>
 
               <div className="mt-5">
-                <h2 className="text-3xl font-black tracking-tight text-on-background sm:text-[2.6rem]">
+                <h2 className="text-[2rem] font-black tracking-tight text-on-background sm:text-[2.6rem]">
                   {copy.cardTitle}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-on-surface-variant sm:text-base">
@@ -723,15 +723,15 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                 <div className="relative overflow-hidden rounded-[1.35rem] border border-primary/14 bg-[linear-gradient(145deg,rgba(238,250,241,0.98),rgba(255,255,255,0.98))] px-4 py-4 shadow-[0_18px_42px_rgba(2,109,50,0.1)] ring-1 ring-white/70">
                   <div className="pointer-events-none absolute inset-y-0 right-0 w-36 bg-[radial-gradient(circle_at_center,rgba(163,255,179,0.3),transparent_70%)]" />
 
-                  <div className="relative flex items-center justify-between gap-4">
-                    <p className="max-w-[12rem] text-[11px] font-bold uppercase tracking-[0.24em] text-primary/90 sm:max-w-[14rem]">
+                  <div className="relative flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <p className="max-w-[14rem] text-[11px] font-bold uppercase tracking-[0.24em] text-primary/90">
                       {copy.switchPrompt}
                     </p>
 
                     <button
                       type="button"
                       onClick={() => router.push(copy.switchHref)}
-                      className="group inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-zinc-950 px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(24,24,27,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_18px_34px_rgba(24,24,27,0.24),0_0_0_6px_rgba(163,255,179,0.18)]"
+                      className="group inline-flex w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-zinc-950 px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(24,24,27,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_18px_34px_rgba(24,24,27,0.24),0_0_0_6px_rgba(163,255,179,0.18)] sm:w-auto sm:shrink-0"
                     >
                       {copy.switchLabel}
                       <ArrowRight

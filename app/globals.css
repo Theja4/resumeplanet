@@ -227,6 +227,7 @@
 
 .reveal-on-scroll {
     opacity: 0;
+    transform: translateY(30px);
     animation: reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     animation-play-state: paused;
 }
@@ -282,6 +283,17 @@
     ::view-transition-new(builder-preview) {
         animation-duration: 1ms;
     }
+
+    .reveal-on-scroll {
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+
+    .scanning-animation {
+        animation: none;
+        opacity: 0;
+    }
 }
 
 .card-hover {
@@ -316,20 +328,22 @@
 }
 
 @keyframes scan-line {
-    0% { top: 0%; opacity: 0; }
+    0% { transform: translateY(0%); opacity: 0; }
     10% { opacity: 1; }
     90% { opacity: 1; }
-    100% { top: 100%; opacity: 0; }
+    100% { transform: translateY(100%); opacity: 0; }
 }
 
 .scanning-animation {
     position: absolute;
     left: 0;
+    top: 0;
     width: 100%;
     height: 2px;
     background: linear-gradient(to right, transparent, #026d32, transparent);
     box-shadow: 0 0 10px #026d32;
     animation: scan-line 3s infinite linear;
+    will-change: transform, opacity;
 }
 
 @keyframes pulse-ring {
