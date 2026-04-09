@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { startTransition, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BriefcaseBusiness, ClipboardCheck, Search, Upload, Wallet } from 'lucide-react'
+import { BriefcaseBusiness, ClipboardCheck, Search, Upload } from 'lucide-react'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import type { DashboardOverview, Profile } from '@/types'
@@ -122,7 +122,6 @@ export default function DashboardHomeClient({
   const lastScore = overview?.lastScore ?? null
   const lastScoreTone = scoreTone(lastScore)
   const resumeCount = overview?.resumeCount ?? null
-  const affiliateStatus = overview?.hasAffiliate
   const remainingResumeSlots =
     resumeCount === null ? null : Math.max(0, 3 - resumeCount)
 
@@ -256,7 +255,7 @@ export default function DashboardHomeClient({
 
       <div>
         <h3 className="mb-3 text-base font-bold text-on-surface sm:mb-4 sm:text-lg">Quick Actions</h3>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ActionCard
             href="/dashboard/resumes"
             title="Upload Resume"
@@ -311,28 +310,6 @@ export default function DashboardHomeClient({
             }
           />
 
-          <ActionCard
-            href="/affiliate/dashboard"
-            title={
-              affiliateStatus === true
-                ? 'Affiliate Dashboard'
-                : affiliateStatus === false
-                ? 'Activate Affiliate'
-                : 'Affiliate Program'
-            }
-            description={
-              affiliateStatus === true
-                ? 'Review referrals, copy your code, and request payouts from the same workspace shell.'
-                : affiliateStatus === false
-                ? 'Create your code once, unlock the affiliate area, and start tracking referrals and earnings.'
-                : 'Open your referral workspace and finish setup once the latest account state loads.'
-            }
-            icon={
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container/50 text-primary transition-transform group-hover:scale-110 sm:mb-6 sm:h-12 sm:w-12">
-                <Wallet size={22} strokeWidth={1.75} />
-              </div>
-            }
-          />
         </div>
       </div>
 
