@@ -32,6 +32,7 @@ const termsSections = [
     points: [
       'Paid plans, billing, taxes, renewals, and checkout are handled through Paddle and related payment providers.',
       'If you subscribe to a paid plan, you authorize recurring charges until you cancel, subject to the billing terms presented during checkout.',
+      'Refund requests must be submitted within 14 days of the transaction date as described in the Refund Policy.',
       'Access to paid features may be suspended or changed if payment fails, a charge is reversed, or a subscription is cancelled or expires.',
     ],
   },
@@ -77,7 +78,7 @@ export default function TermsPage() {
               board, exports, and related services.
             </p>
             <p className="mt-4 text-sm font-medium text-zinc-500">
-              Last updated: April 6, 2026
+              Last updated: April 10, 2026
             </p>
           </section>
 
@@ -85,7 +86,14 @@ export default function TermsPage() {
             <h2 className="text-2xl font-black tracking-tight">Agreement overview</h2>
             <div className="mt-5 space-y-4 text-sm leading-7 text-zinc-600">
               <p>
+                Rezoomed is operated by <strong>CHITTURI VENKATA SAI THEJA</strong>.
+              </p>
+              <p>
                 By accessing or using Rezoomed, you agree to these terms and to our{' '}
+                <Link href="/refund-policy" className="font-semibold text-[#026d32] underline underline-offset-4">
+                  Refund Policy
+                </Link>
+                ,{' '}
                 <Link href="/privacy-policy" className="font-semibold text-[#026d32] underline underline-offset-4">
                   Privacy Policy
                 </Link>{' '}

@@ -10,6 +10,7 @@ export default function PublicSiteFooter() {
           <span className="text-lg font-extrabold text-white">Rezoomed</span>
         </div>
         <div className="flex items-center gap-8 text-zinc-400">
+          <Link className="hover:text-white transition-colors" href="/refund-policy">Refund Policy</Link>
           <Link className="hover:text-white transition-colors" href="/cookie-policy">Cookie Policy</Link>
           <Link className="hover:text-white transition-colors" href="/privacy-policy">Privacy Policy</Link>
           <Link className="hover:text-white transition-colors" href="/terms">Terms of Service</Link>

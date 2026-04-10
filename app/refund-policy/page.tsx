@@ -2,29 +2,23 @@ import Link from 'next/link'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 
+const REFUND_WINDOW_DAYS = 14
+
 const policySections = [
   {
-    title: 'Subscription refunds (Pro plan)',
+    title: 'Refund window',
     points: [
-      'If you were charged in error, email support@rezoomed.com with your account email and charge details.',
-      'Requests are reviewed case-by-case based on billing activity, account usage, and charge timing.',
-      'If approved, refunds are processed through Paddle to the original payment method.',
+      `Customers may request a refund within ${REFUND_WINDOW_DAYS} days of the transaction date.`,
+      `Requests received after ${REFUND_WINDOW_DAYS} days are not eligible for a refund.`,
+      'Approved refunds are returned to the original payment method through Paddle.',
     ],
   },
   {
-    title: 'Cancellation and future billing',
+    title: 'Subscriptions and one-time purchases',
     points: [
-      'Canceling a subscription prevents future renewal charges and keeps access active until the current billing period ends.',
-      'Cancellation does not automatically create a refund for past charges unless a refund is explicitly approved.',
-      'You can manage subscription billing through the in-app billing flow.',
-    ],
-  },
-  {
-    title: 'Professional one-time service orders',
-    points: [
-      'Professional rewrite orders begin fulfillment after payment confirmation.',
-      'Once delivery work has started, refunds may be reduced or denied based on work already completed.',
-      'If there is a clear delivery failure, contact support and we will review and resolve it directly.',
+      `The ${REFUND_WINDOW_DAYS}-day refund window applies to subscription charges and one-time purchases sold on rezoomed.com.`,
+      'Canceling a subscription prevents future renewals but does not by itself issue a refund for prior charges.',
+      'Billing and refund processing are handled by Paddle as merchant of record.',
     ],
   },
 ]
@@ -45,11 +39,10 @@ export default function RefundPolicyPage() {
               Refund Policy
             </p>
             <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Refunds and billing disputes
+              Refund policy
             </h1>
             <p className="mt-5 text-base leading-8 text-zinc-600 sm:text-lg">
-              This policy explains how Rezoomed handles refund requests for subscriptions and one-time
-              services purchased through Paddle.
+              Rezoomed follows a fixed, transparent refund window for purchases made on rezoomed.com.
             </p>
             <p className="mt-4 text-sm font-medium text-zinc-500">Last updated: April 10, 2026</p>
           </section>
@@ -65,8 +58,8 @@ export default function RefundPolicyPage() {
                 from the email tied to your account.
               </p>
               <p>
-                Include the billed amount, charge date, and reason for the request so we can resolve it
-                quickly.
+                Include your account email, the billed amount, and the transaction date. Refund requests
+                must be submitted within {REFUND_WINDOW_DAYS} days.
               </p>
             </div>
           </section>

@@ -17,7 +17,6 @@ import {
   ShoppingBag,
   CreditCard,
   CircleHelp,
-  ReceiptText,
   LogOut,
   type LucideIcon,
 } from 'lucide-react'
@@ -96,14 +95,6 @@ export default function MobileAppBar({ initials }: { initials: string }) {
             >
               <CircleHelp size={16} strokeWidth={1.9} />
               <span>Help</span>
-            </Link>
-            <Link
-              href="/refund-policy"
-              prefetch
-              className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm text-on-surface-variant transition-colors hover:bg-surface-container-low hover:text-on-surface"
-            >
-              <ReceiptText size={16} strokeWidth={1.9} />
-              <span>Refund Policy</span>
             </Link>
           </div>
           <form
