@@ -5,6 +5,7 @@ import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 import pdfjsParser from '@/lib/parsers/pdfjs'
 import claudeParser from '@/lib/parsers/claude'
+import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { buildRoundTripVisibility, type FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
 import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
 import {
@@ -18,13 +19,17 @@ import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
 const ALLOWED_MIME_TYPE = 'application/pdf'
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 
-function buildParseCandidate(data: ResumeData | null, source: ResumeParseCandidate['source']): ResumeParseCandidate | null {
+function buildParseCandidate(
+  data: ResumeData | null,
+  source: ResumeParseCandidate['source'],
+  sourceTextLength: number,
+): ResumeParseCandidate | null {
   if (!data) return null
 
   return {
     data,
     source,
-    confidence: assessResumeParseConfidence(data),
+    confidence: assessResumeParseConfidence(data, { sourceTextLength }),
   }
 }
 
@@ -122,6 +127,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Content-based duplicate detection
   const fileHash = createHash('sha256').update(buffer).digest('hex')
+  let sourceTextLength = 0
+
+  try {
+    const pages = await extractPDFItems(buffer)
+    sourceTextLength = pagesToLines(pages).map(line => line.text).join('\n').trim().length
+  } catch (sourceExtractError) {
+    console.warn('Failed to extract source text length for confidence scoring:', sourceExtractError)
+  }
 
   let markerSnapshot: FirstPartyResumeSnapshot | null = null
   if (fileType === ALLOWED_MIME_TYPE) {
@@ -150,8 +163,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const fastCandidate = buildParseCandidate(parsedData, 'fast')
-  const clientCandidate = buildParseCandidate(clientParsedData, 'client')
+  const fastCandidate = buildParseCandidate(parsedData, 'fast', sourceTextLength)
+  const clientCandidate = buildParseCandidate(clientParsedData, 'client', sourceTextLength)
 
   let selectedCandidate = chooseBetterParseCandidate(
     markerCandidate,
@@ -161,7 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
     try {
       const repairedData = await claudeParser.parse(buffer, fileType)
-      const repairCandidate = buildParseCandidate(repairedData, 'repair')
+      const repairCandidate = buildParseCandidate(repairedData, 'repair', sourceTextLength)
       selectedCandidate = chooseBetterParseCandidate(selectedCandidate, repairCandidate)
     } catch (repairError) {
       console.error('DeepSeek resume repair failed:', repairError)
@@ -176,6 +189,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   parsedData = selectedCandidate.data
+
+  if (
+    !markerCandidate &&
+    selectedCandidate.confidence.issues.some(
+      issue => issue === 'very low extraction coverage' || issue === 'parsed payload too short for source length',
+    )
+  ) {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PARSE_LOW_CONFIDENCE' },
+      { status: 422 },
+    )
+  }
 
   console.info('Resume parse selection:', {
     selectedSource: selectedCandidate.source,

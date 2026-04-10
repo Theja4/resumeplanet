@@ -24,13 +24,14 @@ const ALLOWED_TYPES = [
 function buildParseCandidate(
   data: ResumeData | null,
   source: ResumeParseCandidate['source'],
+  sourceTextLength: number,
 ): ResumeParseCandidate | null {
   if (!data) return null
 
   return {
     data,
     source,
-    confidence: assessResumeParseConfidence(data),
+    confidence: assessResumeParseConfidence(data, { sourceTextLength }),
   }
 }
 
@@ -186,9 +187,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const sourceTextLength = extractedText.trim().length
+
   let selectedCandidate = chooseBetterParseCandidate(
     markerCandidate,
-    buildParseCandidate(parsedData, 'fast'),
+    buildParseCandidate(parsedData, 'fast', sourceTextLength),
   )
 
   if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
@@ -196,7 +199,7 @@ export async function POST(request: NextRequest) {
       const repairedData = await claudeParser.parse(buffer, fileType)
       selectedCandidate = chooseBetterParseCandidate(
         selectedCandidate,
-        buildParseCandidate(repairedData, 'repair'),
+        buildParseCandidate(repairedData, 'repair', sourceTextLength),
       )
     } catch (repairError) {
       console.error('ATS extract repair parse failed:', repairError)

@@ -19,6 +19,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   DUPLICATE_FILE: 'This file was already uploaded recently.',
   STORAGE_UPLOAD_FAILED: 'Storage error — make sure the "resumes" bucket exists in Supabase Storage.',
   PARSE_FAILED: 'Could not parse this file. Try a different PDF.',
+  PARSE_LOW_CONFIDENCE:
+    'We could not reliably extract enough resume content. Export as a text-based PDF and try again.',
   DB_SAVE_FAILED: 'Database error — the resume could not be saved. Check Supabase logs.',
   CLIENT_PARSE_FAILED: 'Could not extract text from this PDF. Try a different file.',
   default: 'Upload failed. Please try again.',
@@ -62,9 +64,12 @@ export default function UploadZone({
   const [state, setState] = useState<UploadState>('idle')
   const [progress, setProgress] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isTakingLong, setIsTakingLong] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const animationRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const longRunningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const progressRef = useRef(0)
 
   function validateFile(file: File): string | null {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()
@@ -77,12 +82,25 @@ export default function UploadZone({
     return null
   }
 
+  function setProgressMonotonic(next: number) {
+    setProgress(prev => {
+      const value = Math.max(prev, Math.min(100, next))
+      progressRef.current = value
+      return value
+    })
+  }
+
+  function resetProgress() {
+    progressRef.current = 0
+    setProgress(0)
+  }
+
   function startParsingAnimation() {
-    // Animate progress from 50 → 92 over ~25 seconds
-    let current = 50
+    // Continue from current progress and gently approach 96 while the backend works
+    let current = progressRef.current
     animationRef.current = setInterval(() => {
-      current = current + (92 - current) * 0.04
-      setProgress(Math.min(Math.round(current), 92))
+      current = current + (96 - current) * 0.035
+      setProgressMonotonic(Math.round(current))
     }, 500)
   }
 
@@ -91,6 +109,24 @@ export default function UploadZone({
       clearInterval(animationRef.current)
       animationRef.current = null
     }
+  }
+
+  function startLongRunningTimer() {
+    if (longRunningTimerRef.current) {
+      clearTimeout(longRunningTimerRef.current)
+    }
+    setIsTakingLong(false)
+    longRunningTimerRef.current = setTimeout(() => {
+      setIsTakingLong(true)
+    }, 12000)
+  }
+
+  function stopLongRunningTimer() {
+    if (longRunningTimerRef.current) {
+      clearTimeout(longRunningTimerRef.current)
+      longRunningTimerRef.current = null
+    }
+    setIsTakingLong(false)
   }
 
   const uploadFile = useCallback(
@@ -105,8 +141,9 @@ export default function UploadZone({
 
       // Phase 1: Client-side parsing
       setState('uploading')
-      setProgress(0)
+      resetProgress()
       setErrorMessage(null)
+      stopLongRunningTimer()
       const parseStartedAt = performance.now()
 
       Analytics.resumeUploaded({
@@ -129,11 +166,12 @@ export default function UploadZone({
         })
       }
 
-      setProgress(30)
+      setProgressMonotonic(30)
 
       // Phase 2: Upload + save to server (server receives parsed data)
       setState('parsing')
-      setProgress(40)
+      setProgressMonotonic(40)
+      startLongRunningTimer()
       startParsingAnimation()
 
       const formData = new FormData()
@@ -148,12 +186,13 @@ export default function UploadZone({
         if (event.lengthComputable) {
           // 40-60% range for upload
           const uploadProgress = 40 + Math.round((event.loaded / event.total) * 20)
-          setProgress(uploadProgress)
+          setProgressMonotonic(uploadProgress)
         }
       }
 
       xhr.onload = () => {
         stopAnimation()
+        stopLongRunningTimer()
 
         if (xhr.status === 409) {
           // Duplicate file — parse the response to get the existing resume ID
@@ -175,12 +214,12 @@ export default function UploadZone({
           try {
             const body = JSON.parse(xhr.responseText)
             if (body.success && body.data) {
-              setProgress(100)
+              setProgressMonotonic(100)
               setState('done')
               setTimeout(() => {
                 onUploadSuccess(body.data as Resume)
                 setState('idle')
-                setProgress(0)
+                resetProgress()
               }, 800)
               return
             }
@@ -202,6 +241,7 @@ export default function UploadZone({
 
       xhr.onerror = () => {
         stopAnimation()
+        stopLongRunningTimer()
         setErrorMessage(ERROR_MESSAGES.default)
         setState('error')
       }
@@ -308,6 +348,11 @@ export default function UploadZone({
               <span>{state === 'uploading' ? 'Uploading' : 'AI Processing'}</span>
               <span>{progress}%</span>
             </div>
+            {state === 'parsing' && isTakingLong && (
+              <p className="text-center text-xs font-semibold text-on-surface-variant animate-pulse">
+                Taking longer than expected. Still parsing with AI. Please keep this tab open.
+              </p>
+            )}
           </div>
         )}
 

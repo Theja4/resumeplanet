@@ -14,6 +14,11 @@ export interface ResumeParseCandidate {
   confidence: ResumeParseConfidence
 }
 
+export interface ResumeParseConfidenceContext {
+  sourceText?: string | null
+  sourceTextLength?: number | null
+}
+
 const SECTION_HEADING_TERMS = [
   'experience',
   'work experience',
@@ -160,7 +165,72 @@ function assessSkills(data: ResumeData, issues: string[]): number {
   return 4
 }
 
-export function assessResumeParseConfidence(data: ResumeData | null | undefined): ResumeParseConfidence {
+export function estimateResumeDataTextLength(data: ResumeData | null | undefined): number {
+  if (!data) return 0
+
+  const parts: string[] = [
+    data.name,
+    data.currentRole,
+    data.summary,
+    data.email,
+    data.phone,
+    data.location,
+    data.linkedin,
+    data.website,
+    ...data.skills,
+    ...data.languages,
+    ...data.interests,
+    ...data.references,
+  ]
+
+  for (const item of data.experience) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.education) {
+    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
+  }
+
+  for (const item of data.projects) {
+    parts.push(item.name, item.description, ...(item.technologies ?? []))
+  }
+
+  for (const item of data.certifications) {
+    parts.push(item.name, item.issuer, item.date)
+  }
+
+  for (const item of data.volunteer) {
+    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+    parts.push(...item.bullets)
+  }
+
+  for (const item of data.awards) parts.push(item.title, item.issuer, item.date)
+  for (const item of data.publications) parts.push(item.title, item.publisher, item.date)
+
+  for (const section of data.customSections ?? []) {
+    parts.push(section.title)
+    if (section.type === 'text') parts.push(section.text ?? '')
+    if (section.type === 'tags') parts.push(...(section.tags ?? []))
+    if (section.type === 'complex') {
+      for (const item of section.items ?? []) {
+        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
+        parts.push(...(item.bullets ?? []))
+      }
+    }
+  }
+
+  return parts
+    .map(part => part?.trim())
+    .filter(Boolean)
+    .join('\n')
+    .length
+}
+
+export function assessResumeParseConfidence(
+  data: ResumeData | null | undefined,
+  context?: ResumeParseConfidenceContext,
+): ResumeParseConfidence {
   if (!data) {
     return {
       score: 0,
@@ -208,6 +278,35 @@ export function assessResumeParseConfidence(data: ResumeData | null | undefined)
     issues.push('very few sections populated')
   }
 
+  const sourceTextLength =
+    typeof context?.sourceTextLength === 'number'
+      ? context.sourceTextLength
+      : (context?.sourceText?.trim().length ?? 0)
+
+  if (sourceTextLength >= 300) {
+    const parsedTextLength = estimateResumeDataTextLength(data)
+    const coverageRatio = parsedTextLength / sourceTextLength
+
+    if (coverageRatio < 0.2) {
+      score -= 28
+      issues.push('very low extraction coverage')
+      score = Math.min(score, 58)
+    } else if (coverageRatio < 0.3) {
+      score -= 18
+      issues.push('low extraction coverage')
+      score = Math.min(score, 70)
+    } else if (coverageRatio < 0.4) {
+      score -= 8
+      issues.push('partial extraction coverage')
+      score = Math.min(score, 80)
+    }
+
+    if (sourceTextLength >= 1200 && parsedTextLength < 500) {
+      score -= 10
+      issues.push('parsed payload too short for source length')
+    }
+  }
+
   const uniqueIssues = uniqueIssueList(issues)
   const normalizedScore = Math.max(0, Math.min(100, score))
 
@@ -226,7 +325,9 @@ export function shouldAttemptRepair(candidate: ResumeParseCandidate | null): boo
     issue === 'summary contains downstream section content' ||
     issue === 'experience entries missing title or company' ||
     issue === 'missing experience section' ||
-    issue === 'very few sections populated'
+    issue === 'very few sections populated' ||
+    issue === 'very low extraction coverage' ||
+    issue === 'low extraction coverage'
   )
 }
 
