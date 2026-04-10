@@ -16,6 +16,7 @@ import {
 import EmptyState from '@/components/shared/EmptyState'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
+import { ADS_ENABLED } from '@/lib/ads'
 import ManualTrackedJobDialog from '@/components/jobs/ManualTrackedJobDialog'
 import {
   formatSalaryInput,
@@ -1041,7 +1042,7 @@ export default function TrackedJobsClient({
         )}
       </DashboardSurface>
 
-      {plan === 'free' ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
+      {ADS_ENABLED && plan === 'free' ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
 
       <ManualTrackedJobDialog
         open={isManualDialogOpen}

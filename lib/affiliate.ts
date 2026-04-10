@@ -4,8 +4,25 @@ import type { Affiliate, Profile } from '@/types'
 export const AFFILIATE_REFERRAL_COOKIE = 'rezoomed_affiliate_ref'
 export const AFFILIATE_REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 export const AFFILIATE_REFERRALS_PER_PAGE = 10
-export const AFFILIATE_ACTIVATION_DISCOUNT_PERCENT = 50
-export const AFFILIATE_ACTIVATION_COMMISSION_PERCENT = 50
+
+function readPercentEnv(key: string, fallback: number) {
+  const raw = process.env[key]
+  if (!raw) return fallback
+
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed)) return fallback
+
+  return Math.max(0, Math.min(100, parsed))
+}
+
+export const AFFILIATE_ACTIVATION_DISCOUNT_PERCENT = readPercentEnv(
+  'NEXT_PUBLIC_AFFILIATE_DISCOUNT_PERCENT',
+  50
+)
+export const AFFILIATE_ACTIVATION_COMMISSION_PERCENT = readPercentEnv(
+  'NEXT_PUBLIC_AFFILIATE_COMMISSION_PERCENT',
+  40
+)
 
 const AFFILIATE_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{2,39}$/
 const AFFILIATE_ACTIVATION_BASE_CODE_PATTERN = /^[A-Z0-9]{4,8}$/

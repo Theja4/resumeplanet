@@ -2,18 +2,24 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PRO_PLAN, type PromoConfig } from '@/lib/pricing'
+import { getProPlanForCountry, type PromoConfig } from '@/lib/pricing'
 import PricingToggle from '@/components/shared/PricingToggle'
 import PricingCard from '@/components/shared/PricingCard'
 
 interface Props {
   activePromo: PromoConfig | null
   autoApplyCode?: string
+  pricingCountryCode?: string | null
 }
 
-export default function PricingSection({ activePromo, autoApplyCode }: Props) {
+export default function PricingSection({
+  activePromo,
+  autoApplyCode,
+  pricingCountryCode,
+}: Props) {
   const router = useRouter()
-  const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
+  const proPlan = getProPlanForCountry(pricingCountryCode)
+  const [selectedPriceId, setSelectedPriceId] = useState(proPlan.defaultPrice.id)
   const registerHref = autoApplyCode
     ? `/auth/register?ref=${encodeURIComponent(autoApplyCode)}`
     : '/auth/register'
@@ -43,6 +49,7 @@ export default function PricingSection({ activePromo, autoApplyCode }: Props) {
           selectedPriceId={selectedPriceId}
           onChange={setSelectedPriceId}
           activePromo={activePromo}
+          pricingCountryCode={pricingCountryCode}
         />
       </div>
 
@@ -52,16 +59,19 @@ export default function PricingSection({ activePromo, autoApplyCode }: Props) {
           variant="free"
           activePromo={activePromo}
           onUpgrade={() => router.push(registerHref)}
+          pricingCountryCode={pricingCountryCode}
         />
         <PricingCard
           variant="pro"
           selectedPriceId={selectedPriceId}
           activePromo={activePromo}
           onUpgrade={() => router.push(registerHref)}
+          pricingCountryCode={pricingCountryCode}
         />
         <PricingCard
           variant="professional"
           activePromo={activePromo}
+          pricingCountryCode={pricingCountryCode}
         />
       </div>
 

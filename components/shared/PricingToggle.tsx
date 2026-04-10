@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import {
-  PRO_PLAN,
+  getProPlanForCountry,
   getEffectiveDisplay,
   formatPriceDisplay,
   type PromoConfig,
@@ -12,10 +12,17 @@ interface Props {
   selectedPriceId: string
   onChange: (priceId: string) => void
   activePromo: PromoConfig | null
+  pricingCountryCode?: string | null
 }
 
-export default function PricingToggle({ selectedPriceId, onChange, activePromo }: Props) {
-  const visiblePrices = PRO_PLAN.visiblePrices
+export default function PricingToggle({
+  selectedPriceId,
+  onChange,
+  activePromo,
+  pricingCountryCode,
+}: Props) {
+  const proPlan = getProPlanForCountry(pricingCountryCode)
+  const visiblePrices = proPlan.visiblePrices
 
   return (
     <div className="inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/86 p-1.5 shadow-[0_18px_40px_rgba(25,28,29,0.08)] backdrop-blur-xl">

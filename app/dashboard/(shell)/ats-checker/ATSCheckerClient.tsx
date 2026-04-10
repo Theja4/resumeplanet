@@ -6,6 +6,7 @@ import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
 import { FREE_PLAN } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics } from '@/lib/analytics'
+import { ADS_ENABLED } from '@/lib/ads'
 import { countWords } from '@/lib/text'
 import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
@@ -701,7 +702,7 @@ function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
   ]
 
   return (
-    <div>
+    <div className="ats-preview-panel">
       <DashboardSurface
         variant="default"
         className={publicMode ? 'flex min-h-[440px] p-5 lg:min-h-[540px] lg:p-6' : 'flex min-h-[360px] p-5 lg:min-h-[420px] lg:p-6'}
@@ -711,7 +712,7 @@ function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
           <div className="flex h-full flex-col rounded-[1.4rem] border border-black/6 bg-white/86 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)]">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Resume score</p>
             <div className="relative mx-auto mt-4 flex h-24 w-24 items-center justify-center">
-              <div className="ring-animation absolute inset-0 rounded-full border-4 border-[#A3FFB3]/60" />
+              <div className="ring-animation absolute inset-0 hidden rounded-full border-4 border-[#A3FFB3]/60 sm:block" />
               <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90">
                 <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(2,109,50,0.1)" strokeWidth="10" />
                 <circle
@@ -736,7 +737,7 @@ function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
               {checks.map(check => (
                 <div key={check.label} className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${check.tone} animate-pulse`} />
+                    <span className={`h-2.5 w-2.5 rounded-full ${check.tone} sm:animate-pulse`} />
                     <span className="text-[11px] font-semibold text-on-surface-variant">{check.label}</span>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
@@ -809,7 +810,7 @@ function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">Live scan checks</p>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-on-primary-container">
-                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      <span className="h-2 w-2 rounded-full bg-primary sm:animate-pulse" />
                       Scanning
                     </span>
                   </div>
@@ -1586,7 +1587,9 @@ export default function ATSCheckerClient({
             ) : (
               <div className="space-y-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Free Plan</p>
-                <p className="text-lg font-black leading-tight text-on-background">{scansLeft} of 3 scans remaining today.</p>
+                <p className="text-lg font-black leading-tight text-on-background">
+                  {scansLeft} of {FREE_PLAN.limits.atsScansPerDay} scans remaining today.
+                </p>
                 <a href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                   Upgrade for unlimited <ChevronRight size={12} />
                 </a>
@@ -1597,7 +1600,7 @@ export default function ATSCheckerClient({
       )}
 
       {/* Ad banner — free users only */}
-      {!pro && !publicMode && <AdBanner size="leaderboard" className="mx-auto" />}
+      {ADS_ENABLED && !pro && !publicMode ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
 
       {/* ── Scanning Workspace ────────────────────────────────────────────────── */}
       <div className={
@@ -1772,7 +1775,7 @@ export default function ATSCheckerClient({
         )}
 
         {!isMatchMode && (
-          <div className="order-1">
+          <div className="order-1 hidden md:block">
             <ATSModePreviewPanel publicMode={publicMode} />
           </div>
         )}

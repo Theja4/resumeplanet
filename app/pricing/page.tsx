@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import PricingSection from '@/components/landing/PricingSection'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
@@ -14,6 +15,7 @@ import {
   getActivePromotionById,
 } from '@/lib/pricing'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { detectRequestCountry } from '@/lib/cookie-consent'
 
 export const metadata: Metadata = {
   title: 'Pricing',
@@ -27,6 +29,8 @@ export default async function PublicPricingPage({
   searchParams: Promise<{ promo?: string; ref?: string }>
 }) {
   const params = await searchParams
+  const headerStore = await headers()
+  const pricingCountryCode = detectRequestCountry(headerStore)
   const promoToken = params.promo?.trim() ?? ''
   const refToken = params.ref?.trim() ?? ''
   const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
@@ -65,7 +69,11 @@ export default async function PublicPricingPage({
       <PublicSiteHeader />
       <main className="px-4 pb-12 pt-24 sm:px-6">
         <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/70 bg-white/75 shadow-[0_20px_70px_rgba(15,23,42,0.06)] backdrop-blur-sm">
-          <PricingSection activePromo={pricingPromo} autoApplyCode={autoApplyCode} />
+          <PricingSection
+            activePromo={pricingPromo}
+            autoApplyCode={autoApplyCode}
+            pricingCountryCode={pricingCountryCode}
+          />
         </div>
       </main>
       <PublicSiteFooter />

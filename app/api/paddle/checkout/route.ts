@@ -16,11 +16,13 @@ import {
 import {
   PROFESSIONAL_ORDER,
   PRO_PLAN,
+  getProPlanForCountry,
   getActivePromotion,
   getActivePromotionByCode,
   getActivePromotionById,
   type PromoConfig,
 } from '@/lib/pricing'
+import { detectRequestCountry } from '@/lib/cookie-consent'
 
 function ok(data: Record<string, unknown>) {
   return NextResponse.json({ success: true, data })
@@ -119,10 +121,16 @@ export async function POST(request: NextRequest) {
     const requestedPromotionCode =
       typeof body.promotionCode === 'string' ? body.promotionCode : undefined
 
+    const pricingCountryCode = detectRequestCountry(request.headers)
+    const regionalPlan = getProPlanForCountry(pricingCountryCode)
+
     const selectedPriceOption =
       requestedPriceId
-        ? (PRO_PLAN.getPriceById(requestedPriceId) ?? PRO_PLAN.getPriceByPaddleId(requestedPriceId))
-        : PRO_PLAN.defaultPrice
+        ? (regionalPlan.getPriceById(requestedPriceId)
+          ?? regionalPlan.getPriceByPaddleId(requestedPriceId)
+          ?? PRO_PLAN.getPriceById(requestedPriceId)
+          ?? PRO_PLAN.getPriceByPaddleId(requestedPriceId))
+        : regionalPlan.defaultPrice
 
     if (!selectedPriceOption) {
       return err('Invalid Pro plan selection')
@@ -201,6 +209,8 @@ export async function POST(request: NextRequest) {
       priceId: validPriceId,
       customerId,
       customerEmail: profile.email,
+      pricingCountryCode,
+      pricingCurrency: selectedPriceOption.display.currency,
       discountId: discountCode ? null : (selectedPromotion?.paddleDiscountId ?? null),
       discountCode,
       customData: {

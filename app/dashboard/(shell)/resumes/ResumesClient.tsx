@@ -9,6 +9,7 @@ import EmptyState from '@/components/shared/EmptyState'
 import PaywallModal from '@/components/shared/PaywallModal'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { ADS_ENABLED } from '@/lib/ads'
 import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import { deleteResume, renameResume } from './actions'
 import type { Resume, Profile } from '@/types'
@@ -135,7 +136,7 @@ export default function ResumesClient({
       )}
 
       {/* Ad banner — free users only */}
-      {resumes.length > 0 && <AdBanner size="rectangle" className="mt-12 opacity-80" />}
+      {ADS_ENABLED && resumes.length > 0 ? <AdBanner size="rectangle" className="mt-12 opacity-80" /> : null}
 
       <PaywallModal
         isOpen={showPaywall}

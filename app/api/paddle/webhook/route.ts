@@ -11,13 +11,13 @@ import {
   upsertAffiliateReferral,
 } from '@/lib/affiliate-server'
 import { verifyPaddleWebhook } from '@/lib/paddle'
-import { PRO_PLAN } from '@/lib/pricing'
+import { findProPriceOptionByPaddleId } from '@/lib/pricing'
 import { captureServerAnalyticsEvent } from '@/lib/analytics-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
   if (!priceId) return null
-  const option = PRO_PLAN.getPriceByPaddleId(priceId)
+  const option = findProPriceOptionByPaddleId(priceId)
   if (!option) {
     console.warn(`resolveInterval: unknown Paddle price ID "${priceId}" — subscription_interval will be null`)
     return null
@@ -31,7 +31,7 @@ function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annua
 function resolvePlanName(priceId: string | undefined | null) {
   if (!priceId) return 'Pro'
 
-  const option = PRO_PLAN.getPriceByPaddleId(priceId)
+  const option = findProPriceOptionByPaddleId(priceId)
   if (!option) return 'Pro'
 
   return `Pro ${option.label}`

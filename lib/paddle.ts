@@ -1,5 +1,6 @@
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { isValidPricingPriceId } from '@/lib/pricing'
 
 let _paddle: Paddle | null = null
 
@@ -42,7 +43,13 @@ export const PADDLE_PRODUCTS = {
 // ── Validation ────────────────────────────────────────────────────────────────
 
 export function isValidPaddlePriceId(id: string): boolean {
-  return Object.values(PADDLE_PRICES).some((v) => v !== '' && v === id)
+  if (!id) return false
+
+  if (PADDLE_PRICES.professionalOrder && id === PADDLE_PRICES.professionalOrder) {
+    return true
+  }
+
+  return isValidPricingPriceId(id)
 }
 
 // ── Customer helper ───────────────────────────────────────────────────────────

@@ -3,7 +3,10 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Check, Loader2, TicketPercent, Wallet } from 'lucide-react'
-import { buildActivatedAffiliateCode } from '@/lib/affiliate'
+import {
+  AFFILIATE_ACTIVATION_COMMISSION_PERCENT,
+  buildActivatedAffiliateCode,
+} from '@/lib/affiliate'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import {
   Dialog,
@@ -47,8 +50,8 @@ export default function AffiliateActivationClient({
       },
       {
         label: 'Your commission',
-        value: '50%',
-        helper: 'Commission tracking starts as soon as subscriptions are attributed.',
+        value: `Up to ${AFFILIATE_ACTIVATION_COMMISSION_PERCENT}%`,
+        helper: `Commission tracking starts as soon as subscriptions are attributed, up to ${AFFILIATE_ACTIVATION_COMMISSION_PERCENT}% per conversion.`,
         icon: Wallet,
       },
     ],

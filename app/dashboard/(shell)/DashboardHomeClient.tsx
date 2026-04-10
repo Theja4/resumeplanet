@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { BriefcaseBusiness, ClipboardCheck, Search, Upload } from 'lucide-react'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { ADS_ENABLED } from '@/lib/ads'
 import type { DashboardOverview, Profile } from '@/types'
 
 function scoreTone(score: number | null) {
@@ -313,7 +314,7 @@ export default function DashboardHomeClient({
         </div>
       </div>
 
-      {!isPro ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
+      {ADS_ENABLED && !isPro ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
     </div>
   )
 }

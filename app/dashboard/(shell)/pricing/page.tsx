@@ -9,6 +9,7 @@ import {
 } from '@/lib/affiliate-server'
 import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import BillingUpgradeSection from './BillingUpgradeSection'
 import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
 import UpgradePoller from '@/components/shared/UpgradePoller'
@@ -18,6 +19,7 @@ import PricingPageTracker from '@/components/analytics/PricingPageTracker'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { Affiliate, Order } from '@/types'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
+import { detectRequestCountry } from '@/lib/cookie-consent'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -46,6 +48,8 @@ export default async function PricingPage({
 }: {
   searchParams: Promise<{ upgraded?: string; promo?: string; source?: string }>
 }) {
+  const headerStore = await headers()
+  const pricingCountryCode = detectRequestCountry(headerStore)
   const params = await searchParams
   const upgraded = params.upgraded === 'true'
   const pricingSource = params.source ?? 'dashboard'
@@ -128,6 +132,7 @@ export default async function PricingPage({
               displayPromo={pricingPromo}
               isPro={isPro}
               compact
+              pricingCountryCode={pricingCountryCode}
             />
           </div>
         </DashboardSurface>

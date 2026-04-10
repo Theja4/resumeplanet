@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import {
-  PRO_PLAN,
+  getProPlanForCountry,
   getActivePromotion,
   type PromoConfig,
 } from '@/lib/pricing'
@@ -16,6 +16,7 @@ interface Props {
   displayPromo?: PromoConfig | null
   isPro: boolean
   compact?: boolean
+  pricingCountryCode?: string | null
 }
 
 export default function BillingUpgradeSection({
@@ -23,8 +24,10 @@ export default function BillingUpgradeSection({
   displayPromo,
   isPro,
   compact = false,
+  pricingCountryCode,
 }: Props) {
-  const [selectedPriceId, setSelectedPriceId] = useState(PRO_PLAN.defaultPrice.id)
+  const proPlan = getProPlanForCountry(pricingCountryCode)
+  const [selectedPriceId, setSelectedPriceId] = useState(proPlan.defaultPrice.id)
   const [appliedPromotionId, setAppliedPromotionId] = useState<string | undefined>(undefined)
   const [appliedPromotionCode, setAppliedPromotionCode] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
@@ -77,6 +80,7 @@ export default function BillingUpgradeSection({
                 selectedPriceId={selectedPriceId}
                 onChange={setSelectedPriceId}
                 activePromo={activePromo}
+                pricingCountryCode={pricingCountryCode}
               />
             </div>
             <div className="xl:col-start-3 xl:w-full">
@@ -93,6 +97,7 @@ export default function BillingUpgradeSection({
               selectedPriceId={selectedPriceId}
               onChange={setSelectedPriceId}
               activePromo={activePromo}
+              pricingCountryCode={pricingCountryCode}
             />
           </div>
         ))}
@@ -105,6 +110,7 @@ export default function BillingUpgradeSection({
           isCurrentPlan={!isPro}
           compact={compact}
           delay="0ms"
+          pricingCountryCode={pricingCountryCode}
         />
         <PricingCard
           variant="pro"
@@ -115,6 +121,7 @@ export default function BillingUpgradeSection({
           isUpgrading={isLoading}
           compact={compact}
           delay="120ms"
+          pricingCountryCode={pricingCountryCode}
         />
         <PricingCard
           variant="professional"

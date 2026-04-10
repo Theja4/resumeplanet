@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
   FREE_PLAN,
-  PRO_PLAN,
+  getProPlanForCountry,
   PROFESSIONAL_ORDER,
   getEffectiveDisplay,
   formatPriceDisplay,
@@ -20,6 +20,7 @@ interface Props {
   isUpgrading?: boolean
   compact?: boolean
   delay?: string
+  pricingCountryCode?: string | null
 }
 
 function FeatureListItem({
@@ -64,6 +65,7 @@ export default function PricingCard({
   isUpgrading = false,
   compact = false,
   delay = '0ms',
+  pricingCountryCode,
 }: Props) {
   if (variant === 'free') {
     const visibleFreeFeatures = FREE_PLAN.features
@@ -139,11 +141,12 @@ export default function PricingCard({
   }
 
   if (variant === 'pro') {
-    const priceOption = PRO_PLAN.getPriceById(selectedPriceId ?? 'monthly') ?? PRO_PLAN.defaultPrice
+    const proPlan = getProPlanForCountry(pricingCountryCode)
+    const priceOption = proPlan.getPriceById(selectedPriceId ?? 'monthly') ?? proPlan.defaultPrice
     const display = getEffectiveDisplay(priceOption, activePromo)
     const formatted = formatPriceDisplay(display, priceOption)
     const promoBadge = !isCurrentPlan && activePromo?.badge ? activePromo.badge : null
-    const proFeatures = PRO_PLAN.features
+    const proFeatures = proPlan.features
 
     return (
       <div className="relative opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
