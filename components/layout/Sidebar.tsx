@@ -19,6 +19,7 @@ import {
   ShoppingBag,
   CreditCard,
   CircleHelp,
+  ReceiptText,
   LogOut,
   type LucideIcon,
 } from 'lucide-react'
@@ -184,6 +185,14 @@ export default function Sidebar({ profile }: SidebarProps) {
         >
           <CircleHelp size={16} />
           <span className="text-sm font-medium">Help</span>
+        </Link>
+        <Link
+          href="/refund-policy"
+          prefetch
+          className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
+        >
+          <ReceiptText size={16} />
+          <span className="text-sm font-medium">Refund Policy</span>
         </Link>
 
         <form

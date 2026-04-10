@@ -64,6 +64,13 @@ export default function ContactPage() {
             <div className="rounded-[1.2rem] bg-white/80 px-4 py-4 text-sm leading-6 text-on-surface-variant">
               For billing and upgrade questions, mention the email address on your Rezoomed account so we can help faster.
             </div>
+            <div className="rounded-[1.2rem] border border-black/6 bg-white/90 px-4 py-4 text-sm leading-6 text-on-surface-variant">
+              Refund terms are documented in our{' '}
+              <Link href="/refund-policy" className="font-semibold text-primary underline underline-offset-4">
+                Refund Policy
+              </Link>
+              .
+            </div>
           </div>
         </DashboardSurface>
       </div>

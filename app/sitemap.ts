@@ -7,8 +7,10 @@ const PUBLIC_ROUTES = [
   '/jobs',
   '/ats-checker',
   '/match-score',
+  '/pricing',
   '/cookie-policy',
   '/privacy-policy',
+  '/refund-policy',
   '/terms',
 ] as const
 

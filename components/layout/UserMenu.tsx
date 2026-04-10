@@ -49,6 +49,12 @@ export default function UserMenu({ profile }: UserMenuProps) {
         <DropdownMenuItem asChild>
           <Link href="/dashboard/pricing">Pricing</Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/dashboard/contact">Help</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/refund-policy">Refund Policy</Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <form action={logout} className="w-full" onSubmit={() => Analytics.reset()}>
