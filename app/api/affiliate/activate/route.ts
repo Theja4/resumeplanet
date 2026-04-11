@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { paddle } from '@/lib/paddle'
+import { getPaddleConfigurationError, paddle } from '@/lib/paddle'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
@@ -12,6 +12,25 @@ import { PROMOTIONS } from '@/lib/pricing'
 
 function errorResponse(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status })
+}
+
+function getSafePaddleActivationError(error: unknown) {
+  const configurationError = getPaddleConfigurationError()
+  if (configurationError) {
+    return configurationError
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    const message = error.message.trim()
+
+    if (/code/i.test(message) && /exist|taken|duplicate|already/i.test(message)) {
+      return 'That code is unavailable. Choose a different one.'
+    }
+
+    return `Paddle discount creation failed: ${message}`
+  }
+
+  return 'Could not activate your affiliate code right now.'
 }
 
 export async function POST(request: NextRequest) {
@@ -97,7 +116,7 @@ export async function POST(request: NextRequest) {
     createdPaddleDiscountId = paddleDiscount.id
   } catch (error) {
     console.error('Affiliate activation Paddle discount creation failed:', error)
-    return errorResponse('Could not activate your affiliate code right now.', 500)
+    return errorResponse(getSafePaddleActivationError(error), 500)
   }
 
   const profile = profileResult.data
@@ -131,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.error('Affiliate activation insert failed:', insertError)
-    return errorResponse('Could not activate your affiliate code right now.', 500)
+    return errorResponse('Affiliate record creation failed after Paddle discount creation.', 500)
   }
 
   return NextResponse.json({

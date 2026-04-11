@@ -4,16 +4,52 @@ import { isValidPricingPriceId } from '@/lib/pricing'
 
 let _paddle: Paddle | null = null
 
+function getRequestedPaddleEnvironment() {
+  return process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+    ? Environment.production
+    : Environment.sandbox
+}
+
+export function getPaddleConfigurationError(): string | null {
+  const apiKey = process.env.PADDLE_API_KEY?.trim()
+  const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim()
+  const requestedEnvironment = getRequestedPaddleEnvironment()
+
+  if (!apiKey) {
+    return 'PADDLE_API_KEY is not set.'
+  }
+
+  if (!clientToken) {
+    return 'NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not set.'
+  }
+
+  if (requestedEnvironment === Environment.production && apiKey.startsWith('pdl_sdbx_')) {
+    return 'Paddle is set to production but PADDLE_API_KEY is a sandbox key.'
+  }
+
+  if (requestedEnvironment === Environment.sandbox && apiKey.startsWith('pdl_live_')) {
+    return 'Paddle is set to sandbox but PADDLE_API_KEY is a live key.'
+  }
+
+  if (requestedEnvironment === Environment.production && clientToken.startsWith('test_')) {
+    return 'Paddle is set to production but NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is a test token.'
+  }
+
+  if (requestedEnvironment === Environment.sandbox && clientToken.startsWith('live_')) {
+    return 'Paddle is set to sandbox but NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is a live token.'
+  }
+
+  return null
+}
+
 function getPaddleInstance(): Paddle {
   if (!_paddle) {
-    if (!process.env.PADDLE_API_KEY) {
-      throw new Error('PADDLE_API_KEY is not set')
+    const configurationError = getPaddleConfigurationError()
+    if (configurationError) {
+      throw new Error(configurationError)
     }
-    _paddle = new Paddle(process.env.PADDLE_API_KEY, {
-      environment:
-        process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
-          ? Environment.production
-          : Environment.sandbox,
+    _paddle = new Paddle(process.env.PADDLE_API_KEY!, {
+      environment: getRequestedPaddleEnvironment(),
     })
   }
   return _paddle
