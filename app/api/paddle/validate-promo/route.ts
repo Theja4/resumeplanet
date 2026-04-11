@@ -36,11 +36,15 @@ export async function POST(request: NextRequest) {
     const affiliate = await findAffiliateByDiscountCode(serviceSupabase, code)
 
     if (affiliate) {
+      const affiliateBadge = `${affiliate.discount_percent}% OFF`
+
       return NextResponse.json({
         valid: true,
         discountCode: affiliate.discount_code,
         discountType: 'percent',
         discountValue: affiliate.discount_percent,
+        appliesTo: 'all',
+        badge: affiliateBadge,
         displayLabel: buildDisplayLabel('percent', affiliate.discount_percent),
       })
     }
@@ -60,6 +64,8 @@ export async function POST(request: NextRequest) {
       discountCode: promo.paddleDiscountCode ?? code,
       discountType: promo.discountType,
       discountValue: promo.discountValue,
+      appliesTo: promo.appliesTo,
+      badge: promo.badge,
       displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
     })
   } catch (err) {

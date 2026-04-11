@@ -130,6 +130,29 @@ export default function ResumesClient({
                   </button>
                 </DashboardSurface>
               )}
+              {/* Insert Human-Written CTA Card after the fifth item */}
+              {index === 4 && (
+                <DashboardSurface key="human-written-cta" variant="dark" className="dashboard-card-hover group flex flex-col justify-between p-6">
+                  <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+                  <div className="relative z-10">
+                    <span className="bg-emerald-500/20 border border-emerald-500/30 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-200 mb-4 inline-block">
+                      Expert Review
+                    </span>
+                    <h4 className="text-xl font-extrabold text-white leading-tight mb-4">
+                      Get a FAANG-level rewrite by a real hiring manager.
+                    </h4>
+                    <p className="text-emerald-100/60 text-sm font-medium mb-6">
+                      Writers from Apple, Meta, and Google will transform your story into a high-impact narrative.
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => router.push('/dashboard/orders/new')}
+                    className="w-full rounded-full bg-emerald-500 py-3 text-sm font-black uppercase tracking-[0.16em] text-zinc-950 transition-all hover:-translate-y-0.5 hover:bg-emerald-400 active:scale-95"
+                  >
+                    Book Your Rewrite
+                  </button>
+                </DashboardSurface>
+              )}
             </div>
           ))}
         </div>

@@ -1,13 +1,21 @@
-// Node.js environment: use the legacy build shipped by the installed pdfjs-dist version.
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
 import { resolve } from 'path'
+type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.js')
 
-// pdfjs-dist v5 requires a real worker path even in Node.js.
-// Empty string causes "Setting up fake worker failed" — must point to the file.
-pdfjsLib.GlobalWorkerOptions.workerSrc = resolve(
-  process.cwd(),
-  'node_modules/pdfjs-dist/legacy/build/pdf.worker.js'
-)
+let pdfjsModulePromise: Promise<PdfJsModule> | null = null
+
+async function loadPdfjs() {
+  if (!pdfjsModulePromise) {
+    pdfjsModulePromise = import('pdfjs-dist/legacy/build/pdf.js').then(module => {
+      module.GlobalWorkerOptions.workerSrc = resolve(
+        process.cwd(),
+        'node_modules/pdfjs-dist/legacy/build/pdf.worker.js'
+      )
+      return module
+    })
+  }
+
+  return pdfjsModulePromise
+}
 
 export interface TextItem {
   text: string
@@ -34,7 +42,8 @@ export interface ExtractedPDFMetadata {
   } | null
 }
 
-function createLoadingTask(buffer: Buffer) {
+async function createLoadingTask(buffer: Buffer) {
+  const pdfjsLib = await loadPdfjs()
   const uint8Array = new Uint8Array(buffer)
 
   return pdfjsLib.getDocument({
@@ -47,7 +56,7 @@ function createLoadingTask(buffer: Buffer) {
 
 // Extract text items with full positional metadata
 export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> {
-  const loadingTask = createLoadingTask(buffer)
+  const loadingTask = await createLoadingTask(buffer)
 
   const pdf = await loadingTask.promise
   const pages: ExtractedPage[] = []
@@ -117,7 +126,7 @@ export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> 
 }
 
 export async function extractPDFMetadata(buffer: Buffer): Promise<ExtractedPDFMetadata> {
-  const loadingTask = createLoadingTask(buffer)
+  const loadingTask = await createLoadingTask(buffer)
   const pdf = await loadingTask.promise
   const metadata = await pdf.getMetadata()
 

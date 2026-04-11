@@ -1,45 +1,25 @@
 import { Paddle, Environment } from '@paddle/paddle-node-sdk'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { isValidPricingPriceId } from '@/lib/pricing'
+import {
+  getPaddleConfigurationError as getSharedPaddleConfigurationError,
+  getRequestedPaddleEnvironmentName,
+} from '@/lib/paddleConfig'
 
 let _paddle: Paddle | null = null
 
 function getRequestedPaddleEnvironment() {
-  return process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'
+  return getRequestedPaddleEnvironmentName() === 'production'
     ? Environment.production
     : Environment.sandbox
 }
 
 export function getPaddleConfigurationError(): string | null {
-  const apiKey = process.env.PADDLE_API_KEY?.trim()
-  const clientToken = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?.trim()
-  const requestedEnvironment = getRequestedPaddleEnvironment()
-
-  if (!apiKey) {
-    return 'PADDLE_API_KEY is not set.'
-  }
-
-  if (!clientToken) {
-    return 'NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is not set.'
-  }
-
-  if (requestedEnvironment === Environment.production && apiKey.startsWith('pdl_sdbx_')) {
-    return 'Paddle is set to production but PADDLE_API_KEY is a sandbox key.'
-  }
-
-  if (requestedEnvironment === Environment.sandbox && apiKey.startsWith('pdl_live_')) {
-    return 'Paddle is set to sandbox but PADDLE_API_KEY is a live key.'
-  }
-
-  if (requestedEnvironment === Environment.production && clientToken.startsWith('test_')) {
-    return 'Paddle is set to production but NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is a test token.'
-  }
-
-  if (requestedEnvironment === Environment.sandbox && clientToken.startsWith('live_')) {
-    return 'Paddle is set to sandbox but NEXT_PUBLIC_PADDLE_CLIENT_TOKEN is a live token.'
-  }
-
-  return null
+  return getSharedPaddleConfigurationError({
+    environment: getRequestedPaddleEnvironmentName(),
+    apiKey: process.env.PADDLE_API_KEY,
+    clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
+  })
 }
 
 function getPaddleInstance(): Paddle {
@@ -69,11 +49,17 @@ export const PADDLE_PRICES = {
   proMonthly: process.env.PADDLE_PRO_PRICE_MONTHLY ?? '',
   proAnnual: process.env.PADDLE_PRO_PRICE_ANNUAL ?? '',
   proWeekly: process.env.PADDLE_PRO_PRICE_WEEKLY ?? '',
-  professionalOrder: process.env.PADDLE_PROFESSIONAL_ORDER_PRICE_ID ?? '',
+  humanWrittenOrder:
+    process.env.PADDLE_HUMAN_WRITTEN_ORDER_PRICE_ID
+    ?? process.env.PADDLE_PROFESSIONAL_ORDER_PRICE_ID
+    ?? '',
 }
 
 export const PADDLE_PRODUCTS = {
-  professional: process.env.PADDLE_PROFESSIONAL_PRODUCT_ID ?? '',
+  humanWritten:
+    process.env.PADDLE_HUMAN_WRITTEN_PRODUCT_ID
+    ?? process.env.PADDLE_PROFESSIONAL_PRODUCT_ID
+    ?? '',
 }
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -81,7 +67,7 @@ export const PADDLE_PRODUCTS = {
 export function isValidPaddlePriceId(id: string): boolean {
   if (!id) return false
 
-  if (PADDLE_PRICES.professionalOrder && id === PADDLE_PRICES.professionalOrder) {
+  if (PADDLE_PRICES.humanWrittenOrder && id === PADDLE_PRICES.humanWrittenOrder) {
     return true
   }
 

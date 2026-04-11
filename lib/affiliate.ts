@@ -153,10 +153,10 @@ export function buildAffiliatePricingPromo(
     subheadline: `Affiliate code ${affiliate.discount_code} will be applied automatically.`,
     ctaLabel: 'Claim discount',
     disclaimerText: `Discount code ${affiliate.discount_code} applies automatically at checkout.`,
-    isExitIntent: false,
+    isExitIntent: true,
     isBanner: false,
     isAutoApply: true,
-    exitIntentTimerSeconds: 0,
+    exitIntentTimerSeconds: 600,
   }
 }
 

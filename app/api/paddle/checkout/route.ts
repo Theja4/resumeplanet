@@ -10,11 +10,12 @@ import {
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   PADDLE_PRICES,
+  getPaddleConfigurationError,
   isValidPaddlePriceId,
   getOrCreatePaddleCustomer,
 } from '@/lib/paddle'
 import {
-  PROFESSIONAL_ORDER,
+  HUMAN_WRITTEN_ORDER,
   PRO_PLAN,
   getProPlanForCountry,
   getActivePromotion,
@@ -32,6 +33,11 @@ function err(message: string, status = 400) {
 }
 
 export async function POST(request: NextRequest) {
+  const paddleConfigurationError = getPaddleConfigurationError()
+  if (paddleConfigurationError) {
+    return err(paddleConfigurationError, 500)
+  }
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -60,26 +66,34 @@ export async function POST(request: NextRequest) {
   // ── Order checkout ──────────────────────────────────────────────────────────
   if (mode === 'order') {
     const resumeId = body.resumeId as string | undefined
+    const uploadedResumeText = body.uploadedResumeText as string | undefined
     const jobTitle = body.jobTitle as string | undefined
     const jobDescription = body.jobDescription as string | undefined
     const additionalNotes = body.additionalNotes as string | undefined
-    if (!resumeId) return err('Resume required')
+    
+    if (!resumeId && !uploadedResumeText) return err('Resume or uploaded text required')
     if (!jobTitle) return err('Job title required')
 
-    const { data: resume } = await supabase
-      .from('resumes')
-      .select('id, title')
-      .eq('id', resumeId)
-      .eq('user_id', user.id)
-      .single()
-    if (!resume) return err('Resume not found')
+    let finalResumeText: string | null = uploadedResumeText || null
+
+    if (resumeId) {
+      const { data: resume } = await supabase
+        .from('resumes')
+        .select('id, title, raw_text')
+        .eq('id', resumeId)
+        .eq('user_id', user.id)
+        .single()
+      if (!resume) return err('Resume not found')
+      if (!finalResumeText) finalResumeText = resume.raw_text
+    }
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id: user.id,
-        resume_id: resumeId,
-        amount: PROFESSIONAL_ORDER.amountCents,
+        resume_id: resumeId || null,
+        uploaded_resume_text: finalResumeText,
+        amount: HUMAN_WRITTEN_ORDER.amountCents,
         status: 'pending',
         job_title: jobTitle,
         job_description: jobDescription ?? null,
@@ -97,7 +111,7 @@ export async function POST(request: NextRequest) {
     return ok({
       orderId: order.id,
       mode: 'order',
-      priceId: PADDLE_PRICES.professionalOrder,
+      priceId: PADDLE_PRICES.humanWrittenOrder,
       customerEmail: profile.email,
       customData: {
         orderId: order.id,

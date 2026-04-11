@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache } from '@/lib/aiRequestCache'
 import { requirePro } from '@/lib/planEnforcement'
-import { parseResume } from '@/lib/parsers'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { generateCoverLetterFromResumeData } from '@/lib/cv/generator'
 import {
@@ -12,6 +11,7 @@ import {
 import { MAX_RESUME_UPLOAD_BYTES, MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import type { GeneratedCoverLetterPayload } from '@/lib/cv/shared'
 import type { APIResponse, Resume, ResumeData, TailorIntensity } from '@/types'
+import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 const PDF_MIME_TYPE = 'application/pdf'
@@ -134,7 +134,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    sourceResumeData = normalizeResumeData(await parseResume(buffer, fileType))
+    const { selectedCandidate } = await parseResumeRobustly({
+      buffer,
+      fileType,
+    })
+
+    if (!selectedCandidate) {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'PARSE_FAILED' },
+        { status: 422 },
+      )
+    }
+
+    if (
+      selectedCandidate.confidence.issues.some(
+        issue => issue === 'very low extraction coverage' || issue === 'parsed payload too short for source length',
+      )
+    ) {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'PARSE_LOW_CONFIDENCE' },
+        { status: 422 },
+      )
+    }
+
+    sourceResumeData = normalizeResumeData(selectedCandidate.data)
     sourceTitle = sanitizeDocumentTitle(file.name) || 'uploaded-resume'
     sourceMode = 'upload'
   }
@@ -216,6 +239,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (message === 'CLAUDE_JSON_PARSE_FAILED') {
       return NextResponse.json<APIResponse<never>>(
         { success: false, error: 'PARSE_FAILED' },
+        { status: 422 },
+      )
+    }
+
+    if (message === 'PARSE_LOW_CONFIDENCE') {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'PARSE_LOW_CONFIDENCE' },
         { status: 422 },
       )
     }

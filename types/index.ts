@@ -384,6 +384,7 @@ export interface Order {
   job_title: string | null
   job_description: string | null
   additional_notes: string | null
+  uploaded_resume_text: string | null
   delivered_file_url: string | null
   created_at: string
 }

@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { initializePaddle, type Paddle } from '@paddle/paddle-js'
 import { Analytics, clearCheckoutContext, readCheckoutContext } from '@/lib/analytics'
+import { getPaddleConfigurationError } from '@/lib/paddleConfig'
 
 // Singleton Paddle instance for client-side use
 let paddleInstance: Paddle | null = null
@@ -18,6 +19,19 @@ export default function PaddleProvider({
 }) {
   useEffect(() => {
     if (paddleInstance) return // already initialized
+
+    const configurationError = getPaddleConfigurationError({
+      environment:
+        process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+      apiKey: 'configured-server-side',
+      clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
+    })
+
+    if (configurationError) {
+      console.warn('Skipping Paddle client initialization:', configurationError)
+      return
+    }
+
     initializePaddle({
       environment:
         process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production'

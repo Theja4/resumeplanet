@@ -33,7 +33,8 @@ const BASE_MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
   { href: '/dashboard/job-board', label: 'Jobs', Icon: BriefcaseBusiness },
   { href: '/dashboard/builder/new', label: 'Create Resume', Icon: PlusCircle },
-  { href: '/dashboard/orders', label: 'Orders', Icon: ShoppingBag },
+  { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: Sparkles },
+  { href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag },
   { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
 ]
 

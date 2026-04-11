@@ -5,8 +5,10 @@ import { CheckCircle2, Loader2, Lock, RefreshCw, Sparkles, Unlock, Wand2, X, Zap
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AIInsightCard from './AIInsightCard'
 import { getInsightSuggestionScoreDelta, hasBreakdownRegression, improvesIntendedCriterion } from '@/lib/ai-insights'
-import { scoreResume, type ScorerBreakdown } from '@/lib/ats-scorer'
-import type { ResumeData } from '@/types'
+import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { buildATSRoadmap, scoreResume, type ScorerBreakdown } from '@/lib/ats-scorer'
+import type { ATSScoreRoadmap, ResumeData } from '@/types'
 
 interface Suggestion {
   id: string
@@ -25,6 +27,7 @@ interface InsightsData {
   scoreLabel: string
   summary: string
   breakdown: Record<string, ScorerBreakdown>
+  roadmap: ATSScoreRoadmap
   suggestions: Suggestion[]
 }
 
@@ -43,7 +46,7 @@ interface CachedInsights {
   insights: InsightsData
 }
 
-const INSIGHTS_CACHE_VERSION = 3
+const INSIGHTS_CACHE_VERSION = 4
 const INSIGHTS_LOCK_TTL_MS = 20000
 const inFlightInsights = new Map<string, Promise<InsightsData>>()
 const browserSessionId =
@@ -508,25 +511,26 @@ export default function AIInsightsPanel({
   const [hasStarted, setHasStarted] = useState(false)
   const [tailorDismissed, setTailorDismissed] = useState(false)
   const [showLoader, setShowLoader] = useState(false)
+  const [activeTab, setActiveTab] = useState<'fixes' | 'roadmap'>('fixes')
 
   useEffect(() => {
     if (isLoading) setShowLoader(true)
   }, [isLoading])
   const [toastMessage, setToastMessage] = useState<string | null>(null)
-  const [liveScore, setLiveScore] = useState<number | null>(null)
-  const [liveScoreLabel, setLiveScoreLabel] = useState<string | null>(null)
-
-  // Re-run deterministic scorer when resumeData changes (after apply fix)
-  useEffect(() => {
-    if (!resumeData || !insights) return
-    const result = scoreResume(resumeData)
-    setLiveScore(result.score)
-    setLiveScoreLabel(result.scoreLabel)
-  }, [resumeData, insights])
 
   const resumeSignature = useMemo(
     () => (resumeData ? buildResumeText(resumeData) : ''),
     [resumeData]
+  )
+
+  const liveScorerResult = useMemo(
+    () => (resumeData && insights ? scoreResume(resumeData) : null),
+    [insights, resumeData]
+  )
+
+  const liveRoadmap = useMemo(
+    () => (liveScorerResult ? buildATSRoadmap(liveScorerResult) : (insights?.roadmap ?? null)),
+    [insights, liveScorerResult]
   )
 
   const suggestionsWithLiveImpact = useMemo(() => {
@@ -883,7 +887,7 @@ export default function AIInsightsPanel({
           </div>
           <h3 className="text-sm font-bold text-zinc-800 mb-2">AI Insights</h3>
           <p className="text-xs text-zinc-500 leading-relaxed mb-6 max-w-[240px]">
-            Run an ATS scan when you&apos;re ready. Insights analyze only the sections currently visible in your resume.
+            Run AI Insights when you&apos;re ready. You&apos;ll get paste-ready fixes plus a truthful Road to 90 for the current resume.
           </p>
           <button
             onClick={handleStartInsightsClick}
@@ -966,9 +970,9 @@ export default function AIInsightsPanel({
           ) : (
             <>
               {insights && (() => {
-                const displayScore = liveScore ?? insights.score
-                const displayLabel = liveScoreLabel ?? insights.scoreLabel
-                const scoreDelta = liveScore !== null ? liveScore - insights.score : 0
+                const displayScore = liveScorerResult?.score ?? insights.score
+                const displayLabel = liveScorerResult?.scoreLabel ?? insights.scoreLabel
+                const scoreDelta = liveScorerResult ? liveScorerResult.score - insights.score : 0
                 return (
                 <div className="relative mb-6 rounded-3xl p-[1.5px]"
                   style={{ background: `linear-gradient(135deg, ${scoreColor(displayScore)}80, ${scoreColor(displayScore)}20, #e4e4e7)` }}>
@@ -1025,6 +1029,13 @@ export default function AIInsightsPanel({
                           {suggestionsWithLiveImpact.filter(s => !s.isApplied).length} suggestion{suggestionsWithLiveImpact.filter(s => !s.isApplied).length !== 1 ? 's' : ''}
                         </span>
                       </div>
+                      {liveRoadmap && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
+                          <span className="text-[10px] font-bold text-emerald-700">
+                            Ceiling {liveRoadmap.truthfulCeiling}
+                          </span>
+                        </div>
+                      )}
                       {appliedIds.size > 0 && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
                           <CheckCircle2 size={10} className="text-emerald-500" />
@@ -1065,37 +1076,70 @@ export default function AIInsightsPanel({
                 )
               })()}
 
-              {staleSuggestionCount > 0 && (
-                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
-                  {staleSuggestionCount} suggestion{staleSuggestionCount !== 1 ? 's are' : ' is'} no longer guaranteed to improve your score after your recent edits. Rescan to refresh.
-                </div>
-              )}
+              <Tabs
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as 'fixes' | 'roadmap')}
+                className="gap-4"
+              >
+                <TabsList variant="default" className="grid h-auto w-full grid-cols-2 rounded-2xl bg-zinc-100 p-1">
+                  <TabsTrigger
+                    value="fixes"
+                    className="rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] data-[state=active]:bg-white data-[state=active]:text-zinc-950"
+                  >
+                    Fixes
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="roadmap"
+                    className="rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] data-[state=active]:bg-white data-[state=active]:text-zinc-950"
+                  >
+                    Road to 90
+                  </TabsTrigger>
+                </TabsList>
 
-              {suggestionsWithLiveImpact.length > 0 ? (
-                <div className="space-y-3">
-                  {suggestionsWithLiveImpact.map((suggestion) => {
-                    return (
-                      <AIInsightCard
-                        key={suggestion.id}
-                        suggestion={suggestion}
-                        onApply={() => handleApplyWithAnimation(suggestion)}
-                        onUndo={() => handleUndoFix(suggestion.id)}
-                        isApplied={suggestion.isApplied}
-                        label={TYPE_LABELS[suggestion.type] ?? suggestion.type}
-                        colorClass={TYPE_COLORS[suggestion.type] ?? 'bg-zinc-50 text-zinc-700 border-zinc-200'}
-                      />
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-zinc-400 text-center py-8">
-                  {insights
-                    ? insights.score >= 80
-                      ? 'No suggestions — your resume looks good!'
-                      : 'No direct AI rewrites are safe to auto-apply right now. Manual improvements are still needed.'
-                    : 'No AI analysis yet.'}
-                </p>
-              )}
+                <TabsContent value="fixes" className="mt-0">
+                  {staleSuggestionCount > 0 && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                      {staleSuggestionCount} suggestion{staleSuggestionCount !== 1 ? 's are' : ' is'} no longer guaranteed to improve your score after your recent edits. Rescan to refresh.
+                    </div>
+                  )}
+
+                  {suggestionsWithLiveImpact.length > 0 ? (
+                    <div className="space-y-3">
+                      {suggestionsWithLiveImpact.map((suggestion) => {
+                        return (
+                          <AIInsightCard
+                            key={suggestion.id}
+                            suggestion={suggestion}
+                            onApply={() => handleApplyWithAnimation(suggestion)}
+                            onUndo={() => handleUndoFix(suggestion.id)}
+                            isApplied={suggestion.isApplied}
+                            label={TYPE_LABELS[suggestion.type] ?? suggestion.type}
+                            colorClass={TYPE_COLORS[suggestion.type] ?? 'bg-zinc-50 text-zinc-700 border-zinc-200'}
+                          />
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-zinc-400 text-center py-8">
+                      {insights
+                        ? insights.score >= 80
+                          ? 'No suggestions — your resume looks good!'
+                          : 'No direct AI rewrites are safe to auto-apply right now. Manual improvements are still needed.'
+                        : 'No AI analysis yet.'}
+                    </p>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="roadmap" className="mt-0">
+                  {liveRoadmap ? (
+                    <RoadToNinetyPanel roadmap={liveRoadmap} />
+                  ) : (
+                    <p className="text-xs text-zinc-400 text-center py-8">
+                      Run AI Insights to build your Road to 90.
+                    </p>
+                  )}
+                </TabsContent>
+              </Tabs>
             </>
           )}
         </div>

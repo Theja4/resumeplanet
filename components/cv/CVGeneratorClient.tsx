@@ -239,6 +239,8 @@ export default function CVGeneratorClient({
           setErrorMessage('The cover letter request took too long. Try again or drop the intensity one step.')
         } else if (payload?.error === 'PARSE_FAILED') {
           setErrorMessage('The model returned an invalid draft. Try again and keep the same job description.')
+        } else if (payload?.error === 'PARSE_LOW_CONFIDENCE') {
+          setErrorMessage('We could not reliably extract enough resume content from that file. Export a text-based PDF or DOCX and try again.')
         } else if (payload?.error === 'OPENROUTER_PRIVACY_POLICY_BLOCK') {
           setErrorMessage('OpenRouter is blocking all allowed providers for this request. Keep DeepSeek v3.2 enabled or relax the privacy policy in your OpenRouter settings.')
         } else {

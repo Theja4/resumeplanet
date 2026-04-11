@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/app/dashboard/(shell)/actions'
 import { Analytics } from '@/lib/analytics'
@@ -16,10 +17,11 @@ import {
   Sparkles,
   Pencil,
   Target,
-  ShoppingBag,
+  UserRound,
   CreditCard,
   CircleHelp,
   LogOut,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -31,7 +33,7 @@ type NavItem = {
   builderMode?: 'tailor'
 }
 
-const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
+const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem[] }> = [
   {
     title: 'Workspace',
     items: [
@@ -42,6 +44,7 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
   },
   {
     title: 'Resume Tools',
+    collapsible: true,
     items: [
       { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
       { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
@@ -65,12 +68,18 @@ const NAV_SECTIONS: Array<{ title: string; items: NavItem[] }> = [
         Icon: FileUser,
         badge: 'Pro',
       },
+      {
+        href: '/dashboard/metadata-enhancer',
+        label: 'Metadata Enhancer',
+        Icon: Sparkles,
+        badge: 'Pro',
+      },
+      { href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound },
     ],
   },
   {
     title: 'Account',
     items: [
-      { href: '/dashboard/orders', label: 'Orders', Icon: ShoppingBag },
       { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
     ],
   },
@@ -117,14 +126,36 @@ export default function Sidebar({ profile }: SidebarProps) {
     if (item.builderMode === 'tailor') {
       return pathname.startsWith('/dashboard/builder') && searchParams.get('mode') === 'tailor'
     }
-
     if (item.href === '/dashboard/builder') {
       return pathname.startsWith('/dashboard/builder') && searchParams.get('mode') !== 'tailor'
     }
-
     const href = item.href
     if (href === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(href)
+  }
+
+  function sectionHasActiveItem(items: NavItem[]) {
+    return items.some(isActive)
+  }
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    // Default: collapse Resume Tools only if not currently inside it
+    return {}
+  })
+
+  function toggleSection(title: string, items: NavItem[]) {
+    setCollapsed(prev => {
+      const current = prev[title] ?? false
+      // Never collapse a section that has the active page
+      if (!current && sectionHasActiveItem(items)) return prev
+      return { ...prev, [title]: !current }
+    })
+  }
+
+  function isSectionCollapsed(title: string, items: NavItem[]) {
+    // Force open if an item in this section is active
+    if (sectionHasActiveItem(items)) return false
+    return collapsed[title] ?? false
   }
 
   return (
@@ -137,86 +168,114 @@ export default function Sidebar({ profile }: SidebarProps) {
       </div>
 
       {/* Nav */}
-      <nav className="relative flex flex-grow flex-col gap-5">
-        {NAV_SECTIONS.map(section => (
-          <div key={section.title} className="space-y-2">
-            <p className="px-3 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/55">
-              {section.title}
-            </p>
-            <div className="space-y-1.5">
-              {section.items.map((item) => {
-                const { href, label, Icon, badge } = item
-                const active = isActive(item)
-                const itemClassName = `dashboard-card-hover flex w-full items-center gap-3 rounded-[1rem] px-3.5 py-3 text-left transition-all duration-200 ${
-                  active
-                    ? 'bg-[linear-gradient(145deg,rgba(163,255,179,0.45),rgba(255,255,255,0.96))] font-semibold text-on-primary-container shadow-[0_14px_32px_rgba(2,109,50,0.08)]'
-                    : 'text-on-surface-variant hover:bg-white/78 hover:text-on-surface'
-                }`
+      <nav className="relative flex flex-grow flex-col gap-5 overflow-y-auto">
+        {NAV_SECTIONS.map(section => {
+          const isCollapsed = section.collapsible
+            ? isSectionCollapsed(section.title, section.items)
+            : false
 
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    prefetch
-                    className={itemClassName}
-                  >
-                    <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
-                    <span className="text-sm">{label}</span>
-                    {badge ? (
-                      <span className="ml-auto rounded-full border border-[#008f44]/16 bg-[#008f44]/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44]">
-                        {badge}
-                      </span>
-                    ) : null}
-                  </Link>
-                )
-              })}
+          return (
+            <div key={section.title} className="space-y-2">
+              {section.collapsible ? (
+                <button
+                  onClick={() => toggleSection(section.title, section.items)}
+                  className="flex w-full items-center gap-1 px-3 text-left transition-colors hover:text-on-surface-variant"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/55">
+                    {section.title}
+                  </span>
+                  <ChevronDown
+                    size={11}
+                    strokeWidth={2.5}
+                    className={`ml-auto text-on-surface-variant/40 transition-transform duration-200 ${isCollapsed ? '-rotate-90' : ''}`}
+                  />
+                </button>
+              ) : (
+                <p className="px-3 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant/55">
+                  {section.title}
+                </p>
+              )}
+
+              <div
+                className={`space-y-1.5 overflow-hidden transition-all duration-200 ${
+                  isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'
+                }`}
+              >
+                {section.items.map((item) => {
+                  const { href, label, Icon, badge } = item
+                  const active = isActive(item)
+                  const itemClassName = `dashboard-card-hover flex w-full items-center gap-3 rounded-[1rem] px-3.5 py-3 text-left transition-all duration-200 ${
+                    active
+                      ? 'bg-[linear-gradient(145deg,rgba(163,255,179,0.45),rgba(255,255,255,0.96))] font-semibold text-on-primary-container shadow-[0_14px_32px_rgba(2,109,50,0.08)]'
+                      : 'text-on-surface-variant hover:bg-white/78 hover:text-on-surface'
+                  }`
+
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      prefetch
+                      className={itemClassName}
+                    >
+                      <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
+                      <span className="text-sm">{label}</span>
+                      {badge ? (
+                        <span className="ml-auto rounded-full border border-[#008f44]/16 bg-[#008f44]/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44]">
+                          {badge}
+                        </span>
+                      ) : null}
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </nav>
 
       {/* Bottom section */}
-      <div className="relative mt-auto space-y-1.5 pt-2">
-        <Link
-          href="/dashboard/contact"
-          prefetch
-          className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
-        >
-          <CircleHelp size={16} />
-          <span className="text-sm font-medium">Help</span>
-        </Link>
-        <form
-          action={logout}
-          className="border-t border-outline-variant/10 pt-2"
-          onSubmit={() => {
-            clearWorkspaceSessionDrafts()
-            Analytics.reset()
-          }}
-        >
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-[1rem] px-2.5 py-2 text-on-surface-variant transition-all duration-200 hover:bg-white/78 hover:text-on-surface"
-          >
-            <LogOut size={16} />
-            <span className="text-sm font-medium">Log out</span>
-          </button>
-        </form>
+      <div className="relative mt-auto pt-2">
+        <div className="border-t border-outline-variant/10 pt-2">
+          <div className="flex items-center gap-2 rounded-[1.25rem] bg-white/50 px-2.5 py-2">
+            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold uppercase ${getAvatarColor(profile.full_name, profile.email)}`}>
+              {getInitials(profile.full_name, profile.email)}
+            </div>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-xs font-bold text-on-surface">
+                {profile.full_name ?? profile.email.split('@')[0]}
+              </span>
+              <span className="inline-flex w-fit items-center rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-medium capitalize text-on-surface-variant ring-1 ring-black/5">
+                {profile.plan}
+              </span>
+            </div>
+            <div className="ml-auto flex items-center gap-0.5">
+              <Link
+                href="/dashboard/contact"
+                prefetch
+                title="Help"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-black/8 hover:text-on-surface"
+              >
+                <CircleHelp size={14} />
+              </Link>
+              <form
+                action={logout}
+                onSubmit={() => {
+                  clearWorkspaceSessionDrafts()
+                  Analytics.reset()
+                }}
+              >
+                <button
+                  type="submit"
+                  title="Log out"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-black/8 hover:text-on-surface"
+                >
+                  <LogOut size={14} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
 
-        <div className="border-t border-outline-variant/10 px-2 pt-3">
-          <div className="flex items-center gap-3">
-          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-bold uppercase ${getAvatarColor(profile.full_name, profile.email)}`}>
-            {getInitials(profile.full_name, profile.email)}
-          </div>
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-sm font-bold text-on-surface">
-              {profile.full_name ?? profile.email.split('@')[0]}
-            </span>
-            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-medium capitalize text-on-surface-variant ring-1 ring-black/5">
-              {profile.plan}
-            </span>
-          </div>
-        </div>
-        </div>
       </div>
     </aside>
   )

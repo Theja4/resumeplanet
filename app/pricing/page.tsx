@@ -10,17 +10,18 @@ import {
   readAffiliateReferralCodeFromCookies,
 } from '@/lib/affiliate-server'
 import {
-  getActivePromotion,
+  getActiveAutoApplyPromotion,
   getActivePromotionByCode,
   getActivePromotionById,
 } from '@/lib/pricing'
+import { getLiveVisibleProPriceOptions } from '@/lib/paddle-pricing'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { detectRequestCountry } from '@/lib/cookie-consent'
 
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Rezoomed pricing for Free, Pro, and recruiter-led professional resume services.',
+    'Rezoomed pricing for Free, Pro monthly, and Pro annual plans.',
 }
 
 export default async function PublicPricingPage({
@@ -31,6 +32,7 @@ export default async function PublicPricingPage({
   const params = await searchParams
   const headerStore = await headers()
   const pricingCountryCode = detectRequestCountry(headerStore)
+  const priceOptionsPromise = getLiveVisibleProPriceOptions(pricingCountryCode)
   const promoToken = params.promo?.trim() ?? ''
   const refToken = params.ref?.trim() ?? ''
   const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
@@ -60,18 +62,20 @@ export default async function PublicPricingPage({
   const pricingPromo =
     buildAffiliatePricingPromo(affiliateAttribution) ??
     activePromotionFromQuery ??
-    getActivePromotion()
+    getActiveAutoApplyPromotion()
 
   const autoApplyCode = affiliateAttribution?.discount_code
+  const priceOptions = await priceOptionsPromise
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_52%,#f2f7f3_100%)] text-zinc-900">
       <PublicSiteHeader />
       <main className="px-4 pb-12 pt-24 sm:px-6">
-        <div className="mx-auto max-w-6xl rounded-[2rem] border border-white/70 bg-white/75 shadow-[0_20px_70px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+        <div className="mx-auto max-w-6xl space-y-4 rounded-[2rem] border border-white/70 bg-white/75 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-5">
           <PricingSection
             activePromo={pricingPromo}
             autoApplyCode={autoApplyCode}
+            priceOptions={priceOptions}
             pricingCountryCode={pricingCountryCode}
           />
         </div>

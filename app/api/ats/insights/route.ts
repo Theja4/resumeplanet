@@ -10,10 +10,10 @@ import {
   improvesIntendedCriterion,
   startsWithWeakResumePhrase,
 } from '@/lib/ai-insights'
-import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
-import type { Profile, APIResponse, ResumeData } from '@/types'
+import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 
-const INSIGHTS_CACHE_VERSION = 3
+const INSIGHTS_CACHE_VERSION = 4
 const SUGGESTION_MODELS = [
   'deepseek/deepseek-v3.2',
   'google/gemini-2.5-flash',
@@ -108,6 +108,7 @@ type InsightsResponse = {
   scoreLabel: string
   summary: string
   breakdown: ScorerResult['breakdown']
+  roadmap: ATSScoreRoadmap
   suggestions: Array<Suggestion & { id: string }>
 }
 
@@ -464,6 +465,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     scoreLabel: scorerResult.scoreLabel,
     summary: generateSummaryFromScorer(scorerResult),
     breakdown: scorerResult.breakdown,
+    roadmap: buildATSRoadmap(scorerResult),
     suggestions,
   }
 

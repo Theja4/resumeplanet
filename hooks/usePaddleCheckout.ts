@@ -8,11 +8,24 @@ import {
   readPostHogDistinctIdFromCookie,
   setCheckoutContext,
 } from '@/lib/analytics'
-import { PROFESSIONAL_ORDER, PRO_PLAN } from '@/lib/pricing'
+import { getPaddleConfigurationError } from '@/lib/paddleConfig'
+import { HUMAN_WRITTEN_ORDER, PRO_PLAN } from '@/lib/pricing'
+
+function getClientPaddleUnavailableMessage() {
+  return (
+    getPaddleConfigurationError({
+      environment:
+        process.env.NEXT_PUBLIC_PADDLE_ENVIRONMENT === 'production' ? 'production' : 'sandbox',
+      apiKey: 'configured-server-side',
+      clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
+    }) ?? 'Paddle not initialized'
+  )
+}
 
 export function usePaddleCheckout() {
   const openOrderCheckout = async (params: {
-    resumeId: string
+    resumeId?: string | null
+    uploadedResumeText?: string | null
     jobTitle: string
     jobDescription?: string | null
     additionalNotes?: string | null
@@ -31,6 +44,7 @@ export function usePaddleCheckout() {
         body: JSON.stringify({
           mode: 'order',
           resumeId: params.resumeId,
+          uploadedResumeText: params.uploadedResumeText,
           jobTitle: params.jobTitle,
           jobDescription: params.jobDescription,
           additionalNotes: params.additionalNotes,
@@ -47,15 +61,15 @@ export function usePaddleCheckout() {
       const { orderId, priceId, customerEmail, customData } = json.data
 
       const paddle = getPaddle()
-      if (!paddle) throw new Error('Paddle not initialized')
+      if (!paddle) throw new Error(getClientPaddleUnavailableMessage())
 
       Analytics.checkoutStarted({
         product: 'writing_service',
-        price: PROFESSIONAL_ORDER.amountCents / 100,
+        price: HUMAN_WRITTEN_ORDER.amountCents / 100,
       })
       setCheckoutContext({
         product: 'writing_service',
-        price: PROFESSIONAL_ORDER.amountCents / 100,
+        price: HUMAN_WRITTEN_ORDER.amountCents / 100,
         step: 'overlay_opened',
       })
 
@@ -109,7 +123,7 @@ export function usePaddleCheckout() {
       const { priceId, customerId, customerEmail, discountId, discountCode, customData } = json.data
 
       const paddle = getPaddle()
-      if (!paddle) throw new Error('Paddle not initialized')
+      if (!paddle) throw new Error(getClientPaddleUnavailableMessage())
 
       const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
       const checkoutPrice = selectedPrice.display.displayPrice

@@ -1,23 +1,24 @@
 import { Check, Lock, ArrowRight } from 'lucide-react'
-import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import {
   FREE_PLAN,
   getProPlanForCountry,
-  PROFESSIONAL_ORDER,
   getEffectiveDisplay,
   formatPriceDisplay,
   type PromoConfig,
+  type PriceOption,
 } from '@/lib/pricing'
 import PriceDisplay from './PriceDisplay'
 
 interface Props {
-  variant: 'free' | 'pro' | 'professional'
+  variant: 'free' | 'pro'
+  priceOption?: PriceOption
   selectedPriceId?: string
   activePromo: PromoConfig | null
   isCurrentPlan?: boolean
   onUpgrade?: () => void
   isUpgrading?: boolean
+  lockedMessage?: string
   compact?: boolean
   delay?: string
   pricingCountryCode?: string | null
@@ -29,16 +30,14 @@ function FeatureListItem({
   locked = false,
 }: {
   children: React.ReactNode
-  tone: 'neutral' | 'pro' | 'amber'
+  tone: 'neutral' | 'pro'
   locked?: boolean
 }) {
   const iconClassName = locked
     ? 'border border-slate-200 bg-slate-100 text-slate-400'
     : tone === 'pro'
       ? 'border border-white/10 bg-white/10 text-emerald-200'
-      : tone === 'amber'
-        ? 'border border-amber-100 bg-amber-50 text-amber-600'
-        : 'border border-primary/10 bg-primary-container/35 text-primary'
+      : 'border border-primary/10 bg-primary-container/35 text-primary'
 
   const textClassName = locked
     ? 'text-slate-400'
@@ -58,11 +57,13 @@ function FeatureListItem({
 
 export default function PricingCard({
   variant,
+  priceOption,
   selectedPriceId,
   activePromo,
   isCurrentPlan = false,
   onUpgrade,
   isUpgrading = false,
+  lockedMessage,
   compact = false,
   delay = '0ms',
   pricingCountryCode,
@@ -142,11 +143,33 @@ export default function PricingCard({
 
   if (variant === 'pro') {
     const proPlan = getProPlanForCountry(pricingCountryCode)
-    const priceOption = proPlan.getPriceById(selectedPriceId ?? 'monthly') ?? proPlan.defaultPrice
-    const display = getEffectiveDisplay(priceOption, activePromo)
-    const formatted = formatPriceDisplay(display, priceOption)
-    const promoBadge = !isCurrentPlan && activePromo?.badge ? activePromo.badge : null
+    const resolvedPriceOption =
+      priceOption ?? proPlan.getPriceById(selectedPriceId ?? 'monthly') ?? proPlan.defaultPrice
+    const display = getEffectiveDisplay(resolvedPriceOption, activePromo)
+    const formatted = formatPriceDisplay(display, resolvedPriceOption)
+    const promoApplies =
+      activePromo &&
+      (activePromo.appliesTo === 'all' || activePromo.appliesTo === resolvedPriceOption.id)
+    const promoBadge = !isCurrentPlan && promoApplies
+      ? activePromo?.badge ?? null
+      : resolvedPriceOption.badge ?? null
     const proFeatures = proPlan.features
+    const planCopy =
+      resolvedPriceOption.id === 'annual'
+        ? {
+            kicker: 'Best value',
+            title: 'Annual',
+            description: 'Rezoomed Pro billed yearly for the lowest effective rate.',
+            chip: 'Annual',
+            ctaLabel: 'Choose annual',
+          }
+        : {
+            kicker: 'Flexible billing',
+            title: 'Monthly',
+            description: 'Rezoomed Pro billed month to month with the full feature set.',
+            chip: 'Monthly',
+            ctaLabel: 'Choose monthly',
+          }
 
     return (
       <div className="relative opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
@@ -173,19 +196,19 @@ export default function PricingCard({
             <div className={cn('flex items-start justify-between gap-4', compact ? 'mb-5' : 'mb-6')}>
               <div className="space-y-2.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-100/80">
-                  Premium workspace
+                  {planCopy.kicker}
                 </p>
                 <div>
                   <h3 className={cn('font-black tracking-tight text-white', compact ? 'text-[1.65rem]' : 'text-[1.9rem]')}>
-                    Pro
+                    {planCopy.title}
                   </h3>
                   <p className={cn('mt-2 text-emerald-100/78', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
-                    Unlimited scans, advanced AI analysis, exports, and tailor mode in one plan.
+                    {planCopy.description}
                   </p>
                 </div>
               </div>
               <span className="rounded-full border border-white/15 bg-white/14 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                Pro
+                {planCopy.chip}
               </span>
             </div>
 
@@ -194,7 +217,7 @@ export default function PricingCard({
                 display={formatted}
                 size={compact ? 'md' : 'lg'}
                 showInterval={true}
-                showPerMonth={true}
+                showPerMonth={resolvedPriceOption.id === 'annual'}
                 showSavings={true}
                 className="text-white [&_span]:text-white [&_p]:text-emerald-100/78"
               />
@@ -205,13 +228,17 @@ export default function PricingCard({
                 <div className="w-full rounded-[1.15rem] border border-white/18 bg-white/8 px-4 py-3 text-center text-sm font-semibold text-emerald-100">
                   Current plan
                 </div>
+              ) : lockedMessage ? (
+                <div className="w-full rounded-[1.15rem] border border-white/12 bg-white/[0.06] px-4 py-3 text-center text-sm text-emerald-100/82">
+                  {lockedMessage}
+                </div>
               ) : (
                 <button
                   onClick={onUpgrade}
-                  disabled={isUpgrading}
+                  disabled={!onUpgrade || isUpgrading}
                   className="flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-white px-4 py-3.5 text-sm font-bold text-[#026d32] shadow-[0_18px_32px_rgba(8,15,10,0.18)] transition-all hover:-translate-y-0.5 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isUpgrading ? 'Opening checkout…' : <>Upgrade to Pro <ArrowRight size={14} /></>}
+                  {isUpgrading ? 'Opening checkout…' : <>{planCopy.ctaLabel} <ArrowRight size={14} /></>}
                 </button>
               )}
             </div>
@@ -233,72 +260,4 @@ export default function PricingCard({
       </div>
     )
   }
-
-  const professionalFeatures = PROFESSIONAL_ORDER.features
-
-  return (
-    <div
-      className={cn(
-        'relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(255,249,238,0.94))] shadow-[0_24px_70px_rgba(28,24,18,0.08)] opacity-0 [animation:card-enter_0.5s_ease_forwards]',
-        compact ? 'min-h-[28.5rem] p-6' : 'min-h-[38rem] p-7'
-      )}
-      style={{ animationDelay: delay }}
-    >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_right,rgba(251,191,36,0.16),transparent_58%)]" />
-      <div className="relative flex h-full flex-col">
-        <div className={cn('flex items-start justify-between gap-4', compact ? 'mb-5' : 'mb-6')}>
-          <div className="space-y-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-amber-700/70">
-              Hands-on service
-            </p>
-            <div>
-              <h3 className={cn('font-black tracking-tight text-slate-900', compact ? 'text-[1.65rem]' : 'text-[1.9rem]')}>
-                Professional
-              </h3>
-              <p className={cn('mt-2 text-slate-500', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
-                A recruiter-crafted rewrite when you want expert eyes on the final version.
-              </p>
-            </div>
-          </div>
-          <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-            Pro+
-          </span>
-        </div>
-
-        <div className={cn('border-b border-amber-100', compact ? 'mb-5 pb-5' : 'mb-6 pb-6')}>
-          <div className="flex items-end gap-2">
-            <span className={cn('font-black tracking-tight text-slate-900', compact ? 'text-[2.9rem]' : 'text-5xl')}>
-              ${PROFESSIONAL_ORDER.display.displayPrice}
-            </span>
-            <span className="pb-2 text-sm text-slate-500">one-time</span>
-          </div>
-          <p className={cn('mt-2 text-slate-500', compact ? 'text-[13px]' : 'text-sm')}>
-            Delivered within {PROFESSIONAL_ORDER.deliveryHours} hours.
-          </p>
-        </div>
-
-        <div className={compact ? 'mb-5' : 'mb-6'}>
-          <Link
-            href="/dashboard/orders/new"
-            className="flex w-full items-center justify-center gap-2 rounded-[1.15rem] bg-[linear-gradient(135deg,#ff9d0a,#ff8a00)] px-4 py-3.5 text-sm font-bold text-white shadow-[0_18px_36px_rgba(255,138,0,0.28)] transition-all hover:-translate-y-0.5 hover:brightness-105"
-          >
-            Order Now <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        <div className="flex-1 rounded-[1.4rem] border border-amber-100 bg-white/78 p-4">
-          <p className={cn('text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400', compact ? 'mb-2' : 'mb-3')}>
-            Rewrite includes
-          </p>
-          <ul className={compact ? 'space-y-2.5' : 'space-y-3'}>
-            {professionalFeatures.map((feature) => (
-              <FeatureListItem key={feature} tone="amber">
-                {feature}
-              </FeatureListItem>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  )
 }

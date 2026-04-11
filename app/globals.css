@@ -554,3 +554,31 @@
     transform: none;
   }
 }
+
+@keyframes timeline-strike {
+  0%, 15% { opacity: 0; transform: translateY(10px); }
+  20%, 45% { opacity: 1; transform: translateY(0); }
+  50%, 100% { opacity: 0.4; transform: translateY(0); }
+}
+
+@keyframes strike-line {
+  0%, 30% { width: 0; }
+  45%, 100% { width: 110%; }
+}
+
+@keyframes timeline-pop {
+  0%, 50% { opacity: 0; transform: scale(0.9) translateY(5px); }
+  60%, 90% { opacity: 1; transform: scale(1) translateY(0); }
+  95%, 100% { opacity: 0; transform: scale(1.05); }
+}
+
+@keyframes live-delivery-zoom {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  50% {
+    transform: scale(1.045);
+    opacity: 1;
+  }
+}

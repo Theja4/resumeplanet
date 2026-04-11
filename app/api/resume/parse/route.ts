@@ -3,53 +3,12 @@ import { createHash } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import type { ResumeData, APIResponse, Resume } from '@/types'
-import pdfjsParser from '@/lib/parsers/pdfjs'
-import claudeParser from '@/lib/parsers/claude'
-import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { buildRoundTripVisibility, type FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
-import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
-import {
-  assessResumeParseConfidence,
-  chooseBetterParseCandidate,
-  shouldAttemptRepair,
-  type ResumeParseCandidate,
-} from '@/lib/parserConfidence'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
+import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const ALLOWED_MIME_TYPE = 'application/pdf'
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
-
-function buildParseCandidate(
-  data: ResumeData | null,
-  source: ResumeParseCandidate['source'],
-  sourceTextLength: number,
-): ResumeParseCandidate | null {
-  if (!data) return null
-
-  return {
-    data,
-    source,
-    confidence: assessResumeParseConfidence(data, { sourceTextLength }),
-  }
-}
-
-function buildMarkerCandidate(snapshot: FirstPartyResumeSnapshot | null): ResumeParseCandidate | null {
-  if (!snapshot) return null
-
-  return {
-    data: snapshot.data,
-    source: 'marker',
-    confidence: {
-      score: 100,
-      level: 'high',
-      issues: [],
-    },
-  }
-}
-
-function canUseDeepSeekRepairParser(): boolean {
-  return Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
-}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = await createClient()
@@ -127,59 +86,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Content-based duplicate detection
   const fileHash = createHash('sha256').update(buffer).digest('hex')
-  let sourceTextLength = 0
-
-  try {
-    const pages = await extractPDFItems(buffer)
-    sourceTextLength = pagesToLines(pages).map(line => line.text).join('\n').trim().length
-  } catch (sourceExtractError) {
-    console.warn('Failed to extract source text length for confidence scoring:', sourceExtractError)
-  }
-
-  let markerSnapshot: FirstPartyResumeSnapshot | null = null
-  if (fileType === ALLOWED_MIME_TYPE) {
-    markerSnapshot = await extractFirstPartyResumeSnapshotFromPdf(buffer)
-  }
-
-  const markerCandidate = buildMarkerCandidate(markerSnapshot)
-
-  let parsedData: ResumeData | null = null
-  let serverParseError: unknown = null
-
-  if (!markerCandidate) {
-    try {
-      parsedData = await pdfjsParser.parse(buffer, fileType)
-    } catch (error) {
-      serverParseError = error
-      parsedData = null
-    }
-  }
-
-  if (!markerCandidate && !parsedData && !clientParsedData) {
-    console.error('Resume parsing failed:', serverParseError)
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'PARSE_FAILED' },
-      { status: 422 }
-    )
-  }
-
-  const fastCandidate = buildParseCandidate(parsedData, 'fast', sourceTextLength)
-  const clientCandidate = buildParseCandidate(clientParsedData, 'client', sourceTextLength)
-
-  let selectedCandidate = chooseBetterParseCandidate(
-    markerCandidate,
-    chooseBetterParseCandidate(fastCandidate, clientCandidate),
-  )
-
-  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
-    try {
-      const repairedData = await claudeParser.parse(buffer, fileType)
-      const repairCandidate = buildParseCandidate(repairedData, 'repair', sourceTextLength)
-      selectedCandidate = chooseBetterParseCandidate(selectedCandidate, repairCandidate)
-    } catch (repairError) {
-      console.error('DeepSeek resume repair failed:', repairError)
-    }
-  }
+  const {
+    markerSnapshot,
+    selectedCandidate,
+    fastCandidate,
+    clientCandidate,
+  } = await parseResumeRobustly({
+    buffer,
+    fileType,
+    clientParsedData,
+  })
 
   if (!selectedCandidate) {
     return NextResponse.json<APIResponse<never>>(
@@ -188,10 +104,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  parsedData = selectedCandidate.data
+  const parsedData = selectedCandidate.data
 
   if (
-    !markerCandidate &&
+    !markerSnapshot &&
     selectedCandidate.confidence.issues.some(
       issue => issue === 'very low extraction coverage' || issue === 'parsed payload too short for source length',
     )

@@ -9,6 +9,8 @@ export interface PromoValidationResult {
   discountCode?: string
   discountType?: string
   discountValue?: number
+  appliesTo?: 'all' | string
+  badge?: string
   displayLabel?: string
   errorMessage?: string
 }

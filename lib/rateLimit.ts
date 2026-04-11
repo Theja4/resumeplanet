@@ -11,6 +11,7 @@ type RateLimitScope =
   | 'match_score_authenticated'
   | 'resume_parse_authenticated'
   | 'cover_letter_generate_authenticated'
+  | 'metadata_audit_authenticated'
 
 interface ConsumeRateLimitOptions {
   request: NextRequest

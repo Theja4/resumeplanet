@@ -463,26 +463,28 @@ export function getAllConfiguredProPaddlePriceIds() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// PROFESSIONAL ORDER CONFIG
+// HUMAN-WRITTEN ORDER CONFIG
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-export const PROFESSIONAL_ORDER = {
-  name: 'Professional Resume Writing',
+export const HUMAN_WRITTEN_ORDER = {
+  name: 'Human-Written Resume',
   display: {
-    displayPrice: 29.99,
+    displayPrice: readNumberEnv('NEXT_PUBLIC_HUMAN_WRITTEN_ORDER_PRICE_USD', 199),
     actualPrice: undefined,
     currency: 'USD',
     currencySymbol: '$',
   },
-  amountCents: 2999,
-  deliveryHours: 48,
+  amountCents: Math.round(readNumberEnv('NEXT_PUBLIC_HUMAN_WRITTEN_ORDER_PRICE_USD', 199) * 100),
+  deliveryHours: 96,
+  previousDeliveryLabel: process.env.NEXT_PUBLIC_HUMAN_WRITTEN_ORDER_PREVIOUS_DELIVERY ?? '1-2 working days',
+  deliveryLabel: process.env.NEXT_PUBLIC_HUMAN_WRITTEN_ORDER_DELIVERY ?? '3-4 working days',
   revisions: 1,
   features: [
-    'Written by a former recruiter',
-    'ATS-optimised formatting',
-    'Tailored to your target role',
-    '48-hour delivery',
-    'One round of revisions',
+    'Written by expert hiring managers from Apple, Meta, and Microsoft',
+    'High-impact narrative framing for 5+ years of experience',
+    'ATS-safe structure that passes through recruiter screeners',
+    'Sharper executive summary and ownership-driven bullet points',
+    'One revision round included to ensure 100% satisfaction',
   ],
 }
 
@@ -556,28 +558,28 @@ export const PROMOTIONS: PromoConfig[] = [
   // ── DEFAULT EXIT INTENT ───────────
   {
     id: 'exit-default',
-    name: 'Default Exit Offer',
+    name: 'CAREER50 Default Offer',
     paddleDiscountId: process.env.PADDLE_DISCOUNT_EXIT_DEFAULT ?? '',
-    paddleDiscountCode: undefined,
-    discountType: 'fixed',
-    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_EXIT_DEFAULT_FIXED', 6),
+    paddleDiscountCode: 'CAREER50',
+    discountType: 'percent',
+    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_EXIT_DEFAULT_PERCENT', 50),
     appliesTo: 'monthly',
     overrideDisplay: {
-      displayPrice: 6,
-      actualPrice: 12,
+      displayPrice: 0,
+      actualPrice: 0,
     },
-    label: 'Special Offer',
-    badge: 'MOST POPULAR',
+    label: 'CAREER50',
+    badge: '50% OFF',
     bannerEmoji: undefined,
-    headline: 'Wait — before you go',
-    subheadline: 'Get your first month of Pro for just $6. Cancel anytime.',
-    ctaLabel: 'Claim $6 offer →',
-    disclaimerText: 'First month only. Renews at $12/month. Cancel anytime.',
+    headline: 'Wait — keep your 50% off',
+    subheadline: 'CAREER50 is ready to apply on your Pro plan right now.',
+    ctaLabel: 'Claim CAREER50 →',
+    disclaimerText: '50% off applies at checkout using CAREER50. Renewal pricing follows your selected Paddle plan.',
     startDate: undefined,
     endDate: undefined,
     isExitIntent: true,
     isBanner: false,
-    isAutoApply: false,
+    isAutoApply: true,
     exitIntentTimerSeconds: 600,
     bannerBgColor: undefined,
     bannerTextColor: undefined,
@@ -627,6 +629,10 @@ export function getActivePromotion(): PromoConfig | null {
   return PROMOTIONS.find(promo => isPromotionActive(promo)) ?? null
 }
 
+export function getActiveAutoApplyPromotion(): PromoConfig | null {
+  return PROMOTIONS.find(promo => promo.isAutoApply && isPromotionActive(promo)) ?? null
+}
+
 export function getActiveBannerPromo(): PromoConfig | null {
   const active = getActivePromotion()
   return active?.isBanner ? active : null
@@ -654,15 +660,6 @@ export function getEffectiveDisplay(
 
   if (!appliesToOption) {
     return option.display
-  }
-
-  if (promo.overrideDisplay) {
-    return {
-      displayPrice: promo.overrideDisplay.displayPrice,
-      actualPrice: promo.overrideDisplay.actualPrice,
-      currency: option.display.currency,
-      currencySymbol: option.display.currencySymbol,
-    }
   }
 
   const basePrice = option.display.displayPrice
@@ -708,8 +705,27 @@ export function formatPriceDisplay(
 
 export type FormattedPrice = ReturnType<typeof formatPriceDisplay>
 
-export function getProfessionalOrderDisplay(): PriceDisplay {
-  return PROFESSIONAL_ORDER.display
+export function resolvePromoPriceOption(
+  priceOptions: PriceOption[],
+  promo: PromoConfig | null
+) {
+  if (priceOptions.length === 0) {
+    return null
+  }
+
+  if (!promo || promo.appliesTo === 'all') {
+    return priceOptions.find(option => option.id === 'monthly') ?? priceOptions[0]
+  }
+
+  return (
+    priceOptions.find(option => option.id === promo.appliesTo) ??
+    priceOptions.find(option => option.id === 'monthly') ??
+    priceOptions[0]
+  )
+}
+
+export function getHumanWrittenOrderDisplay(): PriceDisplay {
+  return HUMAN_WRITTEN_ORDER.display
 }
 
 export const PLANS = {

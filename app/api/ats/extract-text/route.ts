@@ -3,55 +3,14 @@ import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
-import pdfjsParser from '@/lib/parsers/pdfjs'
-import claudeParser from '@/lib/parsers/claude'
-import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
-import {
-  assessResumeParseConfidence,
-  chooseBetterParseCandidate,
-  shouldAttemptRepair,
-  type ResumeParseCandidate,
-} from '@/lib/parserConfidence'
 import type { ResumeData } from '@/types'
-import type { FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
+import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
-
-function buildParseCandidate(
-  data: ResumeData | null,
-  source: ResumeParseCandidate['source'],
-  sourceTextLength: number,
-): ResumeParseCandidate | null {
-  if (!data) return null
-
-  return {
-    data,
-    source,
-    confidence: assessResumeParseConfidence(data, { sourceTextLength }),
-  }
-}
-
-function buildMarkerCandidate(snapshot: FirstPartyResumeSnapshot | null): ResumeParseCandidate | null {
-  if (!snapshot) return null
-
-  return {
-    data: snapshot.data,
-    source: 'marker',
-    confidence: {
-      score: 100,
-      level: 'high',
-      issues: [],
-    },
-  }
-}
-
-function canUseDeepSeekRepairParser() {
-  return Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
-}
 
 function resumeDataToText(data: ResumeData | null): string {
   if (!data) return ''
@@ -168,43 +127,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'EXTRACTION_FAILED' }, { status: 500 })
   }
 
-  let markerSnapshot: FirstPartyResumeSnapshot | null = null
-  if (fileType === 'application/pdf') {
-    markerSnapshot = await extractFirstPartyResumeSnapshotFromPdf(buffer)
-  }
-
-  const markerCandidate = buildMarkerCandidate(markerSnapshot)
-
-  let parsedData: ResumeData | null = null
-  let serverParseError: unknown = null
-
-  if (!markerCandidate) {
-    try {
-      parsedData = await pdfjsParser.parse(buffer, fileType)
-    } catch (error) {
-      serverParseError = error
-      parsedData = null
-    }
-  }
-
-  const sourceTextLength = extractedText.trim().length
-
-  let selectedCandidate = chooseBetterParseCandidate(
-    markerCandidate,
-    buildParseCandidate(parsedData, 'fast', sourceTextLength),
-  )
-
-  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
-    try {
-      const repairedData = await claudeParser.parse(buffer, fileType)
-      selectedCandidate = chooseBetterParseCandidate(
-        selectedCandidate,
-        buildParseCandidate(repairedData, 'repair', sourceTextLength),
-      )
-    } catch (repairError) {
-      console.error('ATS extract repair parse failed:', repairError)
-    }
-  }
+  const { selectedCandidate } = await parseResumeRobustly({
+    buffer,
+    fileType,
+  })
 
   const text = extractedText.trim().length >= 50
     ? extractedText
@@ -212,10 +138,6 @@ export async function POST(request: NextRequest) {
 
   if (text.trim().length < 50) {
     return NextResponse.json({ success: false, error: 'SCANNED_OR_EMPTY' }, { status: 422 })
-  }
-
-  if (!selectedCandidate && serverParseError) {
-    console.warn('ATS extract structured parse unavailable:', serverParseError)
   }
 
   return NextResponse.json({

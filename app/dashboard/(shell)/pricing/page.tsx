@@ -10,16 +10,21 @@ import {
 import { CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import BillingUpgradeSection from './BillingUpgradeSection'
-import ExitIntentProvider from '@/components/shared/ExitIntentProvider'
+import PricingWorkspaceClient from './PricingWorkspaceClient'
 import UpgradePoller from '@/components/shared/UpgradePoller'
-import { PROFESSIONAL_ORDER, getActiveExitIntentPromo, getActivePromotion } from '@/lib/pricing'
+import {
+  HUMAN_WRITTEN_ORDER,
+  getActiveAutoApplyPromotion,
+  getActivePromotionByCode,
+  getActivePromotionById,
+} from '@/lib/pricing'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import PricingPageTracker from '@/components/analytics/PricingPageTracker'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import type { Affiliate, Order } from '@/types'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 import { detectRequestCountry } from '@/lib/cookie-consent'
+import { getLiveVisibleProPriceOptions } from '@/lib/paddle-pricing'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -41,6 +46,14 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function formatOrderAmount(amount?: number | null) {
+  if (typeof amount === 'number' && Number.isFinite(amount)) {
+    return `$${(amount / 100).toFixed(2)}`
+  }
+
+  return `$${HUMAN_WRITTEN_ORDER.display.displayPrice.toFixed(2)}`
+}
+
 // ─── Main ──────────────────────────────────────────────────────────────────────
 
 export default async function PricingPage({
@@ -50,6 +63,7 @@ export default async function PricingPage({
 }) {
   const headerStore = await headers()
   const pricingCountryCode = detectRequestCountry(headerStore)
+  const priceOptionsPromise = getLiveVisibleProPriceOptions(pricingCountryCode)
   const params = await searchParams
   const upgraded = params.upgraded === 'true'
   const pricingSource = params.source ?? 'dashboard'
@@ -88,13 +102,19 @@ export default async function PricingPage({
 
   const promoCode =
     params.promo ?? affiliateAttribution?.discount_code ?? storedAffiliateCode ?? undefined
-  const pricingPromo = buildAffiliatePricingPromo(affiliateAttribution) ?? getActivePromotion()
+  const activePromotionFromQuery = params.promo
+    ? getActivePromotionById(params.promo) ?? getActivePromotionByCode(params.promo)
+    : null
+  const pricingPromo =
+    buildAffiliatePricingPromo(affiliateAttribution) ??
+    activePromotionFromQuery ??
+    getActiveAutoApplyPromotion()
   const isPro = profile.plan === 'pro'
   const paidOrders = (ordersResult.data ?? []) as Order[]
-  const exitPromo = getActiveExitIntentPromo()
+  const priceOptions = await priceOptionsPromise
 
   return (
-    <ExitIntentProvider isPro={isPro} exitPromo={exitPromo}>
+    <>
       <PricingPageTracker source={pricingSource} />
       <div className="mx-auto w-full max-w-[1320px] space-y-5 pb-8">
         {/* Upgrade success banner */}
@@ -121,17 +141,18 @@ export default async function PricingPage({
                 {isPro ? 'Billing, simplified.' : 'Choose the plan that fits your workflow.'}
               </h1>
               <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
-                Compare the self-serve plans with the recruiter-led rewrite service in one cleaner view.
+                Compare the free tier with the live monthly and annual Pro plans in one cleaner view.
               </p>
             </div>
           </div>
 
           <div className="border-t border-black/6 pt-4">
-            <BillingUpgradeSection
+            <PricingWorkspaceClient
               autoFillPromo={promoCode}
-              displayPromo={pricingPromo}
+              initialPromo={pricingPromo}
               isPro={isPro}
-              compact
+              priceOptions={priceOptions}
+              currentSubscriptionInterval={profile.subscription_interval}
               pricingCountryCode={pricingCountryCode}
             />
           </div>
@@ -156,13 +177,13 @@ export default async function PricingPage({
                   {paidOrders.map((order, i) => (
                     <tr key={order.id} className={`border-b border-gray-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                       <td className="px-5 py-4 text-gray-500">{formatDate(order.created_at)}</td>
-                      <td className="px-5 py-4 font-medium text-gray-900">Professional Rewrite{order.job_title ? ` — ${order.job_title}` : ''}</td>
+                      <td className="px-5 py-4 font-medium text-gray-900">Human-Written Resume{order.job_title ? ` — ${order.job_title}` : ''}</td>
                       <td className="px-5 py-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[order.status] ?? STATUS_STYLES.pending}`}>
                           {STATUS_LABELS[order.status] ?? order.status}
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-gray-700">${PROFESSIONAL_ORDER.display.displayPrice}</td>
+                      <td className="px-5 py-4 text-gray-700">{formatOrderAmount(order.amount)}</td>
                       <td className="px-5 py-4">
                         <Link href={`/dashboard/orders/${order.id}`} className="text-[#026d32] hover:text-green-800 font-medium text-xs">
                           View →
@@ -176,6 +197,6 @@ export default async function PricingPage({
           </div>
         )}
       </div>
-    </ExitIntentProvider>
+    </>
   )
 }

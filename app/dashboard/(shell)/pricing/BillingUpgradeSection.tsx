@@ -2,42 +2,78 @@
 
 import { useState } from 'react'
 import {
-  getProPlanForCountry,
-  getActivePromotion,
+  type DiscountType,
+  type PriceOption,
   type PromoConfig,
 } from '@/lib/pricing'
-import PricingToggle from '@/components/shared/PricingToggle'
 import PricingCard from '@/components/shared/PricingCard'
 import PromoCodeInput, { type PromoValidationResult } from '@/components/shared/PromoCodeInput'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 interface Props {
   autoFillPromo?: string
+  baseDisplayPromo?: PromoConfig | null
   displayPromo?: PromoConfig | null
+  onDisplayPromoChange?: (promo: PromoConfig | null) => void
   isPro: boolean
+  priceOptions: PriceOption[]
+  currentSubscriptionInterval?: 'monthly' | 'annual' | null
   compact?: boolean
   pricingCountryCode?: string | null
 }
 
 export default function BillingUpgradeSection({
   autoFillPromo,
+  baseDisplayPromo,
   displayPromo,
+  onDisplayPromoChange,
   isPro,
+  priceOptions,
+  currentSubscriptionInterval = null,
   compact = false,
   pricingCountryCode,
 }: Props) {
-  const proPlan = getProPlanForCountry(pricingCountryCode)
-  const [selectedPriceId, setSelectedPriceId] = useState(proPlan.defaultPrice.id)
   const [appliedPromotionId, setAppliedPromotionId] = useState<string | undefined>(undefined)
   const [appliedPromotionCode, setAppliedPromotionCode] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const activePromo: PromoConfig | null = displayPromo ?? getActivePromotion()
+  const activePromo: PromoConfig | null = displayPromo ?? baseDisplayPromo ?? null
   const { openSubscriptionCheckout } = usePaddleCheckout()
+  const monthlyOption = priceOptions.find(option => option.id === 'monthly') ?? priceOptions[0]
+  const annualOption = priceOptions.find(option => option.id === 'annual') ?? priceOptions[1]
+
+  function buildAppliedDisplayPromo(result: PromoValidationResult): PromoConfig | null {
+    if (!result.valid || !result.discountType || result.discountValue == null) {
+      return null
+    }
+
+    const discountCode = result.discountCode?.trim().toUpperCase()
+
+    return {
+      id: result.promotionId ?? `applied-${discountCode ?? 'promo'}`,
+      name: discountCode ?? 'Applied promotion',
+      paddleDiscountId: '',
+      paddleDiscountCode: discountCode,
+      discountType: result.discountType as DiscountType,
+      discountValue: result.discountValue,
+      appliesTo: result.appliesTo ?? 'all',
+      label: result.displayLabel ?? 'Applied promotion',
+      badge: result.badge ?? result.displayLabel ?? 'Discount',
+      headline: '',
+      subheadline: '',
+      ctaLabel: '',
+      disclaimerText: '',
+      isExitIntent: false,
+      isBanner: false,
+      isAutoApply: false,
+      exitIntentTimerSeconds: 0,
+    }
+  }
 
   function handlePromoApply(result: PromoValidationResult) {
     setAppliedPromotionId(result.valid ? result.promotionId : undefined)
     setAppliedPromotionCode(result.valid ? result.discountCode : undefined)
+    onDisplayPromoChange?.(buildAppliedDisplayPromo(result) ?? baseDisplayPromo ?? null)
   }
 
   const hasAppliedPromotion =
@@ -46,17 +82,22 @@ export default function BillingUpgradeSection({
   const effectivePromotionId =
     hasAppliedPromotion
       ? appliedPromotionId
-      : (activePromo?.isAutoApply && activePromo.paddleDiscountId ? activePromo.id : undefined)
+      : activePromo?.isAutoApply && activePromo.paddleDiscountId
+        ? activePromo.id
+        : undefined
   const effectivePromotionCode =
     hasAppliedPromotion
       ? appliedPromotionCode
-      : (activePromo?.isAutoApply ? activePromo.paddleDiscountCode : undefined)
+      : activePromo?.isAutoApply
+        ? activePromo.paddleDiscountCode
+        : undefined
 
-  async function handleUpgrade() {
+  async function handleUpgrade(priceId: string) {
     setIsLoading(true)
     setCheckoutError(null)
+
     await openSubscriptionCheckout({
-      priceId: selectedPriceId,
+      priceId,
       promotionId: effectivePromotionId,
       promotionCode: effectivePromotionCode,
       onSuccess: () => setIsLoading(false),
@@ -68,42 +109,33 @@ export default function BillingUpgradeSection({
     })
   }
 
+  function getLockedMessage(optionId: string) {
+    if (!isPro) {
+      return undefined
+    }
+
+    if (currentSubscriptionInterval === optionId) {
+      return undefined
+    }
+
+    return 'You already have Pro. Interval changes from this page are coming soon.'
+  }
+
   return (
     <div className={compact ? 'space-y-3.5' : 'space-y-6'}>
-      {/* Interval toggle — only relevant when upgrading from free */}
-      {!isPro &&
-        (compact ? (
-          <div className="grid gap-3 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,0.94fr)] xl:items-start xl:gap-4">
-            <div className="hidden xl:block" />
-            <div className="xl:flex xl:justify-center">
-              <PricingToggle
-                selectedPriceId={selectedPriceId}
-                onChange={setSelectedPriceId}
-                activePromo={activePromo}
-                pricingCountryCode={pricingCountryCode}
-              />
-            </div>
-            <div className="xl:col-start-3 xl:w-full">
-              <PromoCodeInput
-                autoFillCode={autoFillPromo}
-                onApply={handlePromoApply}
-                compact
-              />
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <PricingToggle
-              selectedPriceId={selectedPriceId}
-              onChange={setSelectedPriceId}
-              activePromo={activePromo}
-              pricingCountryCode={pricingCountryCode}
+      {!isPro && compact && (
+        <div className="flex justify-end">
+          <div className="w-full xl:max-w-md">
+            <PromoCodeInput
+              autoFillCode={autoFillPromo}
+              onApply={handlePromoApply}
+              compact
             />
           </div>
-        ))}
+        </div>
+      )}
 
-      {/* 3-column card grid */}
-      <div className={`grid grid-cols-1 md:grid-cols-3 md:items-stretch ${compact ? 'gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,0.94fr)]' : 'gap-5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,0.96fr)]'}`}>
+      <div className={`grid grid-cols-1 md:grid-cols-3 md:items-stretch ${compact ? 'gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,1fr)]' : 'gap-5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,1.08fr)]'}`}>
         <PricingCard
           variant="free"
           activePromo={activePromo}
@@ -112,30 +144,42 @@ export default function BillingUpgradeSection({
           delay="0ms"
           pricingCountryCode={pricingCountryCode}
         />
-        <PricingCard
-          variant="pro"
-          selectedPriceId={selectedPriceId}
-          activePromo={activePromo}
-          isCurrentPlan={isPro}
-          onUpgrade={isPro ? undefined : handleUpgrade}
-          isUpgrading={isLoading}
-          compact={compact}
-          delay="120ms"
-          pricingCountryCode={pricingCountryCode}
-        />
-        <PricingCard
-          variant="professional"
-          activePromo={activePromo}
-          compact={compact}
-          delay="240ms"
-        />
+
+        {monthlyOption ? (
+          <PricingCard
+            variant="pro"
+            priceOption={monthlyOption}
+            activePromo={activePromo}
+            isCurrentPlan={isPro && currentSubscriptionInterval === 'monthly'}
+            onUpgrade={isPro ? undefined : () => handleUpgrade(monthlyOption.id)}
+            isUpgrading={isLoading}
+            lockedMessage={getLockedMessage('monthly')}
+            compact={compact}
+            delay="120ms"
+            pricingCountryCode={pricingCountryCode}
+          />
+        ) : null}
+
+        {annualOption ? (
+          <PricingCard
+            variant="pro"
+            priceOption={annualOption}
+            activePromo={activePromo}
+            isCurrentPlan={isPro && currentSubscriptionInterval === 'annual'}
+            onUpgrade={isPro ? undefined : () => handleUpgrade(annualOption.id)}
+            isUpgrading={isLoading}
+            lockedMessage={getLockedMessage('annual')}
+            compact={compact}
+            delay="240ms"
+            pricingCountryCode={pricingCountryCode}
+          />
+        ) : null}
       </div>
 
       {checkoutError && (
         <p className="text-sm text-red-600 text-center">{checkoutError}</p>
       )}
 
-      {/* Promo code input — only relevant when upgrading from free */}
       {!isPro && !compact && (
         <div className="rounded-[1.6rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(244,248,246,0.9))] p-4 shadow-[0_18px_45px_rgba(25,28,29,0.05)] sm:p-5">
           <div className="mb-3">
