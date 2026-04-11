@@ -6,6 +6,7 @@ import {
 import {
   findAffiliateByDiscountCode,
   readAffiliateReferralCodeFromCookies,
+  resolveAffiliatePaddleDiscountId,
 } from '@/lib/affiliate-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     const activePromo = getActivePromotion()
     let selectedPromotion: PromoConfig | null = null
-    let discountCode: string | null = null
+    let discountId: string | null = null
     let affiliateDiscountCode: string | null = null
     const serviceSupabase = createServiceRoleClient()
     const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
@@ -175,7 +176,10 @@ export async function POST(request: NextRequest) {
       const affiliate = await findAffiliateByDiscountCode(serviceSupabase, requestedPromotionCode)
 
       if (affiliate) {
-        discountCode = affiliate.discount_code
+        discountId = await resolveAffiliatePaddleDiscountId(serviceSupabase, affiliate)
+        if (!discountId) {
+          return err('Affiliate discount is not configured for checkout', 500)
+        }
         affiliateDiscountCode = affiliate.discount_code
       } else {
         selectedPromotion = getActivePromotionByCode(requestedPromotionCode)
@@ -195,18 +199,21 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        discountCode = affiliate.discount_code
+        discountId = await resolveAffiliatePaddleDiscountId(serviceSupabase, affiliate)
+        if (!discountId) {
+          return err('Affiliate discount is not configured for checkout', 500)
+        }
         affiliateDiscountCode = affiliate.discount_code
         break
       }
     }
 
-    if (!discountCode && promotionId) {
+    if (!discountId && promotionId) {
       selectedPromotion = getActivePromotionById(promotionId)
       if (!selectedPromotion || !selectedPromotion.paddleDiscountId) {
         return err('Invalid or expired promotion')
       }
-    } else if (!discountCode && activePromo?.isAutoApply && activePromo.paddleDiscountId) {
+    } else if (!discountId && activePromo?.isAutoApply && activePromo.paddleDiscountId) {
       selectedPromotion = activePromo
     }
 
@@ -225,8 +232,8 @@ export async function POST(request: NextRequest) {
       customerEmail: profile.email,
       pricingCountryCode,
       pricingCurrency: selectedPriceOption.display.currency,
-      discountId: discountCode ? null : (selectedPromotion?.paddleDiscountId ?? null),
-      discountCode,
+      discountId: discountId ?? selectedPromotion?.paddleDiscountId ?? null,
+      discountCode: null,
       customData: {
         userId: user.id,
         userEmail: profile.email,

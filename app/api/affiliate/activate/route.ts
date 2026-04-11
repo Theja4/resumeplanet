@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
       name: affiliateName,
       email: profile.email,
       discount_code: discountCode,
+      paddle_discount_id: createdPaddleDiscountId,
       discount_percent: AFFILIATE_ACTIVATION_DISCOUNT_PERCENT,
       commission_percent: AFFILIATE_ACTIVATION_COMMISSION_PERCENT,
       paypal_email: null,

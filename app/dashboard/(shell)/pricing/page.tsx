@@ -149,7 +149,7 @@ export default async function PricingPage({
           <div className="border-t border-black/6 pt-4">
             <PricingWorkspaceClient
               autoFillPromo={promoCode}
-              initialPromo={pricingPromo}
+              availablePromo={pricingPromo}
               isPro={isPro}
               priceOptions={priceOptions}
               currentSubscriptionInterval={profile.subscription_interval}

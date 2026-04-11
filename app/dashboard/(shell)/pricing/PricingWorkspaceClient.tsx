@@ -12,7 +12,7 @@ import {
 
 interface PricingWorkspaceClientProps {
   autoFillPromo?: string
-  initialPromo: PromoConfig | null
+  availablePromo: PromoConfig | null
   isPro: boolean
   priceOptions: PriceOption[]
   currentSubscriptionInterval?: 'monthly' | 'annual' | null
@@ -21,26 +21,26 @@ interface PricingWorkspaceClientProps {
 
 export default function PricingWorkspaceClient({
   autoFillPromo,
-  initialPromo,
+  availablePromo,
   isPro,
   priceOptions,
   currentSubscriptionInterval = null,
   pricingCountryCode,
 }: PricingWorkspaceClientProps) {
-  const [activePromo, setActivePromo] = useState<PromoConfig | null>(initialPromo)
+  const [activePromo, setActivePromo] = useState<PromoConfig | null>(null)
 
-  const ribbonCode = activePromo?.paddleDiscountCode ?? null
+  const ribbonCode = availablePromo?.paddleDiscountCode ?? null
   const ribbonDiscountPercent =
-    activePromo?.discountType === 'percent' ? activePromo.discountValue : null
+    availablePromo?.discountType === 'percent' ? availablePromo.discountValue : null
   const exitPriceOption = useMemo(
-    () => resolvePromoPriceOption(priceOptions, activePromo),
-    [priceOptions, activePromo]
+    () => resolvePromoPriceOption(priceOptions, availablePromo),
+    [priceOptions, availablePromo]
   )
 
   return (
     <ExitIntentProvider
       isPro={isPro}
-      exitPromo={activePromo}
+      exitPromo={availablePromo}
       exitPriceOption={exitPriceOption}
     >
       {ribbonCode && ribbonDiscountPercent ? (
@@ -52,7 +52,7 @@ export default function PricingWorkspaceClient({
 
       <BillingUpgradeSection
         autoFillPromo={autoFillPromo}
-        baseDisplayPromo={initialPromo}
+        baseDisplayPromo={null}
         displayPromo={activePromo}
         onDisplayPromoChange={setActivePromo}
         isPro={isPro}
