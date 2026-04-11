@@ -40,7 +40,7 @@ export default function PaddleProvider({
       token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
       eventCallback: (event) => {
         if (event.name === 'checkout.error') {
-          console.error('Paddle checkout error:', event.data)
+          console.error('Paddle checkout error event:', event)
         }
 
         if (event.name === 'checkout.completed') {

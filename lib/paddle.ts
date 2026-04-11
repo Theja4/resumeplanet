@@ -90,7 +90,24 @@ export async function getOrCreatePaddleCustomer(
     .single()
 
   if (profile?.paddle_customer_id) {
-    return profile.paddle_customer_id
+    try {
+      const existingCustomer = await paddle.customers.get(profile.paddle_customer_id)
+      if (existingCustomer?.id) {
+        return existingCustomer.id
+      }
+    } catch (error) {
+      console.warn('Stored Paddle customer id is invalid, recreating customer', {
+        userId,
+        paddleCustomerId: profile.paddle_customer_id,
+        error,
+      })
+
+      const serviceSupabase = createServiceRoleClient()
+      await serviceSupabase
+        .from('profiles')
+        .update({ paddle_customer_id: null })
+        .eq('id', userId)
+    }
   }
 
   const customer = await paddle.customers.create({
