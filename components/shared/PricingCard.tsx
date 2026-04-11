@@ -14,6 +14,7 @@ interface Props {
   variant: 'free' | 'pro'
   priceOption?: PriceOption
   selectedPriceId?: string
+  freeCurrencySymbol?: string
   activePromo: PromoConfig | null
   isCurrentPlan?: boolean
   onUpgrade?: () => void
@@ -59,6 +60,7 @@ export default function PricingCard({
   variant,
   priceOption,
   selectedPriceId,
+  freeCurrencySymbol,
   activePromo,
   isCurrentPlan = false,
   onUpgrade,
@@ -70,8 +72,10 @@ export default function PricingCard({
 }: Props) {
   if (variant === 'free') {
     const visibleFreeFeatures = FREE_PLAN.features
-    const freeCurrencySymbol =
-      getProPlanForCountry(pricingCountryCode).defaultPrice.display.currencySymbol
+    const resolvedFreeCurrencySymbol =
+      freeCurrencySymbol
+      ?? getProPlanForCountry(pricingCountryCode).defaultPrice.display.currencySymbol
+      ?? '$'
 
     return (
       <div
@@ -105,7 +109,7 @@ export default function PricingCard({
           <div className={cn('border-b border-black/6', compact ? 'mb-5 pb-5' : 'mb-6 pb-6')}>
             <div className="flex items-end gap-2">
               <span className={cn('font-black tracking-tight text-slate-900', compact ? 'text-[2.9rem]' : 'text-5xl')}>
-                {freeCurrencySymbol}0
+                {resolvedFreeCurrencySymbol}0
               </span>
               <span className="pb-2 text-sm text-slate-500">/month</span>
             </div>

@@ -29,6 +29,7 @@ export default function PricingSection({
     : '/auth/register'
   const monthlyOption = priceOptions.find(option => option.id === 'monthly') ?? priceOptions[0]
   const annualOption = priceOptions.find(option => option.id === 'annual') ?? priceOptions[1]
+  const freeCurrencySymbol = monthlyOption?.display.currencySymbol ?? annualOption?.display.currencySymbol ?? '$'
   const ribbonCode = activePromo?.paddleDiscountCode ?? null
   const ribbonDiscountPercent =
     activePromo?.discountType === 'percent' ? activePromo.discountValue : null
@@ -70,6 +71,7 @@ export default function PricingSection({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           <PricingCard
             variant="free"
+            freeCurrencySymbol={freeCurrencySymbol}
             activePromo={activePromo}
             onUpgrade={() => router.push(registerHref)}
             pricingCountryCode={pricingCountryCode}

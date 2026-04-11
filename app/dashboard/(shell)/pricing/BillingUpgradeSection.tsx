@@ -42,6 +42,7 @@ export default function BillingUpgradeSection({
   const { openSubscriptionCheckout } = usePaddleCheckout()
   const monthlyOption = priceOptions.find(option => option.id === 'monthly') ?? priceOptions[0]
   const annualOption = priceOptions.find(option => option.id === 'annual') ?? priceOptions[1]
+  const freeCurrencySymbol = monthlyOption?.display.currencySymbol ?? annualOption?.display.currencySymbol ?? '$'
 
   function buildAppliedDisplayPromo(result: PromoValidationResult): PromoConfig | null {
     if (!result.valid || !result.discountType || result.discountValue == null) {
@@ -142,6 +143,7 @@ export default function BillingUpgradeSection({
       <div className={`grid grid-cols-1 md:grid-cols-3 md:items-stretch ${compact ? 'gap-4 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1fr)_minmax(0,1fr)]' : 'gap-5 lg:grid-cols-[minmax(0,0.96fr)_minmax(0,1.08fr)_minmax(0,1.08fr)]'}`}>
         <PricingCard
           variant="free"
+          freeCurrencySymbol={freeCurrencySymbol}
           activePromo={activePromo}
           isCurrentPlan={!isPro}
           compact={compact}
