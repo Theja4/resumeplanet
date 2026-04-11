@@ -6,6 +6,7 @@ import {
   PRO_PLAN,
   getEffectiveDisplay,
   formatPriceDisplay,
+  promoAppliesToOption,
   type PriceOption,
   type PromoConfig,
 } from '@/lib/pricing'
@@ -105,6 +106,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
 
   async function handleClaim() {
     setIsLoading(true)
+    const promoApplies = promoAppliesToOption(promo, priceOption)
     if (promo.paddleDiscountCode) {
       Analytics.exitIntentModalConverted({
         promoCode: promo.paddleDiscountCode,
@@ -112,8 +114,8 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
     }
     await openSubscriptionCheckout({
       priceId: priceOption.id,
-      promotionId: promo.paddleDiscountId ? promo.id : undefined,
-      promotionCode: promo.paddleDiscountCode,
+      promotionId: promoApplies && promo.paddleDiscountId ? promo.id : undefined,
+      promotionCode: promoApplies ? promo.paddleDiscountCode : undefined,
       onSuccess: () => setIsLoading(false),
       onError: () => setIsLoading(false),
     })

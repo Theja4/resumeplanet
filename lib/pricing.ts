@@ -643,6 +643,16 @@ export function getActiveExitIntentPromo(): PromoConfig | null {
   return active?.isExitIntent ? active : null
 }
 
+export function promoAppliesToOption(
+  promo: PromoConfig | null,
+  option: Pick<PriceOption, 'id'> | string | null | undefined
+) {
+  if (!promo || !option) return false
+
+  const optionId = typeof option === 'string' ? option : option.id
+  return promo.appliesTo === 'all' || promo.appliesTo === optionId
+}
+
 function roundDisplayPrice(value: number) {
   return Math.round(value * 100) / 100
 }
@@ -655,10 +665,7 @@ export function getEffectiveDisplay(
   option: PriceOption,
   promo: PromoConfig | null
 ): PriceDisplay {
-  const appliesToOption =
-    promo && (promo.appliesTo === 'all' || promo.appliesTo === option.id)
-
-  if (!appliesToOption) {
+  if (!promoAppliesToOption(promo, option) || !promo) {
     return option.display
   }
 

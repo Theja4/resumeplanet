@@ -5,6 +5,7 @@ import {
   type DiscountType,
   type PriceOption,
   type PromoConfig,
+  promoAppliesToOption,
 } from '@/lib/pricing'
 import PricingCard from '@/components/shared/PricingCard'
 import PromoCodeInput, { type PromoValidationResult } from '@/components/shared/PromoCodeInput'
@@ -96,10 +97,13 @@ export default function BillingUpgradeSection({
     setIsLoading(true)
     setCheckoutError(null)
 
+    const selectedOption = priceOptions.find(option => option.id === priceId)
+    const promoApplies = promoAppliesToOption(activePromo, selectedOption ?? priceId)
+
     await openSubscriptionCheckout({
       priceId,
-      promotionId: effectivePromotionId,
-      promotionCode: effectivePromotionCode,
+      promotionId: promoApplies ? effectivePromotionId : undefined,
+      promotionCode: promoApplies ? effectivePromotionCode : undefined,
       onSuccess: () => setIsLoading(false),
       onError: (err) => {
         setIsLoading(false)
