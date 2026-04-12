@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rezoomed — Full Page Design Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f5f5f5; color: #111; }
+
+  .page-wrap { max-width: 900px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #888; text-transform: uppercase; margin-bottom: 8px; }
+
+  /* ── Shared card ── */
+  .mockup-card { background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04); }
+
+  /* ── NAV ── */
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 14px 28px; background: rgba(255,255,255,0.92); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,0,0,0.05); }
+  .nav-logo { font-size: 17px; font-weight: 900; letter-spacing: -0.04em; color: #111; }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-link { font-size: 13px; font-weight: 600; color: #555; }
+  .nav-link.active { color: #026d32; border-bottom: 2px solid #026d32; padding-bottom: 2px; }
+  .nav-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-ghost { font-size: 12px; font-weight: 700; color: #555; padding: 6px 14px; border-radius: 100px; }
+  .btn-primary { font-size: 12px; font-weight: 800; color: #fff; background: #026d32; padding: 7px 16px; border-radius: 100px; letter-spacing: 0.02em; }
+
+  /* ── HERO ── */
+  .hero { padding: 52px 40px 40px; background: linear-gradient(160deg, #f0fdf4 0%, #fff 55%); position: relative; overflow: hidden; }
+  .hero-grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(2,109,50,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(2,109,50,0.04) 1px, transparent 1px); background-size: 32px 32px; }
+  .hero-glow { position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 500px; height: 300px; background: radial-gradient(ellipse, rgba(163,255,179,0.35) 0%, transparent 70%); pointer-events: none; }
+  .hero-content { position: relative; z-index: 2; text-align: center; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 100px; padding: 4px 14px; font-size: 10px; font-weight: 800; letter-spacing: 0.18em; color: #15803d; text-transform: uppercase; margin-bottom: 22px; }
+  .hero-badge-dot { width: 5px; height: 5px; background: #22c55e; border-radius: 50%; }
+  .hero-h1 { font-size: 52px; font-weight: 900; line-height: 1.0; letter-spacing: -0.05em; color: #111; margin-bottom: 6px; }
+  .hero-h1-green { color: #026d32; font-style: italic; display: block; }
+  .hero-sub { font-size: 15px; color: #555; max-width: 420px; margin: 16px auto 26px; line-height: 1.65; }
+  .hero-sub strong { color: #111; }
+  .hero-ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .cta-main { background: #111; color: #fff; font-size: 13px; font-weight: 800; padding: 13px 28px; border-radius: 100px; letter-spacing: 0.06em; display: inline-flex; align-items: center; gap: 8px; }
+  .cta-secondary { background: #f0fdf4; color: #026d32; border: 1.5px solid #bbf7d0; font-size: 13px; font-weight: 700; padding: 12px 22px; border-radius: 100px; }
+  .hero-trust { font-size: 11px; color: #aaa; margin-top: 14px; font-weight: 500; }
+
+  /* Floating cards in hero */
+  .hero-floats { display: flex; gap: 10px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+  .float-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 10px 16px; box-shadow: 0 6px 20px rgba(0,0,0,0.07); display: flex; align-items: center; gap: 10px; }
+  .float-card-green { background: #026d32; border-color: #026d32; }
+  .float-stat { font-size: 20px; font-weight: 900; color: #026d32; letter-spacing: -0.03em; }
+  .float-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; color: #aaa; text-transform: uppercase; }
+  .float-ai-dot { width: 7px; height: 7px; background: #80da92; border-radius: 50%; }
+  .float-ai-text { font-size: 11px; font-weight: 800; color: #fff; letter-spacing: 0.08em; }
+
+  /* ── LOGO MARQUEE ── */
+  .marquee-section { padding: 32px 36px; background: #fff; }
+  .marquee-header { margin-bottom: 18px; }
+  .marquee-badge { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; padding: 3px 12px; font-size: 9px; font-weight: 800; letter-spacing: 0.18em; color: #15803d; text-transform: uppercase; margin-bottom: 8px; }
+  .marquee-h2 { font-size: 20px; font-weight: 800; letter-spacing: -0.03em; color: #111; }
+  .marquee-sub { font-size: 12px; color: #888; margin-top: 4px; }
+  .logo-strip { display: flex; gap: 10px; flex-wrap: wrap; }
+  .logo-chip { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px 16px; font-size: 12px; font-weight: 700; color: #333; display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; }
+
+  /* ── FEATURES ── */
+  .features-section { padding: 40px 36px; background: #f8faf9; }
+  .features-badge { display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 100px; padding: 3px 12px; font-size: 9px; font-weight: 800; letter-spacing: 0.18em; color: #15803d; text-transform: uppercase; margin-bottom: 12px; }
+  .features-h2 { font-size: 30px; font-weight: 900; letter-spacing: -0.04em; color: #111; line-height: 1.1; max-width: 360px; margin-bottom: 10px; }
+  .features-sub { font-size: 13px; color: #666; line-height: 1.65; max-width: 340px; margin-bottom: 22px; }
+  .feature-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .feature-tab { padding: 8px 14px; border-radius: 12px; font-size: 11px; font-weight: 700; background: #fff; border: 1px solid #e5e7eb; color: #555; }
+  .feature-tab.active { background: #111; color: #fff; border-color: #111; }
+  .feature-preview { background: #111; border-radius: 16px; padding: 20px; min-height: 120px; display: flex; align-items: center; justify-content: center; }
+  .feature-preview-inner { color: #fff; text-align: center; font-size: 12px; opacity: 0.5; }
+
+  /* ── TESTIMONIALS ── */
+  .testimonials-section { padding: 40px 36px; background: #fff; }
+  .test-overline { font-size: 10px; font-weight: 800; letter-spacing: 0.2em; color: #026d32; text-transform: uppercase; margin-bottom: 8px; }
+  .test-h2 { font-size: 28px; font-weight: 900; letter-spacing: -0.04em; color: #111; margin-bottom: 22px; }
+  .test-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .test-card { background: #f9fafb; border: 1px solid #f0f0f0; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .test-card.featured { background: #026d32; border-color: #026d32; grid-column: span 2; }
+  .test-stars { display: flex; gap: 2px; }
+  .star { color: #fbbf24; font-size: 12px; }
+  .test-quote { font-size: 13px; line-height: 1.7; color: #333; }
+  .test-card.featured .test-quote { color: rgba(255,255,255,0.9); font-size: 15px; }
+  .test-author { display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px; margin-top: auto; }
+  .test-card.featured .test-author { border-top-color: rgba(255,255,255,0.15); }
+  .test-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; color: #333; flex-shrink: 0; }
+  .test-name { font-size: 12px; font-weight: 800; color: #111; }
+  .test-card.featured .test-name { color: #fff; }
+  .test-role { font-size: 11px; color: #888; }
+  .test-card.featured .test-role { color: rgba(255,255,255,0.6); }
+
+  /* ── CTA ── */
+  .cta-section { padding: 44px 36px; background: linear-gradient(135deg, #022c14 0%, #026d32 50%, #019a47 100%); position: relative; overflow: hidden; }
+  .cta-noise { position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; opacity: 0.4; }
+  .cta-glow-1 { position: absolute; top: -40px; right: -40px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%); pointer-events: none; }
+  .cta-glow-2 { position: absolute; bottom: -40px; left: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%); pointer-events: none; }
+  .cta-content { position: relative; z-index: 2; text-align: center; }
+  .cta-h2 { font-size: 36px; font-weight: 900; letter-spacing: -0.05em; color: #fff; line-height: 1.0; margin-bottom: 10px; }
+  .cta-sub { font-size: 14px; color: rgba(255,255,255,0.65); margin-bottom: 24px; }
+  .cta-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .cta-btn-white { background: #fff; color: #026d32; font-size: 13px; font-weight: 800; padding: 12px 24px; border-radius: 100px; }
+  .cta-btn-outline { background: rgba(255,255,255,0.1); color: #fff; font-size: 13px; font-weight: 700; padding: 12px 22px; border-radius: 100px; border: 1px solid rgba(255,255,255,0.2); }
+  .cta-fine { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 14px; }
+
+  /* ── FOOTER ── */
+  .footer { padding: 24px 36px; background: #0a0f0b; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  .footer-logo { font-size: 16px; font-weight: 900; color: #fff; letter-spacing: -0.04em; }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-link { font-size: 12px; color: #666; font-weight: 500; }
+  .footer-copy { font-size: 11px; color: #444; }
+
+  /* Annotation styles */
+  .annotation { font-size: 11px; color: #026d32; font-weight: 700; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 3px 8px; display: inline-block; margin-left: 8px; vertical-align: middle; }
+  .section-header { display: flex; align-items: center; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div style="background: #e8f5e9; padding: 14px 24px; text-align: center; font-size: 12px; font-weight: 700; color: #026d32; letter-spacing: 0.05em;">
+  FULL PAGE DESIGN MOCKUP — "Bold &amp; Elevated" direction for Rezoomed
+</div>
+
+<div class="page-wrap">
+
+  <!-- NAV -->
+  <div>
+    <div class="section-header"><div class="section-label">01 — Navigation</div><span class="annotation">Cleaner pill layout, tighter logo, refined CTAs</span></div>
+    <div class="mockup-card">
+      <div class="nav">
+        <div class="nav-logo">Rezoomed</div>
+        <div class="nav-links">
+          <span class="nav-link active">Home</span>
+          <span class="nav-link">Features</span>
+          <span class="nav-link">Blog</span>
+        </div>
+        <div class="nav-actions">
+          <span class="btn-ghost">Sign In</span>
+          <span class="btn-primary">Sign Up Free →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div>
+    <div class="section-header"><div class="section-label">02 — Hero</div><span class="annotation">Green mesh glow + grid bg, italic accent, dual CTAs, stat floats</span></div>
+    <div class="mockup-card">
+      <div class="hero">
+        <div class="hero-grid-bg"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-content">
+          <div class="hero-badge"><div class="hero-badge-dot"></div> AI-Powered Career Tool</div>
+          <div class="hero-h1">
+            Build your resume.<br/>
+            <span class="hero-h1-green">Land 5× more<br/>interviews.</span>
+          </div>
+          <p class="hero-sub">In this brutal job market, do not gamble with your career. Use industry-leading <strong>Frontier AI</strong> models tuned by Rezoomed to land the interview.</p>
+          <div class="hero-ctas">
+            <span class="cta-main">GET STARTED FREE <span>→</span></span>
+            <span class="cta-secondary">Check My ATS Score</span>
+          </div>
+          <div class="hero-trust">No credit card · Free plan · Cancel anytime</div>
+          <div class="hero-floats">
+            <div class="float-card">
+              <div>
+                <div class="float-stat">98%</div>
+                <div class="float-label">ATS Score</div>
+              </div>
+              <div style="width:70px; height:8px; background:#f0f0f0; border-radius:100px; overflow:hidden; margin-top:4px;">
+                <div style="width:98%; height:100%; background: linear-gradient(90deg,#a3ffb3,#026d32); border-radius:100px;"></div>
+              </div>
+            </div>
+            <div class="float-card">
+              <div class="float-stat" style="color:#111;">5×</div>
+              <div class="float-label">More callbacks</div>
+            </div>
+            <div class="float-card float-card-green">
+              <div class="float-ai-dot"></div>
+              <div class="float-ai-text">AI OPTIMIZING...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGO MARQUEE -->
+  <div>
+    <div class="section-header"><div class="section-label">03 — Social Proof Logos</div><span class="annotation">Glassmorphic container, refined wordmarks, scrolling marquee</span></div>
+    <div class="mockup-card">
+      <div class="marquee-section">
+        <div class="marquee-header">
+          <div class="marquee-badge">🏆 Career Outcomes</div>
+          <div class="marquee-h2">Our users have landed at</div>
+          <div class="marquee-sub">Product, design, growth, and ops candidates use Rezoomed to sharpen each application.</div>
+        </div>
+        <div class="logo-strip">
+          <div class="logo-chip"><div class="logo-icon" style="background:#f8f8f8;">G</div>Google</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#f8f8f8; color:#0078d4;">M</div>Microsoft</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#ff9900; color:#fff;">a</div>Amazon</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#0866ff; color:#fff;">M</div>Meta</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#635bff; color:#fff; font-style:italic;">S</div>Stripe</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#f24e1e; color:#fff;">F</div>Figma</div>
+          <div class="logo-chip"><div class="logo-icon" style="background:#95bf47; color:#fff;">S</div>Shopify</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div>
+    <div class="section-header"><div class="section-label">04 — Feature Showcase</div><span class="annotation">Bolder section heading, italic emphasis, animated tab carousel (existing)</span></div>
+    <div class="mockup-card">
+      <div class="features-section">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start;">
+          <div>
+            <div class="features-badge">✦ Premium Features</div>
+            <div class="features-h2">The feature stack that turns one resume <em style="color:#026d32;">into a system.</em></div>
+            <div class="features-sub">Tailor each version for the job, run deeper ATS diagnostics, export polished files, and keep every role-specific draft organized.</div>
+            <div class="feature-tabs">
+              <div class="feature-tab active">01 Tailor Mode</div>
+              <div class="feature-tab">02 Unlimited ATS</div>
+              <div class="feature-tab">03 Templates</div>
+              <div class="feature-tab">04 Library</div>
+            </div>
+            <div style="margin-top:14px;">
+              <span style="display:inline-flex; align-items:center; gap:6px; background:#111; color:#fff; font-size:11px; font-weight:800; padding:10px 18px; border-radius:100px; letter-spacing:0.08em;">GET STARTED →</span>
+            </div>
+          </div>
+          <div>
+            <div class="feature-preview">
+              <div class="feature-preview-inner">Interactive feature carousel<br/>(existing component, preserved)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TESTIMONIALS -->
+  <div>
+    <div class="section-header"><div class="section-label">05 — Testimonials</div><span class="annotation">Featured card spans full width on dark green, 2 smaller cards below</span></div>
+    <div class="mockup-card">
+      <div class="testimonials-section">
+        <div class="test-overline">What people say</div>
+        <div class="test-h2">Trusted by job seekers worldwide.</div>
+        <div class="test-grid">
+          <!-- Featured -->
+          <div class="test-card featured">
+            <div class="test-stars">★★★★★</div>
+            <div class="test-quote">"I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand."</div>
+            <div class="test-author">
+              <div class="test-avatar" style="background:rgba(255,255,255,0.2); color:#fff;">PS</div>
+              <div>
+                <div class="test-name">Priya Sharma</div>
+                <div class="test-role">Data Scientist at Meta</div>
+              </div>
+            </div>
+          </div>
+          <!-- Regular -->
+          <div class="test-card">
+            <div class="test-stars"><span class="star">★★★★★</span></div>
+            <div class="test-quote">"The ATS score jumped from 62% to 94% on my first try. The AI identified achievements I hadn't even thought to include."</div>
+            <div class="test-author">
+              <div class="test-avatar" style="background:linear-gradient(135deg,#a3ffb3,#80da92);">MK</div>
+              <div>
+                <div class="test-name">Marcus Kane</div>
+                <div class="test-role">Marketing Director</div>
+              </div>
+            </div>
+          </div>
+          <div class="test-card">
+            <div class="test-stars"><span class="star">★★★★★</span></div>
+            <div class="test-quote">"Rezoomed didn't just fix my resume — it helped me understand my own worth. Landed a Senior Role within two weeks."</div>
+            <div class="test-author">
+              <div class="test-avatar" style="background:linear-gradient(135deg,#dbeafe,#93c5fd);">SJ</div>
+              <div>
+                <div class="test-name">Sarah Jenkins</div>
+                <div class="test-role">Senior Product Designer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div>
+    <div class="section-header"><div class="section-label">06 — CTA Section</div><span class="annotation">Gradient bg (dark→mid→bright green) + subtle noise texture + glow orbs</span></div>
+    <div class="mockup-card">
+      <div class="cta-section">
+        <div class="cta-noise"></div>
+        <div class="cta-glow-1"></div>
+        <div class="cta-glow-2"></div>
+        <div class="cta-content">
+          <div class="cta-h2">Ready to get<br/><em>hired faster?</em></div>
+          <div class="cta-sub">Join 50,000+ professionals who use Rezoomed to get more callbacks.</div>
+          <div class="cta-buttons">
+            <span class="cta-btn-white">Start for free</span>
+            <span class="cta-btn-outline">Check my ATS score</span>
+          </div>
+          <div class="cta-fine">No credit card · Free plan · Cancel anytime</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div>
+    <div class="section-header"><div class="section-label">07 — Footer</div><span class="annotation">Near-black bg, brighter logo, tighter layout</span></div>
+    <div class="mockup-card">
+      <div class="footer">
+        <div class="footer-logo">Rezoomed</div>
+        <div class="footer-links">
+          <span class="footer-link">Privacy Policy</span>
+          <span class="footer-link">Terms of Service</span>
+          <span class="footer-link">Blog</span>
+        </div>
+        <div class="footer-copy">© 2026 Rezoomed. All rights reserved.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:18px 22px; margin-top:4px;">
+    <div style="font-size:13px; font-weight:800; color:#026d32; margin-bottom:10px;">Changes summary</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+      <div style="font-size:12px; color:#333;"><strong>Nav:</strong> "Sign Up Free →" arrow, cleaner ghost Sign In</div>
+      <div style="font-size:12px; color:#333;"><strong>Hero:</strong> Italic green text, mesh+grid bg, dual CTA, trust line, 3 stat floats</div>
+      <div style="font-size:12px; color:#333;"><strong>Features:</strong> Italic heading accent, bolder copy, existing carousel preserved</div>
+      <div style="font-size:12px; color:#333;"><strong>Testimonials:</strong> Featured card (dark green, full-width) + 2 cards below</div>
+      <div style="font-size:12px; color:#333;"><strong>CTA:</strong> Dark→green gradient with glow orbs instead of flat green</div>
+      <div style="font-size:12px; color:#333;"><strong>Footer:</strong> Near-black (#0a0f0b), tighter, refined logo weight</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

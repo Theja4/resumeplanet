@@ -1,0 +1,115 @@
+<h2>What design direction should the landing page take?</h2>
+<p class="subtitle">All options keep your green brand color and current content — the difference is the overall feel and visual language.</p>
+
+<div class="cards">
+
+  <!-- Option A: Dark Premium -->
+  <div class="card" data-choice="dark-premium" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0c0f0d; padding: 20px; min-height: 220px; display:flex; flex-direction:column; gap:12px; font-family: system-ui, sans-serif; border-radius: 8px 8px 0 0;">
+      <!-- Nav -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 12px; background:rgba(255,255,255,0.06); border-radius:100px; border:1px solid rgba(255,255,255,0.08);">
+        <span style="color:#fff; font-weight:800; font-size:13px;">Rezoomed</span>
+        <div style="display:flex; gap:8px;">
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">Home</span>
+          <span style="color:rgba(255,255,255,0.5); font-size:11px;">Features</span>
+        </div>
+        <span style="background:#00cc52; color:#fff; font-size:10px; font-weight:700; padding:4px 12px; border-radius:100px;">Sign Up</span>
+      </div>
+      <!-- Hero text -->
+      <div style="text-align:center; padding: 12px 0 8px;">
+        <div style="display:inline-block; background:rgba(163,255,179,0.12); border:1px solid rgba(163,255,179,0.25); border-radius:100px; padding:3px 12px; color:#80da92; font-size:9px; font-weight:700; letter-spacing:0.15em; margin-bottom:10px;">AI-POWERED CAREER TOOL</div>
+        <div style="color:#fff; font-size:22px; font-weight:900; line-height:1.1; letter-spacing:-0.04em;">Build your resume.<br/><span style="background: linear-gradient(135deg,#80da92,#00cc52); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Land 5× more</span><br/><span style="background: linear-gradient(135deg,#80da92,#00cc52); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">interviews.</span></div>
+        <div style="margin-top:10px;"><span style="display:inline-block; background:linear-gradient(135deg,#026d32,#00a84d); color:#fff; font-size:11px; font-weight:800; padding:8px 20px; border-radius:100px; letter-spacing:0.05em;">GET STARTED NOW →</span></div>
+      </div>
+      <!-- Floating stat card -->
+      <div style="display:flex; gap:8px; justify-content:center;">
+        <div style="background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:8px 14px; color:#fff; font-size:10px;">
+          <div style="color:rgba(255,255,255,0.4); font-size:8px; font-weight:700; letter-spacing:0.15em; margin-bottom:3px;">ATS SCORE</div>
+          <div style="font-weight:900; color:#80da92; font-size:16px;">98%</div>
+        </div>
+        <div style="background:rgba(163,255,179,0.1); border:1px solid rgba(163,255,179,0.2); border-radius:12px; padding:8px 14px; color:#80da92; font-size:10px; font-weight:700; display:flex; align-items:center; gap:5px;">
+          <span style="width:5px; height:5px; background:#00cc52; border-radius:50%; display:inline-block;"></span>
+          AI OPTIMIZING...
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Dark Premium</h3>
+      <p>Deep dark background with neon green accents. Think Linear, Vercel, Raycast. Feels high-end, technical, and aspirational. Strong contrast makes every element pop.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Light Editorial -->
+  <div class="card" data-choice="light-editorial" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#fafafa; padding: 20px; min-height: 220px; display:flex; flex-direction:column; gap:12px; font-family: system-ui, sans-serif; border-radius: 8px 8px 0 0;">
+      <!-- Nav -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 16px; background:#fff; border-radius:100px; border:1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <span style="color:#111; font-weight:800; font-size:13px;">Rezoomed</span>
+        <div style="display:flex; gap:8px;">
+          <span style="color:#888; font-size:11px;">Home</span>
+          <span style="color:#888; font-size:11px;">Features</span>
+        </div>
+        <span style="background:#026d32; color:#fff; font-size:10px; font-weight:700; padding:4px 12px; border-radius:100px;">Sign Up</span>
+      </div>
+      <!-- Hero -->
+      <div style="text-align:center; padding: 12px 0 8px;">
+        <div style="display:inline-block; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:100px; padding:3px 12px; color:#15803d; font-size:9px; font-weight:700; letter-spacing:0.15em; margin-bottom:10px;">AI-POWERED CAREER TOOL</div>
+        <div style="color:#111; font-size:22px; font-weight:900; line-height:1.1; letter-spacing:-0.04em;">Build your resume.<br/><span style="color:#026d32;">Land 5× more interviews.</span></div>
+        <p style="color:#555; font-size:10px; margin-top:6px; max-width:200px; margin-left:auto; margin-right:auto; line-height:1.5;">Use industry-leading Frontier AI models to land the interview.</p>
+        <div style="margin-top:10px;"><span style="display:inline-block; background:#111; color:#fff; font-size:11px; font-weight:800; padding:8px 20px; border-radius:100px;">GET STARTED NOW</span></div>
+      </div>
+      <!-- Company logos strip -->
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <div style="background:#fff; border:1px solid #eee; border-radius:8px; padding:4px 10px; font-size:9px; font-weight:700; color:#333;">Google</div>
+        <div style="background:#fff; border:1px solid #eee; border-radius:8px; padding:4px 10px; font-size:9px; font-weight:700; color:#333;">Meta</div>
+        <div style="background:#fff; border:1px solid #eee; border-radius:8px; padding:4px 10px; font-size:9px; font-weight:700; color:#333;">Stripe</div>
+        <div style="background:#fff; border:1px solid #eee; border-radius:8px; padding:4px 10px; font-size:9px; font-weight:700; color:#333;">Amazon</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Light Editorial</h3>
+      <p>Clean white with precise typography and subtle depth. Think Stripe, Notion, Linear's marketing site. Feels polished, trustworthy, and grown-up. Great for credibility.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Bold Elevated -->
+  <div class="card" data-choice="bold-elevated" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(160deg, #f0fdf4 0%, #fff 40%); padding: 20px; min-height: 220px; display:flex; flex-direction:column; gap:12px; font-family: system-ui, sans-serif; border-radius: 8px 8px 0 0; position:relative; overflow:hidden;">
+      <!-- Subtle grid -->
+      <div style="position:absolute;inset:0; background-image: linear-gradient(rgba(2,109,50,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(2,109,50,0.04) 1px,transparent 1px); background-size:24px 24px; pointer-events:none;"></div>
+      <!-- Nav -->
+      <div style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1;">
+        <span style="color:#111; font-weight:900; font-size:14px; letter-spacing:-0.02em;">Rezoomed</span>
+        <span style="background:#026d32; color:#fff; font-size:10px; font-weight:800; padding:5px 14px; border-radius:100px; letter-spacing:0.05em;">Sign Up →</span>
+      </div>
+      <!-- Hero -->
+      <div style="text-align:center; padding: 8px 0; position:relative; z-index:1;">
+        <div style="color:#111; font-size:24px; font-weight:900; line-height:1.05; letter-spacing:-0.05em;">Build your resume.<br/><span style="color:#026d32; font-style:italic;">Land 5× more<br/>interviews.</span></div>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:10px;">
+          <span style="display:inline-block; background:#111; color:#fff; font-size:10px; font-weight:800; padding:7px 16px; border-radius:100px;">Get Started Free</span>
+          <span style="display:inline-block; background:#f0fdf4; color:#026d32; border:1.5px solid #bbf7d0; font-size:10px; font-weight:700; padding:7px 14px; border-radius:100px;">Check ATS Score</span>
+        </div>
+      </div>
+      <!-- Stat cards row -->
+      <div style="display:flex; gap:6px; position:relative; z-index:1;">
+        <div style="flex:1; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+          <div style="color:#026d32; font-size:16px; font-weight:900;">98%</div>
+          <div style="color:#999; font-size:8px; font-weight:600; letter-spacing:0.1em;">ATS SCORE</div>
+        </div>
+        <div style="flex:1; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+          <div style="color:#026d32; font-size:16px; font-weight:900;">5×</div>
+          <div style="color:#999; font-size:8px; font-weight:600; letter-spacing:0.1em;">MORE CALLBACKS</div>
+        </div>
+        <div style="flex:1; background:#026d32; border-radius:12px; padding:8px 10px; display:flex; align-items:center; gap:4px;">
+          <span style="width:5px; height:5px; background:#80da92; border-radius:50%; display:inline-block; flex-shrink:0;"></span>
+          <span style="color:#fff; font-size:8px; font-weight:700; line-height:1.2;">AI LIVE</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Bold & Elevated (Evolved Current)</h3>
+      <p>Your existing direction but significantly refined — sharper typography, better hierarchy, italic accent style, and a tighter two-CTA hero. Feels like a funded startup. Minimal risk, maximum upgrade.</p>
+    </div>
+  </div>
+
+</div>

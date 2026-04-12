@@ -1,0 +1,5 @@
+{"type":"server-started","port":55076,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:55076","screen_dir":"/Users/thejach/Downloads/ResumePlanet/.superpowers/brainstorm/30444-1775405977/content","state_dir":"/Users/thejach/Downloads/ResumePlanet/.superpowers/brainstorm/30444-1775405977/state"}
+{"type":"screen-added","file":"/Users/thejach/Downloads/ResumePlanet/.superpowers/brainstorm/30444-1775405977/content/design-direction.html"}
+{"type":"screen-added","file":"/Users/thejach/Downloads/ResumePlanet/.superpowers/brainstorm/30444-1775405977/content/waiting.html"}
+{"type":"screen-added","file":"/Users/thejach/Downloads/ResumePlanet/.superpowers/brainstorm/30444-1775405977/content/full-page-design.html"}
+{"type":"server-stopped","reason":"idle timeout"}

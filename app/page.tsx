@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { WandSparkles } from 'lucide-react'
 import type { Metadata } from 'next'
-import FeatureShowcaseSection from '@/components/landing/FeatureShowcase'
+import LandingFeatures from '@/components/landing/LandingFeatures'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
@@ -179,7 +179,7 @@ export default async function LandingPage() {
 
         <LogoMarqueeSection />
 
-        <FeatureShowcaseSection />
+        <LandingFeatures />
 
         {/* ── Testimonials ───────────────────────────────────────────────── */}
         <section className="py-28 bg-[#f8faf9] overflow-hidden">
@@ -239,7 +239,7 @@ export default async function LandingPage() {
               Ready to get <em>hired faster?</em>
             </h2>
             <p className="text-lg text-white/75">
-              Join 50,000+ professionals who use Rezoomed to get more callbacks.
+              Join <strong className="text-white font-black">500,000+</strong> professionals who use Rezoomed to get more callbacks.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link href="/auth/register">

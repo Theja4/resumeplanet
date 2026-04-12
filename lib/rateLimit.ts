@@ -42,12 +42,20 @@ function getClientIp(request: NextRequest) {
 }
 
 function getRateLimitSecret() {
-  return (
+  const configuredSecret =
     process.env.RATE_LIMIT_SECRET
     ?? process.env.ADMIN_SESSION_SECRET
-    ?? process.env.NEXT_PUBLIC_SUPABASE_URL
-    ?? 'resumeplanet-local-rate-limit'
-  )
+    ?? process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (configuredSecret) {
+    return configuredSecret
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'resumeplanet-local-rate-limit'
+  }
+
+  throw new Error('RATE_LIMIT_SECRET is not configured')
 }
 
 function hashIdentifier(value: string) {

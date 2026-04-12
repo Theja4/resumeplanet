@@ -71,9 +71,12 @@ export async function POST(request: NextRequest) {
     const jobTitle = body.jobTitle as string | undefined
     const jobDescription = body.jobDescription as string | undefined
     const additionalNotes = body.additionalNotes as string | undefined
-    
+
     if (!resumeId && !uploadedResumeText) return err('Resume or uploaded text required')
     if (!jobTitle) return err('Job title required')
+    if (!PADDLE_PRICES.humanWrittenOrder || !isValidPaddlePriceId(PADDLE_PRICES.humanWrittenOrder)) {
+      return err('Human-written order is not configured — missing Paddle price ID', 500)
+    }
 
     let finalResumeText: string | null = uploadedResumeText || null
 

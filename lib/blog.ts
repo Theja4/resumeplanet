@@ -102,3 +102,11 @@ export async function resolveUniqueBlogSlug(slug: string, currentId?: string) {
     candidate = `${baseSlug}-${suffix}`
   }
 }
+
+
+// ── Read time estimate ────────────────────────────────────────────────────────
+
+/** Estimates reading time in minutes at 220 wpm. Minimum 1 minute. */
+export function estimateReadTime(content: string): number {
+  return Math.max(1, Math.ceil(stripMarkdown(content).split(/\s+/).filter(Boolean).length / 220))
+}

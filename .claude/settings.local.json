@@ -100,7 +100,17 @@
       "Bash(npm search:*)",
       "Bash(wc:*)",
       "Bash(head -100 /Users/thejach/Downloads/ResumePlanet/app/dashboard/builder/[resumeId]/page.tsx)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Read(//Users/thejach/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.6/**)",
+      "Bash(bash scripts/start-server.sh --project-dir /Users/thejach/Downloads/ResumePlanet)",
+      "Bash(ngrok version:*)",
+      "WebFetch(domain:novoresume.com)",
+      "WebFetch(domain:enhancv.com)",
+      "WebFetch(domain:www.tealhq.com)",
+      "Bash(python3 -c ':*)",
+      "Bash(find:*)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if any\\(x in k for x in ['pdf','jspdf','mammoth']\\)]\")",
+      "Bash(xxd /Users/thejach/Downloads/ResumePlanet/app/dashboard/\\\\\\(shell\\\\\\)/orders/new/page.tsx)"
     ]
   }
 }

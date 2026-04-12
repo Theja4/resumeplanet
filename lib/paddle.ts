@@ -8,6 +8,32 @@ import {
 
 let _paddle: Paddle | null = null
 
+function getErrorStatus(error: unknown) {
+  if (!error || typeof error !== 'object') return null
+  const maybeError = error as Record<string, unknown>
+  const directStatus = maybeError.status
+  if (typeof directStatus === 'number') return directStatus
+
+  const response = maybeError.response
+  if (response && typeof response === 'object') {
+    const nestedStatus = (response as Record<string, unknown>).status
+    if (typeof nestedStatus === 'number') return nestedStatus
+  }
+
+  return null
+}
+
+function isPaddleNotFoundError(error: unknown) {
+  const status = getErrorStatus(error)
+  if (status === 404) return true
+
+  if (error instanceof Error) {
+    return /not found|entity_not_found|customer.*does not exist/i.test(error.message)
+  }
+
+  return false
+}
+
 function getRequestedPaddleEnvironment() {
   return getRequestedPaddleEnvironmentName() === 'production'
     ? Environment.production
@@ -96,6 +122,10 @@ export async function getOrCreatePaddleCustomer(
         return existingCustomer.id
       }
     } catch (error) {
+      if (!isPaddleNotFoundError(error)) {
+        throw error
+      }
+
       console.warn('Stored Paddle customer id is invalid, recreating customer', {
         userId,
         paddleCustomerId: profile.paddle_customer_id,

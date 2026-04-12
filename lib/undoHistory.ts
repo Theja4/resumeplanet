@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import type { ResumeData, BuilderVisibility } from '@/types'
 
 const MAX_HISTORY = 20
@@ -6,6 +6,8 @@ const MAX_HISTORY = 20
 export function useUndoHistory() {
   const undoRef = useRef<Array<{ data: ResumeData; visibility: BuilderVisibility }>>([])
   const redoRef = useRef<Array<{ data: ResumeData; visibility: BuilderVisibility }>>([])
+  const [undoCount, setUndoCount] = useState(0)
+  const [redoCount, setRedoCount] = useState(0)
 
   const pushHistory = useCallback(
     (data: ResumeData, visibility: BuilderVisibility) => {
@@ -19,6 +21,8 @@ export function useUndoHistory() {
         undoRef.current = next
       }
       redoRef.current = [] // New change clears redo stack
+      setUndoCount(undoRef.current.length)
+      setRedoCount(0)
     },
     [],
   )
@@ -27,6 +31,8 @@ export function useUndoHistory() {
     if (undoRef.current.length === 0) return null
     const entry = undoRef.current.pop()!
     redoRef.current.push({ data: structuredClone(entry.data), visibility: structuredClone(entry.visibility) })
+    setUndoCount(undoRef.current.length)
+    setRedoCount(redoRef.current.length)
     return entry
   }, [])
 
@@ -34,11 +40,10 @@ export function useUndoHistory() {
     if (redoRef.current.length === 0) return null
     const entry = redoRef.current.pop()!
     undoRef.current.push({ data: structuredClone(entry.data), visibility: structuredClone(entry.visibility) })
+    setUndoCount(undoRef.current.length)
+    setRedoCount(redoRef.current.length)
     return entry
   }, [])
 
-  const canUndo = undoRef.current.length > 0
-  const canRedo = redoRef.current.length > 0
-
-  return { canUndo, canRedo, pushHistory, undo, redo }
+  return { canUndo: undoCount > 0, canRedo: redoCount > 0, pushHistory, undo, redo }
 }
