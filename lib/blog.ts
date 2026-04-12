@@ -11,7 +11,7 @@ export {
   type BlogPost,
   type BlogMediaFallback,
 } from '@/lib/blog/shared'
-import { slugifyBlogTitle, type BlogPost } from '@/lib/blog/shared'
+import { slugifyBlogTitle, stripMarkdown, type BlogPost } from '@/lib/blog/shared'
 
 export async function getPublishedBlogPosts() {
   const supabase = await createClient()
