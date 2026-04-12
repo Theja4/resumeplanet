@@ -12,9 +12,10 @@ import {
   LayoutGrid,
   Search,
   BriefcaseBusiness,
+  BarChart3,
   FileText,
+  FilePenLine,
   FileUser,
-  Sparkles,
   Pencil,
   Target,
   UserRound,
@@ -22,6 +23,7 @@ import {
   CircleHelp,
   LogOut,
   ChevronDown,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -48,11 +50,11 @@ const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem
     items: [
       { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
       { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
-      { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
+      { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
       {
         href: '/dashboard/builder?mode=tailor',
         label: 'Tailor Mode',
-        Icon: Sparkles,
+        Icon: Wand2,
         badge: 'Pro',
         builderMode: 'tailor',
       },
@@ -71,7 +73,7 @@ const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem
       {
         href: '/dashboard/metadata-enhancer',
         label: 'Metadata Enhancer',
-        Icon: Sparkles,
+        Icon: FilePenLine,
         badge: 'Pro',
       },
       { href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound },

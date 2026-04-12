@@ -11,8 +11,9 @@ import {
   X,
   LayoutGrid,
   FileText,
-  Sparkles,
+  BarChart3,
   BriefcaseBusiness,
+  FilePenLine,
   PlusCircle,
   ShoppingBag,
   CreditCard,
@@ -30,10 +31,10 @@ type MobileNavItem = {
 const BASE_MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
   { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
-  { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: Sparkles },
+  { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
   { href: '/dashboard/job-board', label: 'Jobs', Icon: BriefcaseBusiness },
   { href: '/dashboard/builder/new', label: 'Create Resume', Icon: PlusCircle },
-  { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: Sparkles },
+  { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: FilePenLine },
   { href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag },
   { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
 ]
