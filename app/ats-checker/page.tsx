@@ -1,8 +1,27 @@
 import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import ATSCheckerClient from '@/app/dashboard/(shell)/ats-checker/ATSCheckerClient'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import { getSiteUrl } from '@/lib/site'
+
+export const metadata: Metadata = {
+  title: 'Free ATS Resume Checker | Rezoomed',
+  description:
+    'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply.',
+  keywords: [
+    'free ats resume checker',
+    'ats checker',
+    'resume checker',
+    'ats optimization',
+    'resume optimization',
+    'resume score',
+  ],
+  alternates: {
+    canonical: '/ats-checker',
+  },
+}
 
 export default async function PublicATSCheckerPage() {
   const supabase = await createClient()
@@ -14,11 +33,25 @@ export default async function PublicATSCheckerPage() {
     redirect('/dashboard/ats-checker')
   }
 
-  return (
-    <div className="min-h-screen bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
-      <PublicSiteHeader />
+  const siteUrl = getSiteUrl()
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+      { '@type': 'ListItem', position: 2, name: 'ATS Checker', item: `${siteUrl}/ats-checker` },
+    ],
+  }
 
-      <main className="mx-auto max-w-[90rem] px-6 pb-20 pt-24">
+  return (
+    <div className="flex min-h-screen flex-col bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+      <PublicSiteHeader />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
+      <main className="mx-auto flex-1 max-w-[90rem] px-6 pb-20 pt-24">
         <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(241,247,243,0.88))] px-6 py-5 shadow-[0_24px_60px_rgba(18,24,21,0.06)] backdrop-blur-2xl sm:px-8 sm:py-6">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.26),transparent_40%),radial-gradient(circle_at_center,rgba(123,211,252,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_36%)]" />
           <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-end">

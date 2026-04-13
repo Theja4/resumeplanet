@@ -582,3 +582,25 @@
     opacity: 1;
   }
 }
+
+@keyframes metadata-loading-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes metadata-loading-bar {
+  0%, 100% {
+    transform: translateX(-18%);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translateX(18%);
+    opacity: 1;
+  }
+}

@@ -1,6 +1,11 @@
 import type { BlogPost } from '@/lib/blog/shared'
 
 type BlogOverride = Pick<BlogPost, 'excerpt' | 'content'>
+type BlogToolLink = {
+  label: string
+  href: string
+  description: string
+}
 
 const BLOG_OVERRIDES: Record<string, BlogOverride> = {
   '10-job-search-tips-strategies-for-2026': {
@@ -531,17 +536,218 @@ Use **Rezoomed** before you submit: check ATS alignment, tighten bullets, mirror
   },
 }
 
-export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
-  const override = BLOG_OVERRIDES[post.slug]
+const COMPANY_JOB_POST_SLUGS = new Set([
+  'how-to-land-a-google-job',
+  'how-to-land-a-job-at-openai',
+  'how-to-land-a-job-at-anthropic',
+  'how-to-land-a-job-at-meta',
+  'how-to-land-a-job-at-microsoft',
+  'how-to-land-a-job-at-amazon',
+  'how-to-land-a-job-at-apple',
+  'how-to-land-a-job-at-netflix',
+  'how-to-land-a-job-at-stripe',
+  'how-to-land-a-job-at-shopify',
+  'how-to-land-a-job-at-airbnb',
+  'how-to-land-a-job-at-uber',
+  'how-to-land-a-job-at-tiktok',
+  'how-to-land-a-job-at-nvidia',
+  'how-to-land-a-job-at-notion',
+  'how-to-land-a-job-at-figma',
+])
 
-  if (!override) {
-    return post
+const METADATA_POST_SLUGS = new Set([
+  'how-resume-metadata-affects-job-applications',
+  'resume-metadata-checklist-before-you-apply',
+  'how-to-fix-pdf-resume-title-author-and-keywords',
+])
+
+const BUILDER_POST_SLUGS = new Set([
+  'best-ai-resume-builder-for-job-seekers',
+  'resume-builder-vs-template-which-is-better',
+])
+
+const TAILORING_POST_SLUGS = new Set([
+  'how-to-tailor-your-resume-for-each-job-without-starting-over',
+  'how-to-tailor-your-resume-for-software-engineer-jobs',
+  'how-to-tailor-your-resume-for-product-manager-jobs',
+  'how-to-tailor-your-resume-for-data-analyst-jobs',
+])
+
+const COVER_LETTER_POST_SLUGS = new Set([
+  'how-to-write-a-cover-letter-for-a-job-you-really-want',
+  'ai-cover-letter-generator-what-good-output-looks-like',
+])
+
+function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
+  if (METADATA_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Resume Metadata Enhancer',
+        href: '/metadata-enhancer',
+        description: 'Audit hidden PDF metadata fields and export a cleaner recruiter-ready file.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Check structure, keywords, and readability before sending the updated PDF.',
+      },
+    ]
   }
 
+  if (BUILDER_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Resume Builder',
+        href: '/resume-builder',
+        description: 'See how Rezoomed handles drafting, editing, and export in one workflow.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Check the finished resume for ATS and recruiter-readability issues before applying.',
+      },
+    ]
+  }
+
+  if (post.slug === 'ats-resume-checker-what-it-tests-and-why-it-matters') {
+    return [
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Run a live ATS scan on your resume and catch parsing or keyword gaps fast.',
+      },
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'Compare your resume against a target job description instead of checking ATS hygiene alone.',
+      },
+    ]
+  }
+
+  if (post.slug === 'job-description-match-score-explained') {
+    return [
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'See how closely your resume maps to a specific job before you spend time applying.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Tighten structure and baseline ATS readability before optimizing for role match.',
+      },
+    ]
+  }
+
+  if (TAILORING_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Resume Tailoring',
+        href: '/resume-tailoring',
+        description: 'Use Rezoomed Tailor Mode to adapt the strongest parts of your resume for a target role.',
+      },
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'Use job-description comparison to decide what to rewrite and what to leave alone.',
+      },
+    ]
+  }
+
+  if (COVER_LETTER_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Cover Letter Generator',
+        href: '/cover-letter-generator',
+        description: 'Turn your resume plus the target role into a faster first-draft cover letter.',
+      },
+      {
+        label: 'Resume Builder',
+        href: '/resume-builder',
+        description: 'Tighten the resume first so the cover letter pulls from stronger material.',
+      },
+    ]
+  }
+
+  if (COMPANY_JOB_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'Check how closely your resume fits a specific company role before applying.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Make sure the file is ATS-safe and recruiter-readable before submission.',
+      },
+      {
+        label: 'Resume Tailoring',
+        href: '/resume-tailoring',
+        description: 'See how Rezoomed helps you adapt the strongest sections of your resume for a specific target role.',
+      },
+      {
+        label: 'Pricing',
+        href: '/pricing',
+        description: 'Unlock the full Rezoomed workflow if you want deeper tailoring and multi-version resume strategy.',
+      },
+    ]
+  }
+
+  if (post.category.toLowerCase() === 'job search') {
+    return [
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Stress-test your resume before you apply.',
+      },
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'Compare your resume to a target role and find the biggest fit gaps.',
+      },
+    ]
+  }
+
+  return [
+    {
+      label: 'ATS Checker',
+      href: '/ats-checker',
+      description: 'Check structure, keywords, and readability before sending your resume.',
+    },
+    {
+      label: 'Pricing',
+      href: '/pricing',
+      description: 'See the full Rezoomed workflow if you need more than a one-off resume check.',
+    },
+  ]
+}
+
+function appendRelatedToolLinks(post: BlogPost): string {
+  const content = post.content.trim()
+
+  if (content.includes('## Related Rezoomed tools')) {
+    return content
+  }
+
+  return `${content}\n\n## Related Rezoomed tools\n\n${getRelatedToolLinks(post)
+    .map(link => `- [${link.label}](${link.href}) - ${link.description}`)
+    .join('\n')}`
+}
+
+export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
+  const override = BLOG_OVERRIDES[post.slug]
+  const nextPost = override
+    ? {
+        ...post,
+        excerpt: override.excerpt,
+        content: override.content,
+      }
+    : post
+
   return {
-    ...post,
-    excerpt: override.excerpt,
-    content: override.content,
+    ...nextPost,
+    content: appendRelatedToolLinks(nextPost),
   }
 }
 

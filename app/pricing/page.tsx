@@ -17,11 +17,22 @@ import {
 import { getLiveVisibleProPriceOptions } from '@/lib/paddle-pricing'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { detectRequestCountry } from '@/lib/cookie-consent'
+import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Pricing',
+  title: 'Resume Builder Pricing | Rezoomed',
   description:
-    'Rezoomed pricing for Free, Pro monthly, and Pro annual plans.',
+    'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
+  keywords: [
+    'resume builder pricing',
+    'ats checker pricing',
+    'resume optimization pricing',
+    'Rezoomed pricing',
+    'ai resume builder pricing',
+  ],
+  alternates: {
+    canonical: '/pricing',
+  },
 }
 
 export default async function PublicPricingPage({
@@ -66,10 +77,23 @@ export default async function PublicPricingPage({
 
   const autoApplyCode = affiliateAttribution?.discount_code
   const priceOptions = await priceOptionsPromise
+  const siteUrl = getSiteUrl()
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+      { '@type': 'ListItem', position: 2, name: 'Pricing', item: `${siteUrl}/pricing` },
+    ],
+  }
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_52%,#f2f7f3_100%)] text-zinc-900">
       <PublicSiteHeader />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <main className="px-4 pb-12 pt-24 sm:px-6">
         <div className="mx-auto max-w-6xl space-y-4 rounded-[2rem] border border-white/70 bg-white/75 p-4 shadow-[0_20px_70px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:p-5">
           <PricingSection

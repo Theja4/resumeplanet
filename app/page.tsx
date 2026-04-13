@@ -6,12 +6,50 @@ import LandingFeatures from '@/components/landing/LandingFeatures'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Rezoomed | AI Resume Builder & ATS Checker',
+  title: 'AI Resume Builder & ATS Checker | Rezoomed',
   description:
-    'Build role-targeted resumes, improve ATS performance, and export recruiter-ready files with Rezoomed.',
+    'Build ATS-friendly resumes, optimize for job descriptions, and improve interview odds with Rezoomed AI resume builder and ATS checker.',
+  keywords: [
+    'ai resume builder',
+    'ats checker',
+    'resume optimization',
+    'ats resume checker',
+    'resume builder',
+    'job matching',
+    'resume tailoring',
+    'resume keyword optimization',
+    'Rezoomed',
+  ],
+  alternates: {
+    canonical: '/',
+  },
 }
+
+const FAQS = [
+  {
+    question: 'What is Rezoomed?',
+    answer:
+      'Rezoomed is an AI resume builder and ATS checker that helps job seekers optimize resumes, match job descriptions, and export recruiter-ready files faster.',
+  },
+  {
+    question: 'How does the ATS resume checker work?',
+    answer:
+      'You upload a resume and Rezoomed analyzes parseability, keyword alignment, formatting, and recruiter readability so you can fix issues before applying.',
+  },
+  {
+    question: 'Can Rezoomed tailor my resume to a job description?',
+    answer:
+      'Yes. Rezoomed can compare your resume to a target job description, surface gaps, and help rewrite bullets and summaries around role-specific keywords.',
+  },
+  {
+    question: 'Is Rezoomed useful for ATS resume optimization?',
+    answer:
+      'Yes. Rezoomed is designed to improve ATS resume performance with clearer structure, stronger keyword coverage, and better formatting for applicant tracking systems.',
+  },
+] as const
 
 type Testimonial = {
   quote: string
@@ -90,9 +128,53 @@ const TESTIMONIALS: Testimonial[] = [
 ]
 
 export default async function LandingPage() {
+  const siteUrl = getSiteUrl()
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Rezoomed',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    description:
+      'AI resume builder and ATS checker for resume optimization, job matching, and role-specific resume tailoring.',
+    url: siteUrl,
+    image: `${siteUrl}/product-hero-v2.png`,
+    brand: {
+      '@type': 'Brand',
+      name: 'Rezoomed',
+    },
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+      url: `${siteUrl}/pricing`,
+    },
+  }
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  }
+
   return (
     <div className="bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
       <PublicSiteHeader active="home" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
 
       <main className="pt-16">
         {/* Hero Section */}
@@ -150,14 +232,13 @@ export default async function LandingPage() {
               AI-Powered Career Revolution
             </div>
             <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-6xl md:text-[6.5rem] lg:text-[7.5rem]">
-              Build your resume.
+              Build an ATS-ready resume.
               <br />
-              <span className="text-[#008f44] italic">Land 5× more interviews.</span>
+              <span className="text-[#008f44] italic">Tailor faster. Land more interviews.</span>
             </h1>
             <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
-              In this brutal job market, do not gamble with your career. Use
-              industry-leading <strong className="font-bold text-on-background">Frontier AI</strong>{' '}
-              models tuned by Rezoomed to land the interview.
+              Optimize your resume for ATS, match job descriptions, and export recruiter-ready applications with
+              <strong className="font-bold text-on-background"> Rezoomed&apos;s AI resume builder</strong>.
             </p>
             <div className="flex flex-col items-center gap-3 pt-2">
               <div className="flex flex-wrap justify-center gap-3">
@@ -180,6 +261,70 @@ export default async function LandingPage() {
         <LogoMarqueeSection />
 
         <LandingFeatures />
+
+        <section className="bg-white px-6 py-24">
+          <div className="mx-auto max-w-5xl space-y-10">
+            <div className="max-w-3xl space-y-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">Resume SEO + CTR</p>
+              <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
+                Why job seekers use Rezoomed for resume optimization
+              </h2>
+              <p className="text-base leading-8 text-zinc-600">
+                Rezoomed combines ATS resume checks, job-match analysis, bullet rewrites, metadata cleanup, and resume exports
+                in one workflow built for faster applications and stronger interview odds.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                {
+                  title: 'ATS resume optimization',
+                  body: 'Improve keyword coverage, section structure, parsing, and formatting before your resume reaches an applicant tracking system.',
+                  href: '/ats-checker',
+                },
+                {
+                  title: 'Job description matching',
+                  body: 'See where your resume fits a job, what is missing, and how to tailor bullets and summaries around real role requirements.',
+                  href: '/match-score',
+                },
+                {
+                  title: 'Resume metadata cleanup',
+                  body: 'Improve PDF title, author, keywords, and other hidden fields so your resume file looks more polished and searchable.',
+                  href: '/metadata-enhancer',
+                },
+                {
+                  title: 'AI resume builder workflow',
+                  body: 'Build, edit, and export role-targeted resumes without switching across multiple tools or losing version control.',
+                  href: '/resume-builder',
+                },
+                {
+                  title: 'Resume tailoring workflow',
+                  body: 'Tailor your resume to a real job description and focus edits on the sections that change fit most.',
+                  href: '/resume-tailoring',
+                },
+                {
+                  title: 'Cover letter generation',
+                  body: 'Create a faster first draft from your resume and the target role when an application needs a tailored note.',
+                  href: '/cover-letter-generator',
+                },
+                {
+                  title: 'Resume strategy and job search advice',
+                  body: 'Use the Rezoomed blog for resume tips, ATS guidance, and job-search playbooks that support your application strategy.',
+                  href: '/blog',
+                },
+              ].map(item => (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className="rounded-[1.5rem] border border-zinc-100 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.92))] p-6 shadow-[0_14px_34px_rgba(18,24,21,0.05)] transition-all hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(18,24,21,0.08)]"
+                >
+                  <h3 className="text-xl font-black tracking-tight text-zinc-950">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-zinc-600">{item.body}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* ── Testimonials ───────────────────────────────────────────────── */}
         <section className="py-28 bg-[#f8faf9] overflow-hidden">
@@ -223,6 +368,31 @@ export default async function LandingPage() {
                     </div>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#f8faf9] px-6 py-24">
+          <div className="mx-auto max-w-4xl space-y-8">
+            <div className="space-y-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">FAQ</p>
+              <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
+                Resume builder and ATS checker FAQs
+              </h2>
+            </div>
+
+            <div className="space-y-4">
+              {FAQS.map(faq => (
+                <details
+                  key={faq.question}
+                  className="group rounded-[1.5rem] border border-zinc-100 bg-white p-6 shadow-[0_12px_30px_rgba(18,24,21,0.04)]"
+                >
+                  <summary className="cursor-pointer list-none text-lg font-black tracking-tight text-zinc-950">
+                    {faq.question}
+                  </summary>
+                  <p className="mt-4 text-sm leading-7 text-zinc-600">{faq.answer}</p>
+                </details>
               ))}
             </div>
           </div>

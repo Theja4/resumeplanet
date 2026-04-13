@@ -43,8 +43,46 @@ const BLOG_MEDIA_FALLBACKS: Record<string, BlogMediaFallback> = {
   },
 }
 
+const GENERATED_BLOG_MEDIA_SLUGS = new Set([
+  'how-resume-metadata-affects-job-applications',
+  'ats-resume-checker-what-it-tests-and-why-it-matters',
+  'job-description-match-score-explained',
+  'how-to-tailor-your-resume-for-each-job-without-starting-over',
+  'how-to-land-a-job-at-openai',
+  'how-to-land-a-job-at-anthropic',
+  'how-to-land-a-job-at-meta',
+  'how-to-land-a-job-at-microsoft',
+  'how-to-land-a-job-at-amazon',
+  'how-to-land-a-job-at-apple',
+  'how-to-land-a-job-at-netflix',
+  'how-to-land-a-job-at-stripe',
+  'how-to-land-a-job-at-shopify',
+  'how-to-land-a-job-at-airbnb',
+  'how-to-land-a-job-at-uber',
+  'how-to-land-a-job-at-tiktok',
+  'how-to-land-a-job-at-nvidia',
+  'how-to-land-a-job-at-notion',
+  'how-to-land-a-job-at-figma',
+  'best-ai-resume-builder-for-job-seekers',
+  'resume-builder-vs-template-which-is-better',
+  'resume-metadata-checklist-before-you-apply',
+  'how-to-fix-pdf-resume-title-author-and-keywords',
+  'how-to-tailor-your-resume-for-software-engineer-jobs',
+  'how-to-tailor-your-resume-for-product-manager-jobs',
+  'how-to-tailor-your-resume-for-data-analyst-jobs',
+  'how-to-write-a-cover-letter-for-a-job-you-really-want',
+  'ai-cover-letter-generator-what-good-output-looks-like',
+  'best-resume-keywords-to-match-a-job-description',
+])
+
 export function getBlogMediaFallback(slug: string) {
-  return BLOG_MEDIA_FALLBACKS[slug] ?? null
+  return BLOG_MEDIA_FALLBACKS[slug]
+    ?? (GENERATED_BLOG_MEDIA_SLUGS.has(slug)
+      ? {
+          coverImage: `/blog/${slug}-hero.svg`,
+          inlineImages: [`/blog/${slug}-inline.svg`],
+        }
+      : null)
 }
 
 export function slugifyBlogTitle(value: string) {

@@ -5,7 +5,7 @@ import type { ElementType, ReactNode } from 'react'
 function renderInlineMarkdown(text: string): ReactNode[] {
   const tokens: ReactNode[] = []
   const pattern =
-    /(\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|(https?:\/\/[^\s<]+))/g
+    /(\[([^\]]+)\]\(((?:https?:\/\/|\/)[^) \t]+)\)|`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|(https?:\/\/[^\s<]+))/g
   let last = 0
   let match: RegExpExecArray | null
 
@@ -13,12 +13,14 @@ function renderInlineMarkdown(text: string): ReactNode[] {
     if (match.index > last) tokens.push(text.slice(last, match.index))
 
     if (match[2] && match[3]) {
+      const href = match[3]
+      const isExternal = href.startsWith('http')
       tokens.push(
         <a
           key={`link-${match.index}`}
-          href={match[3]}
-          target="_blank"
-          rel="noreferrer"
+          href={href}
+          target={isExternal ? '_blank' : undefined}
+          rel={isExternal ? 'noreferrer' : undefined}
           className="font-semibold text-[#026d32] underline decoration-[#026d32]/25 underline-offset-[3px] transition-colors hover:decoration-[#026d32]"
         >
           {match[2]}

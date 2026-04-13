@@ -27,6 +27,11 @@ export interface MetadataAuditResult {
   candidateName: string | null
 }
 
+const METADATA_AUDIT_MODELS = [
+  'google/gemini-2.5-flash',
+  'deepseek/deepseek-v3.2',
+] as const
+
 // ── LLM System Prompt ─────────────────────────────────────────────────────────
 
 const AUDIT_SYSTEM = `You are a PDF resume metadata expert who knows exactly how ATS (Applicant Tracking System) software parses and evaluates document metadata.
@@ -70,6 +75,32 @@ JSON schema:
     }
   ]
 }`
+
+async function callMetadataAuditWithFallback(
+  system: string,
+  prompt: string
+): Promise<{ candidateName: string | null; fields: MetadataField[] }> {
+  const failures: Array<{ model: string; reason: string }> = []
+
+  for (const model of METADATA_AUDIT_MODELS) {
+    try {
+      return await callClaudeJSON<{ candidateName: string | null; fields: MetadataField[] }>({
+        model,
+        system,
+        prompt,
+        maxTokens: 1000,
+        timeoutMs: model === 'deepseek/deepseek-v3.2' ? 120000 : 45000,
+      })
+    } catch (error) {
+      failures.push({
+        model,
+        reason: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  throw new Error(`METADATA_AUDIT_MODELS_FAILED: ${JSON.stringify(failures)}`)
+}
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
@@ -175,15 +206,10 @@ export async function POST(request: NextRequest) {
 ${metadataSummary}
 
 RESUME TEXT:
-${resumeText.slice(0, 4000)}`
+${resumeText.slice(0, 2500)}`
 
   try {
-    const result = await callClaudeJSON<{ candidateName: string | null; fields: MetadataField[] }>({
-      model: 'deepseek/deepseek-v3.2',
-      system: AUDIT_SYSTEM,
-      prompt,
-      maxTokens: 1500,
-    })
+    const result = await callMetadataAuditWithFallback(AUDIT_SYSTEM, prompt)
 
     const response: MetadataAuditResult = {
       fields: result.fields,
@@ -194,6 +220,24 @@ ${resumeText.slice(0, 4000)}`
     return NextResponse.json({ success: true, ...response })
   } catch (err) {
     console.error('Metadata audit LLM error:', err)
+    const message = err instanceof Error ? err.message : 'AUDIT_FAILED'
+
+    if (message === 'OPENROUTER_API_KEY_MISSING') {
+      return NextResponse.json({ success: false, error: 'LLM_NOT_CONFIGURED' }, { status: 500 })
+    }
+
+    if (message === 'CLAUDE_TIMEOUT') {
+      return NextResponse.json({ success: false, error: 'AUDIT_TIMEOUT' }, { status: 504 })
+    }
+
+    if (message.startsWith('OPENROUTER_API_ERROR')) {
+      return NextResponse.json({ success: false, error: 'LLM_PROVIDER_ERROR' }, { status: 502 })
+    }
+
+    if (message.startsWith('METADATA_AUDIT_MODELS_FAILED')) {
+      return NextResponse.json({ success: false, error: 'LLM_PROVIDER_ERROR' }, { status: 502 })
+    }
+
     return NextResponse.json({ success: false, error: 'AUDIT_FAILED' }, { status: 500 })
   }
 }

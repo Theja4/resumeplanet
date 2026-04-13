@@ -58,6 +58,15 @@ function statusConfig(status: MetadataFieldStatus) {
   }
 }
 
+function sanitizePdfFilename(value: string) {
+  return value
+    .trim()
+    .replace(/[\\/:*?"<>|]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\.+$/g, '')
+    .trim()
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function FieldCard({
@@ -137,6 +146,65 @@ function FieldCard({
   )
 }
 
+function MagicLoadingCard() {
+  return (
+    <DashboardSurface variant="accent" className="overflow-hidden px-6 py-6 sm:px-7">
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_28%)]" />
+        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-white/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#026d32]">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#30c06b]" />
+              Rezoomed AI at work
+            </div>
+            <h3 className="text-xl font-black tracking-tight text-on-background">
+              Rezoomed AI is doing its magic...
+            </h3>
+            <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
+              Reading the resume text, checking hidden PDF metadata fields, and generating ATS-safe recommendations.
+            </p>
+            <p className="text-xs font-medium uppercase tracking-[0.16em] text-on-surface-variant/80">
+              This can take 1-2 min
+            </p>
+          </div>
+
+          <div className="grid w-full max-w-sm gap-3 sm:w-[20rem]">
+            {[
+              'Extracting resume text',
+              'Auditing metadata fields',
+              'Generating suggested values',
+            ].map((label, index) => (
+              <div
+                key={label}
+                className="rounded-[1rem] border border-white/80 bg-white/80 px-4 py-3 shadow-[0_10px_24px_rgba(18,24,21,0.04)]"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-on-background">{label}</span>
+                  <span
+                    className="h-2.5 w-2.5 rounded-full bg-[#30c06b]"
+                    style={{
+                      animation: `metadata-loading-pulse 1.4s ease-in-out ${index * 0.18}s infinite`,
+                    }}
+                  />
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-emerald-100">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#026d32,#30c06b,#A3FFB3)]"
+                    style={{
+                      width: '62%',
+                      animation: `metadata-loading-bar 1.6s ease-in-out ${index * 0.14}s infinite`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </DashboardSurface>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClientProps) {
@@ -207,9 +275,17 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
       const data = await res.json()
 
       if (!data.success) {
-        setAuditError(data.error === 'INSUFFICIENT_RESUME_TEXT'
-          ? 'We could not extract enough text from this PDF. Try a different file.'
-          : 'Audit failed. Please try again.')
+        setAuditError(
+          data.error === 'INSUFFICIENT_RESUME_TEXT'
+            ? 'We could not extract enough text from this PDF. Try a different file.'
+            : data.error === 'AUDIT_TIMEOUT'
+              ? 'Metadata audit timed out. Please try again in a moment.'
+              : data.error === 'LLM_NOT_CONFIGURED'
+                ? 'Metadata audit is not configured on the server right now.'
+                : data.error === 'LLM_PROVIDER_ERROR'
+                  ? 'The metadata audit provider failed. Please try again.'
+                  : 'Audit failed. Please try again.'
+        )
         return
       }
 
@@ -269,9 +345,16 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const baseName = uploadedFile.name.replace(/\.pdf$/i, '')
+      const titleField = auditResult.fields.find(field => field.id === 'title')
+      const preferredTitle =
+        titleField && (fixedFields.has('title') || titleField.status === 'good')
+          ? titleField.suggestedValue || titleField.currentValue
+          : null
+      const safeTitle = preferredTitle ? sanitizePdfFilename(preferredTitle) : ''
+      const fallbackBaseName = uploadedFile.name.replace(/\.pdf$/i, '')
+      const baseName = safeTitle || fallbackBaseName
       a.href = url
-      a.download = `${baseName}-optimized.pdf`
+      a.download = `${baseName}.pdf`
       a.click()
       URL.revokeObjectURL(url)
     } catch {
@@ -427,6 +510,8 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
           </button>
         </div>
       </DashboardSurface>
+
+      {isAuditing && <MagicLoadingCard />}
 
       {/* Results */}
       {auditResult && (

@@ -405,7 +405,20 @@ function parseJSON<T>(raw: string): T {
     .replace(/^```\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim()
-  return JSON.parse(cleaned) as T
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch {
+    const firstBrace = cleaned.indexOf('{')
+    const lastBrace = cleaned.lastIndexOf('}')
+
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = cleaned.slice(firstBrace, lastBrace + 1)
+      return JSON.parse(candidate) as T
+    }
+
+    throw new Error('JSON_PARSE_FAILED')
+  }
 }
 
 export async function callClaudeJSON<T>(options: {
