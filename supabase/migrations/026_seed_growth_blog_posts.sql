@@ -488,6 +488,14 @@ Depending on the role, useful proof can include:
 - portfolio case studies
 - open-source or technical projects
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Common mistakes
 
 - applying to too many unrelated OpenAI roles
@@ -558,6 +566,14 @@ Your resume should make your target lane obvious in the first screen.
 - evaluation or safety workflows
 - product launches tied to AI systems
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Mistakes to avoid
 
 - overstating AI experience
@@ -617,6 +633,14 @@ Meta receives a huge volume of applications across engineering, product, design,
 - product launches
 - large-scale systems
 - creator or ads domain knowledge when relevant
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Common mistakes
 
@@ -678,6 +702,14 @@ Microsoft roles often reward structured execution, platform thinking, and eviden
 - reliability improvements
 - product adoption metrics
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 To land a job at Microsoft, target the right org, keep the resume clean, and make your work legible through metrics, product context, and execution detail.
@@ -732,6 +764,14 @@ Amazon roles are competitive, but the hiring logic is usually clearer than peopl
 - supply chain or operations impact
 - system reliability improvements
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 The best Amazon resumes are direct, metrics-heavy, and easy to map to the role. Make it obvious what you owned and what changed because of your work.
@@ -784,6 +824,14 @@ Apple hiring often rewards polish, clarity, and strong functional depth. The str
 - operational excellence
 - customer experience improvements
 - hardware, software, or retail metrics
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 
@@ -839,6 +887,14 @@ Netflix roles are selective because the company tends to look for unusually stro
 - operations scale
 - content or product outcomes
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 To land a job at Netflix, your resume should read like a record of trusted execution. Keep it direct, measurable, and role-specific.
@@ -892,6 +948,14 @@ Stripe applications tend to reward candidates who combine clear thinking with st
 - fraud, risk, or reliability wins
 - user growth or conversion improvements
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 Landing a job at Stripe usually requires a resume that is concise, thoughtful, and clearly relevant to the role. Show depth, not noise.
@@ -937,6 +1001,14 @@ Shopify hiring often values autonomy, practical problem-solving, and a clear bia
 | Show independent ownership and results. | Present yourself only as a support function with no impact. |
 | Tailor to the exact Shopify team. | Submit one broad e-commerce resume for every function. |
 | Keep examples concrete and practical. | Use abstract strategy language with no evidence. |
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 
@@ -984,6 +1056,14 @@ Airbnb roles often reward candidates who can combine product thinking, operation
 | Use metrics that show trust, conversion, retention, or efficiency. | Stay vague about outcomes. |
 | Tailor for the exact role family. | Combine design, ops, and analytics into one unfocused story. |
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 To land a job at Airbnb, your application should connect your work directly to customer experience, marketplace quality, or operational excellence.
@@ -1029,6 +1109,14 @@ Uber hiring usually rewards people who can operate in fast-moving, metric-heavy 
 | Use metrics tied to speed, conversion, cost, or reliability. | Hide impact behind generic coordination language. |
 | Show experience with multi-sided operations or fast product cycles when relevant. | Submit a resume with no evidence of pace or scale. |
 | Tailor for the exact Uber function. | Apply to operations and engineering with one unfocused file. |
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 
@@ -1076,6 +1164,14 @@ TikTok roles attract candidates from consumer product, ads, creator economy, tru
 | Tailor the resume to the exact business area. | Apply to creator, ads, and trust roles with one generic file. |
 | Keep the file ATS-friendly and direct. | Depend on flashy design to create impact. |
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 To land a job at TikTok, your resume should make your domain fit obvious. Consumer scale and measurable impact matter more than trend-heavy wording.
@@ -1121,6 +1217,14 @@ Nvidia roles are competitive because the company sits at the center of AI infras
 | Show concrete systems, chips, tooling, or platform work. | Use generic AI enthusiasm with no depth. |
 | Keep technical bullets specific and readable. | Hide the important details under vague summaries. |
 | Match the exact function and domain. | Apply broadly across unrelated technical areas with one file. |
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 
@@ -1168,6 +1272,14 @@ Notion roles tend to attract candidates who care about product craft, workflow d
 | Show outcomes in adoption, retention, or efficiency. | Use vague collaboration language with no result. |
 | Tailor to the exact role family. | Apply to design, ops, and product with one generic file. |
 
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
+
 ## Final takeaway
 
 To land a job at Notion, clarity matters. Your resume should feel sharp, well-structured, and directly relevant to the team you want.
@@ -1213,6 +1325,14 @@ Figma applications usually reward strong craft, product understanding, and thoug
 | Pair your resume with strong portfolio or product proof when relevant. | Rely on polished wording alone. |
 | Show what you actually shipped or improved. | Keep bullets abstract and strategy-only. |
 | Tailor for the exact Figma team. | Submit one broad design-tech resume everywhere. |
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 

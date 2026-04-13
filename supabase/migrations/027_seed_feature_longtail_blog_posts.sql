@@ -30,6 +30,12 @@ A strong resume builder should help you:
 
 Rezoomed is more than a resume builder. It lets you build a resume, check ATS strength, compare against a job description, and export a cleaner final version in one place.
 
+## See the difference: AI Slop vs. Targeted Output
+
+| Before | After |
+| --- | --- |
+| Developed dynamic software solutions leveraging cutting-edge technologies to enhance end-user synergy and streamline operational paradigms globally. | Built a distributed Python microservice that automated data syncing across 4 regional databases, reducing sync latency by 22% for enterprise clients. |
+
 ## Final takeaway
 
 The best AI resume builder helps you send stronger applications, not just prettier documents. Choose one that supports resume quality, ATS readiness, and role-specific tailoring together.
@@ -233,6 +239,12 @@ Software engineer resumes fail when they are too broad. Hiring teams want to kno
 - first three experience bullets
 - projects relevant to the stack
 
+## See the difference
+
+| Before | After |
+| --- | --- |
+| Developed scalable APIs for the web platform. | Built a Go-based microservice architecture managing 10k+ requests/sec, reducing API latency by 45%. |
+
 ## What hiring teams want to see
 
 | Do | Don't |
@@ -278,6 +290,12 @@ Product manager roles vary too much for one generic resume to work well. Growth,
 - product outcomes
 - cross-functional leadership bullets
 
+## See the difference
+
+| Before | After |
+| --- | --- |
+| Managed feature backlog and collaborated with engineering teams. | Led cross-functional team of 6 engineers to launch a heavily requested onboarding workflow, lifting Q3 activation by 12%. |
+
 ## What strong PM resumes do
 
 | Do | Don't |
@@ -322,6 +340,12 @@ Data analyst roles often share tools, but they do not share the same business pr
 - tools and platforms
 - analytics use cases
 - top impact bullets
+
+## See the difference
+
+| Before | After |
+| --- | --- |
+| Used SQL to build reports and extract user insights. | Designed an automated SQL reporting pipeline that saved 14 hours of manual data extraction weekly and drove Q2 pricing changes. |
 
 ## What hiring teams want
 

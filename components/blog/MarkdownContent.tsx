@@ -230,6 +230,10 @@ export default function MarkdownContent({
       const isDo   = (h: string) => /\bdo\b/i.test(h)  && !/don.?t/i.test(h)
       const isDont = (h: string) => /don.?t/i.test(h)
 
+      // Detect Before / After table
+      const isBefore = (h: string) => /\bbefore\b/i.test(h)
+      const isAfter  = (h: string) => /\bafter\b/i.test(h)
+
       if (headers.length === 2 && isDo(headers[0]) && isDont(headers[1])) {
         // ── Premium Do's & Don'ts card ─────────────────────────────────
         blocks.push(
@@ -273,6 +277,51 @@ export default function MarkdownContent({
                       <span className="text-white/78 text-[10px] font-black">✕</span>
                     </span>
                     <p className="text-sm leading-relaxed text-white/70">
+                      {renderInlineMarkdown(row[1] ?? '')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      } else if (headers.length === 2 && isBefore(headers[0]) && isAfter(headers[1])) {
+        // ── Premium Before & After card ────────────────────────────────
+        blocks.push(
+          <div
+            key={`beforeafter-${blocks.length}`}
+            className="relative isolate my-3 overflow-hidden rounded-[2rem] border border-[#026d32]/20 bg-[linear-gradient(155deg,#191c1d_0%,#2e3132_42%,#3f493f_100%)] text-white ring-1 ring-black/10"
+            style={{ clipPath: 'inset(0 round 2rem)' }}
+          >
+            {/* Header row */}
+            <div className="relative grid grid-cols-[1fr_1.1fr] md:grid-cols-2 border-b border-white/10">
+              <div className="flex items-center gap-2.5 rounded-tl-[calc(2rem-1px)] bg-black/20 px-5 sm:px-6 py-4 backdrop-blur-sm">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/50 text-xs font-black">−</span>
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.22em] text-white/70">
+                  {headers[0]}
+                </span>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-tr-[calc(2rem-1px)] border-l border-white/10 bg-[linear-gradient(180deg,rgba(2,109,50,0.4),rgba(2,109,50,0.1))] px-5 sm:px-6 py-4 backdrop-blur-sm shadow-[inset_0_1px_rgba(255,255,255,0.06)]">
+                <span className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-white/20 text-[#A3FFB3] text-xs font-black shadow-sm">✦</span>
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.22em] text-[#A3FFB3] drop-shadow-sm">
+                  {headers[1]}
+                </span>
+              </div>
+            </div>
+
+            {/* Body rows */}
+            <div className="relative divide-y divide-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]">
+              {body.map((row, ri) => (
+                <div key={ri} className="grid grid-cols-[1fr_1.1fr] md:grid-cols-2 divide-x divide-white/8">
+                  {/* Before cell */}
+                  <div className="flex flex-col gap-2 bg-black/10 px-5 py-5 sm:px-6">
+                    <p className="text-sm leading-relaxed text-white/60 line-through decoration-white/30">
+                      {renderInlineMarkdown(row[0] ?? '')}
+                    </p>
+                  </div>
+                  {/* After cell */}
+                  <div className="flex flex-col gap-2 bg-[#026d32]/10 px-5 py-5 sm:px-6">
+                    <p className="text-sm leading-relaxed text-white/95 font-medium">
                       {renderInlineMarkdown(row[1] ?? '')}
                     </p>
                   </div>

@@ -510,9 +510,11 @@ Use 2 to 4 lines that answer:
 - what you do well
 - what kind of roles you target
 
-Example:
+## See the difference: Summary Formatting
 
-> Product analyst with 4+ years of experience in fintech, payments, workflow optimization, and data-informed decision-making. Strong track record of cross-functional execution, dashboarding, and translating ambiguous business problems into measurable product outcomes.
+| Before | After |
+| --- | --- |
+| Hardworking product analyst looking for a new role in fintech. I have great skills in data and workflow optimization and can work cross-functionally. | Product analyst with 4+ years of experience in fintech, payments, workflow optimization, and data-informed decision-making. Strong track record of cross-functional execution and translating ambiguous business problems into measurable product outcomes. |
 
 ## Work experience
 
@@ -1032,6 +1034,14 @@ Google explicitly says technical candidates reapplying tend to do best when they
 5. Tighten the summary around role fit.
 6. Export the final version and verify file size.
 7. Submit once the application is clean and complete.
+
+## See the difference: The XYZ Formula
+
+Recruiters at top tech companies look for the exact framework Google popularized: "Accomplished [X] as measured by [Y], by doing [Z]."
+
+| Before | After |
+| --- | --- |
+| Managed cloud infrastructure and updated servers. | Reduced server downtime by 14% (Y) by migrating 50+ legacy applications to AWS EC2 (Z), saving $120k annually (X). |
 
 ## Final takeaway
 
