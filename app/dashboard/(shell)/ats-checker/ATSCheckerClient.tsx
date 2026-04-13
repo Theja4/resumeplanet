@@ -10,6 +10,7 @@ import { ADS_ENABLED } from '@/lib/ads'
 import { countWords } from '@/lib/text'
 import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
+import { resumeDataToPlainText } from '@/lib/resume-data'
 import AdBanner from '@/components/shared/AdBanner'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
@@ -125,68 +126,7 @@ function severityBadge(severity: 'high' | 'medium' | 'low') {
   return map[severity]
 }
 
-function resumeDataToText(data: ResumeData | null): string {
-  if (!data) return ''
-
-  const parts: string[] = [
-    data.name,
-    data.currentRole,
-    data.summary,
-    data.email,
-    data.phone,
-    data.location,
-    data.linkedin,
-    data.website,
-  ]
-
-  for (const item of data.experience) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
-  }
-
-  parts.push(...data.skills)
-
-  for (const item of data.projects) {
-    parts.push(item.name, item.description, ...(item.technologies ?? []))
-  }
-
-  for (const item of data.certifications) {
-    parts.push(item.name, item.issuer, item.date)
-  }
-
-  for (const item of data.volunteer) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.awards) {
-    parts.push(item.title, item.issuer, item.date)
-  }
-
-  for (const item of data.publications) {
-    parts.push(item.title, item.publisher, item.date)
-  }
-
-  parts.push(...data.languages, ...data.interests, ...data.references)
-
-  for (const section of data.customSections ?? []) {
-    parts.push(section.title)
-    if (section.type === 'text') parts.push(section.text ?? '')
-    if (section.type === 'tags') parts.push(...(section.tags ?? []))
-    if (section.type === 'complex') {
-      for (const item of section.items ?? []) {
-        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-        parts.push(...(item.bullets ?? []))
-      }
-    }
-  }
-
-  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
-}
+const resumeDataToText = resumeDataToPlainText
 
 const ERROR_MESSAGES: Record<string, string> = {
   RESUME_TOO_SHORT: 'Resume text is too short (minimum 100 characters).',

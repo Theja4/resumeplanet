@@ -1,3 +1,4 @@
+import { getEducationDateLabel, getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 import type { ATSRoadmapAction, ATSScoreRoadmap, ResumeData } from '@/types'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -194,6 +195,7 @@ function getAllBullets(data: ResumeData): string[] {
 }
 
 function getAllResumeText(data: ResumeData): string {
+  const skills = getResumeSkills(data)
   const parts: string[] = [
     data.name, data.email, data.phone, data.location,
     data.linkedin, data.website, data.summary, data.currentRole,
@@ -202,11 +204,11 @@ function getAllResumeText(data: ResumeData): string {
     parts.push(exp.title, exp.company, exp.location, exp.summary ?? '', ...exp.bullets)
   }
   for (const edu of data.education) {
-    parts.push(edu.institution, edu.degree, edu.field, edu.graduationDate, edu.gpa)
+    parts.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.graduationDate, edu.gpa)
   }
-  parts.push(...data.skills)
+  parts.push(...skills)
   for (const proj of data.projects) {
-    parts.push(proj.name, proj.description, ...(proj.technologies ?? []))
+    parts.push(proj.name, proj.description, ...getProjectBullets(proj), ...(proj.technologies ?? []))
   }
   for (const cert of data.certifications) {
     parts.push(cert.name, cert.issuer, cert.date)
@@ -283,6 +285,7 @@ function textHasPlaceholder(text: string): boolean {
 }
 
 function getPlaceholderCount(data: ResumeData): number {
+  const skills = getResumeSkills(data)
   const segments: string[] = [
     data.summary,
     data.name,
@@ -292,7 +295,7 @@ function getPlaceholderCount(data: ResumeData): number {
     data.location,
     data.linkedin,
     data.website,
-    ...data.skills,
+    ...skills,
     ...data.languages,
     ...data.interests,
     ...data.references,
@@ -303,11 +306,11 @@ function getPlaceholderCount(data: ResumeData): number {
   }
 
   for (const edu of data.education) {
-    segments.push(edu.institution, edu.degree, edu.field, edu.graduationDate, edu.gpa)
+    segments.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.graduationDate, edu.gpa)
   }
 
   for (const project of data.projects) {
-    segments.push(project.name, project.description, ...(project.technologies ?? []))
+    segments.push(project.name, project.description, ...getProjectBullets(project), ...(project.technologies ?? []))
   }
 
   for (const cert of data.certifications) {
@@ -532,6 +535,7 @@ function scoreExpVerbs(data: ResumeData): { score: number; max: number; details:
 function scoreExpMetrics(data: ResumeData): { score: number; max: number; details: string; weakBullets: string[] } {
   const max = 14
   const bullets = getAllBullets(data)
+  const skills = getResumeSkills(data)
 
   if (bullets.length === 0) {
     return { score: 0, max, details: 'No experience bullets', weakBullets: [] }
@@ -539,7 +543,7 @@ function scoreExpMetrics(data: ResumeData): { score: number; max: number; detail
 
   const nonEmpty = bullets.filter(b => b.trim().length > 0)
   const withMetrics = nonEmpty.filter(b => bulletHasMetric(b))
-  const withConcreteImpact = nonEmpty.filter(b => bulletHasConcreteImpact(b, data.skills ?? []))
+  const withConcreteImpact = nonEmpty.filter(b => bulletHasConcreteImpact(b, skills))
   const count = withConcreteImpact.length
 
   let score: number
@@ -553,7 +557,7 @@ function scoreExpMetrics(data: ResumeData): { score: number; max: number; detail
     score = Math.min(score, 8)
   }
 
-  const weakBullets = nonEmpty.filter(b => !bulletHasConcreteImpact(b, data.skills ?? []))
+  const weakBullets = nonEmpty.filter(b => !bulletHasConcreteImpact(b, skills))
 
   const details = withMetrics.length > 0
     ? `${withConcreteImpact.length} bullet(s) show concrete impact, ${withMetrics.length} with quantified metrics`
@@ -592,7 +596,7 @@ function scoreExpDepth(data: ResumeData): { score: number; max: number; details:
 
 function scoreSkills(data: ResumeData): { score: number; max: number; details: string } {
   const max = 12
-  const skills = data.skills?.filter(s => s.trim()) ?? []
+  const skills = getResumeSkills(data).filter(s => s.trim())
 
   if (skills.length === 0) {
     return { score: 0, max, details: 'No skills listed' }
@@ -651,7 +655,7 @@ function scoreStructure(data: ResumeData): { score: number; max: number; details
   }
 
   // Has skills
-  if (data.skills?.length > 0) {
+  if (getResumeSkills(data).length > 0) {
     score += 2
   } else {
     parts.push('missing skills section')
@@ -707,7 +711,7 @@ function scoreEducation(data: ResumeData): { score: number; max: number; details
     if (!first.field?.trim()) parts.push('missing field of study')
   }
 
-  if (first.graduationDate?.trim()) {
+  if (getEducationDateLabel(first)) {
     score += 2
   } else {
     parts.push('missing graduation date')
@@ -722,7 +726,7 @@ function scoreEducation(data: ResumeData): { score: number; max: number; details
 
 function scoreKeywords(data: ResumeData): { score: number; max: number; details: string; unmatchedSkills: string[] } {
   const max = 10
-  const skills = data.skills?.filter(s => s.trim()) ?? []
+  const skills = getResumeSkills(data).filter(s => s.trim())
   const bullets = getAllBullets(data)
 
   if (skills.length === 0 || bullets.length === 0) {
@@ -766,7 +770,7 @@ function scorePolish(data: ResumeData): { score: number; max: number; details: s
   // No standard sections completely empty
   const hasExp = data.experience?.length > 0
   const hasEdu = data.education?.length > 0
-  const hasSkills = data.skills?.filter(s => s.trim()).length > 0
+  const hasSkills = getResumeSkills(data).filter(s => s.trim()).length > 0
   if (hasExp && hasEdu && hasSkills) {
     score += 2
   } else {
@@ -779,7 +783,7 @@ function scorePolish(data: ResumeData): { score: number; max: number; details: s
 
   // No overly thin bullets
   const bullets = getAllBullets(data).filter(b => b.trim())
-  const thinBullets = bullets.filter(b => bulletIsVague(b, data.skills ?? []))
+  const thinBullets = bullets.filter(b => bulletIsVague(b, getResumeSkills(data)))
   if (thinBullets.length === 0) {
     score += 1
   } else {
@@ -862,7 +866,7 @@ export function scoreResume(data: ResumeData): ScorerResult {
         break
       case 'skills':
         description = 'Skills section needs more entries or better integration with experience'
-        relevantText = data.skills?.length ? data.skills : ['No skills listed']
+        relevantText = getResumeSkills(data).length ? getResumeSkills(data) : ['No skills listed']
         break
       case 'structure':
         description = 'Resume structure is incomplete or improperly ordered'

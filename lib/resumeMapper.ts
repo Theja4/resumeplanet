@@ -1,5 +1,6 @@
 import type { Resume, ResumeWorkExperience, ResumeEducation, ResumeProject } from './open-resume-parser/types'
 import type { ResumeData } from '@/types'
+import { syncResumeData } from '@/lib/resume-data'
 
 /**
  * Maps open-resume's Resume type → our ResumeData type.
@@ -8,7 +9,7 @@ import type { ResumeData } from '@/types'
  * which open-resume does not extract — they are left as empty arrays.
  */
 export function mapToResumeData(resume: Resume): ResumeData {
-  return {
+  return syncResumeData({
     // Contact — from profile
     name: resume.profile.name || '',
     email: resume.profile.email || '',
@@ -40,7 +41,7 @@ export function mapToResumeData(resume: Resume): ResumeData {
     references: [],
     certifications: [],
     customSections: [],
-  }
+  })
 }
 
 function mapWorkExperience(exp: ResumeWorkExperience): ResumeData['experience'][0] {
@@ -64,6 +65,8 @@ function mapEducation(edu: ResumeEducation): ResumeData['education'][0] {
     institution: edu.school || '',
     degree,
     field,
+    startDate: '',
+    endDate: edu.date || '',
     graduationDate: edu.date || '',
     gpa: edu.gpa || '',
   }
@@ -73,6 +76,7 @@ function mapProject(proj: ResumeProject): ResumeData['projects'][0] {
   return {
     name: proj.project || '',
     description: (proj.descriptions || []).join(' '),
+    bullets: proj.descriptions || [],
     technologies: [],
   }
 }

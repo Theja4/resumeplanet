@@ -1,4 +1,5 @@
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
+import { getEducationDateLabel, getProjectBullets, getResumeSkills, normalizeSkillSections } from '@/lib/resume-data'
 import type { ResumeData, UniversalConfig } from '@/types'
 
 // Convert #RRGGBB hex to the 6-char hex string docx expects (no #)
@@ -121,7 +122,7 @@ export async function generateDOCX(
             new Paragraph({
               children: [
                 new TextRun({ text: edu.institution, bold: true, font, size: 20 }),
-                ...(edu.graduationDate ? [new TextRun({ text: `  ${edu.graduationDate}`, font, size: 18, color: '888888' })] : []),
+                ...(getEducationDateLabel(edu) ? [new TextRun({ text: `  ${getEducationDateLabel(edu)}`, font, size: 18, color: '888888' })] : []),
               ],
               spacing: { before: 80, after: 40 },
             }),
@@ -131,12 +132,17 @@ export async function generateDOCX(
         ]
 
       case 'skills':
-        if (!data.skills.length) return []
+        if (!getResumeSkills(data).length) return []
         return [
           sectionHeading('Skills'),
           ...(safeConfig.skillsStyle === 'stacked'
-            ? data.skills.map(skill => bullet(skill))
-            : [body(data.skills.join(skillSeparator))]),
+            ? normalizeSkillSections(data.skillSections, getResumeSkills(data)).flatMap(section => [
+                ...(section.title ? [body(section.title, { bold: true, color: '666666', size: 18 })] : []),
+                ...section.skills.map(skill => bullet(skill)),
+              ])
+            : normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
+                body(`${section.title ? `${section.title}: ` : ''}${section.skills.join(skillSeparator)}`)
+              )),
           gap(),
         ]
 
@@ -147,6 +153,7 @@ export async function generateDOCX(
           ...data.projects.flatMap(p => [
             body(p.name, { bold: true }),
             ...(p.description ? [body(p.description, { color: '555555' })] : []),
+            ...getProjectBullets(p).map(item => bullet(item)),
             ...(p.technologies?.length ? [body(p.technologies.join(', '), { italic: true, color: '888888', size: 18 })] : []),
             gap(),
           ]),

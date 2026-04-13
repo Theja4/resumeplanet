@@ -14,23 +14,23 @@ export async function generateMetadata(): Promise<Metadata> {
   const image = featured?.cover_image_url || (featured ? getBlogMediaFallback(featured.slug)?.coverImage : null) || `${siteUrl}/icon.png`
 
   return {
-    title: 'Blog | Rezoomed',
-    description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+    title: 'Resume Advice & ATS Tips Blog | Rezoomed',
+    description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
     keywords: buildBlogIndexKeywords(posts),
     alternates: {
       canonical: '/blog',
     },
     openGraph: {
       type: 'website',
-      title: 'Rezoomed Blog',
-      description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+      title: 'Resume Advice & ATS Tips Blog | Rezoomed',
+      description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
       url: `${siteUrl}/blog`,
       images: [{ url: image }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Rezoomed Blog',
-      description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+      title: 'Resume Advice & ATS Tips Blog | Rezoomed',
+      description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
       images: [image],
     },
   }

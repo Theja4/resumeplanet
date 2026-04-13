@@ -3,6 +3,7 @@ import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
+import { resumeDataToPlainText } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
@@ -12,62 +13,7 @@ const ALLOWED_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]
 
-function resumeDataToText(data: ResumeData | null): string {
-  if (!data) return ''
-
-  const parts: string[] = [
-    data.name,
-    data.currentRole,
-    data.summary,
-    data.email,
-    data.phone,
-    data.location,
-    data.linkedin,
-    data.website,
-  ]
-
-  for (const item of data.experience) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
-  }
-
-  parts.push(...data.skills)
-
-  for (const item of data.projects) {
-    parts.push(item.name, item.description, ...(item.technologies ?? []))
-  }
-
-  for (const item of data.certifications) {
-    parts.push(item.name, item.issuer, item.date)
-  }
-
-  for (const item of data.volunteer) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.awards) parts.push(item.title, item.issuer, item.date)
-  for (const item of data.publications) parts.push(item.title, item.publisher, item.date)
-  parts.push(...data.languages, ...data.interests, ...data.references)
-
-  for (const section of data.customSections ?? []) {
-    parts.push(section.title)
-    if (section.type === 'text') parts.push(section.text ?? '')
-    if (section.type === 'tags') parts.push(...(section.tags ?? []))
-    if (section.type === 'complex') {
-      for (const item of section.items ?? []) {
-        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-        parts.push(...(item.bullets ?? []))
-      }
-    }
-  }
-
-  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
-}
+const resumeDataToText = resumeDataToPlainText
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()

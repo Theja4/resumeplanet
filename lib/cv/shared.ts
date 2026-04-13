@@ -1,3 +1,4 @@
+import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, TailorIntensity } from '@/types'
 
 export type GenerationSourceMode = 'saved' | 'upload'
@@ -34,7 +35,7 @@ export interface GeneratedCoverLetterPayload {
 }
 
 export function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
-  return {
+  return syncResumeData({
     name: data?.name ?? '',
     email: data?.email ?? '',
     phone: data?.phone ?? '',
@@ -46,6 +47,7 @@ export function normalizeResumeData(data: Partial<ResumeData> | null | undefined
     experience: data?.experience ?? [],
     education: data?.education ?? [],
     skills: data?.skills ?? [],
+    skillSections: data?.skillSections ?? [],
     certifications: data?.certifications ?? [],
     projects: data?.projects ?? [],
     languages: data?.languages ?? [],
@@ -55,7 +57,7 @@ export function normalizeResumeData(data: Partial<ResumeData> | null | undefined
     publications: data?.publications ?? [],
     references: data?.references ?? [],
     customSections: data?.customSections ?? [],
-  }
+  })
 }
 
 export function resumeHasMeaningfulContent(data: ResumeData) {
@@ -63,7 +65,7 @@ export function resumeHasMeaningfulContent(data: ResumeData) {
     data.summary.trim() ||
       data.currentRole.trim() ||
       data.experience.length > 0 ||
-      data.skills.length > 0 ||
+      getResumeSkills(data).length > 0 ||
       data.projects.length > 0
   )
 }
@@ -163,7 +165,7 @@ export function resumeDataToGeneratorContext(data: ResumeData) {
         website: data.website,
       },
       summary: data.summary,
-      skills: data.skills,
+      skills: getResumeSkills(data),
       experience: data.experience.map(item => ({
         company: item.company,
         title: item.title,

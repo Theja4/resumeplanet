@@ -39,6 +39,8 @@ export const SAMPLE_RESUME: ResumeData = {
       institution: 'Stanford University',
       degree: 'B.S.',
       field: 'Computer Science',
+      startDate: 'Sep 2014',
+      endDate: 'May 2018',
       graduationDate: 'May 2018',
       gpa: '3.8',
     },
@@ -47,8 +49,22 @@ export const SAMPLE_RESUME: ResumeData = {
     'Product Strategy', 'Roadmapping', 'SQL', 'A/B Testing',
     'Figma', 'JIRA', 'Python', 'Stakeholder Management',
   ],
+  skillSections: [
+    { title: 'Product', skills: ['Product Strategy', 'Roadmapping', 'Stakeholder Management'] },
+    { title: 'Analytics & Tools', skills: ['SQL', 'A/B Testing', 'Figma', 'JIRA', 'Python'] },
+  ],
   certifications: [],
-  projects: [],
+  projects: [
+    {
+      name: 'Growth Experimentation Program',
+      description: 'Built an experimentation workflow to prioritize, launch, and measure retention bets.',
+      bullets: [
+        'Created a prioritization rubric that aligned product, design, and analytics on weekly test selection.',
+        'Reduced experiment setup time by standardizing success metrics and post-launch reporting.',
+      ],
+      technologies: ['Amplitude', 'SQL', 'Figma'],
+    },
+  ],
   languages: ['English (Native)', 'Spanish (Conversational)'],
   volunteer: [],
   interests: [],

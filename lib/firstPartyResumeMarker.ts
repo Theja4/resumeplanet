@@ -1,4 +1,5 @@
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
+import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { BuilderVisibility, ResumeData, UniversalConfig, ExperienceItem, EducationItem, CertificationItem, ProjectItem, AwardItem, PublicationItem, CustomSection } from '@/types'
 
 const MARKER_VERSION = 1
@@ -53,8 +54,19 @@ function normalizeEducationItem(value: unknown): EducationItem | null {
     institution: stringValue(value.institution),
     degree: stringValue(value.degree),
     field: stringValue(value.field),
+    startDate: stringValue(value.startDate),
+    endDate: stringValue(value.endDate),
     graduationDate: stringValue(value.graduationDate),
     gpa: stringValue(value.gpa),
+  }
+}
+
+function normalizeSkillSection(value: unknown) {
+  if (!isRecord(value)) return null
+
+  return {
+    title: stringValue(value.title),
+    skills: stringArray(value.skills),
   }
 }
 
@@ -74,6 +86,7 @@ function normalizeProjectItem(value: unknown): ProjectItem | null {
   return {
     name: stringValue(value.name),
     description: stringValue(value.description),
+    bullets: stringArray(value.bullets),
     technologies: stringArray(value.technologies),
   }
 }
@@ -123,7 +136,7 @@ function normalizeCustomSection(value: unknown): CustomSection | null {
 function normalizeResumeData(value: unknown): ResumeData | null {
   if (!isRecord(value)) return null
 
-  return {
+  return syncResumeData({
     name: stringValue(value.name),
     email: stringValue(value.email),
     phone: stringValue(value.phone),
@@ -139,6 +152,9 @@ function normalizeResumeData(value: unknown): ResumeData | null {
       ? value.education.map(normalizeEducationItem).filter((item): item is EducationItem => Boolean(item))
       : [],
     skills: stringArray(value.skills),
+    skillSections: Array.isArray(value.skillSections)
+      ? value.skillSections.map(normalizeSkillSection).filter((item): item is NonNullable<ReturnType<typeof normalizeSkillSection>> => Boolean(item))
+      : [],
     certifications: Array.isArray(value.certifications)
       ? value.certifications.map(normalizeCertificationItem).filter((item): item is CertificationItem => Boolean(item))
       : [],
@@ -160,7 +176,7 @@ function normalizeResumeData(value: unknown): ResumeData | null {
     customSections: Array.isArray(value.customSections)
       ? value.customSections.map(normalizeCustomSection).filter((item): item is CustomSection => Boolean(item))
       : [],
-  }
+  })
 }
 
 function normalizeConfig(value: unknown): UniversalConfig | null {
@@ -334,7 +350,7 @@ function hasSectionContent(data: ResumeData, sectionId: string): boolean {
     case 'education':
       return data.education.length > 0
     case 'skills':
-      return data.skills.length > 0
+      return getResumeSkills(data).length > 0
     case 'certifications':
       return data.certifications.length > 0
     case 'projects':

@@ -18,9 +18,21 @@ export const metadata: Metadata = {
     'resume tailoring tool',
     'job description resume checker',
     'resume optimization',
+    'job description match score',
   ],
   alternates: {
     canonical: '/match-score',
+  },
+  openGraph: {
+    type: 'website',
+    title: 'Resume Match Score | Rezoomed',
+    description: 'Compare your resume against a job description, spot missing skills and weak evidence, and decide how to tailor before you apply.',
+    url: '/match-score',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Resume Match Score | Rezoomed',
+    description: 'Compare your resume against a job description, spot missing skills and weak evidence, and decide how to tailor before you apply.',
   },
 }
 

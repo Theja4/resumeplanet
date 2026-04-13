@@ -1,4 +1,5 @@
 import type { ResumeData, ExperienceItem } from '@/types'
+import { normalizeSkillSections, syncResumeData } from '@/lib/resume-data'
 import { pagesToLines, type ExtractedPage } from './pdfExtractor'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -409,7 +410,20 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       if (isBulletLine(raw)) {
         bullets.push(t.replace(/^[•\-*›▸▹\s]+/, '').trim())
       } else {
-        afterDateNonBullets.push(t)
+        const looksLikeBulletContinuation =
+          bullets.length > 0 &&
+          t.length <= 220 &&
+          !isLikelyDateLine(t) &&
+          !detectSection(t) &&
+          !looksLikeCustomHeadingText(t) &&
+          !isLikelyExperienceHeader(t)
+
+        if (looksLikeBulletContinuation) {
+          const previous = bullets[bullets.length - 1] ?? ''
+          bullets[bullets.length - 1] = `${previous} ${t}`.replace(/\s+/g, ' ').trim()
+        } else {
+          afterDateNonBullets.push(t)
+        }
       }
     }
 
@@ -509,6 +523,30 @@ function parseSkills(lines: string[]): string[] {
   return result
 }
 
+function parseSkillSections(lines: string[]) {
+  const sections: Array<{ title: string; skills: string[] }> = []
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) continue
+
+    const match = /^([A-Za-z][A-Za-z &/+()-]{1,40}):\s+(.+)$/.exec(line)
+    if (!match) continue
+
+    const title = match[1].trim()
+    const skills = match[2]
+      .split(/[,|•\n]+/)
+      .map(value => value.trim())
+      .filter(Boolean)
+
+    if (skills.length > 0) {
+      sections.push({ title, skills })
+    }
+  }
+
+  return normalizeSkillSections(sections)
+}
+
 function parseExperience(lines: string[]): ResumeData['experience'] {
   return parseJobLines(lines)
 }
@@ -538,14 +576,21 @@ function parseEducation(lines: string[]): ResumeData['education'] {
       institution: institutionMatch ? line : '',
       degree: degreeMatch ? line.replace(/,.*$/, '').trim() : '',
       field: '',
+      startDate: '',
+      endDate: '',
       graduationDate: '',
       gpa: /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(line)?.[1] ?? '',
     }
 
     if (isLikelyDateLine(line)) {
-      entry.graduationDate = extractDateRange(line).end || extractDateRange(line).start
+      const dates = extractDateRange(line)
+      entry.startDate = dates.start
+      entry.endDate = dates.end || dates.start
+      entry.graduationDate = dates.end || dates.start
     } else {
       const inlineDate = extractDateRange(line)
+      entry.startDate = inlineDate.start
+      entry.endDate = inlineDate.end || inlineDate.start
       entry.graduationDate = inlineDate.end || inlineDate.start
     }
 
@@ -568,6 +613,8 @@ function parseEducation(lines: string[]): ResumeData['education'] {
         entry.degree = nextLine.replace(/,.*$/, '').trim()
       } else if (!entry.graduationDate && isLikelyDateLine(nextLine)) {
         const dates = extractDateRange(nextLine)
+        entry.startDate = dates.start
+        entry.endDate = dates.end || dates.start
         entry.graduationDate = dates.end || dates.start
       } else if (!entry.gpa) {
         entry.gpa = /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(nextLine)?.[1] ?? ''
@@ -617,7 +664,7 @@ function parseProjects(lines: string[]): ResumeData['projects'] {
     // A new project starts on a non-bullet, non-date line ≤ 100 chars with no tech keyword
     if (!isBullet && !techMatch && !hasDate && t.length <= 100) {
       if (current) projects.push(current)
-      current = { name: t, description: '', technologies: [] }
+      current = { name: t, description: '', bullets: [], technologies: [] }
     } else if (current && techMatch) {
       const techs = techMatch[1].split(/[,|]/).map(s => s.trim()).filter(Boolean)
       current.technologies.push(...techs)
@@ -628,10 +675,14 @@ function parseProjects(lines: string[]): ResumeData['projects'] {
         current.technologies.push(...techs)
       }
       const cleanLine = t.replace(techInParens[0], '').replace(/^[•\-*›\s]+/, '').trim()
-      if (cleanLine) current.description += (current.description ? ' ' : '') + cleanLine
+      if (cleanLine) {
+        current.bullets = [...(current.bullets ?? []), cleanLine]
+        current.description += (current.description ? ' ' : '') + cleanLine
+      }
     } else if (current) {
       // Bullet or long description line
       const cleanLine = t.replace(/^[•\-*›\s]+/, '')
+      current.bullets = [...(current.bullets ?? []), cleanLine]
       current.description += (current.description ? ' ' : '') + cleanLine
     }
   }
@@ -964,7 +1015,7 @@ function buildResumeData(
   const customSections = buildCustomSections(sections)
   const currentRole = experience[0]?.title ?? extractCurrentRoleFromPreamble(sections['preamble'] ?? [], name)
 
-  return {
+  return syncResumeData({
     name,
     email,
     phone,
@@ -976,6 +1027,7 @@ function buildResumeData(
     experience,
     education: parseEducation(sections['education'] ?? []),
     skills: parseSkills(sections['skills'] ?? []),
+    skillSections: parseSkillSections(sections['skills'] ?? []),
     certifications: parseCertifications(sections['certifications'] ?? []),
     projects: parseProjects(sections['projects'] ?? []),
     languages: parseLanguages(sections['languages'] ?? []),
@@ -985,7 +1037,7 @@ function buildResumeData(
     publications: parsePublications(sections['publications'] ?? []),
     references: parseReferences(sections['references'] ?? []),
     customSections,
-  }
+  })
 }
 
 // ─── Primary export: spatial parser ──────────────────────────────────────────
@@ -1079,7 +1131,7 @@ export async function parseResumeText(rawText: string): Promise<ResumeData> {
 function emptyResume(): ResumeData {
   return {
     name: '', email: '', phone: '', location: '', linkedin: '', website: '',
-    summary: '', currentRole: '', experience: [], education: [], skills: [],
+    summary: '', currentRole: '', experience: [], education: [], skills: [], skillSections: [],
     certifications: [], projects: [], languages: [],
     volunteer: [], interests: [], awards: [], publications: [], references: [], customSections: [],
   }

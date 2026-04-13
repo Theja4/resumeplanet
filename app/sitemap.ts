@@ -20,6 +20,18 @@ const PUBLIC_ROUTES = [
   '/terms',
 ] as const
 
+function getRoutePriority(route: string) {
+  if (route === '/') return 1.0
+  if (['/resume-builder', '/ats-checker', '/resume-tailoring', '/match-score'].includes(route)) return 0.9
+  if (['/cover-letter-generator', '/metadata-enhancer', '/jobs', '/pricing', '/blog'].includes(route)) return 0.8
+  return 0.5
+}
+
+function getRouteChangeFrequency(route: string) {
+  if (route === '/' || route === '/jobs') return 'daily'
+  return 'weekly'
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl()
   const now = new Date()
@@ -28,8 +40,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_ROUTES.map(route => ({
     url: `${siteUrl}${route}`,
     lastModified: now,
-    changeFrequency: route === '/' ? 'daily' : 'weekly',
-    priority: route === '/' ? 1 : 0.7,
+    changeFrequency: getRouteChangeFrequency(route) as any,
+    priority: getRoutePriority(route),
   }))
 
   const blogRoutes: MetadataRoute.Sitemap = posts.map(post => ({

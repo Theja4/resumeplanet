@@ -9,7 +9,7 @@ import { getSiteUrl } from '@/lib/site'
 export const metadata: Metadata = {
   title: 'Free ATS Resume Checker | Rezoomed',
   description:
-    'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply.',
+    'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
   keywords: [
     'free ats resume checker',
     'ats checker',
@@ -17,11 +17,43 @@ export const metadata: Metadata = {
     'ats optimization',
     'resume optimization',
     'resume score',
+    'job description tailor',
+    'job description optimizer',
+    'job description match score',
   ],
   alternates: {
     canonical: '/ats-checker',
   },
+  openGraph: {
+    type: 'website',
+    title: 'Free ATS Resume Checker | Rezoomed',
+    description: 'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
+    url: '/ats-checker',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free ATS Resume Checker | Rezoomed',
+    description: 'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
+  },
 }
+
+const FAQS = [
+  {
+    question: 'How does the ATS checker work?',
+    answer:
+      'Rezoomed scans your resume for ATS parsing issues, keyword gaps, structure problems, and recruiter-readability weaknesses before you apply.',
+  },
+  {
+    question: 'Is this ATS checker free?',
+    answer:
+      'Yes. Rezoomed offers a free ATS checker workflow so you can quickly test one resume and see where it needs improvement.',
+  },
+  {
+    question: 'What is the difference between ATS score and match score?',
+    answer:
+      'ATS score focuses on structure, formatting, and keyword coverage, while match score compares your resume against a specific job description.',
+  },
+] as const
 
 export default async function PublicATSCheckerPage() {
   const supabase = await createClient()
@@ -42,6 +74,18 @@ export default async function PublicATSCheckerPage() {
       { '@type': 'ListItem', position: 2, name: 'ATS Checker', item: `${siteUrl}/ats-checker` },
     ],
   }
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background-landing text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
@@ -49,6 +93,10 @@ export default async function PublicATSCheckerPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
       <main className="mx-auto flex-1 max-w-[90rem] px-6 pb-20 pt-24">
@@ -78,6 +126,19 @@ export default async function PublicATSCheckerPage() {
 
         <section className="mt-6">
           <ATSCheckerClient resumes={[]} profile={null} publicMode mode="ats" showIntro={false} />
+        </section>
+
+        <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>
+          <h2 className="mt-2 text-3xl font-black tracking-tight text-on-background">ATS checker questions</h2>
+          <div className="mt-6 grid gap-4">
+            {FAQS.map((faq) => (
+              <div key={faq.question} className="rounded-[1.4rem] border border-black/6 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,250,249,0.96))] p-5">
+                <h3 className="text-lg font-black text-on-background">{faq.question}</h3>
+                <p className="mt-2 text-sm leading-7 text-on-surface-variant">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
         </section>
       </main>
 

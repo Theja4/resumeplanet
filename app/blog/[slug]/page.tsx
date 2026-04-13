@@ -274,7 +274,7 @@ export default async function BlogPostPage({
                 </p>
               </div>
               <article className="prose-article relative">
-              <MarkdownContent content={articleContent} inlineImages={inlineImages} />
+              <MarkdownContent content={articleContent} inlineImages={inlineImages} imageAltBase={post.title} />
               </article>
             </div>
 

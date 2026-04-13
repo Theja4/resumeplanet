@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, EducationItem } from '@/types'
+import { getEducationDateLabel, syncResumeData } from '@/lib/resume-data'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
 }
 
-const EMPTY_EDU: EducationItem = { institution: '', degree: '', field: '', graduationDate: '', gpa: '' }
+const EMPTY_EDU: EducationItem = { institution: '', degree: '', field: '', startDate: '', endDate: '', graduationDate: '', gpa: '' }
 
 export default function EducationEditor({ data, onChange }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
@@ -17,17 +18,17 @@ export default function EducationEditor({ data, onChange }: EditorProps) {
   function updateItem(index: number, updated: EducationItem) {
     const next = [...data.education]
     next[index] = updated
-    onChange({ ...data, education: next })
+    onChange(syncResumeData({ ...data, education: next }))
   }
 
   function removeItem(index: number) {
-    onChange({ ...data, education: data.education.filter((_, i) => i !== index) })
+    onChange(syncResumeData({ ...data, education: data.education.filter((_, i) => i !== index) }))
     if (expandedIndex === index) setExpandedIndex(null)
   }
 
   function addItem() {
     const next = [...data.education, { ...EMPTY_EDU }]
-    onChange({ ...data, education: next })
+    onChange(syncResumeData({ ...data, education: next }))
     setExpandedIndex(next.length - 1)
   }
 
@@ -41,7 +42,7 @@ export default function EducationEditor({ data, onChange }: EditorProps) {
           >
             <div className="min-w-0">
               <p className="text-sm font-medium text-gray-900 truncate">{edu.institution || 'New School'}</p>
-              <p className="text-xs text-gray-500 truncate">{edu.degree}{edu.field ? ` in ${edu.field}` : ''}</p>
+              <p className="text-xs text-gray-500 truncate">{edu.degree}{edu.field ? ` in ${edu.field}` : ''}{getEducationDateLabel(edu) ? ` · ${getEducationDateLabel(edu)}` : ''}</p>
             </div>
             {expandedIndex === i ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
           </button>
@@ -53,6 +54,8 @@ export default function EducationEditor({ data, onChange }: EditorProps) {
                   ['institution', 'Institution'],
                   ['degree', 'Degree'],
                   ['field', 'Field of Study'],
+                  ['startDate', 'Start Date'],
+                  ['endDate', 'End Date'],
                   ['graduationDate', 'Graduation Date'],
                   ['gpa', 'GPA (optional)'],
                 ] as [keyof EducationItem, string][]

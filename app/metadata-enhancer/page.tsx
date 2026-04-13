@@ -18,9 +18,22 @@ export const metadata: Metadata = {
     'resume pdf title author keywords',
     'resume metadata tool',
     'resume optimization',
+    'meta data enhancer',
+    'meta data optimizer',
   ],
   alternates: {
     canonical: '/metadata-enhancer',
+  },
+  openGraph: {
+    type: 'website',
+    title: 'Resume Metadata Enhancer | Rezoomed',
+    description: 'Improve PDF resume metadata like title, author, keywords, and language so your file is cleaner, more searchable, and recruiter-ready.',
+    url: '/metadata-enhancer',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Resume Metadata Enhancer | Rezoomed',
+    description: 'Improve PDF resume metadata like title, author, keywords, and language so your file is cleaner, more searchable, and recruiter-ready.',
   },
 }
 

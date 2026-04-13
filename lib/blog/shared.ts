@@ -76,13 +76,19 @@ const GENERATED_BLOG_MEDIA_SLUGS = new Set([
 ])
 
 export function getBlogMediaFallback(slug: string) {
-  return BLOG_MEDIA_FALLBACKS[slug]
-    ?? (GENERATED_BLOG_MEDIA_SLUGS.has(slug)
-      ? {
-          coverImage: `/blog/${slug}-hero.svg`,
-          inlineImages: [`/blog/${slug}-inline.svg`],
-        }
-      : null)
+  if (BLOG_MEDIA_FALLBACKS[slug]) {
+    return BLOG_MEDIA_FALLBACKS[slug]
+  }
+
+  if (GENERATED_BLOG_MEDIA_SLUGS.has(slug)) {
+    const ext = slug.startsWith('how-to-land-a-job-at-') ? 'svg' : 'png'
+    return {
+      coverImage: `/blog/${slug}-hero.${ext}`,
+      inlineImages: [`/blog/${slug}-inline.${ext}`],
+    }
+  }
+
+  return null
 }
 
 export function slugifyBlogTitle(value: string) {

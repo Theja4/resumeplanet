@@ -9,6 +9,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import { buildMatchScoreResult } from '@/lib/match-score'
 import { parseResumeText } from '@/lib/resumeParser'
+import { getProjectBullets, getResumeSkills, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import { countWords } from '@/lib/text'
 import type { APIResponse, ATSResult, ATSSuggestion, ATSScanTier, Profile, ResumeData } from '@/types'
 
@@ -92,7 +93,7 @@ async function consumeAuthenticatedFreeAtsScan(userId: string): Promise<Consumed
 }
 
 function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
-  const normalized: ResumeData = {
+  return syncResumeData({
     name: data?.name ?? '',
     email: data?.email ?? '',
     phone: data?.phone ?? '',
@@ -104,6 +105,7 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
     experience: data?.experience ?? [],
     education: data?.education ?? [],
     skills: data?.skills ?? [],
+    skillSections: data?.skillSections ?? [],
     certifications: data?.certifications ?? [],
     projects: data?.projects ?? [],
     languages: data?.languages ?? [],
@@ -113,66 +115,11 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
     publications: data?.publications ?? [],
     references: data?.references ?? [],
     customSections: data?.customSections ?? [],
-  }
-
-  return normalized
+  })
 }
 
 function resumeDataToText(data: ResumeData | null): string {
-  if (!data) return ''
-
-  const parts: string[] = [
-    data.name,
-    data.currentRole,
-    data.summary,
-    data.email,
-    data.phone,
-    data.location,
-    data.linkedin,
-    data.website,
-  ]
-
-  for (const item of data.experience) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
-  }
-
-  parts.push(...data.skills)
-
-  for (const item of data.projects) {
-    parts.push(item.name, item.description, ...(item.technologies ?? []))
-  }
-
-  for (const item of data.certifications) {
-    parts.push(item.name, item.issuer, item.date)
-  }
-
-  for (const item of data.volunteer) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.awards) parts.push(item.title, item.issuer, item.date)
-  for (const item of data.publications) parts.push(item.title, item.publisher, item.date)
-  parts.push(...data.languages, ...data.interests, ...data.references)
-
-  for (const section of data.customSections ?? []) {
-    parts.push(section.title)
-    if (section.type === 'text') parts.push(section.text ?? '')
-    if (section.type === 'tags') parts.push(...(section.tags ?? []))
-    if (section.type === 'complex') {
-      for (const item of section.items ?? []) {
-        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-        parts.push(...(item.bullets ?? []))
-      }
-    }
-  }
-
-  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
+  return resumeDataToPlainText(data)
 }
 
 function escapeRegex(str: string) {
@@ -243,9 +190,9 @@ function getResumeEvidenceText(data: ResumeData) {
   return [
     data.currentRole,
     data.summary,
-    ...data.skills,
+    ...getResumeSkills(data),
     ...data.experience.flatMap(exp => [exp.title, exp.company, ...exp.bullets]),
-    ...data.projects.flatMap(project => [project.name, project.description, ...(project.technologies ?? [])]),
+    ...data.projects.flatMap(project => [project.name, project.description, ...getProjectBullets(project), ...(project.technologies ?? [])]),
   ].filter(Boolean).join('\n')
 }
 
@@ -365,7 +312,7 @@ function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData, scorerRes
   }
 
   const keywordWeakArea = scorerResult.weakAreas.find(area => area.criterionId === 'keywords')
-  const presentKeywords = data.skills.filter(skill => includesKeyword(evidenceText, skill)).slice(0, 10)
+  const presentKeywords = getResumeSkills(data).filter(skill => includesKeyword(evidenceText, skill)).slice(0, 10)
   const missingKeywords = (keywordWeakArea?.relevantText ?? []).slice(0, 10)
 
   return {

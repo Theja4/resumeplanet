@@ -1,4 +1,5 @@
 import type { ResumeData } from '@/types'
+import { getEducationDateLabel, getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 
 type ParseSource = 'marker' | 'fast' | 'client' | 'repair'
 
@@ -145,7 +146,7 @@ function assessEducation(data: ResumeData, issues: string[]): number {
     score -= 4
     issues.push('some education entries incomplete')
   }
-  if (!data.education.some(item => item.graduationDate)) {
+  if (!data.education.some(item => getEducationDateLabel(item))) {
     score -= 2
   }
 
@@ -153,13 +154,14 @@ function assessEducation(data: ResumeData, issues: string[]): number {
 }
 
 function assessSkills(data: ResumeData, issues: string[]): number {
-  if (data.skills.length === 0) {
+  const skills = getResumeSkills(data)
+  if (skills.length === 0) {
     issues.push('missing skills section')
     return 0
   }
 
-  if (data.skills.length >= 6) return 10
-  if (data.skills.length >= 3) return 7
+  if (skills.length >= 6) return 10
+  if (skills.length >= 3) return 7
 
   issues.push('skills section sparse')
   return 4
@@ -177,7 +179,7 @@ export function estimateResumeDataTextLength(data: ResumeData | null | undefined
     data.location,
     data.linkedin,
     data.website,
-    ...data.skills,
+    ...getResumeSkills(data),
     ...data.languages,
     ...data.interests,
     ...data.references,
@@ -189,11 +191,11 @@ export function estimateResumeDataTextLength(data: ResumeData | null | undefined
   }
 
   for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
+    parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate, item.gpa)
   }
 
   for (const item of data.projects) {
-    parts.push(item.name, item.description, ...(item.technologies ?? []))
+    parts.push(item.name, item.description, ...getProjectBullets(item), ...(item.technologies ?? []))
   }
 
   for (const item of data.certifications) {
@@ -256,7 +258,7 @@ export function assessResumeParseConfidence(
   const populatedSections = [
     data.experience.length > 0,
     data.education.length > 0,
-    data.skills.length > 0,
+    getResumeSkills(data).length > 0,
     data.projects.length > 0,
     data.certifications.length > 0,
     data.languages.length > 0,

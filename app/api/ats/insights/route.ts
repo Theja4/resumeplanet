@@ -10,6 +10,7 @@ import {
   improvesIntendedCriterion,
   startsWithWeakResumePhrase,
 } from '@/lib/ai-insights'
+import { getEducationDateLabel, getProjectBullets, getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 
@@ -185,7 +186,10 @@ function buildSuggestionPrompt(
   }
 
   if (criterionIds.has('skills') || criterionIds.has('keywords')) {
-    parts.push(`Skills: ${data.skills.join(', ') || '(none)'}`)
+    parts.push(`Skills: ${getResumeSkills(data).join(', ') || '(none)'}`)
+    for (const section of normalizeSkillSections(data.skillSections, getResumeSkills(data))) {
+      parts.push(`Skill section - ${section.title}: ${section.skills.join(', ')}`)
+    }
     parts.push('')
   }
 
@@ -197,7 +201,7 @@ function buildSuggestionPrompt(
   if (criterionIds.has('education')) {
     parts.push('Education:')
     for (const edu of data.education) {
-      parts.push(`  ${edu.degree} in ${edu.field} at ${edu.institution} (${edu.graduationDate})`)
+      parts.push(`  ${edu.degree} in ${edu.field} at ${edu.institution} (${getEducationDateLabel(edu)})`)
     }
     parts.push('')
   }
@@ -216,9 +220,9 @@ function getActionableWeakAreas(weakAreas: WeakArea[], data: ResumeData) {
           data.experience.some(exp => exp.bullets.some(bullet => bullet.includes(text)))
         )
       case 'skills':
-        return data.skills.length > 0
+        return getResumeSkills(data).length > 0
       case 'keywords':
-        return data.skills.length > 0 && data.experience.some(exp => exp.bullets.length > 0)
+        return getResumeSkills(data).length > 0 && data.experience.some(exp => exp.bullets.length > 0)
       default:
         return false
     }
@@ -233,45 +237,6 @@ function generateSummaryFromScorer(result: ScorerResult): string {
   if (score >= 65) return `Good foundation with room to improve. Focus on: ${weakNames}.`
   if (score >= 45) return `Decent structure but key areas need work: ${weakNames}.`
   return `Resume needs significant improvement. Priority areas: ${weakNames}.`
-}
-
-function resumeDataToText(data: ResumeData | null): string {
-  if (!data) return ''
-  const parts: string[] = [
-    data.name, data.currentRole, data.summary,
-    data.email, data.phone, data.location, data.linkedin, data.website,
-  ]
-  for (const item of data.experience) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-  for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
-  }
-  parts.push(...data.skills)
-  for (const item of data.projects) {
-    parts.push(item.name, item.description, ...(item.technologies ?? []))
-  }
-  for (const item of data.certifications) { parts.push(item.name, item.issuer, item.date) }
-  for (const item of data.volunteer) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-  for (const item of data.awards) { parts.push(item.title, item.issuer, item.date) }
-  for (const item of data.publications) { parts.push(item.title, item.publisher, item.date) }
-  parts.push(...data.languages, ...data.interests, ...data.references)
-  for (const section of data.customSections ?? []) {
-    parts.push(section.title)
-    if (section.type === 'text') parts.push(section.text ?? '')
-    if (section.type === 'tags') parts.push(...(section.tags ?? []))
-    if (section.type === 'complex') {
-      for (const item of section.items ?? []) {
-        parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-        parts.push(...(item.bullets ?? []))
-      }
-    }
-  }
-  return parts.map(p => p?.trim()).filter(Boolean).join('\n')
 }
 
 async function callSuggestionsWithFallback(
@@ -343,7 +308,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Build text for signature/cache key
   let resumeText = body.resumeText ?? ''
   if ((!resumeText || resumeText.trim().length < 50) && resumeData) {
-    resumeText = resumeDataToText(resumeData)
+    resumeText = resumeDataToPlainText(resumeData)
   }
   if ((!resumeText || resumeText.trim().length < 50) && resumeId) {
     const { data: resume } = await supabase
@@ -401,13 +366,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // If we have structured data, score it directly. Otherwise build a minimal ResumeData from text.
   if (!resumeData) {
     // Minimal ResumeData from raw text — scorer will score low but won't crash
-    resumeData = {
+    resumeData = syncResumeData({
       name: '', currentRole: '', summary: '', email: '', phone: '',
       location: '', linkedin: '', website: '',
       experience: [], education: [], skills: [], projects: [],
       certifications: [], volunteer: [], awards: [], publications: [],
       languages: [], interests: [], references: [],
-    }
+    })
   }
 
   const scorerResult = scoreResume(resumeData)

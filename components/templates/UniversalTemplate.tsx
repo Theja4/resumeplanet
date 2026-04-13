@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
+import { getEducationDateLabel, getProjectBullets, normalizeSkillSections } from '@/lib/resume-data'
 import EditableText from './EditableText'
 import type { TemplateProps, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY } from '@/types'
@@ -65,21 +66,43 @@ export default function UniversalTemplate({
     ))
   }
 
-  function renderSkills(skills: string[], isSidebarContext: boolean, accentValue: string) {
+  function renderSkills(
+    sections: Array<{ title: string; skills: string[] }>,
+    isSidebarContext: boolean,
+    accentValue: string
+  ) {
+    const normalizedSections = normalizeSkillSections(sections)
+
     if (skillsStyle === 'stacked') {
       return (
-        <div className={`${isSidebarContext ? 'mt-1 space-y-1' : 'mt-1.5 space-y-1'}`}>
-          {skills.map((skill, i) => (
-            <div key={i} className="flex gap-2">
-              <span style={{ color: accentValue, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
-              <EditableText
-                value={skill}
-                path={`skills.${i}`}
-                isEditing={isEditing}
-                onFieldChange={onFieldChange}
-                onNavigateToField={onNavigateToField}
-                className={isSidebarContext ? 'text-[11px] text-gray-700 leading-tight' : 'text-sm text-gray-700 leading-tight'}
-              />
+        <div className={`${isSidebarContext ? 'mt-1 space-y-2' : 'mt-1.5 space-y-2'}`}>
+          {normalizedSections.map((section, sectionIndex) => (
+            <div key={sectionIndex}>
+              {section.title && (
+                <EditableText
+                  value={section.title}
+                  path={`skillSections.${sectionIndex}.title`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-semibold uppercase tracking-[0.14em] text-gray-500`}
+                />
+              )}
+              <div className="mt-1 space-y-1">
+                {section.skills.map((skill, skillIndex) => (
+                  <div key={skillIndex} className="flex gap-2">
+                    <span style={{ color: accentValue, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
+                    <EditableText
+                      value={skill}
+                      path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
+                      isEditing={isEditing}
+                      onFieldChange={onFieldChange}
+                      onNavigateToField={onNavigateToField}
+                      className={isSidebarContext ? 'text-[11px] text-gray-700 leading-tight' : 'text-sm text-gray-700 leading-tight'}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -89,18 +112,32 @@ export default function UniversalTemplate({
     const separator = skillsStyle === 'divider' ? ' • ' : ', '
 
     return (
-      <div className="mt-1">
-        {skills.map((skill, i) => (
-          <React.Fragment key={i}>
-            <EditableText
-              value={skill}
-              path={`skills.${i}`}
-              isEditing={isEditing}
-              onFieldChange={onFieldChange}
-              onNavigateToField={onNavigateToField}
-            />
-            {i < skills.length - 1 && <span className="text-gray-400">{separator}</span>}
-          </React.Fragment>
+      <div className="mt-1 space-y-1.5">
+        {normalizedSections.map((section, sectionIndex) => (
+          <div key={sectionIndex}>
+            {section.title && (
+              <EditableText
+                value={section.title}
+                path={`skillSections.${sectionIndex}.title`}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+                className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-semibold uppercase tracking-[0.14em] text-gray-500`}
+              />
+            )}
+            {section.skills.map((skill, skillIndex) => (
+              <React.Fragment key={skillIndex}>
+                <EditableText
+                  value={skill}
+                  path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                />
+                {skillIndex < section.skills.length - 1 && <span className="text-gray-400">{separator}</span>}
+              </React.Fragment>
+            ))}
+          </div>
         ))}
       </div>
     )
@@ -365,20 +402,20 @@ export default function UniversalTemplate({
                     </div>
                     {edu.gpa && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
                   </div>
-                  {dateLayout === 'right' && edu.graduationDate && (
+                  {dateLayout === 'right' && getEducationDateLabel(edu) && (
                     <EditableText
-                      value={edu.graduationDate}
-                      path={`education.${i}.graduationDate`}
+                      value={getEducationDateLabel(edu)}
+                      path={`education.${i}.endDate`}
                       isEditing={isEditing}
                       onFieldChange={onFieldChange}
                       onNavigateToField={onNavigateToField}
                       className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
                     />
                   )}
-                  {dateLayout === 'inline' && edu.graduationDate && (
+                  {dateLayout === 'inline' && getEducationDateLabel(edu) && (
                     <EditableText
-                      value={edu.graduationDate}
-                      path={`education.${i}.graduationDate`}
+                      value={getEducationDateLabel(edu)}
+                      path={`education.${i}.endDate`}
                       isEditing={isEditing}
                       onFieldChange={onFieldChange}
                       onNavigateToField={onNavigateToField}
@@ -392,11 +429,11 @@ export default function UniversalTemplate({
         ) : null
 
       case 'skills':
-        return data.skills.length > 0 ? (
+        return ((data.skillSections?.length ?? 0) > 0 || data.skills.length > 0) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Skills" accent={accent} /> : <SectionHeading title="Skills" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-relaxed`}>
-              {renderSkills(data.skills, isSidebarContext, accent)}
+              {renderSkills(data.skillSections?.length ? data.skillSections : [{ title: 'Core Skills', skills: data.skills }], isSidebarContext, accent)}
             </div>
           </div>
         ) : null
@@ -477,7 +514,26 @@ export default function UniversalTemplate({
                   <div className="flex justify-between items-start">
                     <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
                   </div>
-                  <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
+                  {proj.description && (
+                    <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
+                  )}
+                  {getProjectBullets(proj).length > 0 && (
+                    <div className="mt-1.5 space-y-1">
+                      {getProjectBullets(proj).map((bullet, bulletIndex) => (
+                        <div key={bulletIndex} className="flex gap-2">
+                          <span style={{ color: accent, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
+                          <EditableText
+                            value={bullet}
+                            path={`projects.${i}.bullets.${bulletIndex}`}
+                            isEditing={isEditing}
+                            onFieldChange={onFieldChange}
+                            onNavigateToField={onNavigateToField}
+                            className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 leading-relaxed`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

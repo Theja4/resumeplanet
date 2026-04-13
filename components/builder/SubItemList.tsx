@@ -62,8 +62,8 @@ function getItemSublabel(item: ComplexSectionItem, sectionId: ComplexSectionId):
 
 function makeEmptyItem(sectionId: ComplexSectionId): ComplexSectionItem {
   if (sectionId.startsWith('custom_') || sectionId === 'experience') return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
-  if (sectionId === 'education') return { institution: '', degree: '', field: '', graduationDate: '', gpa: '' }
-  if (sectionId === 'projects') return { name: '', description: '', technologies: [] }
+  if (sectionId === 'education') return { institution: '', degree: '', field: '', startDate: '', endDate: '', graduationDate: '', gpa: '' }
+  if (sectionId === 'projects') return { name: '', description: '', bullets: [], technologies: [] }
   if (sectionId === 'certifications') return { name: '', issuer: '', date: '' }
   return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
 }

@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, Lock, RefreshCw, Sparkles, Unlock, Wand2, X, Zap
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AIInsightCard from './AIInsightCard'
 import { getInsightSuggestionScoreDelta, hasBreakdownRegression, improvesIntendedCriterion } from '@/lib/ai-insights'
+import { getEducationDateLabel, getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { buildATSRoadmap, scoreResume, type ScorerBreakdown } from '@/lib/ats-scorer'
@@ -230,18 +231,21 @@ function buildResumeText(data: ResumeData): string {
   if (data.education.length > 0) {
     parts.push('\nEducation:')
     for (const edu of data.education) {
-      parts.push(`${edu.degree} in ${edu.field} at ${edu.institution} (${edu.graduationDate})`)
+      parts.push(`${edu.degree} in ${edu.field} at ${edu.institution} (${getEducationDateLabel(edu)})`)
     }
   }
 
-  if (data.skills.length > 0) {
-    parts.push(`\nSkills: ${data.skills.join(', ')}`)
+  if (getResumeSkills(data).length > 0) {
+    parts.push(`\nSkills: ${getResumeSkills(data).join(', ')}`)
   }
 
   if (data.projects.length > 0) {
     parts.push('\nProjects:')
     for (const proj of data.projects) {
       parts.push(`${proj.name}: ${proj.description}`)
+      for (const bullet of getProjectBullets(proj)) {
+        parts.push(`  - ${bullet}`)
+      }
       if (proj.technologies?.length) {
         parts.push(`  Technologies: ${proj.technologies.join(', ')}`)
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
+import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import { isPro } from '@/lib/planUtils'
 import { countWords } from '@/lib/text'
 import type { APIResponse, Profile, ResumeData, TailorAnalysis, TailorIntensity } from '@/types'
@@ -105,7 +106,7 @@ interface TailorBody {
 }
 
 function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
-  return {
+  return syncResumeData({
     name: data?.name ?? '',
     email: data?.email ?? '',
     phone: data?.phone ?? '',
@@ -117,6 +118,7 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
     experience: data?.experience ?? [],
     education: data?.education ?? [],
     skills: data?.skills ?? [],
+    skillSections: data?.skillSections ?? [],
     certifications: data?.certifications ?? [],
     projects: data?.projects ?? [],
     languages: data?.languages ?? [],
@@ -126,7 +128,7 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
     publications: data?.publications ?? [],
     references: data?.references ?? [],
     customSections: data?.customSections ?? [],
-  }
+  })
 }
 
 function resumeDataToTailorContext(data: ResumeData) {
@@ -151,7 +153,8 @@ function resumeDataToTailorContext(data: ResumeData) {
         bullets: item.bullets,
       })),
       education: data.education,
-      skills: data.skills,
+      skills: getResumeSkills(data),
+      skillSections: data.skillSections,
       projects: data.projects,
       certifications: data.certifications,
       volunteer: data.volunteer.map(item => ({

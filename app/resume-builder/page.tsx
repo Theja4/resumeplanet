@@ -22,6 +22,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/resume-builder',
   },
+  openGraph: {
+    type: 'website',
+    title: 'AI Resume Builder | Rezoomed',
+    description: 'Build ATS-friendly resumes faster with Rezoomed AI resume builder, then refine, tailor, and export recruiter-ready versions.',
+    url: '/resume-builder',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AI Resume Builder | Rezoomed',
+    description: 'Build ATS-friendly resumes faster with Rezoomed AI resume builder, then refine, tailor, and export recruiter-ready versions.',
+  },
 }
 
 const FAQS = [

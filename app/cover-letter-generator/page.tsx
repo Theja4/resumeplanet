@@ -18,9 +18,21 @@ export const metadata: Metadata = {
     'cover letter from resume',
     'ai cover letter tool',
     'rezoomed cover letter',
+    'cover letter builder',
   ],
   alternates: {
     canonical: '/cover-letter-generator',
+  },
+  openGraph: {
+    type: 'website',
+    title: 'AI Cover Letter Generator | Rezoomed',
+    description: 'Generate a role-specific cover letter from your resume and target job description, then export a cleaner draft faster with Rezoomed.',
+    url: '/cover-letter-generator',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'AI Cover Letter Generator | Rezoomed',
+    description: 'Generate a role-specific cover letter from your resume and target job description, then export a cleaner draft faster with Rezoomed.',
   },
 }
 

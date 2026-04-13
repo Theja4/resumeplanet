@@ -68,7 +68,7 @@ function renderInlineMarkdown(text: string): ReactNode[] {
   return tokens
 }
 
-function renderInlineImageFigure(src: string, key: string) {
+function renderInlineImageFigure(src: string, key: string, alt: string) {
   return (
     <figure
       key={key}
@@ -77,7 +77,7 @@ function renderInlineImageFigure(src: string, key: string) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_30%)]" />
       <div className="relative overflow-hidden rounded-[1.1rem] border border-black/5 bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt="" className="mx-auto h-auto max-h-[520px] w-full object-contain" />
+        <img src={src} alt={alt} className="mx-auto h-auto max-h-[520px] w-full object-contain" />
       </div>
     </figure>
   )
@@ -128,10 +128,12 @@ export default function MarkdownContent({
   content,
   className = '',
   inlineImages = [],
+  imageAltBase = '',
 }: {
   content: string
   className?: string
   inlineImages?: string[]
+  imageAltBase?: string
 }) {
   const lines  = content.replace(/\r\n/g, '\n').split('\n')
   const blocks: ReactNode[] = []
@@ -610,13 +612,13 @@ export default function MarkdownContent({
       imageIndex < inlineImages.length && (blockIndex === 1 || blockIndex === midPoint)
 
     if (shouldInsertImage) {
-      renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-${blockIndex}`))
+      renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-${blockIndex}`, `${imageAltBase} illustration ${imageIndex + 1}`))
       imageIndex += 1
     }
   })
 
   while (imageIndex < inlineImages.length) {
-    renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-tail-${imageIndex}`))
+    renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-tail-${imageIndex}`, `${imageAltBase} illustration ${imageIndex + 1}`))
     imageIndex += 1
   }
 

@@ -3,13 +3,14 @@
 import { useState, KeyboardEvent } from 'react'
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, ProjectItem } from '@/types'
+import { syncResumeData } from '@/lib/resume-data'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
 }
 
-const EMPTY_PROJECT: ProjectItem = { name: '', description: '', technologies: [] }
+const EMPTY_PROJECT: ProjectItem = { name: '', description: '', bullets: [], technologies: [] }
 
 export default function ProjectsEditor({ data, onChange }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
@@ -18,17 +19,17 @@ export default function ProjectsEditor({ data, onChange }: EditorProps) {
   function updateItem(index: number, updated: ProjectItem) {
     const next = [...data.projects]
     next[index] = updated
-    onChange({ ...data, projects: next })
+    onChange(syncResumeData({ ...data, projects: next }))
   }
 
   function removeItem(index: number) {
-    onChange({ ...data, projects: data.projects.filter((_, i) => i !== index) })
+    onChange(syncResumeData({ ...data, projects: data.projects.filter((_, i) => i !== index) }))
     if (expandedIndex === index) setExpandedIndex(null)
   }
 
   function addItem() {
     const next = [...data.projects, { ...EMPTY_PROJECT }]
-    onChange({ ...data, projects: next })
+    onChange(syncResumeData({ ...data, projects: next }))
     setExpandedIndex(next.length - 1)
   }
 
@@ -76,12 +77,25 @@ export default function ProjectsEditor({ data, onChange }: EditorProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-0.5">Description</label>
+                <label className="block text-xs text-gray-500 mb-0.5">Project Summary</label>
                 <textarea
                   value={project.description}
                   onChange={(e) => updateItem(i, { ...project, description: e.target.value })}
                   rows={2}
                   className="w-full rounded border border-gray-200 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-0.5">Bullet Points</label>
+                <textarea
+                  value={(project.bullets ?? []).join('\n')}
+                  onChange={(e) => updateItem(i, {
+                    ...project,
+                    bullets: e.target.value.split('\n').map(line => line.trim()).filter(Boolean),
+                  })}
+                  rows={4}
+                  placeholder="One bullet per line"
+                  className="w-full rounded border border-gray-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               <div>

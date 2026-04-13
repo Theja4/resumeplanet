@@ -1,24 +1,40 @@
 <svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1600" height="900" rx="48" fill="#F6FBF7"/>
-  <rect x="70" y="70" width="1460" height="760" rx="36" fill="url(#bg)"/>
-  <rect x="128" y="122" width="220" height="44" rx="22" fill="#ffe8f0"/>
-  <text x="156" y="150" fill="#a31652" font-family="Arial, sans-serif" font-size="20" font-weight="800" letter-spacing="2.4">TARGET COMPANY GUIDE</text>
-  <text x="128" y="260" fill="#0D1117" font-family="Arial, sans-serif" font-size="72" font-weight="800">How to Land a Job at</text><text x="128" y="344" fill="#0D1117" font-family="Arial, sans-serif" font-size="72" font-weight="800">Microsoft</text>
-  <text x="128" y="468" fill="#55606B" font-family="Arial, sans-serif" font-size="30">Job Search · Rezoomed blog</text>
-  <rect x="980" y="150" width="420" height="510" rx="32" fill="#FFFFFF"/>
-  <text x="1040" y="228" fill="#0f6b3a" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="3">REZOOMED WORKFLOW</text>
-  <rect x="1040" y="282" width="280" height="18" rx="9" fill="#0f6b3a"/>
-  <rect x="1040" y="330" width="250" height="16" rx="8" fill="#D7DDDA"/>
-  <rect x="1040" y="374" width="300" height="16" rx="8" fill="#D7DDDA"/>
-  <rect x="1040" y="418" width="220" height="16" rx="8" fill="#D7DDDA"/>
-  <rect x="1040" y="474" width="310" height="120" rx="22" fill="#dff6e5"/>
-  <text x="1080" y="525" fill="#0D1117" font-family="Arial, sans-serif" font-size="28" font-weight="800">Sharpen fit.</text>
-  <text x="1080" y="565" fill="#55606B" font-family="Arial, sans-serif" font-size="24">Check ATS, match the role,</text>
-  <text x="1080" y="599" fill="#55606B" font-family="Arial, sans-serif" font-size="24">and export a cleaner file.</text>
+  <rect width="1600" height="900" fill="#0A0A0A" />
+  
+  <ellipse cx="400" cy="150" rx="600" ry="400" fill="url(#brandGlow1)" opacity="0.15" />
+  <ellipse cx="1200" cy="750" rx="700" ry="500" fill="url(#brandGlow2)" opacity="0.1" />
+
   <defs>
-    <linearGradient id="bg" x1="90" y1="90" x2="1490" y2="800" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ECFAF0"/>
-      <stop offset="1" stop-color="#FFFFFF"/>
-    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#grid)" />
+
+  <rect x="500" y="250" width="600" height="400" rx="40" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+  
+  <circle cx="800" cy="450" r="100" fill="#00A4EF" opacity="0.15" filter="url(#glow)"/>
+
+  <g transform="translate(680, 330) scale(10)">
+    <g fill="white">
+      <title>Microsoft</title><path d="M0 0v11.408h11.408V0zm12.594 0v11.408H24V0zM0 12.594V24h11.408V12.594zm12.594 0V24H24V12.594z"/>
+    </g>
+  </g>
+
+  <text x="800" y="750" font-family="'Inter', -apple-system, sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.4)" text-anchor="middle" letter-spacing="4">HOW TO LAND A JOB AT</text>
+  <text x="800" y="810" font-family="'Inter', -apple-system, sans-serif" font-size="48" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1" text-transform="uppercase">microsoft</text>
+
+  <defs>
+    <radialGradient id="brandGlow1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#00A4EF" />
+      <stop offset="100%" stop-color="#00A4EF" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="brandGlow2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#00A4EF" />
+      <stop offset="100%" stop-color="#00A4EF" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+    </filter>
   </defs>
 </svg>

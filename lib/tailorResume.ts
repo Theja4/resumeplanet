@@ -1,4 +1,5 @@
 import { scoreResume } from '@/lib/ats-scorer'
+import { getProjectBullets, getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { ExperienceItem, ResumeData, TailorAnalysis } from '@/types'
 
 type ApplyScope = 'all' | 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer'
@@ -61,6 +62,18 @@ function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
     ...prioritizedCarryForward,
     ...deprioritizedCarryForward,
   ])
+}
+
+function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
+  if ((data.skillSections?.length ?? 0) === 0) {
+    return [{ title: 'Core Skills', skills: mergedSkills }]
+  }
+
+  const [firstSection, ...rest] = data.skillSections ?? []
+  return [
+    { ...firstSection, skills: mergedSkills },
+    ...rest,
+  ]
 }
 
 function applyBulletRewritesToItems(
@@ -141,6 +154,18 @@ function applyProjectRewrites(data: ResumeData, rewrites: TailorAnalysis['bullet
         changed = true
         break
       }
+
+      const bulletIndex = getProjectBullets(project).findIndex(bullet => bullet.trim() === rewrite.original.trim())
+      if (bulletIndex !== -1) {
+        const bullets = [...getProjectBullets(project)]
+        bullets[bulletIndex] = rewrite.tailored.trim()
+        project.bullets = bullets
+        if (!project.description.trim() || project.description.trim() === rewrite.original.trim()) {
+          project.description = rewrite.tailored.trim()
+        }
+        changed = true
+        break
+      }
     }
   }
 
@@ -167,9 +192,11 @@ function applyScopeMutations(
   }
 
   if (scope === 'skills') {
-    const mergedSkills = mergeSkills(next.skills, analysis)
-    if (JSON.stringify(mergedSkills) !== JSON.stringify(next.skills)) {
+    const existingSkills = getResumeSkills(next)
+    const mergedSkills = mergeSkills(existingSkills, analysis)
+    if (JSON.stringify(mergedSkills) !== JSON.stringify(existingSkills)) {
       next.skills = mergedSkills
+      next.skillSections = mergeSkillSections(next, mergedSkills)
       changed = true
     }
   }
@@ -262,7 +289,7 @@ export function applyTailorAnalysisToResumeData(
   }
 
   return {
-    data: working,
+    data: syncResumeData(working),
     changed: true,
     touchedSections: Array.from(touchedSections),
     beforeScore: before.score,

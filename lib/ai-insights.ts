@@ -1,4 +1,5 @@
 import { scoreResume, type ScorerResult } from '@/lib/ats-scorer'
+import { syncResumeData } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 
 export interface InsightSuggestionLike {
@@ -74,14 +75,23 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
 
   if (sectionHint === 'skills') {
     const nextSkills = afterText.split(',').map(skill => skill.trim()).filter(Boolean)
+    const nextData = syncResumeData({
+      ...updated,
+      skillSections: updated.skillSections?.length
+        ? updated.skillSections.map((section, index) =>
+            index === 0
+              ? { ...section, skills: nextSkills }
+              : section
+          )
+        : [{ title: 'Core Skills', skills: nextSkills }],
+    })
     const unchanged =
-      nextSkills.length === updated.skills.length &&
-      nextSkills.every((skill, index) => skill === updated.skills[index])
+      nextSkills.length === nextData.skills.length &&
+      nextSkills.every((skill, index) => skill === nextData.skills[index])
 
     if (unchanged) return data
 
-    updated.skills = nextSkills
-    return updated
+    return nextData
   }
 
   if (sectionHint === 'projects') {
@@ -104,9 +114,9 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
 
   if (sectionHint === 'education') {
     for (const education of updated.education) {
-      const fields: Array<keyof typeof education> = ['institution', 'degree', 'field', 'graduationDate', 'gpa']
+      const fields: Array<keyof typeof education> = ['institution', 'degree', 'field', 'startDate', 'endDate', 'graduationDate', 'gpa']
       for (const field of fields) {
-        const currentValue = education[field]
+        const currentValue = education[field] ?? ''
         const replaced = replaceIfPresent(currentValue, beforeText, afterText)
         if (replaced.changed) {
           education[field] = replaced.value

@@ -21,6 +21,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/jobs',
   },
+  openGraph: {
+    type: 'website',
+    title: 'Remote Jobs & Resume-Matched Roles | Rezoomed',
+    description: 'Browse public job openings and find roles you can target with a stronger ATS-optimized resume and job-match workflow.',
+    url: '/jobs',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Remote Jobs & Resume-Matched Roles | Rezoomed',
+    description: 'Browse public job openings and find roles you can target with a stronger ATS-optimized resume and job-match workflow.',
+  },
 }
 
 export default async function JobsPage({

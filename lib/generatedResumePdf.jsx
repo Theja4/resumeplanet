@@ -1,4 +1,5 @@
 import { buildFirstPartyResumeMetadata } from '@/lib/firstPartyResumeMarker'
+import { getEducationDateLabel, getProjectBullets, getResumeSkills, normalizeSkillSections } from '@/lib/resume-data'
 
 const PT_TO_MM = 0.352778
 
@@ -66,7 +67,7 @@ function hasSectionContent(data, id) {
     case 'education':
       return data.education.length > 0
     case 'skills':
-      return data.skills.length > 0
+      return getResumeSkills(data).length > 0
     case 'projects':
       return data.projects.length > 0
     case 'certifications':
@@ -350,9 +351,10 @@ function renderEducationSection(writer, items) {
       after: 0.7,
     })
 
-    if (item.graduationDate) {
+    const educationDate = getEducationDateLabel(item)
+    if (educationDate) {
       writer.setY(startY)
-      writer.writeRightAlignedText(item.graduationDate, writer.pageWidth - writer.marginX, {
+      writer.writeRightAlignedText(educationDate, writer.pageWidth - writer.marginX, {
         fontSize: 9,
         color: [107, 114, 128],
       })
@@ -390,6 +392,8 @@ function renderProjectsSection(writer, items) {
         after: 0.9,
       })
     }
+
+    writer.writeBulletList(getProjectBullets(item), 4.5)
 
     if (item.technologies?.length) {
       writer.writeWrappedText(item.technologies.join(', '), {
@@ -438,7 +442,14 @@ function renderSection(writer, data, id) {
       renderEducationSection(writer, data.education)
       return
     case 'skills':
-      renderSimpleListSection(writer, 'Skills', [data.skills.join('  |  ')], value => value)
+      renderSimpleListSection(
+        writer,
+        'Skills',
+        normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
+          `${section.title ? `${section.title}: ` : ''}${section.skills.join('  |  ')}`
+        ),
+        value => value
+      )
       return
     case 'projects':
       renderProjectsSection(writer, data.projects)

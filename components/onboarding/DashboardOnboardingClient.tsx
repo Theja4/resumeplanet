@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import UploadZone from '@/components/resumes/UploadZone'
 import {
   DEFAULT_UNIVERSAL_CONFIG,
@@ -77,6 +78,8 @@ const EMPTY_EDUCATION_ITEM: EducationItem = {
   institution: '',
   degree: '',
   field: '',
+  startDate: '',
+  endDate: '',
   graduationDate: '',
   gpa: '',
 }
@@ -85,29 +88,7 @@ function textValue(value: string) {
   return value.trim()
 }
 
-function resumeDataToText(data: ResumeData) {
-  const parts: string[] = [
-    data.name,
-    data.currentRole,
-    data.summary,
-    data.email,
-    data.phone,
-    data.location,
-    data.linkedin,
-    data.website,
-  ]
-
-  for (const item of data.experience) {
-    parts.push(item.title, item.company, item.location, item.startDate, item.endDate, item.summary ?? '')
-    parts.push(...item.bullets)
-  }
-
-  for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.graduationDate, item.gpa)
-  }
-
-  return parts.map(part => part?.trim()).filter(Boolean).join('\n')
-}
+const resumeDataToText = resumeDataToPlainText
 
 function hasAnyResumeContent(data: ResumeData) {
   return Boolean(
@@ -131,6 +112,8 @@ function hasAnyResumeContent(data: ResumeData) {
         textValue(item.institution) ||
         textValue(item.degree) ||
         textValue(item.field) ||
+        textValue(item.startDate ?? '') ||
+        textValue(item.endDate ?? '') ||
         textValue(item.graduationDate) ||
         textValue(item.gpa)
       )
@@ -169,6 +152,8 @@ function cleanEducationItem(item: EducationItem): EducationItem | null {
     !textValue(item.institution) &&
     !textValue(item.degree) &&
     !textValue(item.field) &&
+    !textValue(item.startDate ?? '') &&
+    !textValue(item.endDate ?? '') &&
     !textValue(item.graduationDate) &&
     !textValue(item.gpa)
   ) {
@@ -179,13 +164,15 @@ function cleanEducationItem(item: EducationItem): EducationItem | null {
     institution: item.institution.trim(),
     degree: item.degree.trim(),
     field: item.field.trim(),
+    startDate: item.startDate?.trim() ?? '',
+    endDate: item.endDate?.trim() ?? '',
     graduationDate: item.graduationDate.trim(),
     gpa: item.gpa.trim(),
   }
 }
 
 function sanitizeOnboardingResumeData(data: ResumeData): ResumeData {
-  return {
+  return syncResumeData({
     ...data,
     name: data.name.trim(),
     email: data.email.trim(),
@@ -198,6 +185,7 @@ function sanitizeOnboardingResumeData(data: ResumeData): ResumeData {
     experience: data.experience.map(cleanExperienceItem).filter((item): item is ExperienceItem => Boolean(item)),
     education: data.education.map(cleanEducationItem).filter((item): item is EducationItem => Boolean(item)),
     skills: [],
+    skillSections: [],
     certifications: [],
     projects: [],
     languages: [],
@@ -207,7 +195,7 @@ function sanitizeOnboardingResumeData(data: ResumeData): ResumeData {
     publications: [],
     references: [],
     customSections: [],
-  }
+  })
 }
 
 function buildResumeTitle(data: ResumeData) {
@@ -727,9 +715,21 @@ export default function DashboardOnboardingClient({
                 placeholder="Computer Science"
               />
               <InputField
+                label="Start date"
+                value={item.startDate ?? ''}
+                onChange={(value) => updateEducationItem(index, { startDate: value })}
+                placeholder="Sep 2018"
+              />
+              <InputField
+                label="End date"
+                value={item.endDate ?? ''}
+                onChange={(value) => updateEducationItem(index, { endDate: value, graduationDate: value || item.graduationDate })}
+                placeholder="Present or May 2022"
+              />
+              <InputField
                 label="Graduation date"
                 value={item.graduationDate}
-                onChange={(value) => updateEducationItem(index, { graduationDate: value })}
+                onChange={(value) => updateEducationItem(index, { graduationDate: value, endDate: item.endDate || value })}
                 placeholder="May 2022"
               />
             </div>

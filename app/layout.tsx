@@ -38,18 +38,18 @@ export const metadata: Metadata = {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: 'Rezoomed helps job seekers improve resumes, boost ATS performance, and land more interviews.',
+  description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
   applicationName: SITE_NAME,
   metadataBase: new URL(siteUrl),
   alternates: {
-    canonical: './',
+    canonical: '/',
   },
   manifest: '/site.webmanifest',
   openGraph: {
     type: 'website',
     siteName: SITE_NAME,
     title: SITE_NAME,
-    description: 'Rezoomed helps job seekers improve resumes, boost ATS performance, and land more interviews.',
+    description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
     url: siteUrl,
     images: [
       {
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: SITE_NAME,
-    description: 'Rezoomed helps job seekers improve resumes, boost ATS performance, and land more interviews.',
+    description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
     images: ['/icon.png'],
   },
   icons: {
@@ -114,6 +114,19 @@ export default async function RootLayout({
     organizationJsonLd.sameAs = organizationSameAs
   }
 
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url: siteUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      logo: `${siteUrl}/icon.png`,
+    },
+    inLanguage: 'en',
+  }
+
   return (
     <html
       lang="en"
@@ -126,6 +139,10 @@ export default async function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
         {showCookieConsentBanner ? <CookieConsentBanner /> : null}
         <AffiliateReferralTracker />

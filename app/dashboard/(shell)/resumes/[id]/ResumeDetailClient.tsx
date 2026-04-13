@@ -7,6 +7,7 @@ import { ArrowLeft, BarChart2, Layout, Save, X, Plus, Trash2, PenLine } from 'lu
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { getEducationDateLabel, getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import { updateResumeData } from '../actions'
 import type { Resume, ATSScore, ResumeData, ExperienceItem, EducationItem } from '@/types'
 import { DashboardPageIntro } from '@/components/layout/DashboardSurface'
@@ -318,7 +319,7 @@ function EducationEditor({
   }
 
   function startAdd() {
-    setDraft({ institution: '', degree: '', field: '', graduationDate: '', gpa: '' })
+    setDraft({ institution: '', degree: '', field: '', startDate: '', endDate: '', graduationDate: '', gpa: '' })
     setEditIndex(items.length)
   }
 
@@ -340,7 +341,7 @@ function EducationEditor({
   if (editIndex !== null && draft) {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-indigo-200 p-4 bg-indigo-50/30">
-        {(['institution', 'degree', 'field', 'graduationDate', 'gpa'] as const).map((field) => (
+        {(['institution', 'degree', 'field', 'startDate', 'endDate', 'graduationDate', 'gpa'] as const).map((field) => (
           <div key={field} className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 capitalize">{field}</label>
             <input
@@ -370,7 +371,7 @@ function EducationEditor({
             <div>
               <p className="text-sm font-semibold text-gray-900">{item.institution}</p>
               <p className="text-sm text-gray-600">{item.degree}{item.field ? ` in ${item.field}` : ''}</p>
-              <p className="text-xs text-gray-400">{item.graduationDate}{item.gpa ? ` · GPA ${item.gpa}` : ''}</p>
+              <p className="text-xs text-gray-400">{getEducationDateLabel(item)}{item.gpa ? ` · GPA ${item.gpa}` : ''}</p>
             </div>
             <button onClick={() => remove(i)} className="text-gray-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100">
               <Trash2 size={12} />
@@ -399,13 +400,13 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
     resume.parsed_data ?? {
       name: '', email: '', phone: '', location: '', linkedin: '',
       website: '', summary: '', currentRole: '', experience: [], education: [],
-      skills: [], certifications: [], projects: [], languages: [],
+      skills: [], skillSections: [], certifications: [], projects: [], languages: [],
       volunteer: [], interests: [], awards: [], publications: [], references: [], customSections: [],
     }
   )
 
   async function updateField<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
-    const updated = { ...data, [key]: value }
+    const updated = syncResumeData({ ...data, [key]: value })
     setData(updated)
     await updateResumeData(resume.id, updated)
   }
@@ -513,8 +514,8 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
           </CardHeader>
           <CardContent>
             <SkillsEditor
-              skills={data.skills}
-              onSave={(skills) => updateField('skills', skills)}
+              skills={getResumeSkills(data)}
+              onSave={(skills) => updateField('skillSections', [{ title: 'Core Skills', skills }])}
             />
           </CardContent>
         </Card>

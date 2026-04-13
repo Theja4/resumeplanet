@@ -1,4 +1,5 @@
 import { callClaudeJSON } from '@/lib/claude'
+import { getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 import type { ATSResult, ATSSuggestion, ResumeData } from '@/types'
 
 const MATCH_SCORE_MODEL = 'deepseek/deepseek-v3.2'
@@ -229,7 +230,8 @@ function resumeDataToMatchContext(data: ResumeData) {
         linkedin: data.linkedin,
         website: data.website,
       },
-      skills: data.skills,
+      skills: getResumeSkills(data),
+      skillSections: data.skillSections,
       experience: data.experience.map(item => ({
         company: item.company,
         title: item.title,
@@ -241,6 +243,7 @@ function resumeDataToMatchContext(data: ResumeData) {
       projects: data.projects.map(item => ({
         name: item.name,
         description: item.description,
+        bullets: getProjectBullets(item),
         technologies: item.technologies,
       })),
       education: data.education,
@@ -484,9 +487,9 @@ function buildDeterministicFallback(jobDescription: string, resumeData: ResumeDa
   const evidenceSegments = [
     resumeData.currentRole,
     resumeData.summary,
-    ...resumeData.skills,
+    ...getResumeSkills(resumeData),
     ...resumeData.experience.flatMap(item => [item.title, item.company, ...item.bullets]),
-    ...resumeData.projects.flatMap(item => [item.name, item.description, ...(item.technologies ?? [])]),
+    ...resumeData.projects.flatMap(item => [item.name, item.description, ...getProjectBullets(item), ...(item.technologies ?? [])]),
     ...resumeData.education.flatMap(item => [item.degree, item.field, item.institution]),
   ]
     .map(item => item?.trim())

@@ -1,3 +1,4 @@
+import { getResumeSkills } from '@/lib/resume-data'
 import type { ResumeData, BuilderVisibility, ExperienceItem } from '@/types'
 
 /**
@@ -36,7 +37,8 @@ export function getVisibleResumeData(
 
     summary: v.sections['summary'] !== false ? data.summary : '',
 
-    skills: v.sections['skills'] !== false ? data.skills : [],
+    skills: v.sections['skills'] !== false ? getResumeSkills(data) : [],
+    skillSections: v.sections['skills'] !== false ? data.skillSections ?? [] : [],
 
     languages: v.sections['languages'] !== false ? data.languages : [],
 

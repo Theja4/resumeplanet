@@ -2,6 +2,7 @@ import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
 import { callClaudeJSON } from '@/lib/claude'
 import { extractPDFText } from '@/lib/pdfExtractor'
+import { syncResumeData } from '@/lib/resume-data'
 import { normalizeText, chunkText, postProcessResume } from './utils'
 
 const DEEPSEEK_RESUME_PARSER_MODEL = 'deepseek/deepseek-v3.2'
@@ -9,6 +10,7 @@ type ResumeArrayField =
   | 'experience'
   | 'education'
   | 'skills'
+  | 'skillSections'
   | 'certifications'
   | 'projects'
   | 'customSections'
@@ -104,17 +106,20 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
    - Multiple degrees from the same university = separate items.
 
 3. **PROJECTS**: Each named project is ONE item.
-   - Extract the project name, description, and technologies as a string array.
+   - Extract the project name, a short description, bullet points, and technologies as a string array.
 
 4. **CERTIFICATIONS / AWARDS / PUBLICATIONS**: Each distinct entry is ONE item.
 
-5. **SKILLS / LANGUAGES / INTERESTS / REFERENCES**: Each individual item is a string in the array.
+5. **SKILLS / LANGUAGES / INTERESTS / REFERENCES**:
+   - Return a flat "skills" array for compatibility.
+   - If skills are grouped under labels like "Product:", "Tools:", or "Collaboration:", also return "skillSections" with title + skills.
+   - Each individual item should still appear in the flat array.
 
 ### DATE FORMAT:
 - Normalize all dates to "MM/YYYY" format (e.g., "03/2020").
 - Month-only dates like "Jan 2020" → "01/2020".
 - Year-only dates like "2020" → "01/2020".
-- For ongoing/current positions use endDate or graduationDate: "Present".
+- For ongoing/current positions or education use endDate or graduationDate: "Present".
 - Leave dates as empty string if not found.
 
 ### NEGATIVE CONSTRAINTS:
@@ -148,11 +153,19 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
       "institution": string,
       "degree": string,
       "field": string,
+      "startDate": string,
+      "endDate": string,
       "graduationDate": string,
       "gpa": string
     }
   ],
   "skills": [string],
+  "skillSections": [
+    {
+      "title": string,
+      "skills": [string]
+    }
+  ],
   "certifications": [
     {
       "name": string,
@@ -164,6 +177,7 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
     {
       "name": string,
       "description": string,
+      "bullets": [string],
       "technologies": [string]
     }
   ],
@@ -239,7 +253,7 @@ const claudeParser: ResumeParser = {
 
     let accumulated: ResumeData = {
       name: '', email: '', phone: '', location: '', linkedin: '', website: '',
-      summary: '', currentRole: '', experience: [], education: [], skills: [], certifications: [],
+      summary: '', currentRole: '', experience: [], education: [], skills: [], skillSections: [], certifications: [],
       projects: [], languages: [], volunteer: [], interests: [], awards: [],
       publications: [], references: [], customSections: [],
     }
@@ -252,7 +266,7 @@ const claudeParser: ResumeParser = {
         timeoutMs: 180000,
       }).then((partial) => {
         console.log(`[AI Parser] Chunk ${i+1} merged successfully.`)
-        return { partial, error: null as null }
+        return { partial: partial ? syncResumeData(partial as ResumeData) : partial, error: null as null }
       }).catch((e) => {
         console.error(`[AI Parser] Chunk ${i+1} failed:`, e)
         return { partial: null, error: e }

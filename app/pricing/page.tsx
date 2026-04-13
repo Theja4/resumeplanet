@@ -33,6 +33,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/pricing',
   },
+  openGraph: {
+    type: 'website',
+    title: 'Resume Builder Pricing | Rezoomed',
+    description: 'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
+    url: '/pricing',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Resume Builder Pricing | Rezoomed',
+    description: 'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
+  },
 }
 
 export default async function PublicPricingPage({

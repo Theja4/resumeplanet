@@ -9,15 +9,18 @@ import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'AI Resume Builder & ATS Checker | Rezoomed',
+  title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
   description:
-    'Build ATS-friendly resumes, optimize for job descriptions, and improve interview odds with Rezoomed AI resume builder and ATS checker.',
+    'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
   keywords: [
     'ai resume builder',
     'ats checker',
     'resume optimization',
     'ats resume checker',
     'resume builder',
+    'resume match score',
+    'job description match',
+    'metadata enhancer',
     'job matching',
     'resume tailoring',
     'resume keyword optimization',
@@ -25,6 +28,19 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
+    description: 'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
+    url: '/',
+    images: [{ url: '/product-hero-v2.png' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
+    description: 'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
+    images: ['/product-hero-v2.png'],
   },
 }
 
@@ -43,6 +59,11 @@ const FAQS = [
     question: 'Can Rezoomed tailor my resume to a job description?',
     answer:
       'Yes. Rezoomed can compare your resume to a target job description, surface gaps, and help rewrite bullets and summaries around role-specific keywords.',
+  },
+  {
+    question: 'Does Rezoomed include more than a resume builder?',
+    answer:
+      'Yes. Rezoomed also includes ATS checking, resume match score, resume tailoring, metadata enhancement, and export workflows for job seekers.',
   },
   {
     question: 'Is Rezoomed useful for ATS resume optimization?',
@@ -136,7 +157,7 @@ export default async function LandingPage() {
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
     description:
-      'AI resume builder and ATS checker for resume optimization, job matching, and role-specific resume tailoring.',
+      'AI resume builder, ATS checker, match score, and resume tailoring platform for job seekers.',
     url: siteUrl,
     image: `${siteUrl}/product-hero-v2.png`,
     brand: {
@@ -150,6 +171,14 @@ export default async function LandingPage() {
       availability: 'https://schema.org/InStock',
       url: `${siteUrl}/pricing`,
     },
+    featureList: [
+      'AI resume builder',
+      'ATS checker',
+      'Resume match score',
+      'Resume tailoring',
+      'PDF metadata enhancer',
+      'Cover letter generator',
+    ],
   }
   const faqJsonLd = {
     '@context': 'https://schema.org',
@@ -231,14 +260,14 @@ export default async function LandingPage() {
               <WandSparkles size={16} strokeWidth={2.5} className="opacity-90" />
               AI-Powered Career Revolution
             </div>
-            <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-6xl md:text-[6.5rem] lg:text-[7.5rem]">
-              Build an ATS-ready resume.
+            <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-5xl md:text-[5.5rem] lg:text-[6.5rem]">
+              Build and tailor ATS-ready resumes.
               <br />
-              <span className="text-[#008f44] italic">Tailor faster. Land more interviews.</span>
+              <span className="text-[#008f44] italic">Check fit before you apply.</span>
             </h1>
             <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
-              Optimize your resume for ATS, match job descriptions, and export recruiter-ready applications with
-              <strong className="font-bold text-on-background"> Rezoomed&apos;s AI resume builder</strong>.
+              Build ATS-friendly resumes, check ATS score, match job descriptions, and export recruiter-ready applications with
+              <strong className="font-bold text-on-background"> Rezoomed</strong>.
             </p>
             <div className="flex flex-col items-center gap-3 pt-2">
               <div className="flex flex-wrap justify-center gap-3">
@@ -262,10 +291,14 @@ export default async function LandingPage() {
 
         <LandingFeatures />
 
-        <section className="bg-white px-6 py-24">
-          <div className="mx-auto max-w-5xl space-y-10">
+        <section className="relative overflow-hidden bg-white px-6 py-24">
+          <div className="pointer-events-none absolute left-[10%] top-[-100px] h-[800px] w-[800px] rounded-full bg-[radial-gradient(circle,rgba(163,255,179,0.8)_0%,transparent_70%)] login-aurora" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[1000px] w-[1200px] rounded-full bg-[radial-gradient(circle,rgba(2,109,50,0.3)_0%,transparent_70%)] login-aurora-two" />
+          <div className="pointer-events-none absolute right-[5%] bottom-[-50px] h-[700px] w-[700px] rounded-full bg-[radial-gradient(circle,rgba(123,211,252,0.6)_0%,transparent_70%)] login-aurora" style={{ animationDelay: '4s', animationDuration: '20s' }} />
+          <div className="pointer-events-none absolute left-[40%] top-[20%] h-[500px] w-[500px] rounded-full bg-[radial-gradient(circle,rgba(220,255,120,0.7)_0%,transparent_70%)] login-aurora-two" style={{ animationDelay: '8s', animationDuration: '26s' }} />
+          <div className="mx-auto max-w-5xl space-y-10 relative z-10">
             <div className="max-w-3xl space-y-3">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">Resume SEO + CTR</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">End-to-End Resume Optimization</p>
               <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
                 Why job seekers use Rezoomed for resume optimization
               </h2>

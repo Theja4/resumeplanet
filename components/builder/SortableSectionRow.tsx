@@ -20,6 +20,7 @@ import ReferencesEditor from './ReferencesEditor'
 import SubItemList from './SubItemList'
 import CustomTextEditor from './CustomTextEditor'
 import CustomTagsEditor from './CustomTagsEditor'
+import { getResumeSkills } from '@/lib/resume-data'
 
 const SECTION_CONFIG: Record<string, { label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   contact:        { label: 'Contact Info',    Icon: User },
@@ -52,7 +53,7 @@ function sectionHasData(sectionId: string, data: ResumeData): boolean {
     case 'summary':        return !!data.summary
     case 'experience':     return data.experience.length > 0
     case 'education':      return data.education.length > 0
-    case 'skills':         return data.skills.length > 0
+    case 'skills':         return getResumeSkills(data).length > 0
     case 'projects':       return data.projects.length > 0
     case 'certifications': return data.certifications.length > 0
     case 'volunteer':      return data.volunteer.length > 0
