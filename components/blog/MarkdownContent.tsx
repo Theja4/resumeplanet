@@ -28,20 +28,20 @@ function renderInlineMarkdown(text: string): ReactNode[] {
       tokens.push(
         <code
           key={`code-${match.index}`}
-          className="rounded-md bg-[#026d32]/8 px-[0.4em] py-[0.15em] font-mono text-[0.875em] text-[#005224] font-semibold"
+          className="rounded-md bg-black/6 px-[0.4em] py-[0.15em] font-mono text-[0.875em] font-semibold text-current"
         >
           {match[4]}
         </code>
       )
     } else if (match[5] || match[6]) {
       tokens.push(
-        <strong key={`bold-${match.index}`} className="font-black text-zinc-900">
+        <strong key={`bold-${match.index}`} className="font-black text-current">
           {match[5] || match[6]}
         </strong>
       )
     } else if (match[7] || match[8]) {
       tokens.push(
-        <em key={`em-${match.index}`} className="italic text-zinc-700">
+        <em key={`em-${match.index}`} className="italic text-current">
           {match[7] || match[8]}
         </em>
       )
@@ -66,6 +66,60 @@ function renderInlineMarkdown(text: string): ReactNode[] {
   return tokens
 }
 
+function renderInlineImageFigure(src: string, key: string) {
+  return (
+    <figure
+      key={key}
+      className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-[1.6rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(241,247,243,0.94))] p-2 shadow-[0_20px_60px_rgba(18,24,21,0.08)]"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_30%)]" />
+      <div className="relative overflow-hidden rounded-[1.1rem] border border-black/5 bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" className="mx-auto h-auto max-h-[520px] w-full object-contain" />
+      </div>
+    </figure>
+  )
+}
+
+function slugifyHeading(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function renderSpotlightListCard(title: string, items: string[], key: string) {
+  return (
+    <div
+      key={key}
+      className="relative my-3 overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(160deg,#050b07_0%,#0a1710_55%,#10261a_100%)] p-6 text-white shadow-[0_28px_90px_rgba(4,10,7,0.32)]"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,192,107,0.14),transparent_24%)]" />
+      <div className="relative">
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">Preparation card</p>
+        <h4 className="mt-2 text-2xl font-black tracking-tight text-white">{title}</h4>
+        <div className="mt-4 grid gap-2.5">
+          {items.map(item => (
+            <div
+              key={item}
+              className="flex items-start gap-3 rounded-[1.1rem] border border-white/8 bg-white/6 px-4 py-3 backdrop-blur-sm"
+            >
+              <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#A3FFB3]" />
+              <p className="text-sm leading-6 text-white/86">{renderInlineMarkdown(item)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function isCompactLabelParagraph(text: string) {
+  return text.length <= 72 && text.endsWith(':')
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MarkdownContent({
@@ -87,6 +141,32 @@ export default function MarkdownContent({
     const line    = rawLine.trim()
 
     if (!line) { index++; continue }
+
+    // ── Spotlight card marker ─────────────────────────────────────────────
+    if (line.startsWith('!!! ')) {
+      const title = line.replace(/^!!!\s+/, '').trim()
+      index++
+
+      while (index < lines.length && !lines[index].trim()) index++
+
+      const items: string[] = []
+      while (index < lines.length && /^\s*[-*+]\s+/.test(lines[index])) {
+        items.push(lines[index].replace(/^\s*[-*+]\s+/, '').trim())
+        index++
+      }
+
+      if (items.length > 0) {
+        blocks.push(renderSpotlightListCard(title, items, `spotlight-${blocks.length}`))
+        continue
+      }
+
+      blocks.push(
+        <p key={`spotlight-fallback-${blocks.length}`} className="text-[1.05rem] leading-[1.9] text-zinc-600">
+          {renderInlineMarkdown(title)}
+        </p>
+      )
+      continue
+    }
 
     // ── Code block ────────────────────────────────────────────────────────
     if (line.startsWith('```')) {
@@ -149,42 +229,46 @@ export default function MarkdownContent({
       if (headers.length === 2 && isDo(headers[0]) && isDont(headers[1])) {
         // ── Premium Do's & Don'ts card ─────────────────────────────────
         blocks.push(
-          <div key={`dosdont-${blocks.length}`} className="my-2 overflow-hidden rounded-[1.75rem] border border-zinc-100 shadow-[0_8px_40px_rgba(0,0,0,0.07)]">
+          <div
+            key={`dosdont-${blocks.length}`}
+            className="relative isolate my-2 overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-[linear-gradient(155deg,#026d32_0%,#0b7a3d_42%,#0d3d25_100%)] text-white ring-1 ring-black/6"
+            style={{ clipPath: 'inset(0 round 2rem)' }}
+          >
             {/* Header row */}
-            <div className="grid grid-cols-2">
-              <div className="flex items-center gap-2.5 bg-[#026d32] px-6 py-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white text-xs font-black">✓</span>
+            <div className="relative grid grid-cols-2 border-b border-white/10">
+              <div className="flex items-center gap-2.5 rounded-tl-[calc(2rem-1px)] bg-white/6 px-6 py-4 backdrop-blur-sm">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/16 text-white text-xs font-black">✓</span>
                 <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">
                   {headers[0]}
                 </span>
               </div>
-              <div className="flex items-center gap-2.5 bg-zinc-900 px-6 py-4 border-l border-zinc-800">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/70 text-xs font-black">✕</span>
-                <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/70">
+              <div className="flex items-center gap-2.5 rounded-tr-[calc(2rem-1px)] border-l border-white/10 bg-black/14 px-6 py-4 backdrop-blur-sm">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/78 text-xs font-black">✕</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/78">
                   {headers[1]}
                 </span>
               </div>
             </div>
 
             {/* Body rows */}
-            <div className="divide-y divide-zinc-100 bg-white">
+            <div className="relative divide-y divide-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))]">
               {body.map((row, ri) => (
-                <div key={ri} className="grid grid-cols-2 divide-x divide-zinc-100">
+                <div key={ri} className="grid grid-cols-2 divide-x divide-white/8">
                   {/* Do cell */}
-                  <div className="flex items-start gap-3 px-6 py-4 bg-[#f0fdf4]/60">
-                    <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#026d32]/10">
-                      <span className="text-[#026d32] text-[10px] font-black">✓</span>
+                  <div className="flex items-start gap-3 bg-white/7 px-6 py-4">
+                    <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#A3FFB3]/18">
+                      <span className="text-[#A3FFB3] text-[10px] font-black">✓</span>
                     </span>
-                    <p className="text-sm leading-relaxed text-zinc-700">
+                    <p className="text-sm leading-relaxed text-white/88">
                       {renderInlineMarkdown(row[0] ?? '')}
                     </p>
                   </div>
                   {/* Don't cell */}
-                  <div className="flex items-start gap-3 px-6 py-4 bg-zinc-50/60">
-                    <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
-                      <span className="text-red-500 text-[10px] font-black">✕</span>
+                  <div className="flex items-start gap-3 bg-black/10 px-6 py-4">
+                    <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10">
+                      <span className="text-white/78 text-[10px] font-black">✕</span>
                     </span>
-                    <p className="text-sm leading-relaxed text-zinc-500">
+                    <p className="text-sm leading-relaxed text-white/70">
                       {renderInlineMarkdown(row[1] ?? '')}
                     </p>
                   </div>
@@ -196,20 +280,23 @@ export default function MarkdownContent({
       } else {
         // ── Standard styled table ────────────────────────────────────────
         blocks.push(
-          <div key={`table-${blocks.length}`} className="my-2 overflow-x-auto rounded-[1.25rem] border border-zinc-100 shadow-sm">
+          <div
+            key={`table-${blocks.length}`}
+            className="my-2 overflow-x-auto rounded-[1.5rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(241,247,243,0.94))] shadow-[0_16px_50px_rgba(18,24,21,0.07)]"
+          >
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-zinc-50 border-b border-zinc-100">
+                <tr className="border-b border-black/5 bg-[linear-gradient(90deg,rgba(2,109,50,0.09),rgba(163,255,179,0.12))]">
                   {headers.map((h, hi) => (
-                    <th key={hi} className="px-5 py-3.5 text-left text-[11px] font-black uppercase tracking-[0.16em] text-zinc-500">
+                    <th key={hi} className="px-5 py-3.5 text-left text-[11px] font-black uppercase tracking-[0.16em] text-[#026d32]">
                       {renderInlineMarkdown(h)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-50 bg-white">
+              <tbody className="divide-y divide-black/5 bg-white/80">
                 {body.map((row, ri) => (
-                  <tr key={ri} className="hover:bg-zinc-50/50 transition-colors">
+                  <tr key={ri} className="transition-colors hover:bg-[#f3fbf5]">
                     {row.map((cell, ci) => (
                       <td key={ci} className={`px-5 py-3.5 text-zinc-600 leading-relaxed ${ci === 0 ? 'font-semibold text-zinc-800' : ''}`}>
                         {renderInlineMarkdown(cell)}
@@ -253,7 +340,7 @@ export default function MarkdownContent({
       const cls: Record<number, string> = {
         1: 'text-3xl sm:text-4xl font-black tracking-tight text-zinc-900 mt-6 mb-1 leading-[1.1]',
         2: 'text-2xl sm:text-3xl font-black tracking-tight text-zinc-900 mt-8 mb-2 leading-[1.15]',
-        3: 'text-xl font-black tracking-tight text-zinc-900 mt-6 mb-1 leading-snug',
+        3: 'text-[1.35rem] font-black tracking-tight text-zinc-900 mt-5 mb-2 leading-snug',
         4: 'text-base font-black uppercase tracking-[0.14em] text-[#026d32] mt-4',
         5: 'text-sm font-black uppercase tracking-[0.14em] text-zinc-500 mt-3',
         6: 'text-xs font-black uppercase tracking-widest text-zinc-400 mt-2',
@@ -267,7 +354,7 @@ export default function MarkdownContent({
           {level === 3 && (
             <div className="mb-2 mt-6 h-0.5 w-6 rounded-full bg-[#026d32]/30" />
           )}
-          <Tag className={cls[level] ?? cls[4]}>
+          <Tag id={level <= 3 ? slugifyHeading(text) : undefined} className={cls[level] ?? cls[4]}>
             {renderInlineMarkdown(text)}
           </Tag>
         </div>
@@ -358,39 +445,43 @@ export default function MarkdownContent({
           const dontsP = [...donts, ...Array(len - donts.length).fill('')]
 
           blocks.push(
-            <div key={`dosdont-${blocks.length}`} className="my-2 overflow-hidden rounded-[1.75rem] border border-zinc-100 shadow-[0_8px_40px_rgba(0,0,0,0.07)]">
+            <div
+              key={`dosdont-${blocks.length}`}
+              className="relative isolate my-2 overflow-hidden rounded-[2rem] border border-emerald-400/20 bg-[linear-gradient(155deg,#026d32_0%,#0b7a3d_42%,#0d3d25_100%)] text-white ring-1 ring-black/6"
+              style={{ clipPath: 'inset(0 round 2rem)' }}
+            >
               {/* Headers */}
-              <div className="grid grid-cols-2">
-                <div className="flex items-center gap-2.5 bg-[#026d32] px-6 py-4">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-white text-xs font-black">✓</span>
+              <div className="relative grid grid-cols-2 border-b border-white/10">
+                <div className="flex items-center gap-2.5 rounded-tl-[calc(2rem-1px)] bg-white/6 px-6 py-4 backdrop-blur-sm">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/16 text-white text-xs font-black">✓</span>
                   <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white">Include</span>
                 </div>
-                <div className="flex items-center gap-2.5 bg-zinc-900 px-6 py-4 border-l border-zinc-800">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/70 text-xs font-black">✕</span>
-                  <span className="text-[11px] font-black uppercase tracking-[0.22em] text-white/70 line-clamp-1">{dontLabel}</span>
+                <div className="flex items-center gap-2.5 rounded-tr-[calc(2rem-1px)] border-l border-white/10 bg-black/14 px-6 py-4 backdrop-blur-sm">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-white/78 text-xs font-black">✕</span>
+                  <span className="line-clamp-1 text-[11px] font-black uppercase tracking-[0.22em] text-white/78">{dontLabel}</span>
                 </div>
               </div>
               {/* Rows */}
-              <div className="divide-y divide-zinc-100 bg-white">
+              <div className="relative divide-y divide-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.05))]">
                 {dosP.map((doItem, ri) => (
-                  <div key={ri} className="grid grid-cols-2 divide-x divide-zinc-100">
-                    <div className="flex items-start gap-3 px-6 py-4 bg-[#f0fdf4]/50">
+                  <div key={ri} className="grid grid-cols-2 divide-x divide-white/8">
+                    <div className="flex items-start gap-3 bg-white/7 px-6 py-4">
                       {doItem ? (
                         <>
-                          <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#026d32]/10">
-                            <span className="text-[#026d32] text-[10px] font-black">✓</span>
+                          <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#A3FFB3]/18">
+                            <span className="text-[#A3FFB3] text-[10px] font-black">✓</span>
                           </span>
-                          <p className="text-sm leading-relaxed text-zinc-700">{renderInlineMarkdown(doItem)}</p>
+                          <p className="text-sm leading-relaxed text-white/88">{renderInlineMarkdown(doItem)}</p>
                         </>
                       ) : null}
                     </div>
-                    <div className="flex items-start gap-3 px-6 py-4 bg-zinc-50/50">
+                    <div className="flex items-start gap-3 bg-black/10 px-6 py-4">
                       {dontsP[ri] ? (
                         <>
-                          <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100">
-                            <span className="text-red-500 text-[10px] font-black">✕</span>
+                          <span className="mt-[3px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10">
+                            <span className="text-white/78 text-[10px] font-black">✕</span>
                           </span>
-                          <p className="text-sm leading-relaxed text-zinc-500">{renderInlineMarkdown(dontsP[ri])}</p>
+                          <p className="text-sm leading-relaxed text-white/70">{renderInlineMarkdown(dontsP[ri])}</p>
                         </>
                       ) : null}
                     </div>
@@ -408,11 +499,19 @@ export default function MarkdownContent({
       // advanced past the separator — it will be re-encountered by the outer loop
       // and rendered as a paragraph (the expected fallback behaviour).
       blocks.push(
-        <ul key={`ul-${blocks.length}`} className="space-y-3 my-1">
+        <ul
+          key={`ul-${blocks.length}`}
+          className="my-2 w-full max-w-[34rem] space-y-2.5 rounded-[1.35rem] border border-black/6 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.9))] px-5 py-4 shadow-[0_10px_28px_rgba(18,24,21,0.04)]"
+        >
           {dos.map((item, i) => (
-            <li key={i} className="flex items-start gap-3.5 text-[1.05rem] leading-[1.8] text-zinc-600">
-              <span className="mt-[7px] flex h-[7px] w-[7px] shrink-0 rounded-full bg-[#026d32]" />
-              <span>{renderInlineMarkdown(item)}</span>
+            <li
+              key={i}
+              className={`flex items-start gap-3 text-[1rem] leading-[1.65] text-zinc-700 ${i !== dos.length - 1 ? 'border-b border-black/6 pb-2.5' : ''}`}
+            >
+              <span className="mt-[7px] flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#026d32]/10">
+                <span className="h-2 w-2 rounded-full bg-[#026d32]" />
+              </span>
+              <span className="min-w-0">{renderInlineMarkdown(item)}</span>
             </li>
           ))}
         </ul>
@@ -429,13 +528,19 @@ export default function MarkdownContent({
       }
 
       blocks.push(
-        <ol key={`ol-${blocks.length}`} className="space-y-4 my-1">
+        <ol
+          key={`ol-${blocks.length}`}
+          className="my-2 w-full max-w-[34rem] space-y-2.5 rounded-[1.35rem] border border-black/6 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.9))] px-5 py-4 shadow-[0_10px_28px_rgba(18,24,21,0.04)]"
+        >
           {items.map((item, i) => (
-            <li key={i} className="flex items-start gap-4 text-[1.05rem] leading-[1.8] text-zinc-600">
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#026d32] text-[11px] font-black text-white shadow-sm">
+            <li
+              key={i}
+              className={`flex items-start gap-3.5 text-[1rem] leading-[1.65] text-zinc-700 ${i !== items.length - 1 ? 'border-b border-black/6 pb-2.5' : ''}`}
+            >
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#026d32] text-[11px] font-black text-white shadow-sm">
                 {i + 1}
               </span>
-              <span className="pt-0.5">{renderInlineMarkdown(item)}</span>
+              <span className="min-w-0 pt-0.5">{renderInlineMarkdown(item)}</span>
             </li>
           ))}
         </ol>
@@ -462,6 +567,19 @@ export default function MarkdownContent({
 
     const paraText = paraLines.join(' ')
 
+    if (isCompactLabelParagraph(paraText)) {
+      blocks.push(
+        <p
+          key={`label-${blocks.length}`}
+          className="mb-1 text-[1.02rem] font-black tracking-tight text-zinc-900"
+        >
+          {renderInlineMarkdown(paraText)}
+        </p>
+      )
+      isFirst = false
+      continue
+    }
+
     // First paragraph gets lead treatment
     if (isFirst) {
       isFirst = false
@@ -479,23 +597,30 @@ export default function MarkdownContent({
     }
   }
 
-  // Append any sidebar inline images not already rendered
-  if (inlineImages.length > 0) {
-    blocks.push(
-      <div key="inline-imgs" className="mt-4 grid gap-5">
-        {inlineImages.map(src => (
-          <figure key={src} className="overflow-hidden rounded-[1.25rem] border border-zinc-100 shadow-sm">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" className="h-auto w-full object-cover" />
-          </figure>
-        ))}
-      </div>
-    )
+  const renderedBlocks: ReactNode[] = []
+  let imageIndex = 0
+  const midPoint = Math.max(2, Math.floor(blocks.length / 2))
+
+  blocks.forEach((block, blockIndex) => {
+    renderedBlocks.push(block)
+
+    const shouldInsertImage =
+      imageIndex < inlineImages.length && (blockIndex === 1 || blockIndex === midPoint)
+
+    if (shouldInsertImage) {
+      renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-${blockIndex}`))
+      imageIndex += 1
+    }
+  })
+
+  while (imageIndex < inlineImages.length) {
+    renderedBlocks.push(renderInlineImageFigure(inlineImages[imageIndex], `inline-img-tail-${imageIndex}`))
+    imageIndex += 1
   }
 
   return (
     <div className={`space-y-7 ${className}`.trim()}>
-      {blocks}
+      {renderedBlocks}
     </div>
   )
 }

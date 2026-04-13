@@ -141,169 +141,6 @@ If login redirects back to `/auth/login?error=access_denied`, check that:
 
 ---
 
-## 8. Set up Stripe payments
-
-### Step A — Create a Stripe account and get API keys
-
-1. Go to [https://stripe.com](https://stripe.com) and sign in (or create a free account).
-2. In the Stripe dashboard, make sure you are in **Test mode** (toggle in the top-right).
-3. Click **Developers → API keys** in the left sidebar.
-4. Copy the following into your `.env.local`:
-   - **Publishable key** → not required server-side (ignore for now)
-   - **Secret key** → `STRIPE_SECRET_KEY`
-
-### Step B — Create a webhook endpoint (for local development)
-
-Use the Stripe CLI to forward webhook events to your local server.
-
-1. Install the Stripe CLI: https://stripe.com/docs/stripe-cli
-2. Log in:
-   ```bash
-   stripe login
-   ```
-3. In a separate terminal, start the webhook forwarder:
-   ```bash
-   stripe listen --forward-to localhost:3000/api/stripe/webhook
-   ```
-4. Copy the **webhook signing secret** printed in the output (starts with `whsec_`) into your `.env.local`:
-   - `STRIPE_WEBHOOK_SECRET`
-
-For production, create a webhook endpoint in the Stripe dashboard (**Developers → Webhooks → Add endpoint**) pointing to `https://yourdomain.com/api/stripe/webhook` and subscribe to these events:
-- `checkout.session.completed`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `invoice.payment_failed`
-
-### Step C — Create a Pro subscription product
-
-1. In the Stripe dashboard, click **Product catalogue → Add product**.
-2. Name: `Rezoomed Pro`
-3. Pricing model: **Recurring**, **Monthly**, price: `$12.00 USD`.
-4. Click **Save product**.
-5. On the product page, copy the **Price ID** (starts with `price_`) into your `.env.local`:
-   - `STRIPE_PRO_PRICE_ID`
-
-### Step D — Create a Billing Portal configuration
-
-1. In the Stripe dashboard, click **Settings → Billing → Customer portal**.
-2. Enable the portal and configure the features you want (cancel subscription, update payment method, view invoices).
-3. Click **Save**.
-
-No additional environment variable is required — the portal is enabled by default for your Stripe account.
-
-### Step E — Add the app URL
-
-Add your application base URL to `.env.local` so Stripe can redirect back after checkout:
-
-```
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-For production, set this to your deployed domain (e.g. `https://resumai.com`).
-
-### Verify Stripe is working
-
-1. Start the dev server (`npm run dev`) and the Stripe CLI forwarder in parallel.
-2. Go to `/dashboard/billing` and click **Upgrade to Pro — $12/mo**.
-3. You should be redirected to a Stripe Checkout page. Use test card `4242 4242 4242 4242`, any future expiry, any CVC.
-4. After payment you should land back on `/dashboard/billing?upgraded=true` with a success banner.
-5. Check the Stripe CLI terminal — you should see a `checkout.session.completed` event logged.
-6. Refresh the billing page — your plan badge should now show **Pro**.
-
-**Test card numbers:**
-| Scenario | Card number |
-|----------|-------------|
-| Success | `4242 4242 4242 4242` |
-| Requires authentication | `4000 0025 0000 3155` |
-| Declined | `4000 0000 0000 9995` |
-
----
-
-## 8. Running a promotion
-
-### Create the coupon in Stripe
-
-1. Go to **Stripe dashboard → Customers → Coupons → Create coupon**
-2. Set `percent_off` or `amount_off`, duration (`once` / `repeating` / `forever`), and any redemption limits
-3. Copy the **Coupon ID** (starts with `coupon_...` or a random string)
-
-### Optionally create a promo code
-
-1. On the coupon page → **Add promotion code**
-2. Set a human-readable code string, e.g. `DIWALI50`
-3. Set redemption limits if needed
-
-### Add to pricing.ts
-
-Add an entry to `PROMOTIONS[]` in `/lib/pricing.ts`:
-
-```ts
-{
-  id: 'my-promo',
-  name: 'My Promo',
-  stripeCouponId: process.env.STRIPE_COUPON_MY_PROMO ?? '',
-  stripePromoCode: 'MYCODE',        // the code string from Stripe
-  discountType: 'percent',
-  discountValue: 20,
-  appliesTo: 'monthly',             // 'all' | price option id
-  overrideDisplay: { displayPrice: 9.60, actualPrice: 12 },
-  label: 'My Promo',
-  badge: '20% OFF',
-  headline: 'Special offer',
-  subheadline: '20% off your first month.',
-  ctaLabel: 'Claim 20% off →',
-  disclaimerText: 'First month only. Renews at $12/mo.',
-  startDate: '2026-11-01',          // ISO date, or omit for always-on
-  endDate:   '2026-11-05',
-  isExitIntent: true,
-  isBanner: true,
-  isAutoApply: true,
-  exitIntentTimerSeconds: 600,
-  bannerBgColor: 'bg-purple-600',
-  bannerTextColor: 'text-white',
-},
-```
-
-### Add the env var
-
-```
-STRIPE_COUPON_MY_PROMO=coupon_xxx
-```
-
-### Deploy
-
-The promotion activates automatically on `startDate` and deactivates after `endDate`. No code changes needed.
-
----
-
-## 9. Adding a new billing interval
-
-1. **Create the price in Stripe**: Products → ResumAI Pro → **Add price** → set interval (week / month / year) → copy the Price ID
-
-2. **Add the env var**:
-   ```
-   STRIPE_PRO_PRICE_INTERVAL=price_xxx
-   ```
-
-3. **Add to `PRO_PLAN.prices[]`** in `/lib/pricing.ts`:
-   ```ts
-   {
-     id: 'quarterly',
-     stripePriceId: process.env.STRIPE_PRO_PRICE_QUARTERLY ?? '',
-     interval: 'month',
-     intervalCount: 3,
-     display: { displayPrice: 29, actualPrice: 36, currency: 'USD', currencySymbol: '$' },
-     label: 'Quarterly',
-     badge: 'Save 20%',
-     isDefault: false,
-     isHidden: false,
-     perMonthEquivalent: 9.67,
-     savingsNote: 'Save $7 vs monthly',
-   },
-   ```
-
-4. **Deploy.** The toggle appears on the pricing page automatically.
-
 ## 8. Paddle Setup
 
 Paddle acts as Merchant of Record — they handle all international VAT, GST, and sales tax automatically. This is the right choice for an Indian founder selling globally.
@@ -333,6 +170,8 @@ In Paddle dashboard → Catalog → Products:
 Paddle dashboard → Developer → Authentication:
 - API key → `PADDLE_API_KEY`
 - Client-side token → `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`
+- Set `NEXT_PUBLIC_PADDLE_ENVIRONMENT=sandbox` for local/sandbox testing
+- Set `NEXT_PUBLIC_APP_URL=http://localhost:3000` locally
 
 ### Set up webhook (local testing)
 Use ngrok to expose your local server:
@@ -371,9 +210,40 @@ Test card: `4242 4242 4242 4242` (any future expiry, any CVC)
 1. Switch Paddle account to live mode
 2. Update env vars to production keys
 3. Set `NEXT_PUBLIC_PADDLE_ENVIRONMENT=production`
-4. Update webhook URL to your production domain
+4. Update webhook URL to `https://www.rezoomed.com/api/webhooks/paddle`
+5. Set `NEXT_PUBLIC_APP_URL=https://www.rezoomed.com`
 
-## 9. Running a Promotion
+---
+
+## 9. PostHog Production Analytics
+
+The app already includes client-side PostHog initialization and browser event capture. For the current browser-only setup, add these Vercel environment variables:
+
+```bash
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+NEXT_PUBLIC_APP_URL=https://www.rezoomed.com
+```
+
+Optional:
+
+```bash
+POSTHOG_HOST=https://us.i.posthog.com
+```
+
+Notes:
+
+- `NEXT_PUBLIC_POSTHOG_KEY` is the browser/project key used by `posthog-js`.
+- If you later want backend webhook events in PostHog as well, add `POSTHOG_API_KEY=phx_...`.
+- If you use the EU PostHog region, replace the host values with the EU ingestion host.
+
+Recommended checks after deploy:
+
+1. Open the live site and confirm pageviews appear in PostHog.
+2. Complete a signup/login flow and verify browser events appear.
+3. Confirm pricing/blog interaction events arrive from the client.
+
+## 10. Running a Promotion
 
 To activate a promotion (e.g. a discount code campaign):
 
@@ -385,7 +255,7 @@ To activate a promotion (e.g. a discount code campaign):
 6. Set the env var (e.g. `PADDLE_DISCOUNT_EXIT_DEFAULT=dsc_...`)
 7. Deploy — promotion activates on `startDate` automatically
 
-## 10. Adding a New Billing Interval
+## 11. Adding a New Billing Interval
 
 1. Create new price in Paddle dashboard (same Pro product)
 2. Copy the `pri_...` ID

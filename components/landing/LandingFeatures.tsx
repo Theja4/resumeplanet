@@ -556,7 +556,7 @@ const BENTO = [
 
 export default function LandingFeatures() {
   return (
-    <div>
+    <div id="features">
 
       {/* ── Stats bar ───────────────────────────────────────────────────────── */}
       <section className="relative py-14 px-6 overflow-hidden bg-gradient-to-b from-white via-[#f0fdf4] to-white border-y border-green-100/60">

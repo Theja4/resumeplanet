@@ -4,10 +4,36 @@ import { ArrowRight, Clock } from 'lucide-react'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { estimateReadTime, formatBlogDate, getBlogMediaFallback, getPublishedBlogPosts } from '@/lib/blog'
+import { buildBlogIndexKeywords } from '@/lib/blog/seo'
+import { getSiteUrl } from '@/lib/site'
 
-export const metadata: Metadata = {
-  title: 'Blog | Rezoomed',
-  description: 'Insights, product updates, and job-search strategy from the Rezoomed team.',
+export async function generateMetadata(): Promise<Metadata> {
+  const posts = await getPublishedBlogPosts()
+  const siteUrl = getSiteUrl()
+  const featured = posts[0] ?? null
+  const image = featured?.cover_image_url || (featured ? getBlogMediaFallback(featured.slug)?.coverImage : null) || `${siteUrl}/icon.png`
+
+  return {
+    title: 'Blog | Rezoomed',
+    description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+    keywords: buildBlogIndexKeywords(posts),
+    alternates: {
+      canonical: '/blog',
+    },
+    openGraph: {
+      type: 'website',
+      title: 'Rezoomed Blog',
+      description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+      url: `${siteUrl}/blog`,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Rezoomed Blog',
+      description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+      images: [image],
+    },
+  }
 }
 
 
@@ -30,10 +56,41 @@ export default async function BlogPage() {
   const featuredCover = featured
     ? featured.cover_image_url || getBlogMediaFallback(featured.slug)?.coverImage || null
     : null
+  const siteUrl = getSiteUrl()
+  const blogCollectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'Rezoomed Blog',
+    description: 'Resume advice, ATS tips, job search strategies, and career insights from the Rezoomed team.',
+    url: `${siteUrl}/blog`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'Rezoomed',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/icon.png`,
+      },
+    },
+    blogPost: posts.slice(0, 10).map(post => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      url: `${siteUrl}/blog/${post.slug}`,
+      datePublished: post.published_at,
+      dateModified: post.updated_at,
+      author: {
+        '@type': 'Organization',
+        name: post.author_name,
+      },
+    })),
+  }
 
   return (
     <div className="bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container min-h-screen">
       <PublicSiteHeader active="blog" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogCollectionJsonLd) }}
+      />
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
       <div className="bg-[#030f07] pt-32 pb-20 px-6 text-center">

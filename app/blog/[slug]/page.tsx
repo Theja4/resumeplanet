@@ -17,8 +17,28 @@ import {
   getPublishedBlogPostBySlug,
   getPublishedBlogPosts,
 } from '@/lib/blog'
+import { buildBlogPostKeywords } from '@/lib/blog/seo'
+import { getSiteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
+
+function slugifyHeading(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function extractArticleSections(content: string) {
+  return content
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => /^##\s+/.test(line))
+    .map(line => line.replace(/^##\s+/, '').trim())
+}
 
 export async function generateMetadata({
   params,
@@ -28,7 +48,36 @@ export async function generateMetadata({
   const { slug } = await params
   const post = await getPublishedBlogPostBySlug(slug)
   if (!post) return { title: 'Blog | Rezoomed' }
-  return { title: `${post.title} | Rezoomed`, description: post.excerpt }
+  const siteUrl = getSiteUrl()
+  const image = post.cover_image_url || getBlogMediaFallback(post.slug)?.coverImage || `${siteUrl}/icon.png`
+
+  return {
+    title: `${post.title} | Rezoomed`,
+    description: post.excerpt,
+    keywords: buildBlogPostKeywords(post),
+    authors: [{ name: post.author_name }],
+    category: post.category,
+    robots: {
+      index: true,
+      follow: true,
+    },
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+    },
+    openGraph: {
+      type: 'article',
+      title: post.title,
+      description: post.excerpt,
+      url: `${siteUrl}/blog/${post.slug}`,
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.excerpt,
+      images: [image],
+    },
+  }
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -68,11 +117,68 @@ export default async function BlogPostPage({
   const inlineImages    = mediaFallback?.inlineImages ?? []
   const readTimeMinutes = estimateReadTime(articleContent)
   const relatedPosts    = publishedPosts.filter(c => c.slug !== post.slug).slice(0, 3)
+  const siteUrl         = getSiteUrl()
+  const articleSections = extractArticleSections(articleContent).slice(0, 6)
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt,
+    image: coverImage ? [coverImage.startsWith('http') ? coverImage : `${siteUrl}${coverImage}`] : [`${siteUrl}/icon.png`],
+    datePublished: post.published_at,
+    dateModified: post.updated_at,
+    author: {
+      '@type': 'Organization',
+      name: post.author_name,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Rezoomed',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/icon.png`,
+      },
+    },
+    mainEntityOfPage: `${siteUrl}/blog/${post.slug}`,
+    articleSection: post.category,
+  }
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: siteUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: `${siteUrl}/blog`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: post.title,
+        item: `${siteUrl}/blog/${post.slug}`,
+      },
+    ],
+  }
 
   return (
     <div className="min-h-screen bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
       <ReadingProgress />
       <PublicSiteHeader active="blog" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
 
       <BlogPostAnalyticsClient
         slug={post.slug}
@@ -151,14 +257,26 @@ export default async function BlogPostPage({
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────────── */}
-      <main className="max-w-[88rem] mx-auto px-6 pb-28 lg:px-10">
+      <main className="mx-auto max-w-[88rem] px-6 pb-28 lg:px-10">
         <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
 
           {/* Article */}
-          <div className="space-y-10 -mt-2">
-            <article className="prose-article">
+          <div className="space-y-10 -mt-6">
+            <div className="relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.95))] p-6 shadow-[0_28px_90px_rgba(18,24,21,0.08)] sm:p-8 lg:p-10">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.06),transparent_30%)]" />
+              <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(2,109,50,0.25),transparent)]" />
+              <div className="relative mb-8 flex flex-wrap items-center gap-3 border-b border-black/5 pb-5">
+                <span className="inline-flex items-center rounded-full bg-[#026d32]/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#026d32]">
+                  Editor's guide
+                </span>
+                <p className="max-w-2xl text-sm leading-6 text-zinc-600">
+                  Short, ATS-aware guidance built for fast scanning. Use the visuals and tables below as your checklist, not background noise.
+                </p>
+              </div>
+              <article className="prose-article relative">
               <MarkdownContent content={articleContent} inlineImages={inlineImages} />
-            </article>
+              </article>
+            </div>
 
             {/* Bottom CTA */}
             <div className="rounded-[2rem] bg-[#030f07] p-8 sm:p-10">
@@ -219,6 +337,25 @@ export default async function BlogPostPage({
 
           {/* Sidebar */}
           <aside className="space-y-6 lg:sticky lg:top-24">
+            {articleSections.length > 0 && (
+              <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(160deg,#050b07_0%,#0a1710_55%,#10261a_100%)] p-6 shadow-[0_28px_90px_rgba(4,10,7,0.28)]">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,192,107,0.14),transparent_24%)]" />
+                <p className="relative text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">In this article</p>
+                <div className="mt-4 space-y-3">
+                  {articleSections.map(section => (
+                    <a
+                      key={section}
+                      href={`#${slugifyHeading(section)}`}
+                      className="relative flex items-start gap-3 rounded-[1.15rem] border border-white/8 bg-white/6 px-4 py-3 text-sm leading-6 text-white/84 backdrop-blur-sm transition-colors hover:border-[#A3FFB3]/35 hover:bg-white/10 hover:text-white"
+                    >
+                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#30c06b]" />
+                      <span>{section}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* CTA box */}
             <div className="rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 space-y-4 shadow-[0_16px_48px_rgba(2,109,50,0.25)]">
               <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center mb-1">
@@ -239,19 +376,6 @@ export default async function BlogPostPage({
 
             {/* Share buttons */}
             <BlogShareButtons slug={post.slug} title={post.title} />
-
-            {/* Inline images */}
-            {inlineImages.length > 0 && (
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Visual Insights</p>
-                {inlineImages.map(img => (
-                  <div key={img} className="overflow-hidden rounded-[1.5rem] border border-zinc-100 shadow-sm">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt="" className="w-full object-cover" />
-                  </div>
-                ))}
-              </div>
-            )}
           </aside>
         </div>
       </main>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { applyOptimizedBlogPost, applyOptimizedBlogPosts } from '@/lib/blog/optimized-posts'
 export {
   BLOG_COVER_BUCKET,
   buildBlogExcerpt,
@@ -26,7 +27,7 @@ export async function getPublishedBlogPosts() {
     return [] as BlogPost[]
   }
 
-  return (data ?? []) as BlogPost[]
+  return applyOptimizedBlogPosts((data ?? []) as BlogPost[])
 }
 
 export async function getPublishedBlogPostBySlug(slug: string) {
@@ -43,7 +44,7 @@ export async function getPublishedBlogPostBySlug(slug: string) {
     return null
   }
 
-  return (data ?? null) as BlogPost | null
+  return data ? applyOptimizedBlogPost(data as BlogPost) : null
 }
 
 export async function getAdminBlogPosts() {
