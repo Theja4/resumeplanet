@@ -263,11 +263,11 @@ export default async function LandingPage() {
             <h1 className="font-extrabold tracking-tighter leading-none text-on-background max-w-5xl mx-auto text-5xl md:text-[5.5rem] lg:text-[6.5rem]">
               Build and tailor ATS-ready resumes.
               <br />
-              <span className="text-[#008f44] italic">Check fit before you apply.</span>
+              <span className="text-[#008f44] italic">Land 5x more interviews.</span>
             </h1>
             <p className="text-lg md:text-xl text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
-              Build ATS-friendly resumes, check ATS score, match job descriptions, and export recruiter-ready applications with
-              <strong className="font-bold text-on-background"> Rezoomed</strong>.
+              In this brutal job market, don&apos;t gamble with your career. One missed keyword could cost you the interview.
+              <strong className="font-bold text-on-background"> Rezoomed</strong> helps you catch those gaps before you apply.
             </p>
             <div className="flex flex-col items-center gap-3 pt-2">
               <div className="flex flex-wrap justify-center gap-3">
