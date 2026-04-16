@@ -89,8 +89,12 @@ function normalizeExperienceLikeItem<T extends ExperienceItem>(item: T): T {
 
   const locationLooksLikeRoleFragment =
     Boolean(location) &&
-    !LOCATION_LIKE_RE.test(location) &&
-    ROLE_FRAGMENT_RE.test(location)
+    ROLE_FRAGMENT_RE.test(location) &&
+    (
+      !LOCATION_LIKE_RE.test(location) ||
+      nextTitle.startsWith('&') ||
+      /analyst|product|business|engineer|developer|manager|consultant|intern|designer|specialist|associate|lead|architect|administrator|full stack/i.test(location)
+    )
 
   if (locationLooksLikeRoleFragment) {
     nextTitle = nextTitle
@@ -118,6 +122,13 @@ function normalizeExperienceLikeItem<T extends ExperienceItem>(item: T): T {
 export function syncResumeData(data: Partial<ResumeData>): ResumeData {
   const skillSections = normalizeSkillSections(data.skillSections, data.skills ?? [])
   const skills = getResumeSkills({ skills: data.skills ?? [], skillSections })
+  const experience = (data.experience ?? []).map(item => normalizeExperienceLikeItem(item))
+  const volunteer = (data.volunteer ?? []).map(item => normalizeExperienceLikeItem(item))
+  const currentRole = (data.currentRole ?? '').trim()
+  const normalizedCurrentRole =
+    currentRole.startsWith('&') && experience[0]?.title
+      ? experience[0].title
+      : currentRole
 
   return {
     name: data.name ?? '',
@@ -127,8 +138,8 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
     linkedin: data.linkedin ?? '',
     website: data.website ?? '',
     summary: data.summary ?? '',
-    currentRole: data.currentRole ?? '',
-    experience: (data.experience ?? []).map(item => normalizeExperienceLikeItem(item)),
+    currentRole: normalizedCurrentRole,
+    experience,
     education: (data.education ?? []).map(item => ({
       ...item,
       startDate: item.startDate?.trim() ?? '',
@@ -147,7 +158,7 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
       }
     }),
     languages: data.languages ?? [],
-    volunteer: (data.volunteer ?? []).map(item => normalizeExperienceLikeItem(item)),
+    volunteer,
     interests: data.interests ?? [],
     awards: data.awards ?? [],
     publications: data.publications ?? [],
