@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   BriefcaseBusiness,
+  Download,
   ExternalLink,
   PencilLine,
   Plus,
@@ -273,6 +274,44 @@ export default function TrackedJobsClient({
     selectedTrackedJobId ? trackedJobs.find(job => job.id === selectedTrackedJobId) ?? null : null
   const selectedJob = selectedTrackedJob?.job ?? null
   const selectedJobHasExternalLink = isValidExternalUrl(selectedJob?.apply_url)
+
+  async function handleExportExcel() {
+    const rows = visibleTrackedJobs.map(trackedJob => ({
+      'Job Position': trackedJob.job?.title ?? 'Untitled role',
+      Company: trackedJob.job?.company_name ?? 'Unknown company',
+      Salary: getDisplayedSalary(trackedJob),
+      Location: trackedJob.job?.location_text ?? 'Location flexible',
+      Status: getStatusMeta(trackedJob.status).label,
+      Excitement: trackedJob.excitement_rating ?? '',
+      'Date Saved': getDisplayedSavedOn(trackedJob),
+      'Application Date': getDisplayedAppliedOn(trackedJob),
+      Source: trackedJob.job ? formatJobSource(trackedJob.job.source_provider) : 'Manual',
+      Notes: trackedJob.notes ?? '',
+      'Job Description': getDisplayedJobDescription(trackedJob),
+      'Apply URL': trackedJob.job?.apply_url ?? '',
+    }))
+
+    const { utils, writeFileXLSX } = await import('xlsx')
+    const worksheet = utils.json_to_sheet(rows)
+    worksheet['!cols'] = [
+      { wch: 28 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 28 },
+      { wch: 64 },
+      { wch: 36 },
+    ]
+
+    const workbook = utils.book_new()
+    utils.book_append_sheet(workbook, worksheet, 'Job Tracker')
+    writeFileXLSX(workbook, `rezoomed-job-tracker-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   const counts = useMemo(() => {
     return trackedJobs.reduce<Record<TrackedJobStatus, number>>(
@@ -749,6 +788,14 @@ export default function TrackedJobsClient({
 
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-black uppercase tracking-[0.14em] text-on-surface-variant">
               <span>{visibleTrackedJobs.length} rows</span>
+              <button
+                type="button"
+                onClick={() => void handleExportExcel()}
+                className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-on-surface transition-all hover:-translate-y-0.5 hover:border-[#008f44]/20 hover:text-[#008f44]"
+              >
+                <Download size={12} strokeWidth={2.4} />
+                Export Excel
+              </button>
               <span className="rounded-full border border-black/8 bg-black/[0.03] px-3 py-1.5">
                 Sorted by {sortKey}
               </span>
@@ -767,10 +814,10 @@ export default function TrackedJobsClient({
           </div>
         ) : (
           <div className="max-h-[72vh] overflow-auto">
-            <table className="min-w-[1380px] w-full border-separate border-spacing-0">
+            <table className="min-w-[1120px] w-full border-separate border-spacing-0">
               <thead className="sticky top-0 z-10 bg-[#f8faf8]">
                 <tr className="bg-[#f8faf8]">
-                  <th className="border-b border-black/8 px-5 py-3 text-left sm:px-6">
+                  <th className="w-[22%] border-b border-black/8 px-5 py-3 text-left sm:px-6">
                     <SpreadsheetHeader
                       label="Job position"
                       sortKey="title"
@@ -779,7 +826,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
+                  <th className="w-[15%] border-b border-black/8 px-4 py-3 text-left">
                     <SpreadsheetHeader
                       label="Company"
                       sortKey="company"
@@ -788,7 +835,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
+                  <th className="w-[10%] border-b border-black/8 px-4 py-3 text-left">
                     <SpreadsheetHeader
                       label="Salary"
                       sortKey="salary"
@@ -797,7 +844,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
+                  <th className="w-[14%] border-b border-black/8 px-4 py-3 text-left">
                     <SpreadsheetHeader
                       label="Location"
                       sortKey="location"
@@ -806,7 +853,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
+                  <th className="w-[13%] border-b border-black/8 px-4 py-3 text-left">
                     <SpreadsheetHeader
                       label="Status"
                       sortKey="status"
@@ -815,7 +862,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-center">
+                  <th className="w-[12%] border-b border-black/8 px-4 py-3 text-center">
                     <SpreadsheetHeader
                       label="Excitement"
                       sortKey="excitement"
@@ -825,7 +872,7 @@ export default function TrackedJobsClient({
                       align="center"
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
+                  <th className="w-[10%] border-b border-black/8 px-4 py-3 text-left">
                     <SpreadsheetHeader
                       label="Date saved"
                       sortKey="saved"
@@ -834,25 +881,7 @@ export default function TrackedJobsClient({
                       onClick={toggleSort}
                     />
                   </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
-                    <SpreadsheetHeader
-                      label="Application date"
-                      sortKey="applied"
-                      activeKey={sortKey}
-                      direction={sortDirection}
-                      onClick={toggleSort}
-                    />
-                  </th>
-                  <th className="border-b border-black/8 px-4 py-3 text-left">
-                    <SpreadsheetHeader
-                      label="Source"
-                      sortKey="source"
-                      activeKey={sortKey}
-                      direction={sortDirection}
-                      onClick={toggleSort}
-                    />
-                  </th>
-                  <th className="border-b border-black/8 px-5 py-3 text-right sm:px-6">
+                  <th className="w-[6%] border-b border-black/8 px-5 py-3 text-right sm:px-6">
                     <span className="text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/75">
                       Actions
                     </span>
@@ -862,7 +891,7 @@ export default function TrackedJobsClient({
               <tbody className="bg-white">
                 {visibleTrackedJobs.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-14 text-center text-sm text-on-surface-variant">
+                    <td colSpan={8} className="px-6 py-14 text-center text-sm text-on-surface-variant">
                       No jobs match the current search or filter.
                     </td>
                   </tr>
@@ -911,7 +940,7 @@ export default function TrackedJobsClient({
                             }}
                             inputMode="numeric"
                             placeholder={job?.salary_text ?? '$120,000'}
-                            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                            className="w-full min-w-[7rem] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
                           />
                         </td>
                         <td className="border-b border-black/6 px-4 py-4 text-sm font-medium text-on-background">
@@ -925,7 +954,7 @@ export default function TrackedJobsClient({
                               handleStatusChange(trackedJob.id, event.target.value as TrackedJobStatus)
                             }
                             className={cn(
-                              'w-full rounded-md border border-transparent px-2 py-1.5 text-sm font-semibold outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white',
+                              'w-full min-w-[8.75rem] rounded-md border border-transparent px-2 py-1.5 text-sm font-semibold outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white',
                               statusMeta.tone
                             )}
                           >
@@ -963,42 +992,8 @@ export default function TrackedJobsClient({
                               }
                             }}
                             placeholder="DD/MM/YY"
-                            className="w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                            className="w-full min-w-[6.75rem] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
                           />
-                        </td>
-                        <td className="border-b border-black/6 px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <input
-                              value={inlineDraft.appliedOn}
-                              onChange={event =>
-                                setInlineDrafts(current => ({
-                                  ...current,
-                                  [trackedJob.id]: {
-                                    ...current[trackedJob.id],
-                                    appliedOn: event.target.value,
-                                  },
-                                }))
-                              }
-                              onBlur={() => handleInlineFieldSave(trackedJob.id, 'appliedOn')}
-                              onKeyDown={event => {
-                                if (event.key === 'Enter') {
-                                  event.currentTarget.blur()
-                                }
-                              }}
-                              placeholder="DD/MM/YY"
-                              className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => void handleInlineAppliedToday(trackedJob.id)}
-                              className="shrink-0 rounded-full border border-[#008f44]/18 bg-[#008f44]/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44] transition hover:bg-[#008f44]/16"
-                            >
-                              Today
-                            </button>
-                          </div>
-                        </td>
-                        <td className="border-b border-black/6 px-4 py-4 text-sm font-semibold text-on-surface-variant">
-                          {job ? formatJobSource(job.source_provider) : 'Manual'}
                         </td>
                         <td className="border-b border-black/6 px-5 py-4 sm:px-6">
                           <div className="flex items-center justify-end gap-2">
