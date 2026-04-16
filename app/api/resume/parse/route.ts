@@ -5,6 +5,7 @@ import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 import { buildRoundTripVisibility, type FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
+import { syncResumeData } from '@/lib/resume-data'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const ALLOWED_MIME_TYPE = 'application/pdf'
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const parsedData = selectedCandidate.data
+  const parsedData = syncResumeData(selectedCandidate.data)
 
   if (
     !markerSnapshot &&

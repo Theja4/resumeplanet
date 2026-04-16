@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { syncResumeData } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 
 export async function deleteResume(id: string) {
@@ -56,7 +57,7 @@ export async function updateResumeData(id: string, parsedData: ResumeData) {
 
   const { error } = await supabase
     .from('resumes')
-    .update({ parsed_data: parsedData })
+    .update({ parsed_data: syncResumeData(parsedData) })
     .eq('id', id)
     .eq('user_id', user.id)
 

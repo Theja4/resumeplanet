@@ -42,6 +42,7 @@ import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
 import { scoreResume } from '@/lib/ats-scorer'
+import { syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
 import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
 import type { BuilderSource } from '@/lib/analytics'
@@ -480,7 +481,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         return
       }
 
-      const data = resume.parsed_data as ResumeData
+      const data = syncResumeData((resume.parsed_data as ResumeData | null) ?? {})
       setResumeData(data)
       setSavedData(data)
       setResumeTitle(normalizeResumeTitle(resume.title ?? ''))

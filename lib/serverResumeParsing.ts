@@ -1,6 +1,7 @@
 import type { ResumeData } from '@/types'
 import { extractFirstPartyResumeSnapshotFromPdf } from '@/lib/firstPartyResumeMarker.server'
 import type { FirstPartyResumeSnapshot } from '@/lib/firstPartyResumeMarker'
+import { syncResumeData } from '@/lib/resume-data'
 import {
   assessResumeParseConfidence,
   chooseBetterParseCandidate,
@@ -25,18 +26,22 @@ function buildParseCandidate(
 ): ResumeParseCandidate | null {
   if (!data) return null
 
+  const normalized = syncResumeData(data)
+
   return {
-    data,
+    data: normalized,
     source,
-    confidence: assessResumeParseConfidence(data, { sourceTextLength }),
+    confidence: assessResumeParseConfidence(normalized, { sourceTextLength }),
   }
 }
 
 function buildMarkerCandidate(snapshot: FirstPartyResumeSnapshot | null): ResumeParseCandidate | null {
   if (!snapshot) return null
 
+  const normalized = syncResumeData(snapshot.data)
+
   return {
-    data: snapshot.data,
+    data: normalized,
     source: 'marker',
     confidence: {
       score: 100,
@@ -101,10 +106,19 @@ export async function parseResumeRobustly(params: {
   const fastCandidate = buildParseCandidate(parsedData, 'fast', sourceTextLength)
   const clientCandidate = buildParseCandidate(clientParsedData, 'client', sourceTextLength)
 
+  const preferServerCandidate =
+    fileType === PDF_MIME_TYPE && fastCandidate
+      ? fastCandidate
+      : chooseBetterParseCandidate(fastCandidate, clientCandidate)
+
   let selectedCandidate = chooseBetterParseCandidate(
     markerCandidate,
-    chooseBetterParseCandidate(fastCandidate, clientCandidate),
+    preferServerCandidate,
   )
+
+  if (!selectedCandidate && clientCandidate) {
+    selectedCandidate = clientCandidate
+  }
 
   if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
     try {

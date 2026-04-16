@@ -264,11 +264,80 @@ function splitHeaderLine(line: string): string[] {
     .filter(Boolean)
 }
 
+function extractCompanyAndLocation(line: string): { company: string; location: string } {
+  const location = LOCATION_RE.exec(line)?.[0] ?? ''
+  const withoutLocation = location
+    ? line.replace(location, '').replace(/\s{2,}/g, ' ').trim()
+    : line.trim()
+  const parts = splitHeaderLine(withoutLocation)
+  const company =
+    parts.find(part => part && !LOCATION_RE.test(part)) ??
+    withoutLocation.replace(/[-–—|,]+$/g, '').trim()
+
+  return {
+    company: company.trim(),
+    location,
+  }
+}
+
 function isLikelyExperienceHeader(line: string): boolean {
   const parts = splitHeaderLine(line)
   if (parts.length < 2 || parts.length > 4) return false
   if (isContactLikeLine(line) || isLikelyDateLine(line) || isBulletLine(line)) return false
   return parts.every(part => part.length > 1 && part.length <= 60)
+}
+
+function looksLikeNarrativeLine(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  if (words.length >= 10) return true
+  if (/[.!?]$/.test(trimmed) && words.length >= 6) return true
+  if (trimmed.includes(' — ') && words.length >= 8) return true
+
+  return false
+}
+
+function looksLikeRoleFragment(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (LOCATION_RE.test(trimmed) || isLikelyDateLine(trimmed)) return false
+
+  return (
+    trimmed.startsWith('&') ||
+    /(analyst|engineer|developer|manager|consultant|intern|designer|specialist|associate|lead|architect|administrator|product|business|full stack)/i.test(trimmed)
+  )
+}
+
+function normalizeParsedJob(job: ExperienceItem, afterDateNonBullets: string[]): ExperienceItem {
+  const normalized: ExperienceItem = {
+    ...job,
+    title: job.title.trim(),
+    company: job.company.trim().replace(/[|,]+$/g, '').trim(),
+    location: job.location.trim().replace(/^[|,]+/g, '').replace(/[|,]+$/g, '').trim(),
+  }
+
+  if (normalized.location && !LOCATION_RE.test(normalized.location) && looksLikeRoleFragment(normalized.location)) {
+    normalized.title = normalized.title
+      ? normalized.title.startsWith('&')
+        ? `${normalized.location} ${normalized.title}`
+        : `${normalized.title} ${normalized.location}`
+      : normalized.location
+    normalized.title = normalized.title.replace(/\s+/g, ' ').trim()
+    normalized.location = ''
+  }
+
+  if (
+    afterDateNonBullets.length > 1 &&
+    normalized.title &&
+    normalized.title.startsWith('&') &&
+    looksLikeRoleFragment(afterDateNonBullets[1] ?? '')
+  ) {
+    normalized.title = `${afterDateNonBullets[1]} ${normalized.title}`.replace(/\s+/g, ' ').trim()
+  }
+
+  return normalized
 }
 
 function inferHeaderFields(headerLines: string[]): { title: string; company: string; location: string } {
@@ -281,7 +350,44 @@ function inferHeaderFields(headerLines: string[]): { title: string; company: str
   const normalizedPrimary = locationFromPrimary ? primaryLine.replace(locationFromPrimary, '').replace(/\s{2,}/g, ' ').trim() : primaryLine
   const primaryTokens = splitHeaderLine(normalizedPrimary)
 
+  if (headerLines.length >= 3) {
+    const trailingLine = headerLines[headerLines.length - 1]
+    const trailingHasLocation = LOCATION_RE.test(trailingLine)
+    const trailingParts = splitHeaderLine(trailingLine)
+
+    if (trailingHasLocation || trailingParts.length >= 2) {
+      const title = headerLines
+        .slice(0, -1)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+      const { company, location } = extractCompanyAndLocation(trailingLine)
+
+      if (title) {
+        return {
+          title,
+          company,
+          location,
+        }
+      }
+    }
+  }
+
   if (headerLines.length >= 2) {
+    const secondaryLine = headerLines[1].trim()
+    if (
+      secondaryLine.startsWith('&') ||
+      /^[a-z&]/.test(secondaryLine) ||
+      /[,/-]\s*$/.test(primaryLine)
+    ) {
+      return {
+        title: `${primaryLine} ${secondaryLine}`.replace(/\s+/g, ' ').trim(),
+        company: '',
+        location: locationFromPrimary,
+      }
+    }
+
     return {
       title: primaryTokens[0] || normalizedPrimary,
       company: headerLines[1],
@@ -376,6 +482,7 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       const backTrimmed = backLine?.trim() ?? ''
       if (!backTrimmed) { scanBack--; continue }
       if (isBulletLine(backLine)) break  // hit previous job's bullets
+      if (looksLikeNarrativeLine(backTrimmed)) break
       headerLines.unshift(backTrimmed)
       scanBack--
     }
@@ -432,15 +539,23 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       const companyCandidate = afterDateNonBullets[0]
       if (
         companyCandidate.length <= 80 &&
-        !isLikelyDateLine(companyCandidate) &&
-        !LOCATION_RE.test(companyCandidate)
+        !isLikelyDateLine(companyCandidate)
       ) {
-        company = companyCandidate
+        const parsedCompany = extractCompanyAndLocation(companyCandidate)
+        company = parsedCompany.company
+        if (!location && parsedCompany.location) {
+          location = parsedCompany.location
+        }
       }
     }
 
     if (title || bullets.length > 0) {
-      jobs.push({ title, company, location, startDate: dates.start, endDate: dates.end, bullets })
+      jobs.push(
+        normalizeParsedJob(
+          { title, company, location, startDate: dates.start, endDate: dates.end, bullets },
+          afterDateNonBullets,
+        ),
+      )
     }
   }
 

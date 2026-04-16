@@ -1,4 +1,4 @@
-import type { EducationItem, ProjectItem, ResumeData, SkillSection } from '@/types'
+import type { EducationItem, ExperienceItem, ProjectItem, ResumeData, SkillSection } from '@/types'
 
 function dedupe(values: string[]) {
   const seen = new Set<string>()
@@ -78,6 +78,43 @@ export function getEducationDateLabel(education: Pick<EducationItem, 'startDate'
   return graduationDate
 }
 
+const LOCATION_LIKE_RE = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/
+const ROLE_FRAGMENT_RE = /(analyst|engineer|developer|manager|consultant|intern|designer|specialist|associate|lead|architect|administrator|product|business|full stack)/i
+
+function normalizeExperienceLikeItem<T extends ExperienceItem>(item: T): T {
+  const title = item.title?.trim() ?? ''
+  const company = item.company?.trim().replace(/[|,]+$/g, '').trim() ?? ''
+  let location = item.location?.trim().replace(/^[|,]+/g, '').replace(/[|,]+$/g, '').trim() ?? ''
+  let nextTitle = title
+
+  const locationLooksLikeRoleFragment =
+    Boolean(location) &&
+    !LOCATION_LIKE_RE.test(location) &&
+    ROLE_FRAGMENT_RE.test(location)
+
+  if (locationLooksLikeRoleFragment) {
+    nextTitle = nextTitle
+      ? nextTitle.startsWith('&')
+        ? `${location} ${nextTitle}`
+        : `${nextTitle} ${location}`
+      : location
+    nextTitle = nextTitle.replace(/\s+/g, ' ').trim()
+    location = ''
+  }
+
+  if (nextTitle.startsWith('& ') && ROLE_FRAGMENT_RE.test(company)) {
+    nextTitle = `${company} ${nextTitle}`.replace(/\s+/g, ' ').trim()
+  }
+
+  return {
+    ...item,
+    title: nextTitle,
+    company,
+    location,
+    bullets: (item.bullets ?? []).map(bullet => bullet.trim()).filter(Boolean),
+  }
+}
+
 export function syncResumeData(data: Partial<ResumeData>): ResumeData {
   const skillSections = normalizeSkillSections(data.skillSections, data.skills ?? [])
   const skills = getResumeSkills({ skills: data.skills ?? [], skillSections })
@@ -91,7 +128,7 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
     website: data.website ?? '',
     summary: data.summary ?? '',
     currentRole: data.currentRole ?? '',
-    experience: data.experience ?? [],
+    experience: (data.experience ?? []).map(item => normalizeExperienceLikeItem(item)),
     education: (data.education ?? []).map(item => ({
       ...item,
       startDate: item.startDate?.trim() ?? '',
@@ -110,12 +147,16 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
       }
     }),
     languages: data.languages ?? [],
-    volunteer: data.volunteer ?? [],
+    volunteer: (data.volunteer ?? []).map(item => normalizeExperienceLikeItem(item)),
     interests: data.interests ?? [],
     awards: data.awards ?? [],
     publications: data.publications ?? [],
     references: data.references ?? [],
-    customSections: data.customSections ?? [],
+    customSections: (data.customSections ?? []).map(section =>
+      section.type === 'complex'
+        ? { ...section, items: (section.items ?? []).map(item => normalizeExperienceLikeItem(item)) }
+        : section,
+    ),
   }
 }
 
