@@ -10,6 +10,9 @@ interface TrackerMutationOk {
     id: string
     job_id: string
     status: TrackedJobStatus
+    title_override: string | null
+    company_name_override: string | null
+    location_text_override: string | null
     applied_at: string | null
     saved_on: string | null
     salary_text: string | null
@@ -28,7 +31,7 @@ interface TrackerMutationError {
 
 export type TrackerMutationResult = TrackerMutationOk | TrackerMutationError
 
-const TRACKED_JOB_SELECT = 'id, job_id, status, applied_at, saved_on, salary_text, job_description, excitement_rating, notes'
+const TRACKED_JOB_SELECT = 'id, job_id, status, title_override, company_name_override, location_text_override, applied_at, saved_on, salary_text, job_description, excitement_rating, notes'
 
 async function ensureTrackerCapacity(
   supabase: SupabaseClientLike,
@@ -91,6 +94,9 @@ export async function upsertTrackedJobForUser({
       .from('tracked_jobs')
       .update({
         status,
+        title_override: existing?.title_override ?? null,
+        company_name_override: existing?.company_name_override ?? null,
+        location_text_override: existing?.location_text_override ?? null,
         applied_at: appliedAt,
         saved_on: savedOn,
         salary_text: existing?.salary_text ?? null,
@@ -165,6 +171,9 @@ export async function updateTrackedJobForUser({
   salaryText,
   jobDescription,
   excitementRating,
+  titleOverride,
+  companyNameOverride,
+  locationTextOverride,
   savedOn,
   appliedAt,
 }: {
@@ -177,6 +186,9 @@ export async function updateTrackedJobForUser({
   salaryText?: string | null
   jobDescription?: string | null
   excitementRating?: number | null
+  titleOverride?: string | null
+  companyNameOverride?: string | null
+  locationTextOverride?: string | null
   savedOn?: string | null
   appliedAt?: string | null
 }): Promise<TrackerMutationResult> {
@@ -217,6 +229,11 @@ export async function updateTrackedJobForUser({
     .from('tracked_jobs')
     .update({
       status: nextStatus,
+      title_override: titleOverride === undefined ? existing.title_override ?? null : titleOverride,
+      company_name_override:
+        companyNameOverride === undefined ? existing.company_name_override ?? null : companyNameOverride,
+      location_text_override:
+        locationTextOverride === undefined ? existing.location_text_override ?? null : locationTextOverride,
       applied_at: nextAppliedAt,
       saved_on: nextSavedOn,
       salary_text: salaryText === undefined ? existing.salary_text ?? null : salaryText,

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowDown,
   ArrowUp,
@@ -27,6 +27,7 @@ import {
   isValidExternalUrl,
   parseTrackerDateInput,
   salarySortValue,
+  trackerDateToTimestamp,
   trackerDateSortValue,
 } from '@/lib/jobs/shared'
 import {
@@ -36,7 +37,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import type { Profile, TrackedJob, TrackedJobStatus } from '@/types'
+import type { Job, Profile, TrackedJob, TrackedJobStatus } from '@/types'
 
 type FilterValue = 'all' | TrackedJobStatus
 type SortDirection = 'asc' | 'desc'
@@ -52,6 +53,9 @@ type SortKey =
   | 'source'
 
 type InlineDraft = {
+  title: string
+  companyName: string
+  locationText: string
   salaryText: string
   savedOn: string
   appliedOn: string
@@ -66,6 +70,8 @@ type DrawerDraft = {
   notes: string
   excitementRating: number | null
 }
+
+type RowSaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 const STATUS_OPTIONS: Array<{
   value: TrackedJobStatus
@@ -97,6 +103,18 @@ function getDisplayedSalary(trackedJob: TrackedJob) {
   return trackedJob.salary_text ?? trackedJob.job?.salary_text ?? ''
 }
 
+function getDisplayedTitle(trackedJob: TrackedJob) {
+  return trackedJob.title_override?.trim() || trackedJob.job?.title || 'Untitled role'
+}
+
+function getDisplayedCompanyName(trackedJob: TrackedJob) {
+  return trackedJob.company_name_override?.trim() || trackedJob.job?.company_name || 'Unknown company'
+}
+
+function getDisplayedLocation(trackedJob: TrackedJob) {
+  return trackedJob.location_text_override?.trim() || trackedJob.job?.location_text || 'Location flexible'
+}
+
 function getDisplayedSavedOn(trackedJob: TrackedJob) {
   return formatTrackerDate(trackedJob.saved_on ?? trackedJob.created_at)
 }
@@ -111,6 +129,9 @@ function getDisplayedJobDescription(trackedJob: TrackedJob) {
 
 function buildInlineDraft(trackedJob: TrackedJob): InlineDraft {
   return {
+    title: getDisplayedTitle(trackedJob),
+    companyName: getDisplayedCompanyName(trackedJob),
+    locationText: getDisplayedLocation(trackedJob),
     salaryText: trackedJob.salary_text ?? '',
     savedOn: getDisplayedSavedOn(trackedJob),
     appliedOn: getDisplayedAppliedOn(trackedJob),
@@ -131,9 +152,9 @@ function buildDrawerDraft(trackedJob: TrackedJob): DrawerDraft {
 
 function buildSearchText(trackedJob: TrackedJob) {
   return [
-    trackedJob.job?.title,
-    trackedJob.job?.company_name,
-    trackedJob.job?.location_text,
+    getDisplayedTitle(trackedJob),
+    getDisplayedCompanyName(trackedJob),
+    getDisplayedLocation(trackedJob),
     trackedJob.job?.category,
     trackedJob.notes,
     trackedJob.job_description,
@@ -144,6 +165,26 @@ function buildSearchText(trackedJob: TrackedJob) {
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
+}
+
+function SaveIndicator({ state }: { state: RowSaveState }) {
+  if (state === 'idle') return null
+
+  const tones =
+    state === 'saving'
+      ? 'border-amber-200 bg-amber-50 text-amber-700'
+      : state === 'saved'
+        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+        : 'border-rose-200 bg-rose-50 text-rose-700'
+
+  const label =
+    state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : 'Failed to save'
+
+  return (
+    <span className={cn('inline-flex rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em]', tones)}>
+      {label}
+    </span>
+  )
 }
 
 function compareValues(left: string | number, right: string | number, direction: SortDirection) {
@@ -265,22 +306,31 @@ export default function TrackedJobsClient({
   const [isManualDialogOpen, setIsManualDialogOpen] = useState(false)
   const [selectedTrackedJobId, setSelectedTrackedJobId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [rowSaveState, setRowSaveState] = useState<Record<string, RowSaveState>>({})
   const [inlineDrafts, setInlineDrafts] = useState<Record<string, InlineDraft>>(() =>
     Object.fromEntries(initialTrackedJobs.map(job => [job.id, buildInlineDraft(job)]))
   )
   const [drawerDraft, setDrawerDraft] = useState<DrawerDraft | null>(null)
+  const saveVersionRef = useRef<Record<string, number>>({})
+  const saveResetTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const selectedTrackedJob =
     selectedTrackedJobId ? trackedJobs.find(job => job.id === selectedTrackedJobId) ?? null : null
   const selectedJob = selectedTrackedJob?.job ?? null
   const selectedJobHasExternalLink = isValidExternalUrl(selectedJob?.apply_url)
 
+  useEffect(() => {
+    return () => {
+      Object.values(saveResetTimersRef.current).forEach(timer => clearTimeout(timer))
+    }
+  }, [])
+
   async function handleExportExcel() {
     const rows = visibleTrackedJobs.map(trackedJob => ({
-      'Job Position': trackedJob.job?.title ?? 'Untitled role',
-      Company: trackedJob.job?.company_name ?? 'Unknown company',
+      'Job Position': getDisplayedTitle(trackedJob),
+      Company: getDisplayedCompanyName(trackedJob),
       Salary: getDisplayedSalary(trackedJob),
-      Location: trackedJob.job?.location_text ?? 'Location flexible',
+      Location: getDisplayedLocation(trackedJob),
       Status: getStatusMeta(trackedJob.status).label,
       Excitement: trackedJob.excitement_rating ?? '',
       'Date Saved': getDisplayedSavedOn(trackedJob),
@@ -353,9 +403,13 @@ export default function TrackedJobsClient({
     const sorted = [...filtered].sort((left, right) => {
       switch (sortKey) {
         case 'title':
-          return compareValues(left.job?.title ?? '', right.job?.title ?? '', sortDirection)
+          return compareValues(getDisplayedTitle(left), getDisplayedTitle(right), sortDirection)
         case 'company':
-          return compareValues(left.job?.company_name ?? '', right.job?.company_name ?? '', sortDirection)
+          return compareValues(
+            getDisplayedCompanyName(left),
+            getDisplayedCompanyName(right),
+            sortDirection
+          )
         case 'salary':
           return compareValues(
             salarySortValue(getDisplayedSalary(left)),
@@ -363,7 +417,7 @@ export default function TrackedJobsClient({
             sortDirection
           )
         case 'location':
-          return compareValues(left.job?.location_text ?? '', right.job?.location_text ?? '', sortDirection)
+          return compareValues(getDisplayedLocation(left), getDisplayedLocation(right), sortDirection)
         case 'status':
           return compareValues(STATUS_SORT_ORDER[left.status], STATUS_SORT_ORDER[right.status], sortDirection)
         case 'excitement':
@@ -404,6 +458,36 @@ export default function TrackedJobsClient({
 
   const trackerLimitLabel = plan === 'pro' ? 'Unlimited' : '5'
 
+  function scheduleSavedReset(trackedJobId: string) {
+    const existing = saveResetTimersRef.current[trackedJobId]
+    if (existing) clearTimeout(existing)
+
+    saveResetTimersRef.current[trackedJobId] = setTimeout(() => {
+      setRowSaveState(current =>
+        current[trackedJobId] === 'saved'
+          ? { ...current, [trackedJobId]: 'idle' }
+          : current
+      )
+      delete saveResetTimersRef.current[trackedJobId]
+    }, 1800)
+  }
+
+  function markRowSaveState(trackedJobId: string, state: RowSaveState) {
+    if (state !== 'saved') {
+      const existing = saveResetTimersRef.current[trackedJobId]
+      if (existing) {
+        clearTimeout(existing)
+        delete saveResetTimersRef.current[trackedJobId]
+      }
+    }
+
+    setRowSaveState(current => ({ ...current, [trackedJobId]: state }))
+
+    if (state === 'saved') {
+      scheduleSavedReset(trackedJobId)
+    }
+  }
+
   function syncTrackedJobState(trackedJobId: string, patch: Partial<TrackedJob>) {
     let updatedTrackedJob: TrackedJob | null = null
 
@@ -413,7 +497,14 @@ export default function TrackedJobsClient({
           return job
         }
 
-        updatedTrackedJob = { ...job, ...patch }
+        const nextJob =
+          patch.job === undefined
+            ? job.job
+            : patch.job === null
+              ? null
+              : ({ ...(job.job ?? {}), ...patch.job } as Job)
+
+        updatedTrackedJob = { ...job, ...patch, job: nextJob }
         return updatedTrackedJob
       })
     )
@@ -435,41 +526,58 @@ export default function TrackedJobsClient({
   async function patchTrackedJob(
     trackedJobId: string,
     body: Record<string, unknown>,
-    nextBusyKey: string,
+    optimisticPatch: Partial<TrackedJob>,
     fallbackMessage: string,
   ) {
-    setBusyKey(nextBusyKey)
+    const nextVersion = (saveVersionRef.current[trackedJobId] ?? 0) + 1
+    saveVersionRef.current[trackedJobId] = nextVersion
+    syncTrackedJobState(trackedJobId, optimisticPatch)
+    markRowSaveState(trackedJobId, 'saving')
     setErrorMessage(null)
 
-    const response = await fetch(`/api/jobs/tracker/${trackedJobId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
+    try {
+      const response = await fetch(`/api/jobs/tracker/${trackedJobId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
 
-    const payload = (await response.json().catch(() => null)) as
-      | {
-          success?: boolean
-          trackedJob?: Partial<TrackedJob>
-          error?: string
-        }
-      | null
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            success?: boolean
+            trackedJob?: Partial<TrackedJob>
+            error?: string
+          }
+        | null
 
-    if (response.ok && payload?.success && payload.trackedJob) {
-      syncTrackedJobState(trackedJobId, payload.trackedJob)
-      setBusyKey(null)
-      return true
+      if (saveVersionRef.current[trackedJobId] !== nextVersion) {
+        return false
+      }
+
+      if (response.ok && payload?.success && payload.trackedJob) {
+        syncTrackedJobState(trackedJobId, payload.trackedJob)
+        markRowSaveState(trackedJobId, 'saved')
+        return true
+      }
+
+      setErrorMessage(
+        payload?.error === 'TRACKER_LIMIT_REACHED'
+          ? 'Your current plan has reached its tracking capacity.'
+          : fallbackMessage
+      )
+      markRowSaveState(trackedJobId, 'error')
+      return false
+    } catch {
+      if (saveVersionRef.current[trackedJobId] !== nextVersion) {
+        return false
+      }
+
+      setErrorMessage(fallbackMessage)
+      markRowSaveState(trackedJobId, 'error')
+      return false
     }
-
-    setErrorMessage(
-      payload?.error === 'TRACKER_LIMIT_REACHED'
-        ? 'Your current plan has reached its tracking capacity.'
-        : fallbackMessage
-    )
-    setBusyKey(null)
-    return false
   }
 
   function handleManualTrackedJobCreated(trackedJob: TrackedJob) {
@@ -498,6 +606,11 @@ export default function TrackedJobsClient({
         delete next[trackedJobId]
         return next
       })
+      setRowSaveState(current => {
+        const next = { ...current }
+        delete next[trackedJobId]
+        return next
+      })
       if (selectedTrackedJobId === trackedJobId) {
         setSelectedTrackedJobId(null)
       }
@@ -513,7 +626,7 @@ export default function TrackedJobsClient({
     await patchTrackedJob(
       trackedJobId,
       { status },
-      `status:${trackedJobId}`,
+      { status },
       'We could not update that status right now.'
     )
   }
@@ -522,7 +635,7 @@ export default function TrackedJobsClient({
     await patchTrackedJob(
       trackedJobId,
       { excitementRating },
-      `excitement:${trackedJobId}`,
+      { excitement_rating: excitementRating },
       'We could not update that excitement rating right now.'
     )
   }
@@ -538,6 +651,73 @@ export default function TrackedJobsClient({
       return
     }
 
+    if (field === 'title') {
+      const normalized = inlineDraft.title.trim()
+      const currentValue = getDisplayedTitle(trackedJob)
+
+      if (normalized === currentValue) return
+      if (!normalized) {
+        setErrorMessage('Job position cannot be empty.')
+        setInlineDrafts(current => ({
+          ...current,
+          [trackedJobId]: {
+            ...current[trackedJobId],
+            title: currentValue,
+          },
+        }))
+        return
+      }
+
+      await patchTrackedJob(
+        trackedJobId,
+        { title: normalized },
+        { title_override: normalized },
+        'We could not save that job position right now.'
+      )
+      return
+    }
+
+    if (field === 'companyName') {
+      const normalized = inlineDraft.companyName.trim()
+      const currentValue = getDisplayedCompanyName(trackedJob)
+
+      if (normalized === currentValue) return
+      if (!normalized) {
+        setErrorMessage('Company cannot be empty.')
+        setInlineDrafts(current => ({
+          ...current,
+          [trackedJobId]: {
+            ...current[trackedJobId],
+            companyName: currentValue,
+          },
+        }))
+        return
+      }
+
+      await patchTrackedJob(
+        trackedJobId,
+        { companyName: normalized },
+        { company_name_override: normalized },
+        'We could not save that company right now.'
+      )
+      return
+    }
+
+    if (field === 'locationText') {
+      const normalized = inlineDraft.locationText.trim()
+      const currentValue = getDisplayedLocation(trackedJob)
+
+      if (normalized === currentValue) return
+
+      await patchTrackedJob(
+        trackedJobId,
+        { locationText: normalized || null },
+        { location_text_override: normalized || null },
+        'We could not save that location right now.'
+      )
+      return
+    }
+
     if (field === 'salaryText') {
       const normalized = inlineDraft.salaryText.trim() || null
       const currentValue = trackedJob.salary_text?.trim() || null
@@ -549,7 +729,7 @@ export default function TrackedJobsClient({
       await patchTrackedJob(
         trackedJobId,
         { salaryText: normalized },
-        `salary:${trackedJobId}`,
+        { salary_text: normalized },
         'We could not save that salary right now.'
       )
       return
@@ -578,7 +758,7 @@ export default function TrackedJobsClient({
       await patchTrackedJob(
         trackedJobId,
         { savedOn: normalized || null },
-        `saved-on:${trackedJobId}`,
+        { saved_on: parseTrackerDateInput(normalized || '') ?? null },
         'We could not save that date right now.'
       )
       return
@@ -607,7 +787,7 @@ export default function TrackedJobsClient({
       await patchTrackedJob(
         trackedJobId,
         { appliedOn: normalized || null },
-        `applied-on:${trackedJobId}`,
+        { applied_at: trackerDateToTimestamp(normalized || '') ?? null },
         'We could not save that application date right now.'
       )
     }
@@ -638,7 +818,7 @@ export default function TrackedJobsClient({
     const didSave = await patchTrackedJob(
       trackedJobId,
       { appliedOn: today },
-      `applied-on:${trackedJobId}`,
+      { applied_at: trackerDateToTimestamp(today) },
       'We could not save that application date right now.'
     )
 
@@ -679,7 +859,15 @@ export default function TrackedJobsClient({
         notes: drawerDraft.notes.trim() || null,
         excitementRating: drawerDraft.excitementRating,
       },
-      `drawer:${selectedTrackedJobId}`,
+      {
+        status: drawerDraft.status,
+        salary_text: drawerDraft.salaryText.trim() || null,
+        saved_on: parseTrackerDateInput(drawerDraft.savedOn.trim()) ?? null,
+        applied_at: trackerDateToTimestamp(drawerDraft.appliedOn.trim()) ?? null,
+        job_description: drawerDraft.jobDescription.trim() || null,
+        notes: drawerDraft.notes.trim() || null,
+        excitement_rating: drawerDraft.excitementRating,
+      },
       'We could not save those job details right now.'
     )
   }
@@ -906,9 +1094,25 @@ export default function TrackedJobsClient({
                       <tr key={trackedJob.id} className="align-top transition-colors hover:bg-[#fbfdfb]">
                         <td className="border-b border-black/6 px-5 py-4 sm:px-6">
                           <div className="space-y-2">
-                            <p className="text-base font-black leading-6 text-on-background">
-                              {job?.title ?? 'Untitled role'}
-                            </p>
+                            <input
+                              value={inlineDraft.title}
+                              onChange={event =>
+                                setInlineDrafts(current => ({
+                                  ...current,
+                                  [trackedJob.id]: {
+                                    ...current[trackedJob.id],
+                                    title: event.target.value,
+                                  },
+                                }))
+                              }
+                              onBlur={() => handleInlineFieldSave(trackedJob.id, 'title')}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter') {
+                                  event.currentTarget.blur()
+                                }
+                              }}
+                              className="w-full rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-black leading-6 text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                            />
                             <div className="flex flex-wrap gap-2 text-xs font-semibold text-on-surface-variant">
                               {job?.employment_type ? <span>{job.employment_type}</span> : null}
                               {job?.remote_type && job.remote_type !== 'unknown' ? (
@@ -917,8 +1121,26 @@ export default function TrackedJobsClient({
                             </div>
                           </div>
                         </td>
-                        <td className="border-b border-black/6 px-4 py-4 text-sm font-semibold text-on-background">
-                          {job?.company_name ?? 'Unknown company'}
+                        <td className="border-b border-black/6 px-4 py-3">
+                          <input
+                            value={inlineDraft.companyName}
+                            onChange={event =>
+                              setInlineDrafts(current => ({
+                                ...current,
+                                [trackedJob.id]: {
+                                  ...current[trackedJob.id],
+                                  companyName: event.target.value,
+                                },
+                              }))
+                            }
+                            onBlur={() => handleInlineFieldSave(trackedJob.id, 'companyName')}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter') {
+                                event.currentTarget.blur()
+                              }
+                            }}
+                            className="w-full min-w-[11rem] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm font-semibold text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                          />
                         </td>
                         <td className="border-b border-black/6 px-4 py-3">
                           <input
@@ -943,8 +1165,27 @@ export default function TrackedJobsClient({
                             className="w-full min-w-[7rem] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
                           />
                         </td>
-                        <td className="border-b border-black/6 px-4 py-4 text-sm font-medium text-on-background">
-                          {job?.location_text ?? 'Location flexible'}
+                        <td className="border-b border-black/6 px-4 py-3">
+                          <input
+                            value={inlineDraft.locationText}
+                            onChange={event =>
+                              setInlineDrafts(current => ({
+                                ...current,
+                                [trackedJob.id]: {
+                                  ...current[trackedJob.id],
+                                  locationText: event.target.value,
+                                },
+                              }))
+                            }
+                            onBlur={() => handleInlineFieldSave(trackedJob.id, 'locationText')}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter') {
+                                event.currentTarget.blur()
+                              }
+                            }}
+                            className="w-full min-w-[10rem] rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm font-medium text-on-background outline-none transition hover:border-black/8 focus:border-[#008f44]/30 focus:bg-white"
+                            placeholder="Location flexible"
+                          />
                         </td>
                         <td className="border-b border-black/6 px-4 py-3">
                           <select
@@ -996,7 +1237,9 @@ export default function TrackedJobsClient({
                           />
                         </td>
                         <td className="border-b border-black/6 px-5 py-4 sm:px-6">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex flex-col items-end gap-2">
+                            <SaveIndicator state={rowSaveState[trackedJob.id] ?? 'idle'} />
+                            <div className="flex items-center justify-end gap-2">
                             {job && hasExternalLink ? (
                               <Link
                                 href={`/jobs/${job.slug}/apply`}
@@ -1025,6 +1268,7 @@ export default function TrackedJobsClient({
                               <PencilLine size={12} strokeWidth={2.6} />
                               Edit
                             </button>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1085,10 +1329,10 @@ export default function TrackedJobsClient({
                         )}
                       >
                         <p className="line-clamp-2 text-base font-black leading-6 text-on-background">
-                          {job.job?.title ?? 'Untitled role'}
+                          {getDisplayedTitle(job)}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-on-surface-variant">
-                          {job.job?.company_name ?? 'Unknown company'}
+                          {getDisplayedCompanyName(job)}
                         </p>
                       </button>
                     )
@@ -1104,10 +1348,10 @@ export default function TrackedJobsClient({
                         Tracker menu
                       </div>
                       <SheetTitle className="mt-4 max-w-4xl text-3xl font-black tracking-tight text-on-background sm:text-[2.6rem] sm:leading-[1.02]">
-                        {selectedTrackedJob.job?.title ?? 'Untitled role'}
+                        {getDisplayedTitle(selectedTrackedJob)}
                       </SheetTitle>
                       <SheetDescription className="mt-3 text-base font-semibold leading-7 text-on-surface-variant">
-                        {selectedTrackedJob.job?.company_name ?? 'Unknown company'} · {selectedTrackedJob.job?.location_text ?? 'Location flexible'}
+                        {getDisplayedCompanyName(selectedTrackedJob)} · {getDisplayedLocation(selectedTrackedJob)}
                       </SheetDescription>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <span className="rounded-full border border-black/8 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-on-surface-variant">
@@ -1377,10 +1621,10 @@ export default function TrackedJobsClient({
                           <button
                             type="button"
                             onClick={handleSaveDrawer}
-                            disabled={busyKey === `drawer:${selectedTrackedJob.id}`}
+                            disabled={rowSaveState[selectedTrackedJob.id] === 'saving'}
                             className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-5 py-3 text-sm font-black uppercase tracking-[0.14em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:opacity-60"
                           >
-                            {busyKey === `drawer:${selectedTrackedJob.id}` ? 'Saving…' : 'Save changes'}
+                            {rowSaveState[selectedTrackedJob.id] === 'saving' ? 'Saving…' : 'Save changes'}
                           </button>
                         </div>
                       </section>

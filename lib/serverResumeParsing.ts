@@ -76,6 +76,8 @@ export interface RobustResumeParseResult {
   sourceTextLength: number
   fastCandidate: ResumeParseCandidate | null
   clientCandidate: ResumeParseCandidate | null
+  repairCandidate: ResumeParseCandidate | null
+  repairAttempted: boolean
 }
 
 export async function parseResumeRobustly(params: {
@@ -105,6 +107,8 @@ export async function parseResumeRobustly(params: {
 
   const fastCandidate = buildParseCandidate(parsedData, 'fast', sourceTextLength)
   const clientCandidate = buildParseCandidate(clientParsedData, 'client', sourceTextLength)
+  let repairCandidate: ResumeParseCandidate | null = null
+  let repairAttempted = false
 
   const preferServerCandidate =
     fileType === PDF_MIME_TYPE && fastCandidate
@@ -121,9 +125,10 @@ export async function parseResumeRobustly(params: {
   }
 
   if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
+    repairAttempted = true
     try {
       const repairedData = await claudeParser.parse(buffer, fileType)
-      const repairCandidate = buildParseCandidate(repairedData, 'repair', sourceTextLength)
+      repairCandidate = buildParseCandidate(repairedData, 'repair', sourceTextLength)
       selectedCandidate = chooseBetterParseCandidate(selectedCandidate, repairCandidate)
     } catch (error) {
       console.error('Repair resume parser failed:', error)
@@ -136,5 +141,7 @@ export async function parseResumeRobustly(params: {
     sourceTextLength,
     fastCandidate,
     clientCandidate,
+    repairCandidate,
+    repairAttempted,
   }
 }

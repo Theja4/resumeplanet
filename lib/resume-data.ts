@@ -243,10 +243,19 @@ export function resumeDataToPlainText(data: ResumeData | null | undefined): stri
     parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate, item.gpa)
   }
 
-  for (const section of safe.skillSections ?? []) {
-    parts.push(section.title, ...section.skills)
+  const skillSections = safe.skillSections ?? []
+  if (skillSections.length > 0) {
+    parts.push('Skills')
+    for (const section of skillSections) {
+      const title = section.title?.trim() || 'Skills'
+      const tag = section.tag?.trim()
+      const label = tag ? `${title} (${tag})` : title
+      const skillsLine = (section.skills ?? []).map(skill => skill.trim()).filter(Boolean).join(', ')
+      parts.push(skillsLine ? `${label}: ${skillsLine}` : label)
+    }
+  } else {
+    parts.push(...safe.skills)
   }
-  parts.push(...safe.skills)
 
   for (const item of safe.projects) {
     parts.push(item.name, item.description, ...(item.bullets ?? []), ...(item.technologies ?? []))

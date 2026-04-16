@@ -162,13 +162,16 @@ export async function POST(request: NextRequest) {
     })
     .eq('id', result.trackedJob.id)
     .eq('user_id', auth.userId)
-    .select('id, user_id, job_id, status, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at')
+    .select('id, user_id, job_id, status, title_override, company_name_override, location_text_override, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at')
     .single()
 
   const trackedJob = {
     ...(updatedTrackedJob ?? {
       ...result.trackedJob,
       user_id: auth.userId,
+      title_override: null,
+      company_name_override: null,
+      location_text_override: null,
       notes,
       salary_text: salaryText,
       job_description: jobDescription,

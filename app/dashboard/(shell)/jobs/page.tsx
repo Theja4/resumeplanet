@@ -17,7 +17,7 @@ export default async function DashboardJobsPage({
     supabase
       .from('tracked_jobs')
       .select(
-        'id, user_id, job_id, status, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
+        'id, user_id, job_id, status, title_override, company_name_override, location_text_override, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
       )
       .eq('user_id', userId)
       .order('updated_at', { ascending: false }),

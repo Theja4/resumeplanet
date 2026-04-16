@@ -1,5 +1,5 @@
 import { scoreResume, type ScorerResult } from '@/lib/ats-scorer'
-import { syncResumeData } from '@/lib/resume-data'
+import { normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 
 export interface InsightSuggestionLike {
@@ -11,6 +11,54 @@ export interface InsightSuggestionLike {
 
 const PLACEHOLDER_TEXT_PATTERN = /\[[^\]]+\]|\b(?:TBD|to be determined|placeholder)\b/i
 const WEAK_RESUME_PREFIX_PATTERN = /^(responsible for|duties included|tasked with|helped with|assisted in|participated in|involved in|worked on|contributed to)\b/i
+
+function buildUpdatedSkillSections(data: ResumeData, nextSkills: string[]) {
+  const normalizedSkills = nextSkills.flatMap(splitSkillInput).map(skill => skill.trim()).filter(Boolean)
+  if (normalizedSkills.length === 0) return []
+
+  if ((data.skillSections?.length ?? 0) === 0) {
+    return [{ title: 'Core Skills', skills: normalizedSkills }]
+  }
+
+  const currentSections = normalizeSkillSections(data.skillSections, data.skills)
+  const existingSkills = currentSections.flatMap(section => section.skills)
+  const lowerNextSkills = new Map(normalizedSkills.map(skill => [skill.toLowerCase(), skill]))
+  const assigned = new Set<string>()
+
+  const rebuilt = currentSections.map(section => {
+    const kept = section.skills
+      .map(skill => lowerNextSkills.get(skill.toLowerCase()))
+      .filter((skill): skill is string => Boolean(skill))
+
+    kept.forEach(skill => assigned.add(skill.toLowerCase()))
+
+    return {
+      ...section,
+      skills: kept,
+    }
+  }).filter(section => section.title || section.tag || section.skills.length > 0)
+
+  const unassigned = normalizedSkills.filter(skill => !assigned.has(skill.toLowerCase()))
+
+  if (unassigned.length > 0) {
+    const targetIndex = rebuilt.findIndex(section => (section.title?.trim() || '').toLowerCase() === 'core skills')
+    if (targetIndex !== -1) {
+      rebuilt[targetIndex] = {
+        ...rebuilt[targetIndex],
+        skills: [...rebuilt[targetIndex].skills, ...unassigned],
+      }
+    } else if (rebuilt.length > 0) {
+      rebuilt[0] = {
+        ...rebuilt[0],
+        skills: [...rebuilt[0].skills, ...unassigned],
+      }
+    } else {
+      rebuilt.push({ title: 'Core Skills', tag: '', skills: unassigned })
+    }
+  }
+
+  return rebuilt
+}
 
 function replaceIfPresent(source: string, beforeText: string, afterText: string) {
   if (!beforeText) return { value: source, changed: false }
@@ -75,15 +123,11 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
 
   if (sectionHint === 'skills') {
     const nextSkills = afterText.split(',').map(skill => skill.trim()).filter(Boolean)
+    const nextSkillSections = buildUpdatedSkillSections(updated, nextSkills)
     const nextData = syncResumeData({
       ...updated,
-      skillSections: updated.skillSections?.length
-        ? updated.skillSections.map((section, index) =>
-            index === 0
-              ? { ...section, skills: nextSkills }
-              : section
-          )
-        : [{ title: 'Core Skills', skills: nextSkills }],
+      skillSections: nextSkillSections,
+      skills: nextSkills,
     })
     const unchanged =
       nextSkills.length === nextData.skills.length &&

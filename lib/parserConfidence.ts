@@ -167,6 +167,59 @@ function assessSkills(data: ResumeData, issues: string[]): number {
   return 4
 }
 
+function looksLikeProjectNameLeak(value: string): boolean {
+  const trimmed = value.trim()
+  if (!trimmed) return false
+  if (trimmed.length > 90) return true
+  if (/[.!?]$/.test(trimmed)) return true
+
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  if (words.length > 12) return true
+
+  const lower = trimmed.toLowerCase()
+  const narrativeSignals = [
+    'responsible for',
+    'built ',
+    'building ',
+    'designed ',
+    'developed ',
+    'created ',
+    'improved ',
+    'using ',
+    'through ',
+    'from ',
+    'with ',
+  ]
+
+  return narrativeSignals.some(signal => lower.includes(signal))
+}
+
+function assessProjects(data: ResumeData, issues: string[]): number {
+  if (data.projects.length === 0) return 0
+
+  let score = 8
+  const suspiciousNames = data.projects.filter(item => looksLikeProjectNameLeak(item.name))
+  const namedProjects = data.projects.filter(item => item.name.trim().length > 0)
+  const describedProjects = data.projects.filter(item => item.description.trim() || getProjectBullets(item).length > 0)
+
+  if (namedProjects.length < data.projects.length) {
+    score -= 3
+    issues.push('some project names missing')
+  }
+
+  if (describedProjects.length < data.projects.length) {
+    score -= 2
+    issues.push('some project details missing')
+  }
+
+  if (suspiciousNames.length > 0) {
+    score -= 6
+    issues.push('project names look like description text')
+  }
+
+  return Math.max(0, score)
+}
+
 export function estimateResumeDataTextLength(data: ResumeData | null | undefined): number {
   if (!data) return 0
 
@@ -254,6 +307,7 @@ export function assessResumeParseConfidence(
   score += assessExperience(data, issues)
   score += assessEducation(data, issues)
   score += assessSkills(data, issues)
+  score += assessProjects(data, issues)
 
   const populatedSections = [
     data.experience.length > 0,
@@ -326,6 +380,7 @@ export function shouldAttemptRepair(candidate: ResumeParseCandidate | null): boo
   return candidate.confidence.issues.some(issue =>
     issue === 'summary contains downstream section content' ||
     issue === 'experience entries missing title or company' ||
+    issue === 'project names look like description text' ||
     issue === 'missing experience section' ||
     issue === 'very few sections populated' ||
     issue === 'very low extraction coverage' ||

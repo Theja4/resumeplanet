@@ -34,14 +34,14 @@ export default function PublicationsEditor({ data, onChange, focusPath, onFocusH
   return (
     <div ref={rootRef} className="p-4 space-y-2">
       {data.publications.map((pub, i) => (
-        <div key={i} className="flex items-center gap-2">
+        <div key={i} className="grid grid-cols-12 gap-2 items-start">
           <input
             type="text"
             value={pub.title}
             data-field-path={`publications.${i}.title`}
             onChange={(e) => updateItem(i, { ...pub, title: e.target.value })}
             placeholder="Publication title"
-            className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-12 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-6"
           />
           <input
             type="text"
@@ -49,7 +49,7 @@ export default function PublicationsEditor({ data, onChange, focusPath, onFocusH
             data-field-path={`publications.${i}.publisher`}
             onChange={(e) => updateItem(i, { ...pub, publisher: e.target.value })}
             placeholder="Publisher"
-            className="w-28 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-7 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-4"
           />
           <input
             type="text"
@@ -57,9 +57,9 @@ export default function PublicationsEditor({ data, onChange, focusPath, onFocusH
             data-field-path={`publications.${i}.date`}
             onChange={(e) => updateItem(i, { ...pub, date: e.target.value })}
             placeholder="Year"
-            className="w-16 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-3 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-1"
           />
-          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0" aria-label="Remove">
+          <button onClick={() => removeItem(i)} className="col-span-2 mt-1 text-gray-300 hover:text-red-500 transition-colors justify-self-end md:col-span-1" aria-label="Remove">
             <X size={13} />
           </button>
         </div>

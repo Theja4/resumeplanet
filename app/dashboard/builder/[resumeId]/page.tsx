@@ -663,6 +663,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   // ── Resizable Panels ────────────────────────────────────────────────────────
   const [leftWidth, setLeftWidth] = useState(420)
   const [rightWidth, setRightWidth] = useState(380)
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState(false)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const [isRightCollapsed, setIsRightCollapsed] = useState(false)
@@ -1272,30 +1273,60 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         <main className="flex h-screen pt-16">
           
           {/* Left Sidebar: EDITOR SECTIONS */}
-          <aside style={{ width: leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 overflow-y-auto flex flex-col shrink-0 relative transition-[width] duration-300">
-             <SectionList
-               resumeData={resumeData}
-               visibility={visibility}
-               layout={templateConfig.layout}
-               expandedSection={expandedSection}
-               sectionHints={sectionHints}
-               onDataChange={handleDataChange}
-               onVisibilityChange={handleVisibilityChange}
-               onExpandSection={(id) => setExpandedSection(id)}
-               focusedFieldPath={focusedFieldPath}
-               onFocusedFieldHandled={() => setFocusedFieldPath(null)}
-               onSectionAction={(sectionType, action) => builderAnalytics.trackSectionEdit(sectionType, action)}
-               onSubSectionEditorOpened={(sectionType, subSectionId) =>
-                 builderAnalytics.trackSubSectionEditorOpened(sectionType, subSectionId)
-               }
-             />
+          <aside style={{ width: isLeftCollapsed ? 48 : leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 flex flex-col shrink-0 relative transition-[width] duration-300">
+            <button
+              onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+              className={`absolute top-4 ${isLeftCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-[-24px]'} z-50 flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-400 shadow-sm transition-all hover:text-primary hover:shadow-md active:scale-95`}
+              title={isLeftCollapsed ? 'Expand Editor' : 'Hide Editor'}
+            >
+              {isLeftCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
+
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {isLeftCollapsed ? (
+                <button
+                  type="button"
+                  onClick={() => setIsLeftCollapsed(false)}
+                  className="flex-1 flex flex-col items-center pt-16 gap-5 transition-colors hover:bg-zinc-50"
+                  title="Expand Editor"
+                >
+                  <span className="[writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                    Resume Editor
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
+                    <Pencil size={16} />
+                  </div>
+                </button>
+              ) : (
+                <div className="flex-1 overflow-y-auto">
+                  <SectionList
+                    resumeData={resumeData}
+                    visibility={visibility}
+                    layout={templateConfig.layout}
+                    expandedSection={expandedSection}
+                    sectionHints={sectionHints}
+                    onDataChange={handleDataChange}
+                    onVisibilityChange={handleVisibilityChange}
+                    onExpandSection={(id) => setExpandedSection(id)}
+                    focusedFieldPath={focusedFieldPath}
+                    onFocusedFieldHandled={() => setFocusedFieldPath(null)}
+                    onSectionAction={(sectionType, action) => builderAnalytics.trackSectionEdit(sectionType, action)}
+                    onSubSectionEditorOpened={(sectionType, subSectionId) =>
+                      builderAnalytics.trackSubSectionEditorOpened(sectionType, subSectionId)
+                    }
+                  />
+                </div>
+              )}
+            </div>
           </aside>
 
           {/* Left Handle */}
-          <div 
-            className="w-1 bg-transparent hover:bg-emerald-500/30 cursor-col-resize z-10 shrink-0 select-none scale-x-150 transition-colors"
-            onMouseDown={() => setIsDraggingLeft(true)}
-          />
+          {!isLeftCollapsed && (
+            <div 
+              className="w-1 bg-transparent hover:bg-emerald-500/30 cursor-col-resize z-10 shrink-0 select-none scale-x-150 transition-colors"
+              onMouseDown={() => setIsDraggingLeft(true)}
+            />
+          )}
 
           {/* Center Canvas */}
           <section className="flex-1 overflow-auto bg-surface-container flex flex-col items-center py-8 px-8 min-w-[500px]">

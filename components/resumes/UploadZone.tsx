@@ -216,11 +216,11 @@ export default function UploadZone({
             if (body.success && body.data) {
               setProgressMonotonic(100)
               setState('done')
-              setTimeout(() => {
+              requestAnimationFrame(() => {
                 onUploadSuccess(body.data as Resume)
                 setState('idle')
                 resetProgress()
-              }, 800)
+              })
               return
             }
           } catch {

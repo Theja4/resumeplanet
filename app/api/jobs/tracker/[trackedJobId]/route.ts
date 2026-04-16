@@ -27,6 +27,9 @@ export async function PATCH(
   const body = (await request.json().catch(() => null)) as
     | {
         status?: TrackedJobStatus
+        title?: string | null
+        companyName?: string | null
+        locationText?: string | null
         notes?: string | null
         salaryText?: string | null
         jobDescription?: string | null
@@ -36,6 +39,30 @@ export async function PATCH(
       }
     | null
   const status = body?.status
+  const title =
+    body?.title === undefined
+      ? undefined
+      : typeof body.title === 'string'
+        ? body.title.trim().slice(0, 180) || null
+        : body.title === null
+          ? null
+          : undefined
+  const companyName =
+    body?.companyName === undefined
+      ? undefined
+      : typeof body.companyName === 'string'
+        ? body.companyName.trim().slice(0, 180) || null
+        : body.companyName === null
+          ? null
+          : undefined
+  const locationText =
+    body?.locationText === undefined
+      ? undefined
+      : typeof body.locationText === 'string'
+        ? body.locationText.trim().slice(0, 180) || null
+        : body.locationText === null
+          ? null
+          : undefined
   const notes =
     body?.notes === undefined
       ? undefined
@@ -88,6 +115,13 @@ export async function PATCH(
   if (
     !trackedJobId ||
     (status !== undefined && !ALLOWED_UPDATE_STATUSES.has(status)) ||
+    (body?.title !== undefined && typeof body.title !== 'string' && body.title !== null) ||
+    (body?.companyName !== undefined &&
+      typeof body.companyName !== 'string' &&
+      body.companyName !== null) ||
+    (body?.locationText !== undefined &&
+      typeof body.locationText !== 'string' &&
+      body.locationText !== null) ||
     (body?.notes !== undefined && typeof body.notes !== 'string' && body.notes !== null) ||
     (body?.salaryText !== undefined && typeof body.salaryText !== 'string' && body.salaryText !== null) ||
     (body?.jobDescription !== undefined && typeof body.jobDescription !== 'string' && body.jobDescription !== null) ||
@@ -97,6 +131,9 @@ export async function PATCH(
     (body?.savedOn !== undefined && body.savedOn !== null && body.savedOn !== '' && savedOn === null) ||
     (body?.appliedOn !== undefined && body.appliedOn !== null && body.appliedOn !== '' && appliedAt === null) ||
     (status === undefined &&
+      title === undefined &&
+      companyName === undefined &&
+      locationText === undefined &&
       notes === undefined &&
       salaryText === undefined &&
       jobDescription === undefined &&
@@ -113,6 +150,9 @@ export async function PATCH(
     profile: auth.profile,
     trackedJobId,
     status,
+    titleOverride: title,
+    companyNameOverride: companyName,
+    locationTextOverride: locationText,
     notes,
     salaryText,
     jobDescription,

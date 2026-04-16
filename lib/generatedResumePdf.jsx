@@ -1,5 +1,6 @@
 import { buildFirstPartyResumeMetadata } from '@/lib/firstPartyResumeMarker'
 import { getEducationDateLabel, getProjectBullets, getResumeSkills, normalizeSkillSections } from '@/lib/resume-data'
+import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 
 const PT_TO_MM = 0.352778
 
@@ -92,7 +93,28 @@ function hasSectionContent(data, id) {
   }
 }
 
-function createPdfWriter(doc, accent, fontName) {
+function createLayoutTokens(config) {
+  const compressed = config?.density === 'compressed'
+
+  return {
+    bodyFontSize: compressed ? 9.8 : 10.2,
+    metaFontSize: compressed ? 9 : 9.4,
+    headingFontSize: config?.sectionHeadingStyle === 'minimal' ? 10.8 : 10.5,
+    itemTitleFontSize: compressed ? 11 : 11.4,
+    sectionGap: compressed ? 1.2 : 1.8,
+    itemGap: compressed ? 1.1 : 1.6,
+    paragraphGap: compressed ? 0.8 : 1,
+    bulletGap: compressed ? 0.3 : 0.6,
+    headingAfter: config?.sectionHeadingStyle === 'minimal' ? (compressed ? 0.9 : 1.2) : (compressed ? 2 : 2.4),
+    titleAfter: compressed ? 0.5 : 0.7,
+    companyAfter: compressed ? 0.8 : 1.1,
+    detailAfter: compressed ? 1.2 : 1.8,
+    dateColumnWidth: compressed ? 28 : 30,
+    blockMinHeight: compressed ? 14 : 16,
+  }
+}
+
+function createPdfWriter(doc, accent, fontName, config) {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   const marginX = 14
@@ -100,6 +122,7 @@ function createPdfWriter(doc, accent, fontName) {
   const marginBottom = 14
   const contentWidth = pageWidth - marginX * 2
   const bottomLimit = pageHeight - marginBottom
+  const tokens = createLayoutTokens(config)
   let y = marginTop
 
   function lineHeight(fontSize, multiplier = 1.25) {
@@ -112,6 +135,35 @@ function createPdfWriter(doc, accent, fontName) {
     y = marginTop
   }
 
+  function estimateWrappedHeight(text, options = {}) {
+    const {
+      maxWidth = contentWidth,
+      fontSize = tokens.bodyFontSize,
+      lineMultiplier = 1.25,
+      before = 0,
+      after = 0,
+    } = options
+
+    const normalizedText = sanitizePdfText(text)
+    if (!normalizedText) return 0
+
+    setTextStyle({ fontSize, fontStyle: options.fontStyle ?? 'normal', color: options.color ?? [55, 65, 81] })
+    const lines = doc.splitTextToSize(normalizedText, maxWidth)
+    return before + (lines.length * lineHeight(fontSize, lineMultiplier)) + after
+  }
+
+  function estimateBulletListHeight(items, indent = 4.5, fontSize = tokens.bodyFontSize) {
+    let total = 0
+    for (const item of items || []) {
+      const normalizedText = sanitizePdfText(item)
+      if (!normalizedText) continue
+      setTextStyle({ fontSize, fontStyle: 'normal', color: [55, 65, 81] })
+      const lines = doc.splitTextToSize(normalizedText, contentWidth - indent)
+      total += lines.length * lineHeight(fontSize, 1.3) + tokens.bulletGap
+    }
+    return total
+  }
+
   function setTextStyle({ fontSize = 11, fontStyle = 'normal', color = [17, 24, 39] }) {
     doc.setFont(fontName, fontStyle)
     doc.setFontSize(fontSize)
@@ -122,11 +174,11 @@ function createPdfWriter(doc, accent, fontName) {
     const {
       x = marginX,
       maxWidth = contentWidth,
-      fontSize = 11,
+      fontSize = tokens.bodyFontSize,
       fontStyle = 'normal',
       color = [55, 65, 81],
       before = 0,
-      after = 1.8,
+      after = tokens.sectionGap,
       lineMultiplier = 1.25,
     } = options
 
@@ -152,7 +204,7 @@ function createPdfWriter(doc, accent, fontName) {
 
   function writeRightAlignedText(text, rightX, options = {}) {
     const {
-      fontSize = 10,
+      fontSize = tokens.metaFontSize,
       fontStyle = 'normal',
       color = [107, 114, 128],
     } = options
@@ -166,37 +218,53 @@ function createPdfWriter(doc, accent, fontName) {
     doc.text(normalizedText, rightX, y, { align: 'right' })
   }
 
-  function drawDivider(after = 2.4) {
+  function drawDivider(after = tokens.headingAfter, startX = marginX, endX = pageWidth - marginX) {
     ensureSpace(2.5)
     doc.setDrawColor(229, 231, 235)
     doc.setLineWidth(0.2)
-    doc.line(marginX, y, pageWidth - marginX, y)
+    doc.line(startX, y, endX, y)
     y += after
   }
 
-  function writeSectionHeading(title) {
+  function writeSectionHeading(title, styleVariant = 'rule') {
     if (!title) return
-    ensureSpace(10)
-    setTextStyle({ fontSize: 10.5, fontStyle: 'bold', color: accent })
+    ensureSpace(tokens.blockMinHeight)
+
+    if (styleVariant === 'minimal') {
+      setTextStyle({ fontSize: tokens.headingFontSize, fontStyle: 'bold', color: [17, 24, 39] })
+      doc.text(String(title), marginX, y)
+      y += lineHeight(tokens.headingFontSize, 1.15) + tokens.headingAfter
+      return
+    }
+
+    setTextStyle({ fontSize: tokens.headingFontSize, fontStyle: 'bold', color: accent })
     doc.text(String(title).toUpperCase(), marginX, y)
-    y += lineHeight(10.5, 1.15)
+    const titleWidth = doc.getTextWidth(String(title).toUpperCase())
+    y += lineHeight(tokens.headingFontSize, 1.15)
+
+    if (styleVariant === 'label') {
+      const lineStart = Math.min(marginX + titleWidth + 6, pageWidth - marginX - 8)
+      drawDivider(tokens.headingAfter, lineStart, pageWidth - marginX)
+      return
+    }
+
     drawDivider()
   }
 
-  function writeBulletList(items, indent = 4.5) {
+  function writeBulletList(items, indent = 4.5, fontSize = tokens.bodyFontSize) {
     for (const item of items || []) {
       const text = String(item || '').trim()
       if (!text) continue
-      ensureSpace(lineHeight(10.5, 1.3))
-      setTextStyle({ fontSize: 10.5, fontStyle: 'normal', color: [55, 65, 81] })
+      ensureSpace(lineHeight(fontSize, 1.3))
+      setTextStyle({ fontSize, fontStyle: 'normal', color: [55, 65, 81] })
       doc.text('-', marginX, y)
       const wrapped = doc.splitTextToSize(text, contentWidth - indent)
       for (let index = 0; index < wrapped.length; index += 1) {
-        ensureSpace(lineHeight(10.5, 1.3))
+        ensureSpace(lineHeight(fontSize, 1.3))
         doc.text(wrapped[index], marginX + indent, y)
-        y += lineHeight(10.5, 1.3)
+        y += lineHeight(fontSize, 1.3)
       }
-      y += 0.6
+      y += tokens.bulletGap
     }
   }
 
@@ -245,13 +313,13 @@ function createPdfWriter(doc, accent, fontName) {
         fontSize: 11,
         fontStyle: 'bold',
         color: accent,
-        after: 1.2,
+        after: tokens.paragraphGap,
       })
     }
 
     if (contact) {
       writeWrappedText(contact, {
-        fontSize: 9.2,
+        fontSize: tokens.metaFontSize,
         color: [107, 114, 128],
         after: 2.5,
       })
@@ -264,11 +332,17 @@ function createPdfWriter(doc, accent, fontName) {
     pageWidth,
     contentWidth,
     marginX,
+    tokens,
+    sectionHeadingStyle: config?.sectionHeadingStyle ?? 'rule',
+    skillsStyle: config?.skillsStyle ?? 'inline',
+    dateLayout: config?.dateLayout ?? 'right',
     getY: () => y,
     setY: value => {
       y = value
     },
     ensureSpace,
+    estimateWrappedHeight,
+    estimateBulletListHeight,
     writeWrappedText,
     writeRightAlignedText,
     writeSectionHeading,
@@ -280,7 +354,7 @@ function createPdfWriter(doc, accent, fontName) {
 function renderExperienceSection(writer, title, items) {
   if (!items?.length) return
 
-  writer.writeSectionHeading(title)
+  writer.writeSectionHeading(title, writer.sectionHeadingStyle)
   renderExperienceItems(writer, items)
 }
 
@@ -291,82 +365,154 @@ function renderExperienceItems(writer, items) {
     const roleText = item.title || item.name || ''
     const companyLine = [item.company, item.location].filter(Boolean).join('  |  ')
     const dateLabel = [item.startDate || item.date, item.endDate].filter(Boolean).join(' - ')
+    const showRightDate = writer.dateLayout === 'right' && Boolean(dateLabel)
+    const dateColumnWidth = showRightDate ? writer.tokens.dateColumnWidth : 0
+    const leftMaxWidth = dateLabel ? writer.contentWidth - dateColumnWidth - 4 : writer.contentWidth
+    const bullets = item.bullets || item.highlights || []
+    const keepTogetherHeight =
+      writer.estimateWrappedHeight(roleText, {
+        fontSize: writer.tokens.itemTitleFontSize,
+        fontStyle: 'bold',
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.titleAfter,
+        lineMultiplier: 1.12,
+      }) +
+      (companyLine ? writer.estimateWrappedHeight(companyLine, {
+        fontSize: writer.tokens.metaFontSize,
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.companyAfter,
+      }) : 0) +
+      (writer.dateLayout === 'inline' && dateLabel
+        ? writer.estimateWrappedHeight(dateLabel, {
+            fontSize: writer.tokens.metaFontSize,
+            after: writer.tokens.companyAfter,
+          })
+        : 0) +
+      Math.min(
+        writer.estimateBulletListHeight(bullets.slice(0, 2), 4.5, writer.tokens.bodyFontSize),
+        writer.tokens.blockMinHeight,
+      )
 
-    writer.ensureSpace(12)
+    writer.ensureSpace(Math.max(writer.tokens.blockMinHeight, keepTogetherHeight))
     const startY = writer.getY()
 
     if (roleText) {
       writer.writeWrappedText(roleText, {
-        fontSize: 11.5,
+        fontSize: writer.tokens.itemTitleFontSize,
         fontStyle: 'bold',
         color: [17, 24, 39],
-        after: 0.7,
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.titleAfter,
+        lineMultiplier: 1.12,
       })
     }
 
-    if (dateLabel) {
+    if (showRightDate) {
       writer.setY(startY)
       writer.writeRightAlignedText(dateLabel, writer.pageWidth - writer.marginX, {
-        fontSize: 9,
+        fontSize: writer.tokens.metaFontSize,
         color: [107, 114, 128],
       })
-      writer.setY(Math.max(writer.getY(), startY + 4.5))
+      writer.setY(Math.max(writer.getY(), startY + 4.8))
     }
 
     if (companyLine) {
       writer.writeWrappedText(companyLine, {
-        fontSize: 9.5,
+        fontSize: writer.tokens.metaFontSize,
         color: [107, 114, 128],
-        after: 1.1,
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.companyAfter,
+      })
+    }
+
+    if (!showRightDate && dateLabel) {
+      writer.writeWrappedText(dateLabel, {
+        fontSize: writer.tokens.metaFontSize,
+        color: [107, 114, 128],
+        after: writer.tokens.companyAfter,
       })
     }
 
     if (item.summary) {
       writer.writeWrappedText(item.summary, {
-        fontSize: 10.2,
+        fontSize: writer.tokens.bodyFontSize,
         color: [55, 65, 81],
-        after: 1,
+        after: writer.tokens.paragraphGap,
       })
     }
 
-    writer.writeBulletList(item.bullets || item.highlights || [])
-    writer.setY(writer.getY() + 1.6)
+    writer.writeBulletList(bullets, 4.5, writer.tokens.bodyFontSize)
+    writer.setY(writer.getY() + writer.tokens.itemGap)
   }
 }
 
 function renderEducationSection(writer, items) {
   if (!items?.length) return
 
-  writer.writeSectionHeading('Education')
+  writer.writeSectionHeading('Education', writer.sectionHeadingStyle)
 
   for (const item of items) {
     const degreeLine = [item.degree, item.field].filter(Boolean).join(' - ')
+    const educationDate = getEducationDateLabel(item)
+    const showRightDate = writer.dateLayout === 'right' && Boolean(educationDate)
+    const dateColumnWidth = showRightDate ? writer.tokens.dateColumnWidth : 0
+    const leftMaxWidth = educationDate ? writer.contentWidth - dateColumnWidth - 4 : writer.contentWidth
+    const keepTogetherHeight =
+      writer.estimateWrappedHeight(item.institution || '', {
+        fontSize: writer.tokens.itemTitleFontSize - 0.2,
+        fontStyle: 'bold',
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.titleAfter,
+      }) +
+      ((degreeLine || item.gpa) ? writer.estimateWrappedHeight(
+        `${degreeLine}${item.gpa ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`,
+        {
+          fontSize: writer.tokens.bodyFontSize - 0.4,
+          maxWidth: leftMaxWidth,
+          after: writer.tokens.detailAfter,
+        }
+      ) : 0) +
+      (!showRightDate && educationDate
+        ? writer.estimateWrappedHeight(educationDate, {
+            fontSize: writer.tokens.metaFontSize,
+            after: writer.tokens.companyAfter,
+          })
+        : 0)
 
-    writer.ensureSpace(10)
+    writer.ensureSpace(Math.max(writer.tokens.blockMinHeight - 2, keepTogetherHeight))
     const startY = writer.getY()
     writer.writeWrappedText(item.institution || '', {
-      fontSize: 11.2,
+      fontSize: writer.tokens.itemTitleFontSize - 0.2,
       fontStyle: 'bold',
       color: [17, 24, 39],
-      after: 0.7,
+      maxWidth: leftMaxWidth,
+      after: writer.tokens.titleAfter,
     })
 
-    const educationDate = getEducationDateLabel(item)
-    if (educationDate) {
+    if (showRightDate) {
       writer.setY(startY)
       writer.writeRightAlignedText(educationDate, writer.pageWidth - writer.marginX, {
-        fontSize: 9,
+        fontSize: writer.tokens.metaFontSize,
         color: [107, 114, 128],
       })
-      writer.setY(Math.max(writer.getY(), startY + 4.5))
+      writer.setY(Math.max(writer.getY(), startY + 4.8))
+    }
+
+    if (!showRightDate && educationDate) {
+      writer.writeWrappedText(educationDate, {
+        fontSize: writer.tokens.metaFontSize,
+        color: [107, 114, 128],
+        after: writer.tokens.companyAfter,
+      })
     }
 
     if (degreeLine || item.gpa) {
       const detail = `${degreeLine}${item.gpa ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`
       writer.writeWrappedText(detail, {
-        fontSize: 9.7,
+        fontSize: writer.tokens.bodyFontSize - 0.4,
         color: [55, 65, 81],
-        after: 1.8,
+        maxWidth: leftMaxWidth,
+        after: writer.tokens.detailAfter,
       })
     }
   }
@@ -375,57 +521,78 @@ function renderEducationSection(writer, items) {
 function renderProjectsSection(writer, items) {
   if (!items?.length) return
 
-  writer.writeSectionHeading('Projects')
+  writer.writeSectionHeading('Projects', writer.sectionHeadingStyle)
 
   for (const item of items) {
+    const bullets = getProjectBullets(item)
+    const keepTogetherHeight =
+      writer.estimateWrappedHeight(item.name || '', {
+        fontSize: writer.tokens.itemTitleFontSize - 0.2,
+        fontStyle: 'bold',
+        after: writer.tokens.titleAfter,
+        lineMultiplier: 1.12,
+      }) +
+      (item.description ? writer.estimateWrappedHeight(item.description, {
+        fontSize: writer.tokens.bodyFontSize,
+        after: writer.tokens.paragraphGap,
+      }) : 0) +
+      Math.min(
+        writer.estimateBulletListHeight(bullets.slice(0, 2), 4.5, writer.tokens.bodyFontSize),
+        writer.tokens.blockMinHeight,
+      )
+
+    writer.ensureSpace(Math.max(writer.tokens.blockMinHeight, keepTogetherHeight))
     writer.writeWrappedText(item.name || '', {
-      fontSize: 11.2,
+      fontSize: writer.tokens.itemTitleFontSize - 0.2,
       fontStyle: 'bold',
       color: [17, 24, 39],
-      after: 0.7,
+      after: writer.tokens.titleAfter,
+      lineMultiplier: 1.12,
     })
 
     if (item.description) {
       writer.writeWrappedText(item.description, {
-        fontSize: 10.2,
+        fontSize: writer.tokens.bodyFontSize,
         color: [55, 65, 81],
-        after: 0.9,
+        after: writer.tokens.paragraphGap,
       })
     }
 
-    writer.writeBulletList(getProjectBullets(item), 4.5)
+    writer.writeBulletList(bullets, 4.5, writer.tokens.bodyFontSize)
 
     if (item.technologies?.length) {
       writer.writeWrappedText(item.technologies.join(', '), {
-        fontSize: 9.2,
+        fontSize: writer.tokens.metaFontSize,
         fontStyle: 'italic',
         color: [107, 114, 128],
-        after: 1.8,
+        after: writer.tokens.detailAfter,
       })
+    } else {
+      writer.setY(writer.getY() + writer.tokens.itemGap)
     }
   }
 }
 
 function renderSimpleListSection(writer, title, items, formatter) {
   if (!items?.length) return
-  writer.writeSectionHeading(title)
+  writer.writeSectionHeading(title, writer.sectionHeadingStyle)
   for (const item of items) {
     const text = formatter(item)
     if (!text) continue
     writer.writeWrappedText(text, {
-      fontSize: 10.2,
+      fontSize: writer.tokens.bodyFontSize,
       color: [55, 65, 81],
-      after: 0.9,
+      after: writer.tokens.paragraphGap,
     })
   }
-  writer.setY(writer.getY() + 1)
+  writer.setY(writer.getY() + writer.tokens.itemGap)
 }
 
 function renderSection(writer, data, id) {
   switch (id) {
     case 'summary':
       if (!data.summary) return
-      writer.writeSectionHeading('Summary')
+      writer.writeSectionHeading('Summary', writer.sectionHeadingStyle)
       writer.writeWrappedText(data.summary, {
         fontSize: 10.5,
         color: [55, 65, 81],
@@ -442,14 +609,7 @@ function renderSection(writer, data, id) {
       renderEducationSection(writer, data.education)
       return
     case 'skills':
-      renderSimpleListSection(
-        writer,
-        'Skills',
-        normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
-          `${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join('  |  ')}`
-        ),
-        value => value
-      )
+      renderSkillsSection(writer, data)
       return
     case 'projects':
       renderProjectsSection(writer, data.projects)
@@ -491,7 +651,7 @@ function renderSection(writer, data, id) {
       const custom = getCustomSection(data, id)
       if (!custom) return
 
-      writer.writeSectionHeading(custom.title)
+      writer.writeSectionHeading(custom.title, writer.sectionHeadingStyle)
 
       if (custom.type === 'text' && custom.text) {
         writer.writeWrappedText(custom.text, {
@@ -518,10 +678,57 @@ function renderSection(writer, data, id) {
   }
 }
 
+function renderSkillsSection(writer, data) {
+  const sections = normalizeSkillSections(data.skillSections, getResumeSkills(data))
+  if (!sections.length) return
+
+  writer.writeSectionHeading('Skills', writer.sectionHeadingStyle)
+
+  const separator = writer.skillsStyle === 'divider' ? '  •  ' : ', '
+
+  for (const section of sections) {
+    const label = section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}` : ''
+    const skills = section.skills ?? []
+    if (!skills.length && !label) continue
+
+    if (writer.skillsStyle === 'stacked') {
+      if (label) {
+        writer.writeWrappedText(label, {
+          fontSize: writer.tokens.metaFontSize,
+          fontStyle: 'bold',
+          color: [75, 85, 99],
+          after: 0.5,
+        })
+      }
+      for (const skill of skills) {
+        writer.writeWrappedText(skill, {
+          fontSize: writer.tokens.bodyFontSize,
+          color: [55, 65, 81],
+          x: writer.marginX + 4.5,
+          maxWidth: writer.contentWidth - 4.5,
+          after: 0.35,
+        })
+      }
+      writer.setY(writer.getY() + writer.tokens.paragraphGap)
+      continue
+    }
+
+    const line = label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
+    writer.writeWrappedText(line, {
+      fontSize: writer.tokens.bodyFontSize,
+      color: [55, 65, 81],
+      after: writer.tokens.paragraphGap,
+    })
+  }
+
+  writer.setY(writer.getY() + writer.tokens.itemGap)
+}
+
 export async function generateResumePdfBlob({ data, config, sectionOrder, sidebarSectionOrder }) {
   const { jsPDF } = await import('jspdf')
-  const accent = hexToRgb(config?.accentColor || '#4F46E5')
-  const fontName = getBaseFont(config?.fontFamily)
+  const safeConfig = sanitizeUniversalConfig(config || {})
+  const accent = hexToRgb(safeConfig.accentColor || '#4F46E5')
+  const fontName = getBaseFont(safeConfig.fontFamily)
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -547,7 +754,8 @@ export async function generateResumePdfBlob({ data, config, sectionOrder, sideba
   doc.setCreationDate(new Date())
 
   const writer = createPdfWriter(doc, [accent.r, accent.g, accent.b], fontName)
-  writer.writeHeader(data, config || {})
+  writer.sectionHeadingStyle = safeConfig.sectionHeadingStyle
+  writer.writeHeader(data, safeConfig)
 
   const orderedSections = buildOrderedSectionIds(sectionOrder, sidebarSectionOrder)
     .filter(id => hasSectionContent(data, id))

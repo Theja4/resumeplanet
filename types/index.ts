@@ -663,6 +663,9 @@ export interface TrackedJob {
   user_id: string
   job_id: string
   status: TrackedJobStatus
+  title_override?: string | null
+  company_name_override?: string | null
+  location_text_override?: string | null
   applied_at: string | null
   saved_on: string | null
   salary_text: string | null

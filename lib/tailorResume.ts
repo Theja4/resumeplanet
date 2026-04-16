@@ -1,5 +1,5 @@
 import { scoreResume } from '@/lib/ats-scorer'
-import { getProjectBullets, getResumeSkills, syncResumeData } from '@/lib/resume-data'
+import { getProjectBullets, getResumeSkills, normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import type { ExperienceItem, ResumeData, TailorAnalysis } from '@/types'
 
 type ApplyScope = 'all' | 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer'
@@ -65,15 +65,49 @@ function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
 }
 
 function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
+  const normalizedSkills = mergedSkills.flatMap(splitSkillInput).map(skill => skill.trim()).filter(Boolean)
+
   if ((data.skillSections?.length ?? 0) === 0) {
-    return [{ title: 'Core Skills', skills: mergedSkills }]
+    return normalizedSkills.length > 0 ? [{ title: 'Core Skills', skills: normalizedSkills }] : []
   }
 
-  const [firstSection, ...rest] = data.skillSections ?? []
-  return [
-    { ...firstSection, skills: mergedSkills },
-    ...rest,
-  ]
+  const currentSections = normalizeSkillSections(data.skillSections, data.skills)
+  const lowerMergedSkills = new Map(normalizedSkills.map(skill => [skill.toLowerCase(), skill]))
+  const assigned = new Set<string>()
+
+  const rebuilt = currentSections.map(section => {
+    const kept = section.skills
+      .map(skill => lowerMergedSkills.get(skill.toLowerCase()))
+      .filter((skill): skill is string => Boolean(skill))
+
+    kept.forEach(skill => assigned.add(skill.toLowerCase()))
+
+    return {
+      ...section,
+      skills: kept,
+    }
+  }).filter(section => section.title || section.tag || section.skills.length > 0)
+
+  const unassigned = normalizedSkills.filter(skill => !assigned.has(skill.toLowerCase()))
+
+  if (unassigned.length > 0) {
+    const coreIndex = rebuilt.findIndex(section => (section.title?.trim() || '').toLowerCase() === 'core skills')
+    if (coreIndex !== -1) {
+      rebuilt[coreIndex] = {
+        ...rebuilt[coreIndex],
+        skills: [...rebuilt[coreIndex].skills, ...unassigned],
+      }
+    } else if (rebuilt.length > 0) {
+      rebuilt[0] = {
+        ...rebuilt[0],
+        skills: [...rebuilt[0].skills, ...unassigned],
+      }
+    } else {
+      rebuilt.push({ title: 'Core Skills', tag: '', skills: unassigned })
+    }
+  }
+
+  return rebuilt
 }
 
 function applyBulletRewritesToItems(

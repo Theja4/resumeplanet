@@ -1,6 +1,6 @@
 'use client'
 
-import { useSortable } from '@dnd-kit/sortable'
+import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Eye, EyeOff, Trash2,
   User, AlignLeft, Briefcase, GraduationCap, Zap,
@@ -103,12 +103,26 @@ export default function SortableSectionRow({
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
-  } = useSortable({ id: sectionId, disabled: isDragDisabled })
+  } = useSortable({
+    id: sectionId,
+    disabled: isDragDisabled,
+    animateLayoutChanges(args) {
+      return defaultAnimateLayoutChanges({
+        ...args,
+        wasDragging: true,
+      })
+    },
+    transition: {
+      duration: 240,
+      easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+    },
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0 : 1,
+    willChange: isDragging ? 'transform' : undefined,
   }
 
   const isCustom = sectionId.startsWith('custom_')

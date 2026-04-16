@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Plus } from 'lucide-react'
+import { X } from 'lucide-react'
 import type { ProjectItem } from '@/types'
 
 interface Props {
@@ -26,20 +25,6 @@ function InputField({ label, path, value, onChange, placeholder }: {
 }
 
 export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props) {
-  const [techInput, setTechInput] = useState('')
-
-  function addTech() {
-    const val = techInput.trim()
-    if (val && !item.technologies.includes(val)) {
-      onChange({ ...item, technologies: [...item.technologies, val] })
-    }
-    setTechInput('')
-  }
-
-  function removeTech(tech: string) {
-    onChange({ ...item, technologies: item.technologies.filter(t => t !== tech) })
-  }
-
   return (
     <div className="space-y-3">
       <InputField label="Project Name" path={`${pathPrefix}.name`} value={item.name} onChange={v => onChange({ ...item, name: v })} placeholder="My Project" />
@@ -48,25 +33,6 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
         <textarea data-field-path={`${pathPrefix}.description`} value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
           rows={3} placeholder="What does this project do?"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-2">Technologies</label>
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {item.technologies.map(tech => (
-            <span key={tech} className="flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs">
-              {tech}
-              <button onClick={() => removeTech(tech)} className="text-indigo-400 hover:text-indigo-600"><X size={11} /></button>
-            </span>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input data-field-path={`${pathPrefix}.technologies`} value={techInput} onChange={e => setTechInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTech() } }}
-            placeholder="React, TypeScript…" className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-          <button onClick={addTech} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center gap-1">
-            <Plus size={13} />
-          </button>
-        </div>
       </div>
     </div>
   )

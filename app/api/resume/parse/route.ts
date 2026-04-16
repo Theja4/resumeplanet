@@ -92,6 +92,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     selectedCandidate,
     fastCandidate,
     clientCandidate,
+    repairCandidate,
+    repairAttempted,
+    sourceTextLength,
   } = await parseResumeRobustly({
     buffer,
     fileType,
@@ -126,6 +129,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     markerDetected: Boolean(markerSnapshot),
     fastScore: fastCandidate?.confidence.score ?? null,
     clientScore: clientCandidate?.confidence.score ?? null,
+    repairScore: repairCandidate?.confidence.score ?? null,
+    repairAttempted,
+    sourceTextLength,
   })
 
   // ── Duplicate check (same user + title or user + hash in last 24h) ─────────
@@ -172,6 +178,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       raw_text: '',
       parsed_data: parsedData,
       original_file_url: storagePath,
+      parse_selected_source: selectedCandidate.source,
+      parse_selected_score: selectedCandidate.confidence.score,
+      parse_selected_issues: selectedCandidate.confidence.issues,
+      parse_fast_score: fastCandidate?.confidence.score ?? null,
+      parse_client_score: clientCandidate?.confidence.score ?? null,
+      parse_repair_score: repairCandidate?.confidence.score ?? null,
+      parse_repair_attempted: repairAttempted,
+      parse_source_text_length: sourceTextLength || null,
       template_config: markerSnapshot?.config ?? null,
       builder_visibility: markerSnapshot
         ? buildRoundTripVisibility(

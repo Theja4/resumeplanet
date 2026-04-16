@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getEducationDateLabel, getResumeSkills, syncResumeData } from '@/lib/resume-data'
+import BuilderSkillsEditor from '@/components/builder/SkillsEditor'
 import { updateResumeData } from '../actions'
 import type { Resume, ATSScore, ResumeData, ExperienceItem, EducationItem } from '@/types'
 import { DashboardPageIntro } from '@/components/layout/DashboardSurface'
@@ -93,79 +94,6 @@ function InlineField({ label, value, multiline = false, onSave }: InlineFieldPro
       <span className={`text-sm ${value ? 'text-gray-900' : 'text-gray-300 italic'}`}>
         {value || `Add ${label.toLowerCase()}`}
       </span>
-    </div>
-  )
-}
-
-// ─── Skills editor ────────────────────────────────────────────────────────────
-
-function SkillsEditor({
-  skills,
-  onSave,
-}: {
-  skills: string[]
-  onSave: (skills: string[]) => void
-}) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(skills.join(', '))
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    setSaving(true)
-    const parsed = draft
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
-    await onSave(parsed)
-    setSaving(false)
-    setEditing(false)
-  }
-
-  if (editing) {
-    return (
-      <div className="flex flex-col gap-2">
-        <textarea
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={3}
-          placeholder="JavaScript, React, Node.js, …"
-          className="rounded-md border border-indigo-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-          autoFocus
-        />
-        <p className="text-xs text-gray-400">Separate skills with commas</p>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={save} disabled={saving} className="h-7 text-xs gap-1">
-            <Save size={11} /> {saving ? 'Saving…' : 'Save'}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => { setDraft(skills.join(', ')); setEditing(false) }}
-            className="h-7 text-xs gap-1"
-          >
-            <X size={11} /> Cancel
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="cursor-pointer rounded-md px-2 py-1.5 -mx-2 hover:bg-gray-50 transition-colors"
-      onClick={() => setEditing(true)}
-    >
-      {skills.length === 0 ? (
-        <span className="text-sm text-gray-300 italic">Click to add skills</span>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {skills.map((skill, i) => (
-            <Badge key={i} variant="secondary" className="text-xs">
-              {skill}
-            </Badge>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
@@ -513,9 +441,9 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
             <CardTitle className="text-sm font-semibold text-gray-700">Skills</CardTitle>
           </CardHeader>
           <CardContent>
-            <SkillsEditor
-              skills={getResumeSkills(data)}
-              onSave={(skills) => updateField('skillSections', [{ title: 'Core Skills', skills }])}
+            <BuilderSkillsEditor
+              data={data}
+              onChange={(updated) => setData(syncResumeData(updated))}
             />
           </CardContent>
         </Card>

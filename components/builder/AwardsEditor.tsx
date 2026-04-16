@@ -34,14 +34,14 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
   return (
     <div ref={rootRef} className="p-4 space-y-2">
       {data.awards.map((award, i) => (
-        <div key={i} className="flex items-center gap-2">
+        <div key={i} className="grid grid-cols-12 gap-2 items-start">
           <input
             type="text"
             value={award.title}
             data-field-path={`awards.${i}.title`}
             onChange={(e) => updateItem(i, { ...award, title: e.target.value })}
             placeholder="Award title"
-            className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-12 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-6"
           />
           <input
             type="text"
@@ -49,7 +49,7 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
             data-field-path={`awards.${i}.issuer`}
             onChange={(e) => updateItem(i, { ...award, issuer: e.target.value })}
             placeholder="Issuer"
-            className="w-28 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-7 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-4"
           />
           <input
             type="text"
@@ -57,9 +57,9 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
             data-field-path={`awards.${i}.date`}
             onChange={(e) => updateItem(i, { ...award, date: e.target.value })}
             placeholder="Year"
-            className="w-16 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="col-span-3 min-w-0 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 md:col-span-1"
           />
-          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0" aria-label="Remove">
+          <button onClick={() => removeItem(i)} className="col-span-2 mt-1 text-gray-300 hover:text-red-500 transition-colors justify-self-end md:col-span-1" aria-label="Remove">
             <X size={13} />
           </button>
         </div>
