@@ -646,7 +646,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                   {showEmailField ? (
                     <div className="group relative rounded-[1.25rem] bg-white/78 px-4 pb-4 pt-3 shadow-[0_12px_30px_rgba(25,28,29,0.04)] ring-1 ring-black/5 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-primary/20">
                       <label htmlFor="email" className="text-[11px] font-bold uppercase tracking-[0.22em] text-on-surface-variant/70">
-                        Work email
+                        Email
                       </label>
                       <input
                         id="email"
