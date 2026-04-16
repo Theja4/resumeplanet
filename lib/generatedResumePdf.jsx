@@ -446,7 +446,7 @@ function renderSection(writer, data, id) {
         writer,
         'Skills',
         normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
-          `${section.title ? `${section.title}: ` : ''}${section.skills.join('  |  ')}`
+          `${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join('  |  ')}`
         ),
         value => value
       )

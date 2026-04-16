@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, KeyboardEvent } from 'react'
+import { useState } from 'react'
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, ProjectItem } from '@/types'
 import { syncResumeData } from '@/lib/resume-data'
@@ -14,7 +14,6 @@ const EMPTY_PROJECT: ProjectItem = { name: '', description: '', bullets: [], tec
 
 export default function ProjectsEditor({ data, onChange }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-  const [techInputs, setTechInputs] = useState<Record<number, string>>({})
 
   function updateItem(index: number, updated: ProjectItem) {
     const next = [...data.projects]
@@ -31,26 +30,6 @@ export default function ProjectsEditor({ data, onChange }: EditorProps) {
     const next = [...data.projects, { ...EMPTY_PROJECT }]
     onChange(syncResumeData({ ...data, projects: next }))
     setExpandedIndex(next.length - 1)
-  }
-
-  function addTech(projectIndex: number, raw: string) {
-    const tag = raw.trim()
-    if (!tag || data.projects[projectIndex].technologies.includes(tag)) {
-      setTechInputs(prev => ({ ...prev, [projectIndex]: '' }))
-      return
-    }
-    updateItem(projectIndex, {
-      ...data.projects[projectIndex],
-      technologies: [...data.projects[projectIndex].technologies, tag],
-    })
-    setTechInputs(prev => ({ ...prev, [projectIndex]: '' }))
-  }
-
-  function removeTech(projectIndex: number, techIndex: number) {
-    updateItem(projectIndex, {
-      ...data.projects[projectIndex],
-      technologies: data.projects[projectIndex].technologies.filter((_, i) => i !== techIndex),
-    })
   }
 
   return (
@@ -80,7 +59,10 @@ export default function ProjectsEditor({ data, onChange }: EditorProps) {
                 <label className="block text-xs text-gray-500 mb-0.5">Project Summary</label>
                 <textarea
                   value={project.description}
-                  onChange={(e) => updateItem(i, { ...project, description: e.target.value })}
+                  onChange={(e) => updateItem(i, {
+                    ...project,
+                    description: e.target.value,
+                  })}
                   rows={2}
                   className="w-full rounded border border-gray-200 px-2 py-1 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
@@ -96,30 +78,6 @@ export default function ProjectsEditor({ data, onChange }: EditorProps) {
                   rows={4}
                   placeholder="One bullet per line"
                   className="w-full rounded border border-gray-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Technologies</label>
-                <div className="flex flex-wrap gap-1 mb-1">
-                  {project.technologies.map((tech, ti) => (
-                    <span key={ti} className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2 py-0.5 rounded-full">
-                      {tech}
-                      <button onClick={() => removeTech(i, ti)} className="text-indigo-400 hover:text-indigo-700"><X size={10} /></button>
-                    </span>
-                  ))}
-                </div>
-                <input
-                  value={techInputs[i] ?? ''}
-                  onChange={(e) => setTechInputs(prev => ({ ...prev, [i]: e.target.value }))}
-                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                    if (e.key === 'Enter' || e.key === ',') {
-                      e.preventDefault()
-                      addTech(i, (techInputs[i] ?? '').replace(/,$/, ''))
-                    }
-                  }}
-                  onBlur={() => { if (techInputs[i]?.trim()) addTech(i, techInputs[i]) }}
-                  placeholder="React, TypeScript…"
-                  className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               <button onClick={() => removeItem(i)} className="mt-2 text-xs text-red-500 hover:text-red-700 transition-colors">

@@ -163,6 +163,7 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
   "skillSections": [
     {
       "title": string,
+      "tag": string,
       "skills": [string]
     }
   ],

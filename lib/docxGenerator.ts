@@ -137,11 +137,11 @@ export async function generateDOCX(
           sectionHeading('Skills'),
           ...(safeConfig.skillsStyle === 'stacked'
             ? normalizeSkillSections(data.skillSections, getResumeSkills(data)).flatMap(section => [
-                ...(section.title ? [body(section.title, { bold: true, color: '666666', size: 18 })] : []),
+                ...(section.title ? [body(section.tag ? `${section.title} (${section.tag})` : section.title, { bold: true, color: '666666', size: 18 })] : []),
                 ...section.skills.map(skill => bullet(skill)),
               ])
             : normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
-                body(`${section.title ? `${section.title}: ` : ''}${section.skills.join(skillSeparator)}`)
+                body(`${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join(skillSeparator)}`)
               )),
           gap(),
         ]

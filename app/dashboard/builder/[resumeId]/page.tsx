@@ -856,6 +856,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const root = path.split('.')[0]
     if (root === 'summary') return 'summary'
     if (root === 'skills') return 'skills'
+    if (root === 'skillSections') return 'skills'
     if (root === 'languages') return 'languages'
     if (root === 'interests') return 'interests'
     if (root === 'experience') return 'experience'

@@ -3,7 +3,7 @@
 import { useState, KeyboardEvent, useRef, useEffect } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ResumeData, SkillSection } from '@/types'
-import { splitSkillInput, syncResumeData } from '@/lib/resume-data'
+import { flattenSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
@@ -13,7 +13,7 @@ interface EditorProps {
   onFocusHandled?: () => void
 }
 
-const EMPTY_SECTION: SkillSection = { title: 'New Skill Section', skills: [] }
+const EMPTY_SECTION: SkillSection = { title: '', tag: '', skills: [] }
 
 export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const rootRef = useRef<HTMLDivElement>(null)
@@ -27,7 +27,11 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     : [{ title: 'Core Skills', skills: data.skills }]
 
   function commit(nextSections: SkillSection[]) {
-    onChange(syncResumeData({ ...data, skillSections: nextSections }))
+    onChange(syncResumeData({
+      ...data,
+      skillSections: nextSections,
+      skills: flattenSkillSections(nextSections),
+    }))
   }
 
   function updateSection(index: number, updated: SkillSection) {
@@ -92,7 +96,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
           <div className="flex items-start gap-3">
             <div className="flex-1 space-y-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">Section Title</label>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Section Title (Optional)</label>
                 <input
                   ref={node => {
                     titleRefs.current[sectionIndex] = node

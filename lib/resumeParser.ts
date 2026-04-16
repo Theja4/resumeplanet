@@ -1,5 +1,5 @@
 import type { ResumeData, ExperienceItem } from '@/types'
-import { normalizeSkillSections, syncResumeData } from '@/lib/resume-data'
+import { normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import { pagesToLines, type ExtractedPage } from './pdfExtractor'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -624,11 +624,10 @@ function parseSummary(lines: string[], preamble: string[], name: string, current
 }
 
 function parseSkills(lines: string[]): string[] {
-  const raw = lines.join('\n')
-  const parts = raw
-    .split(/[,|•\-*\n]+/)
+  const parts = lines
+    .flatMap(line => splitSkillInput(line.replace(/^[A-Za-z][A-Za-z &/+()-]{1,40}:\s+/, '')))
     .map(s => s.trim())
-    .filter(s => s.length > 0 && s.length <= 50)
+    .filter(s => s.length > 0 && s.length <= 80)
   const seen = new Set<string>()
   const result: string[] = []
   for (const p of parts) {
@@ -640,22 +639,25 @@ function parseSkills(lines: string[]): string[] {
 
 function parseSkillSections(lines: string[]) {
   const sections: Array<{ title: string; skills: string[] }> = []
+  let currentSection: { title: string; skills: string[] } | null = null
 
   for (const rawLine of lines) {
     const line = rawLine.trim()
     if (!line) continue
 
     const match = /^([A-Za-z][A-Za-z &/+()-]{1,40}):\s+(.+)$/.exec(line)
-    if (!match) continue
+    if (match) {
+      const title = match[1].trim()
+      const skills = splitSkillInput(match[2]).filter(Boolean)
+      currentSection = { title, skills }
+      if (skills.length > 0) {
+        sections.push(currentSection)
+      }
+      continue
+    }
 
-    const title = match[1].trim()
-    const skills = match[2]
-      .split(/[,|•\n]+/)
-      .map(value => value.trim())
-      .filter(Boolean)
-
-    if (skills.length > 0) {
-      sections.push({ title, skills })
+    if (currentSection && !detectSection(line) && !looksLikeCustomHeadingText(line)) {
+      currentSection.skills.push(...splitSkillInput(line))
     }
   }
 
@@ -768,6 +770,19 @@ function parseProjects(lines: string[]): ResumeData['projects'] {
   const projects: ResumeData['projects'] = []
   let current: ResumeData['projects'][0] | null = null
 
+  const looksLikeProjectTitle = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return false
+    if (trimmed.length > 100) return false
+    if (/[.!?]$/.test(trimmed)) return false
+    if (looksLikeNarrativeLine(trimmed)) return false
+
+    const words = trimmed.split(/\s+/).filter(Boolean)
+    if (words.length > 12) return false
+
+    return true
+  }
+
   for (const line of lines) {
     const t = line.trim()
     if (!t) continue
@@ -776,9 +791,11 @@ function parseProjects(lines: string[]): ResumeData['projects'] {
     const techInParens = /\(([^)]+)\)\s*$/.exec(t)
     const hasDate = DATE_MONTH_RE.test(t) || DATE_YEAR_RANGE_RE.test(t)
 
-    // A new project starts on a non-bullet, non-date line ≤ 100 chars with no tech keyword
-    if (!isBullet && !techMatch && !hasDate && t.length <= 100) {
+    // A new project starts on a title-like non-bullet line.
+    if (!isBullet && !techMatch && !hasDate && looksLikeProjectTitle(t) && (!current || current.description || current.bullets?.length)) {
       if (current) projects.push(current)
+      current = { name: t, description: '', bullets: [], technologies: [] }
+    } else if (!current && !isBullet && !techMatch && !hasDate) {
       current = { name: t, description: '', bullets: [], technologies: [] }
     } else if (current && techMatch) {
       const techs = techMatch[1].split(/[,|]/).map(s => s.trim()).filter(Boolean)

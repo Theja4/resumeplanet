@@ -122,6 +122,7 @@ export interface EducationItem {
 
 export interface SkillSection {
   title: string
+  tag?: string
   skills: string[]
 }
 

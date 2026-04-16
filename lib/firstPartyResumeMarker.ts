@@ -66,6 +66,7 @@ function normalizeSkillSection(value: unknown) {
 
   return {
     title: stringValue(value.title),
+    tag: stringValue(value.tag),
     skills: stringArray(value.skills),
   }
 }

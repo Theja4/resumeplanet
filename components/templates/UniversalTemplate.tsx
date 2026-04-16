@@ -67,7 +67,7 @@ export default function UniversalTemplate({
   }
 
   function renderSkills(
-    sections: Array<{ title: string; skills: string[] }>,
+    sections: Array<{ title: string; tag?: string; skills: string[] }>,
     isSidebarContext: boolean,
     accentValue: string
   ) {
@@ -79,14 +79,31 @@ export default function UniversalTemplate({
           {normalizedSections.map((section, sectionIndex) => (
             <div key={sectionIndex}>
               {section.title && (
-                <EditableText
-                  value={section.title}
-                  path={`skillSections.${sectionIndex}.title`}
-                  isEditing={isEditing}
-                  onFieldChange={onFieldChange}
-                  onNavigateToField={onNavigateToField}
-                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-semibold uppercase tracking-[0.14em] text-gray-500`}
-                />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <EditableText
+                    value={section.title}
+                    path={`skillSections.${sectionIndex}.title`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-semibold uppercase tracking-[0.14em] text-gray-500`}
+                  />
+                  {section.tag ? (
+                    <span
+                      className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
+                      onClick={
+                        !isEditing && onNavigateToField
+                          ? (event) => {
+                              event.stopPropagation()
+                              onNavigateToField(`skillSections.${sectionIndex}.tag`)
+                            }
+                          : undefined
+                      }
+                    >
+                      ({section.tag})
+                    </span>
+                  ) : null}
+                </div>
               )}
               <div className="mt-1 space-y-1">
                 {section.skills.map((skill, skillIndex) => (
@@ -116,14 +133,31 @@ export default function UniversalTemplate({
         {normalizedSections.map((section, sectionIndex) => (
           <div key={sectionIndex}>
             {section.title && (
-              <EditableText
-                value={section.title}
-                path={`skillSections.${sectionIndex}.title`}
-                isEditing={isEditing}
-                onFieldChange={onFieldChange}
-                onNavigateToField={onNavigateToField}
-                className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-semibold uppercase tracking-[0.14em] text-gray-500`}
-              />
+              <>
+                <EditableText
+                  value={section.title}
+                  path={`skillSections.${sectionIndex}.title`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-semibold uppercase tracking-[0.14em] text-gray-500`}
+                />
+                {section.tag ? (
+                  <span
+                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
+                    onClick={
+                      !isEditing && onNavigateToField
+                        ? (event) => {
+                            event.stopPropagation()
+                            onNavigateToField(`skillSections.${sectionIndex}.tag`)
+                          }
+                        : undefined
+                    }
+                  >
+                    ({section.tag})
+                  </span>
+                ) : null}
+              </>
             )}
             {section.skills.map((skill, skillIndex) => (
               <React.Fragment key={skillIndex}>
@@ -517,9 +551,9 @@ export default function UniversalTemplate({
                   {proj.description && (
                     <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
                   )}
-                  {getProjectBullets(proj).length > 0 && (
+                  {(proj.bullets?.length ?? 0) > 0 && (
                     <div className="mt-1.5 space-y-1">
-                      {getProjectBullets(proj).map((bullet, bulletIndex) => (
+                      {(proj.bullets ?? []).map((bullet, bulletIndex) => (
                         <div key={bulletIndex} className="flex gap-2">
                           <span style={{ color: accent, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
                           <EditableText
