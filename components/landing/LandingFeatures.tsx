@@ -566,7 +566,7 @@ export default function LandingFeatures() {
           <Reveal className="text-center space-y-1">
             <LiveCounter />
             <div className="text-xs text-zinc-500 font-semibold leading-snug max-w-[130px] mx-auto">
-              resumes optimized today
+              resumes optimized this week
             </div>
           </Reveal>
           {[
