@@ -16,6 +16,13 @@ function dedupe(values: string[]) {
   return result
 }
 
+export function splitSkillInput(value: string) {
+  return value
+    .split(/[,\n|]+/)
+    .map(part => part.trim())
+    .filter(Boolean)
+}
+
 export function flattenSkillSections(skillSections: SkillSection[] | undefined | null) {
   if (!skillSections?.length) return []
   return dedupe(skillSections.flatMap(section => section.skills ?? []))
@@ -28,7 +35,7 @@ export function normalizeSkillSections(
   const normalized = (skillSections ?? [])
     .map(section => ({
       title: (section.title ?? '').trim(),
-      skills: dedupe(section.skills ?? []),
+      skills: dedupe((section.skills ?? []).flatMap(splitSkillInput)),
     }))
     .filter(section => section.title || section.skills.length > 0)
 
@@ -38,7 +45,7 @@ export function normalizeSkillSections(
   return [
     {
       title: 'Core Skills',
-      skills: dedupe(fallbackSkills),
+      skills: dedupe(fallbackSkills.flatMap(splitSkillInput)),
     },
   ]
 }

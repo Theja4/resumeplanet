@@ -343,7 +343,7 @@ export default function UniversalTemplate({
       case 'experience':
         return data.experience.length > 0 ? (
           <div>
-            {isSidebarContext ? <SidebarLabel text="Experience" accent={accent} /> : <SectionHeading title="Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {isSidebarContext ? <SidebarLabel text="Work Experience" accent={accent} /> : <SectionHeading title="Work Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
               {data.experience.map((exp, ei) => (
                 <ExperienceItem

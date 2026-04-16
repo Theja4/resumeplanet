@@ -96,7 +96,7 @@ export async function generateDOCX(
       case 'experience':
         if (!data.experience.length) return []
         return [
-          sectionHeading('Experience'),
+          sectionHeading('Work Experience'),
           ...data.experience.flatMap(exp => [
             new Paragraph({
               children: [

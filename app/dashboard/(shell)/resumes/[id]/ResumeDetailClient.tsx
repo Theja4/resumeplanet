@@ -481,10 +481,10 @@ export default function ResumeDetailClient({ resume, atsHistory }: ResumeDetailC
           </CardContent>
         </Card>
 
-        {/* Experience */}
+        {/* Work Experience */}
         <Card className="border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.94),rgba(243,247,244,0.9))] shadow-[0_20px_50px_rgba(25,28,29,0.06)]">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">Experience</CardTitle>
+            <CardTitle className="text-sm font-semibold text-gray-700">Work Experience</CardTitle>
           </CardHeader>
           <CardContent>
             <ExperienceEditor

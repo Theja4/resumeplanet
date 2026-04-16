@@ -217,7 +217,7 @@ export default function TemplatePresetThumbnail({
             <div className="flex-1 p-3">
               <div className="space-y-2.5">
                 <div className="space-y-1.5">
-                  <SectionHeadingPreview title="Experience" style={safeConfig.sectionHeadingStyle} accent={accent} />
+                  <SectionHeadingPreview title="Work Experience" style={safeConfig.sectionHeadingStyle} accent={accent} />
                   <ExperiencePreview config={safeConfig} accent={accent} bulletGlyph={bulletGlyph} />
                 </div>
 
@@ -250,7 +250,7 @@ export default function TemplatePresetThumbnail({
 
             <div className="space-y-2.5">
               <div className="space-y-1.5">
-                <SectionHeadingPreview title="Experience" style={safeConfig.sectionHeadingStyle} accent={accent} />
+                <SectionHeadingPreview title="Work Experience" style={safeConfig.sectionHeadingStyle} accent={accent} />
                 <ExperiencePreview config={safeConfig} accent={accent} bulletGlyph={bulletGlyph} />
               </div>
 

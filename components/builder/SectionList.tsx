@@ -463,7 +463,7 @@ export default function SectionList({
                 <List size={18} className={`shrink-0 ${newType === 'complex' ? 'text-emerald-500' : 'text-zinc-400'}`} />
                 <div>
                   <div className="text-xs font-bold">List (Detailed)</div>
-                  <div className="text-[10px] text-zinc-500">Like Experience — Title, Subtitle, Dates, Bullets</div>
+                  <div className="text-[10px] text-zinc-500">Like Work Experience — Title, Subtitle, Dates, Bullets</div>
                 </div>
               </button>
               <button

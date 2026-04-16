@@ -277,7 +277,7 @@ function weakAreaToSuggestion(area: WeakArea, breakdown: ScorerResult['breakdown
         category: 'formatting',
         severity,
         issue: 'Your resume structure is missing standard sections or reads in a non-standard order.',
-        fix: 'Use a recruiter-friendly structure: Summary, Experience, Education, then Skills.',
+        fix: 'Use a recruiter-friendly structure: Summary, Work Experience, Education, then Skills.',
         example: pro ? detail : undefined,
       }
     case 'polish':

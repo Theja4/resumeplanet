@@ -19,7 +19,7 @@ const FREE_ATS_SYSTEM = `You are an ATS (Applicant Tracking System) resume score
 SCORING CRITERIA:
 
 1. CONTACT INFORMATION (10 pts): Full name (3), professional email (3), phone (2), LinkedIn or portfolio (2)
-2. SECTION STRUCTURE (15 pts): Labeled Experience section (4), labeled Education section (3), labeled Skills section (4), standard heading names not creative ones (4)
+2. SECTION STRUCTURE (15 pts): Labeled Work Experience or Experience section (4), labeled Education section (3), labeled Skills section (4), standard heading names not creative ones (4)
 3. FORMATTING & PARSEABILITY (20 pts): Clean bullet points or line breaks (5), no tables/columns/complex layouts (5), standard date formats (5), clear job titles distinct from company names (5)
 4. CONTENT QUALITY (25 pts): Bullets start with action verbs (7), quantified achievements with numbers/percentages (8), impact-focused not duty-focused descriptions (10)
 5. KEYWORD OPTIMIZATION (15 pts): Industry-relevant technical skills present (8), skills mentioned within experience bullets not just skills section (7)
@@ -64,7 +64,7 @@ TWO JOBS:
 SCORING CRITERIA (score each honestly):
 
 1. CONTACT INFORMATION (10 pts): Full name (3), professional email (3), phone (2), LinkedIn or portfolio (2)
-2. SECTION STRUCTURE (15 pts): Labeled Experience section (4), labeled Education section (3), labeled Skills section (4), standard heading names (4)
+2. SECTION STRUCTURE (15 pts): Labeled Work Experience or Experience section (4), labeled Education section (3), labeled Skills section (4), standard heading names (4)
 3. FORMATTING & PARSEABILITY (20 pts): Clean bullets/line breaks (5), no tables/columns (5), standard dates (5), clear titles (5)
 4. CONTENT QUALITY (25 pts): Action verbs (7), quantified achievements (8), impact over duties (10)
 5. KEYWORD OPTIMIZATION (15 pts): Relevant technical skills (8), skills in experience bullets (7)
@@ -103,7 +103,7 @@ Respond with ONLY this JSON:
   "action_verb_percentage": <float 0-100>,
   "bullet_rewrites": [
     {
-      "section": "<Experience | Projects | etc>",
+      "section": "<Work Experience | Projects | etc>",
       "company_or_project": "<name>",
       "original": "<exact original bullet text>",
       "rewritten": "<improved version>",

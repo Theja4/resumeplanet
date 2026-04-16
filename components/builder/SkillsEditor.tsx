@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, KeyboardEvent, useRef } from 'react'
+import { useState, KeyboardEvent, useRef, useEffect } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ResumeData, SkillSection } from '@/types'
-import { syncResumeData } from '@/lib/resume-data'
+import { splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
@@ -13,12 +13,14 @@ interface EditorProps {
   onFocusHandled?: () => void
 }
 
-const EMPTY_SECTION: SkillSection = { title: '', skills: [] }
+const EMPTY_SECTION: SkillSection = { title: 'New Skill Section', skills: [] }
 
 export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const rootRef = useRef<HTMLDivElement>(null)
+  const titleRefs = useRef<Record<number, HTMLInputElement | null>>({})
   useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
   const [inputs, setInputs] = useState<Record<number, string>>({})
+  const [pendingFocusIndex, setPendingFocusIndex] = useState<number | null>(null)
 
   const sections = data.skillSections?.length
     ? data.skillSections
@@ -35,6 +37,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   }
 
   function addSection() {
+    setPendingFocusIndex(sections.length)
     commit([...sections, { ...EMPTY_SECTION }])
   }
 
@@ -43,21 +46,22 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   }
 
   function addSkill(sectionIndex: number, raw: string) {
-    const skill = raw.trim()
-    if (!skill) {
+    const incomingSkills = splitSkillInput(raw)
+    if (incomingSkills.length === 0) {
       setInputs(prev => ({ ...prev, [sectionIndex]: '' }))
       return
     }
 
     const current = sections[sectionIndex]
-    if (current.skills.some(item => item.toLowerCase() === skill.toLowerCase())) {
-      setInputs(prev => ({ ...prev, [sectionIndex]: '' }))
-      return
-    }
+    const existing = new Set(current.skills.map(item => item.toLowerCase()))
+    const nextSkills = [
+      ...current.skills,
+      ...incomingSkills.filter(skill => !existing.has(skill.toLowerCase())),
+    ]
 
     updateSection(sectionIndex, {
       ...current,
-      skills: [...current.skills, skill],
+      skills: nextSkills,
     })
     setInputs(prev => ({ ...prev, [sectionIndex]: '' }))
   }
@@ -70,6 +74,17 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     })
   }
 
+  useEffect(() => {
+    if (pendingFocusIndex === null) return
+
+    const target = titleRefs.current[pendingFocusIndex]
+    if (target) {
+      target.focus()
+      target.select()
+      setPendingFocusIndex(null)
+    }
+  }, [pendingFocusIndex, sections.length])
+
   return (
     <div ref={rootRef} className="space-y-4 p-4">
       {sections.map((section, sectionIndex) => (
@@ -79,6 +94,9 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-500">Section Title</label>
                 <input
+                  ref={node => {
+                    titleRefs.current[sectionIndex] = node
+                  }}
                   data-field-path={`skillSections.${sectionIndex}.title`}
                   value={section.title}
                   onChange={(e) => updateSection(sectionIndex, { ...section, title: e.target.value })}

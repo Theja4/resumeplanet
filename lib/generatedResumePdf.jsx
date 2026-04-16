@@ -433,7 +433,7 @@ function renderSection(writer, data, id) {
       })
       return
     case 'experience':
-      renderExperienceSection(writer, 'Experience', data.experience)
+      renderExperienceSection(writer, 'Work Experience', data.experience)
       return
     case 'volunteer':
       renderExperienceSection(writer, 'Volunteer', data.volunteer)

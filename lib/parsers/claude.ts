@@ -72,7 +72,7 @@ function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeDat
 const SYSTEM_PROMPT = `You are a specialist resume parser. Extract structured data from resume text into a strict JSON format.
 
 ### SECTION MAPPING — Map ALL resume section headings to these standard names:
-  "Work Experience", "Experience", "Employment", "Work History", "Professional Experience", "Career", "Positions" → experience (key: "experience")
+  "Work Experience", "Experience", "Employment", "Work History", "Professional Experience", "Career", "Positions" → experience (key: "experience", display label: "Work Experience")
   "Education", "Educational Background", "Academic Background", "Academics", "Academic Qualifications", "Degrees" → education (key: "education")
   "Skills", "Technical Skills", "Competencies", "Technologies", "Core Skills", "Key Skills", "Expertise" → skills (key: "skills")
   "Summary", "Professional Summary", "Profile", "Objective", "About Me", "Career Summary" → summary (key: "summary" as a single string)

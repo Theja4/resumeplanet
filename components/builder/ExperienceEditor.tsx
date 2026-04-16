@@ -131,7 +131,7 @@ export default function ExperienceEditor({ data, onChange }: EditorProps) {
                 onClick={() => removeItem(i)}
                 className="mt-2 text-xs text-red-500 hover:text-red-700 transition-colors"
               >
-                Remove this job
+                Remove this role
               </button>
             </div>
           )}
@@ -142,7 +142,7 @@ export default function ExperienceEditor({ data, onChange }: EditorProps) {
         onClick={addItem}
         className="w-full mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-300 py-2 text-sm text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors"
       >
-        <Plus size={14} /> Add job
+        <Plus size={14} /> Add work experience
       </button>
     </div>
   )

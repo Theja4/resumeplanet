@@ -853,7 +853,7 @@ export function scoreResume(data: ResumeData): ScorerResult {
         relevantText = data.summary?.trim() ? [data.summary] : ['No summary']
         break
       case 'exp_verbs':
-        description = 'Experience bullets should start with strong action verbs'
+        description = 'Work experience bullets should start with strong action verbs'
         relevantText = expVerbs.weakBullets
         break
       case 'exp_metrics':

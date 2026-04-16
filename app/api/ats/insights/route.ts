@@ -175,7 +175,7 @@ function buildSuggestionPrompt(
   }
 
   if (criterionIds.has('exp_verbs') || criterionIds.has('exp_metrics') || criterionIds.has('exp_depth') || criterionIds.has('keywords')) {
-    parts.push('Experience:')
+    parts.push('Work Experience:')
     for (const exp of data.experience) {
       parts.push(`  ${exp.title} at ${exp.company} (${exp.startDate} - ${exp.endDate})`)
       for (const bullet of exp.bullets) {

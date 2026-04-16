@@ -53,7 +53,7 @@ const SCRATCH_STEPS: Array<{
   },
   {
     id: 'experience',
-    title: 'Experience',
+    title: 'Work Experience',
     description: 'Add at least one role with concrete bullet points. You can skip this if needed.',
   },
   {
