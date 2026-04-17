@@ -104,14 +104,26 @@ export function getResumeSkills(data: Pick<ResumeData, 'skills' | 'skillSections
 }
 
 export function getProjectBullets(project: Pick<ProjectItem, 'bullets' | 'description'>) {
-  const bullets = dedupe(project.bullets ?? [])
-  if (bullets.length > 0) return bullets
-  return project.description.trim() ? [project.description.trim()] : []
+  return dedupe(project.bullets ?? [])
 }
 
 export function getProjectDescription(project: Pick<ProjectItem, 'bullets' | 'description'>) {
-  if (project.description?.trim()) return project.description.trim()
-  return getProjectBullets(project).join(' ')
+  return project.description?.trim() ?? ''
+}
+
+function normalizeProjectItem(item: ProjectItem): ProjectItem {
+  const description = getProjectDescription(item)
+  const normalizedDescription = description.replace(/\s+/g, ' ').trim().toLowerCase()
+  const bullets = getProjectBullets(item).filter((bullet) => {
+    if (!normalizedDescription) return true
+    return bullet.replace(/\s+/g, ' ').trim().toLowerCase() !== normalizedDescription
+  })
+
+  return {
+    ...item,
+    description,
+    bullets,
+  }
 }
 
 export function getEducationDateLabel(education: Pick<EducationItem, 'startDate' | 'endDate' | 'graduationDate'>) {
@@ -197,14 +209,7 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
     skills,
     skillSections,
     certifications: data.certifications ?? [],
-    projects: (data.projects ?? []).map(item => {
-      const bullets = getProjectBullets(item)
-      return {
-        ...item,
-        bullets,
-        description: getProjectDescription({ description: item.description, bullets }),
-      }
-    }),
+    projects: (data.projects ?? []).map(item => normalizeProjectItem(item)),
     languages: data.languages ?? [],
     volunteer,
     interests: data.interests ?? [],

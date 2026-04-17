@@ -1,6 +1,7 @@
 'use client'
 
 import { type ReactNode, type DragEvent, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
   BriefcaseBusiness,
@@ -15,6 +16,7 @@ import {
   Upload,
 } from 'lucide-react'
 import type { Resume } from '@/types'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { HUMAN_WRITTEN_ORDER } from '@/lib/pricing'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
@@ -261,6 +263,7 @@ function UploadZone({
 }
 
 export default function NewOrderPage() {
+  const router = useRouter()
   const supabase = createClient()
   const { openOrderCheckout } = usePaddleCheckout()
 
@@ -279,6 +282,16 @@ export default function NewOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
+
+  useEffect(() => {
+    if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+      router.replace('/dashboard')
+    }
+  }, [router])
+
+  if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+    return null
+  }
 
   useEffect(() => {
     async function loadResumes() {

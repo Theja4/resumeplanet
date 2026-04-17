@@ -661,7 +661,20 @@ function parseSkillSections(lines: string[]) {
     }
   }
 
-  return normalizeSkillSections(sections)
+  if (sections.length > 0) {
+    return normalizeSkillSections(sections)
+  }
+
+  const fallbackSkills = parseSkills(lines)
+  if (fallbackSkills.length === 0) return []
+
+  return normalizeSkillSections([
+    {
+      title: '',
+      tag: '',
+      skills: fallbackSkills,
+    },
+  ])
 }
 
 function parseExperience(lines: string[]): ResumeData['experience'] {

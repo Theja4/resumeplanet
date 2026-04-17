@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Check, Clock, Download, ShieldCheck, Star, Trophy, Users, Globe } from 'lucide-react'
 import type { Order } from '@/types'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { HUMAN_WRITTEN_ORDER } from '@/lib/pricing'
 import OrderStatusPoller from './OrderStatusPoller'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
@@ -93,6 +94,8 @@ function MicrosoftLogo({ className }: { className?: string }) {
 }
 
 export default async function OrderDetailPage({ params, searchParams }: Props) {
+  if (!HUMAN_WRITTEN_SERVICE_ENABLED) notFound()
+
   const { id } = await params
   const { success } = await searchParams
 

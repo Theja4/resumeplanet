@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, ProjectItem } from '@/types'
 import { syncResumeData } from '@/lib/resume-data'
 

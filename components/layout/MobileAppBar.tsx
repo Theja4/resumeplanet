@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { logout } from '@/app/dashboard/(shell)/actions'
 import { Analytics } from '@/lib/analytics'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
 import {
   Menu,
@@ -35,7 +36,9 @@ const BASE_MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { href: '/dashboard/job-board', label: 'Jobs', Icon: BriefcaseBusiness },
   { href: '/dashboard/builder/new', label: 'Create Resume', Icon: PlusCircle },
   { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: FilePenLine },
-  { href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag },
+  ...(HUMAN_WRITTEN_SERVICE_ENABLED
+    ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag }]
+    : []),
   { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
 ]
 

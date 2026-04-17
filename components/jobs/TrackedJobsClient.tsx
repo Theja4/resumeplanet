@@ -306,13 +306,20 @@ export default function TrackedJobsClient({
   const [isManualDialogOpen, setIsManualDialogOpen] = useState(false)
   const [selectedTrackedJobId, setSelectedTrackedJobId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [hasMultiTabConflict, setHasMultiTabConflict] = useState(false)
   const [rowSaveState, setRowSaveState] = useState<Record<string, RowSaveState>>({})
   const [inlineDrafts, setInlineDrafts] = useState<Record<string, InlineDraft>>(() =>
     Object.fromEntries(initialTrackedJobs.map(job => [job.id, buildInlineDraft(job)]))
   )
   const [drawerDraft, setDrawerDraft] = useState<DrawerDraft | null>(null)
   const saveVersionRef = useRef<Record<string, number>>({})
+  const saveQueueRef = useRef<Record<string, Promise<boolean>>>({})
   const saveResetTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const trackedJobsRef = useRef(trackedJobs)
+  const persistedTrackedJobsRef = useRef<Record<string, TrackedJob>>(
+    Object.fromEntries(initialTrackedJobs.map(job => [job.id, job]))
+  )
+  const trackerTabIdRef = useRef(`tracker-${Math.random().toString(36).slice(2, 10)}`)
 
   const selectedTrackedJob =
     selectedTrackedJobId ? trackedJobs.find(job => job.id === selectedTrackedJobId) ?? null : null
@@ -320,8 +327,74 @@ export default function TrackedJobsClient({
   const selectedJobHasExternalLink = isValidExternalUrl(selectedJob?.apply_url)
 
   useEffect(() => {
+    trackedJobsRef.current = trackedJobs
+  }, [trackedJobs])
+
+  useEffect(() => {
     return () => {
       Object.values(saveResetTimersRef.current).forEach(timer => clearTimeout(timer))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof BroadcastChannel === 'undefined') {
+      return
+    }
+
+    const channel = new BroadcastChannel('rezoomed-job-tracker-presence')
+    const peers = new Map<string, number>()
+
+    const syncConflictState = () => {
+      const now = Date.now()
+      for (const [peerId, lastSeen] of peers.entries()) {
+        if (now - lastSeen > 15000) peers.delete(peerId)
+      }
+      setHasMultiTabConflict(peers.size > 0)
+    }
+
+    const announce = (type: 'hello' | 'ping' | 'bye') => {
+      channel.postMessage({
+        type,
+        tabId: trackerTabIdRef.current,
+        sentAt: Date.now(),
+      })
+    }
+
+    channel.onmessage = event => {
+      const data = event.data as { type?: string; tabId?: string; sentAt?: number } | null
+      if (!data?.tabId || data.tabId === trackerTabIdRef.current) return
+
+      if (data.type === 'bye') {
+        peers.delete(data.tabId)
+        syncConflictState()
+        return
+      }
+
+      peers.set(data.tabId, Date.now())
+      syncConflictState()
+
+      if (data.type === 'hello') {
+        announce('ping')
+      }
+    }
+
+    announce('hello')
+    const heartbeat = window.setInterval(() => {
+      announce('ping')
+      syncConflictState()
+    }, 5000)
+
+    const handleBeforeUnload = () => {
+      announce('bye')
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.clearInterval(heartbeat)
+      announce('bye')
+      channel.close()
     }
   }, [])
 
@@ -488,6 +561,16 @@ export default function TrackedJobsClient({
     }
   }
 
+  function getTrackedJobSnapshot(trackedJobId: string) {
+    return trackedJobsRef.current.find(job => job.id === trackedJobId) ?? null
+  }
+
+  function restoreTrackedJobState(trackedJobId: string) {
+    const persisted = persistedTrackedJobsRef.current[trackedJobId]
+    if (!persisted) return
+    syncTrackedJobState(trackedJobId, { ...persisted, job: persisted.job ?? null })
+  }
+
   function syncTrackedJobState(trackedJobId: string, patch: Partial<TrackedJob>) {
     let updatedTrackedJob: TrackedJob | null = null
 
@@ -535,49 +618,69 @@ export default function TrackedJobsClient({
     markRowSaveState(trackedJobId, 'saving')
     setErrorMessage(null)
 
-    try {
-      const response = await fetch(`/api/jobs/tracker/${trackedJobId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
+    const previous = saveQueueRef.current[trackedJobId] ?? Promise.resolve(true)
+    const request = previous.catch(() => false).then(async () => {
+      try {
+        const response = await fetch(`/api/jobs/tracker/${trackedJobId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        })
 
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            success?: boolean
-            trackedJob?: Partial<TrackedJob>
-            error?: string
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              success?: boolean
+              trackedJob?: Partial<TrackedJob>
+              error?: string
+            }
+          | null
+
+        if (response.ok && payload?.success && payload.trackedJob) {
+          const persisted = {
+            ...(persistedTrackedJobsRef.current[trackedJobId] ?? getTrackedJobSnapshot(trackedJobId)),
+            ...payload.trackedJob,
+          } as TrackedJob
+          persistedTrackedJobsRef.current[trackedJobId] = persisted
+
+          if (saveVersionRef.current[trackedJobId] === nextVersion) {
+            syncTrackedJobState(trackedJobId, payload.trackedJob)
+            markRowSaveState(trackedJobId, 'saved')
           }
-        | null
 
-      if (saveVersionRef.current[trackedJobId] !== nextVersion) {
+          return true
+        }
+
+        if (saveVersionRef.current[trackedJobId] === nextVersion) {
+          restoreTrackedJobState(trackedJobId)
+          setErrorMessage(
+            payload?.error === 'TRACKER_LIMIT_REACHED'
+              ? 'Your current plan has reached its tracking capacity.'
+              : fallbackMessage
+          )
+          markRowSaveState(trackedJobId, 'error')
+        }
+
+        return false
+      } catch {
+        if (saveVersionRef.current[trackedJobId] === nextVersion) {
+          restoreTrackedJobState(trackedJobId)
+          setErrorMessage(fallbackMessage)
+          markRowSaveState(trackedJobId, 'error')
+        }
+
         return false
       }
+    })
 
-      if (response.ok && payload?.success && payload.trackedJob) {
-        syncTrackedJobState(trackedJobId, payload.trackedJob)
-        markRowSaveState(trackedJobId, 'saved')
-        return true
+    saveQueueRef.current[trackedJobId] = request.finally(() => {
+      if (saveQueueRef.current[trackedJobId] === request) {
+        delete saveQueueRef.current[trackedJobId]
       }
+    })
 
-      setErrorMessage(
-        payload?.error === 'TRACKER_LIMIT_REACHED'
-          ? 'Your current plan has reached its tracking capacity.'
-          : fallbackMessage
-      )
-      markRowSaveState(trackedJobId, 'error')
-      return false
-    } catch {
-      if (saveVersionRef.current[trackedJobId] !== nextVersion) {
-        return false
-      }
-
-      setErrorMessage(fallbackMessage)
-      markRowSaveState(trackedJobId, 'error')
-      return false
-    }
+    return request
   }
 
   function handleManualTrackedJobCreated(trackedJob: TrackedJob) {
@@ -586,6 +689,7 @@ export default function TrackedJobsClient({
       ...current,
       [trackedJob.id]: buildInlineDraft(trackedJob),
     }))
+    persistedTrackedJobsRef.current[trackedJob.id] = trackedJob
     setFilter('all')
     setSearchQuery('')
     setErrorMessage(null)
@@ -611,6 +715,7 @@ export default function TrackedJobsClient({
         delete next[trackedJobId]
         return next
       })
+      delete persistedTrackedJobsRef.current[trackedJobId]
       if (selectedTrackedJobId === trackedJobId) {
         setSelectedTrackedJobId(null)
       }
@@ -989,6 +1094,11 @@ export default function TrackedJobsClient({
               </span>
             </div>
           </div>
+          {hasMultiTabConflict ? (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Job tracker is open in another tab. If both tabs edit the same role, the newer save can overwrite the older one.
+            </div>
+          ) : null}
           {errorMessage ? <p className="mt-4 text-sm text-red-600">{errorMessage}</p> : null}
         </div>
 
@@ -1190,7 +1300,7 @@ export default function TrackedJobsClient({
                         <td className="border-b border-black/6 px-4 py-3">
                           <select
                             value={trackedJob.status}
-                            disabled={busyKey === `status:${trackedJob.id}`}
+                            disabled={rowSaveState[trackedJob.id] === 'saving'}
                             onChange={event =>
                               handleStatusChange(trackedJob.id, event.target.value as TrackedJobStatus)
                             }

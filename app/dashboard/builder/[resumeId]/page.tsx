@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
-import { flushSync } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { FONT_OPTIONS, sanitizeUniversalConfig } from '@/lib/templateOptions'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -37,7 +37,6 @@ import type { BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
-import { generateResumePdfBlob } from '@/lib/generatedResumePdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
@@ -52,15 +51,12 @@ function normalizeResumeTitle(title: string) {
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
 }
 
-function downloadBlobFile(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+function waitForNextPaint() {
+  return new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve())
+    })
+  })
 }
 
 type ViewTransitionCapableDocument = Document & {
@@ -265,6 +261,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
   const saveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const resumeRef = useRef<HTMLDivElement>(null)
+  const downloadMenuRef = useRef<HTMLDivElement>(null)
   const hasShownPageLimitAlertRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
@@ -315,6 +312,31 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
     setActiveMode('tailor')
   }, [requestedMode, requirePro])
+
+  useEffect(() => {
+    if (!isDownloadOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target as Node | null
+      if (!target) return
+      if (downloadMenuRef.current?.contains(target)) return
+      setIsDownloadOpen(false)
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsDownloadOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isDownloadOpen])
 
   const [resumeHeight, setResumeHeight] = useState(0)
   const [contentHeight, setContentHeight] = useState(0)
@@ -983,6 +1005,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     () => resumeData ? getVisibleResumeData(resumeData, visibility) : null,
     [resumeData, visibility]
   )
+  const orderedSections = useMemo(() => getOrderedSections(visibility), [visibility])
+  const orderedSidebarSections = useMemo(() => getOrderedSidebarSections(visibility), [visibility])
 
   const tailorPreview = useMemo(
     () => (visibleData && tailorAnalysis ? applyTailorAnalysisToResumeData(visibleData, tailorAnalysis) : null),
@@ -1006,20 +1030,47 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
       return
     }
-    setIsDownloadOpen(false)
     if (!visibleData) return
+
+    flushSync(() => {
+      setIsDownloadOpen(false)
+    })
+
     const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
-    const orderedSections = getOrderedSections(visibility)
-    const orderedSidebarSections = getOrderedSidebarSections(visibility)
+    const previousTitle = document.title
+    let timeoutId: number | null = null
 
     try {
-      const blob = await generateResumePdfBlob({
-        data: visibleData,
-        config: templateConfig,
-        sectionOrder: orderedSections,
-        sidebarSectionOrder: orderedSidebarSections,
+      document.title = filename
+
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+
+      await waitForNextPaint()
+
+      await new Promise<void>((resolve) => {
+        let resolved = false
+
+        const cleanup = () => {
+          if (resolved) return
+          resolved = true
+          window.removeEventListener('afterprint', handleAfterPrint)
+          if (timeoutId !== null) {
+            window.clearTimeout(timeoutId)
+          }
+          resolve()
+        }
+
+        const handleAfterPrint = () => {
+          cleanup()
+        }
+
+        window.addEventListener('afterprint', handleAfterPrint)
+        timeoutId = window.setTimeout(cleanup, 60_000)
+        window.print()
       })
-      downloadBlobFile(blob, filename)
+
       builderAnalytics.trackDownload('completed', 'pdf')
     } catch (error) {
       console.error('PDF export failed.', error)
@@ -1028,7 +1079,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         'pdf',
         error instanceof Error ? error.message : 'PDF export failed'
       )
-      window.alert('PDF download failed. Please try again.')
+      window.alert('Print to PDF failed. Please try again.')
+    } finally {
+      document.title = previousTitle
     }
   }
 
@@ -1044,8 +1097,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         visibleData,
         `${normalizeResumeTitle(resumeTitle) || 'resume'}.docx`,
         templateConfig,
-        getOrderedSections(visibility),
-        getOrderedSidebarSections(visibility),
+        orderedSections,
+        orderedSidebarSections,
       )
       builderAnalytics.trackDownload('completed', 'docx')
       setIsDownloadOpen(false)
@@ -1082,13 +1135,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             overflow: visible !important;
             background: white !important;
           }
-          body * { visibility: hidden; }
-          #builder-print-wrapper,
-          #builder-print-wrapper * { visibility: visible; }
-          #builder-print-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
+          body > *:not(#builder-print-root) {
+            display: none !important;
+          }
+          #builder-print-root,
+          #builder-print-root * {
+            visibility: visible !important;
+          }
+          #builder-print-root {
+            display: block !important;
+            position: static !important;
+            left: auto !important;
+            top: auto !important;
+            z-index: auto !important;
             width: 210mm !important;
             min-height: 297mm !important;
             height: auto !important;
@@ -1098,24 +1157,24 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             transform: none !important;
             background: white;
             opacity: 1 !important;
-            pointer-events: auto !important;
+            pointer-events: none !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             color-adjust: exact;
           }
-          #builder-print-wrapper * {
+          #builder-print-root * {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             color-adjust: exact;
           }
-          #builder-print-wrapper > div {
+          #builder-print-root > div {
             width: 210mm !important;
             min-height: 297mm !important;
             box-shadow: none !important;
             page-break-inside: auto;
           }
-          #builder-print-wrapper section,
-          #builder-print-wrapper .section-break {
+          #builder-print-root section,
+          #builder-print-root .section-break {
             page-break-inside: avoid;
           }
         }
@@ -1240,7 +1299,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               </button>
             </div>
 
-            <div className="relative">
+            <div ref={downloadMenuRef} className="relative">
               <button
                 onClick={() => setIsDownloadOpen(!isDownloadOpen)}
                 className="w-28 py-2 text-sm font-bold bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm"
@@ -1254,7 +1313,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     onClick={handleDownloadPDF}
                     className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    PDF
+                    Print / Save PDF
                   </button>
                   <button
                     onClick={handleDownloadDOCX}
@@ -1382,20 +1441,20 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             {/* Hidden full-flow content: measurement + print source */}
             <div
               ref={resumeRef}
-              id="builder-print-wrapper"
+              id="builder-measure-wrapper"
               className="absolute -left-[99999px] top-0 w-[794px] opacity-0 pointer-events-none"
               aria-hidden
             >
               <TemplateComponent
-                key={`print-${previewVersion}`}
-                data={visibleData ?? resumeData}
-                isEditing={false}
-                onFieldChange={() => {}}
-                sectionOrder={getOrderedSections(visibility)}
-                sidebarSectionOrder={getOrderedSidebarSections(visibility)}
-                config={templateConfig}
-                onNavigateToField={handleNavigateToField}
-              />
+              key={`print-${previewVersion}`}
+              data={visibleData ?? resumeData}
+              isEditing={false}
+              onFieldChange={() => {}}
+              sectionOrder={orderedSections}
+              sidebarSectionOrder={orderedSidebarSections}
+              config={templateConfig}
+              onNavigateToField={handleNavigateToField}
+            />
             </div>
 
             {/* Word-like paged preview + undo/redo to the right */}
@@ -1474,8 +1533,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                           data={visibleData ?? resumeData}
                           isEditing={false}
                           onFieldChange={() => {}}
-                          sectionOrder={getOrderedSections(visibility)}
-                          sidebarSectionOrder={getOrderedSidebarSections(visibility)}
+                          sectionOrder={orderedSections}
+                          sidebarSectionOrder={orderedSidebarSections}
                           config={templateConfig}
                           onNavigateToField={handleNavigateToField}
                         />
@@ -1615,8 +1674,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         config={templateConfig}
         onConfigChange={setTemplateConfig}
         onClose={() => setIsTemplateModalOpen(false)}
-        resumeData={resumeData}
+        resumeData={visibleData ?? resumeData}
       />
+      {typeof document !== 'undefined' && visibleData
+        ? createPortal(
+            <div
+              id="builder-print-root"
+              className="pointer-events-none fixed left-[-200vw] top-0 w-[794px]"
+              aria-hidden
+            >
+              <TemplateComponent
+                key={`print-portal-${previewVersion}`}
+                data={visibleData}
+                isEditing={false}
+                onFieldChange={() => {}}
+                sectionOrder={orderedSections}
+                sidebarSectionOrder={orderedSidebarSections}
+                config={templateConfig}
+              />
+            </div>,
+            document.body
+          )
+        : null}
       <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
     </>
   )
@@ -1624,7 +1703,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
 // ─── Mobile fallback ──────────────────────────────────────────────────────────
 
-function MobileFallback({ resumeId }: { resumeId: string }) {
+function MobileFallback() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-8 text-center font-body">
       <h1 className="text-xl font-bold text-zinc-900 mb-2 font-headline">Builder works best on desktop</h1>
@@ -1670,7 +1749,7 @@ export default function BuilderPage() {
   }
 
   if (isMobile) {
-    return <MobileFallback resumeId={resumeId} />
+    return <MobileFallback />
   }
 
   return (

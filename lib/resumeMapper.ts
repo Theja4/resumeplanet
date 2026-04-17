@@ -9,6 +9,8 @@ import { syncResumeData } from '@/lib/resume-data'
  * which open-resume does not extract — they are left as empty arrays.
  */
 export function mapToResumeData(resume: Resume): ResumeData {
+  const mappedSkills = extractSkills(resume.skills)
+
   return syncResumeData({
     // Contact — from profile
     name: resume.profile.name || '',
@@ -27,7 +29,10 @@ export function mapToResumeData(resume: Resume): ResumeData {
     education: resume.educations.map(mapEducation),
 
     // Skills — flatten featuredSkills[].skill + descriptions[]
-    skills: extractSkills(resume.skills),
+    skills: mappedSkills,
+    skillSections: mappedSkills.length > 0
+      ? [{ title: '', tag: '', skills: mappedSkills }]
+      : [],
 
     // Projects
     projects: resume.projects.map(mapProject),

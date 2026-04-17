@@ -75,10 +75,10 @@ export default function TermsPage() {
             <p className="mt-5 text-base leading-8 text-zinc-600 sm:text-lg">
               These terms govern your access to and use of Rezoomed, including the website, resume
               builder, ATS tools, match-scoring tools, AI-assisted career features, job tracker, job
-              board, exports, and related services.
+              board, exports, and related software services.
             </p>
             <p className="mt-4 text-sm font-medium text-zinc-500">
-              Last updated: April 10, 2026
+              Last updated: April 17, 2026
             </p>
           </section>
 

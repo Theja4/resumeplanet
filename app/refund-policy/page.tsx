@@ -14,9 +14,9 @@ const policySections = [
     ],
   },
   {
-    title: 'Subscriptions and one-time purchases',
+    title: 'Subscriptions and paid software access',
     points: [
-      `The ${REFUND_WINDOW_DAYS}-day refund window applies to subscription charges and one-time purchases sold on rezoomed.com.`,
+      `The ${REFUND_WINDOW_DAYS}-day refund window applies to subscription charges and paid software purchases sold on rezoomed.com.`,
       'Canceling a subscription prevents future renewals but does not by itself issue a refund for prior charges.',
       'Billing and refund processing are handled by Paddle as merchant of record.',
     ],
@@ -42,9 +42,9 @@ export default function RefundPolicyPage() {
               Refund policy
             </h1>
             <p className="mt-5 text-base leading-8 text-zinc-600 sm:text-lg">
-              Rezoomed follows a fixed, transparent refund window for purchases made on rezoomed.com.
+              Rezoomed follows a fixed, transparent refund window for software purchases made on rezoomed.com.
             </p>
-            <p className="mt-4 text-sm font-medium text-zinc-500">Last updated: April 10, 2026</p>
+            <p className="mt-4 text-sm font-medium text-zinc-500">Last updated: April 17, 2026</p>
           </section>
 
           <section className="rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[0_20px_70px_rgba(15,23,42,0.06)]">

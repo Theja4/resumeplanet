@@ -18,6 +18,7 @@ import {
   getActivePromotionByCode,
   getActivePromotionById,
 } from '@/lib/pricing'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import PricingPageTracker from '@/components/analytics/PricingPageTracker'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -70,15 +71,15 @@ export default async function PricingPage({
   const cookieAffiliateCode = await readAffiliateReferralCodeFromCookies()
   const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  const [ordersResult] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userId)
-      .in('status', ['paid', 'in_progress', 'delivered'])
-      .order('created_at', { ascending: false })
-      .limit(10),
-  ])
+  const ordersResult = HUMAN_WRITTEN_SERVICE_ENABLED
+    ? await supabase
+        .from('orders')
+        .select('*')
+        .eq('user_id', userId)
+        .in('status', ['paid', 'in_progress', 'delivered'])
+        .order('created_at', { ascending: false })
+        .limit(10)
+    : { data: [] }
 
   const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
   const affiliateLookupCandidates = params.promo
@@ -159,7 +160,7 @@ export default async function PricingPage({
         </DashboardSurface>
 
         {/* Order history */}
-        {paidOrders.length > 0 && (
+        {HUMAN_WRITTEN_SERVICE_ENABLED && paidOrders.length > 0 && (
           <div>
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Order history</h2>
             <DashboardSurface variant="default" className="overflow-hidden">

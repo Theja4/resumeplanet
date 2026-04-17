@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { logout } from '@/app/dashboard/(shell)/actions'
 import { Analytics } from '@/lib/analytics'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
 import type { Profile } from '@/types'
 import {
@@ -76,7 +77,9 @@ const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem
         Icon: FilePenLine,
         badge: 'Pro',
       },
-      { href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound },
+      ...(HUMAN_WRITTEN_SERVICE_ENABLED
+        ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound }]
+        : []),
     ],
   },
   {

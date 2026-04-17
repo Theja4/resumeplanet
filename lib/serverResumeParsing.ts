@@ -110,21 +110,25 @@ export async function parseResumeRobustly(params: {
   let repairCandidate: ResumeParseCandidate | null = null
   let repairAttempted = false
 
-  const preferServerCandidate =
-    fileType === PDF_MIME_TYPE && fastCandidate
-      ? fastCandidate
-      : chooseBetterParseCandidate(fastCandidate, clientCandidate)
+  const deterministicCandidates = [fastCandidate, clientCandidate].filter(
+    (candidate): candidate is ResumeParseCandidate => Boolean(candidate),
+  )
+
+  const bestDeterministicCandidate = deterministicCandidates.reduce<ResumeParseCandidate | null>(
+    (best, candidate) => chooseBetterParseCandidate(best, candidate),
+    null,
+  )
 
   let selectedCandidate = chooseBetterParseCandidate(
     markerCandidate,
-    preferServerCandidate,
+    bestDeterministicCandidate,
   )
 
-  if (!selectedCandidate && clientCandidate) {
-    selectedCandidate = clientCandidate
-  }
+  const shouldUseRepairParser =
+    deterministicCandidates.length === 0 ||
+    deterministicCandidates.every(candidate => shouldAttemptRepair(candidate))
 
-  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldAttemptRepair(selectedCandidate)) {
+  if (!markerCandidate && canUseDeepSeekRepairParser() && shouldUseRepairParser) {
     repairAttempted = true
     try {
       const repairedData = await claudeParser.parse(buffer, fileType)

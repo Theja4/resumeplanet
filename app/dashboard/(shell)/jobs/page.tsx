@@ -13,17 +13,38 @@ export default async function DashboardJobsPage({
 }) {
   const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
-  const [trackedJobsResult] = await Promise.all([
-    supabase
+  const trackedJobsWithOverridesResult = await supabase
+    .from('tracked_jobs')
+    .select(
+      'id, user_id, job_id, status, title_override, company_name_override, location_text_override, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
+    )
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+
+  let trackedJobRows: TrackedJobRow[]
+
+  if (trackedJobsWithOverridesResult.error) {
+    const fallbackTrackedJobsResult = await supabase
       .from('tracked_jobs')
       .select(
-        'id, user_id, job_id, status, title_override, company_name_override, location_text_override, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
+        'id, user_id, job_id, status, applied_at, saved_on, salary_text, job_description, excitement_rating, notes, created_at, updated_at, job:jobs(*)'
       )
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false }),
-  ])
+      .order('updated_at', { ascending: false })
 
-  const trackedJobs = ((trackedJobsResult.data ?? []) as unknown as TrackedJobRow[]).map(
+    trackedJobRows = ((fallbackTrackedJobsResult.data ?? []) as unknown as TrackedJobRow[]).map(
+      trackedJob => ({
+        ...trackedJob,
+        title_override: null,
+        company_name_override: null,
+        location_text_override: null,
+      })
+    )
+  } else {
+    trackedJobRows = (trackedJobsWithOverridesResult.data ?? []) as unknown as TrackedJobRow[]
+  }
+
+  const trackedJobs = trackedJobRows.map(
     trackedJob => ({
       ...trackedJob,
       job: Array.isArray(trackedJob.job) ? trackedJob.job[0] ?? null : trackedJob.job,

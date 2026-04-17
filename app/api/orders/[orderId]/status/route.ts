@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ orderId: string }> }
 ): Promise<NextResponse> {
+  if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const { orderId } = await params
   const supabase = await createClient()
 

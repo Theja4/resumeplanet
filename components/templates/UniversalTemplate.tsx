@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
-import { getEducationDateLabel, getProjectBullets, normalizeSkillSections } from '@/lib/resume-data'
+import { getEducationDateLabel, normalizeSkillSections } from '@/lib/resume-data'
 import EditableText from './EditableText'
 import type { TemplateProps, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY } from '@/types'

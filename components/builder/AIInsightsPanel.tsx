@@ -1085,16 +1085,19 @@ export default function AIInsightsPanel({
                 onValueChange={(value) => setActiveTab(value as 'fixes' | 'roadmap')}
                 className="gap-4"
               >
-                <TabsList variant="default" className="grid h-auto w-full grid-cols-2 rounded-2xl bg-zinc-100 p-1">
+                <TabsList
+                  variant="default"
+                  className="grid !h-auto w-full grid-cols-2 items-stretch overflow-hidden rounded-[1.75rem] bg-zinc-100 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                >
                   <TabsTrigger
                     value="fixes"
-                    className="rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] data-[state=active]:bg-white data-[state=active]:text-zinc-950"
+                    className="min-h-[3.75rem] rounded-[1.35rem] border-0 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
                   >
                     Fixes
                   </TabsTrigger>
                   <TabsTrigger
                     value="roadmap"
-                    className="rounded-xl px-3 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] data-[state=active]:bg-white data-[state=active]:text-zinc-950"
+                    className="min-h-[3.75rem] rounded-[1.35rem] border-0 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
                   >
                     Road to 90
                   </TabsTrigger>

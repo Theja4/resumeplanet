@@ -10,6 +10,7 @@ import PaywallModal from '@/components/shared/PaywallModal'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { ADS_ENABLED } from '@/lib/ads'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
 import { deleteResume, renameResume } from './actions'
 import type { Resume, Profile } from '@/types'
@@ -131,7 +132,7 @@ export default function ResumesClient({
                 </DashboardSurface>
               )}
               {/* Insert Human-Written CTA Card after the fifth item */}
-              {index === 4 && (
+              {HUMAN_WRITTEN_SERVICE_ENABLED && index === 4 && (
                 <DashboardSurface key="human-written-cta" variant="dark" className="dashboard-card-hover group flex flex-col justify-between p-6">
                   <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
                   <div className="relative z-10">

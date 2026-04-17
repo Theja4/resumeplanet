@@ -40,7 +40,7 @@ function mergeResumeData(base: ResumeData, part: Partial<ResumeData>): ResumeDat
   
   // Merge arrays by concatenation
   const arrayFields: ResumeArrayField[] = [
-    'experience', 'education', 'skills', 'certifications', 'projects', 'customSections',
+    'experience', 'education', 'skills', 'skillSections', 'certifications', 'projects', 'customSections',
     'languages', 'volunteer', 'interests', 'awards', 'publications', 'references',
   ]
   
@@ -112,7 +112,9 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
 
 5. **SKILLS / LANGUAGES / INTERESTS / REFERENCES**:
    - Return a flat "skills" array for compatibility.
-   - If skills are grouped under labels like "Product:", "Tools:", or "Collaboration:", also return "skillSections" with title + skills.
+   - Always return "skillSections" when any skills are present.
+   - If skills are grouped under labels like "Product:", "Tools:", or "Collaboration:", return those labels as the "title" in each "skillSections" item.
+   - If the skills section is a single flat list with no labeled subsections, return exactly one "skillSections" item with "title": "" and all parsed skills in its "skills" array.
    - Each individual item should still appear in the flat array.
 
 ### DATE FORMAT:
@@ -162,7 +164,7 @@ If the resume contains a section that does NOT map to any of the 12 standard sec
   "skills": [string],
   "skillSections": [
     {
-      "title": string,
+      "title": string, // use "" when there is no subsection heading
       "tag": string,
       "skills": [string]
     }
@@ -289,7 +291,7 @@ const claudeParser: ResumeParser = {
     }
 
     // 3️⃣ Post-processing
-    const finalData = postProcessResume(accumulated) as ResumeData
+    const finalData = postProcessResume(accumulated) as unknown as ResumeData
     
     console.log(`[AI Parser] Final extraction: Name="${finalData.name}", ExpCount=${finalData.experience.length}, SkillCount=${finalData.skills.length}`)
 

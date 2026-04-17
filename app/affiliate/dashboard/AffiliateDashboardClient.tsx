@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Copy,
   DollarSign,
+  Info,
   Loader2,
   Mail,
   Users,
@@ -79,12 +80,14 @@ function StatCard({
   helper,
   icon: Icon,
   accent = false,
+  labelAction,
 }: {
   label: string
   value: string
   helper: string
   icon: LucideIcon
   accent?: boolean
+  labelAction?: React.ReactNode
 }) {
   return (
     <DashboardSurface
@@ -93,9 +96,12 @@ function StatCard({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-on-surface-variant/60">
-            {label}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-on-surface-variant/60">
+              {label}
+            </p>
+            {labelAction}
+          </div>
           <p className="mt-3 text-3xl font-black tracking-tight text-on-background">
             {value}
           </p>
@@ -169,6 +175,7 @@ export default function AffiliateDashboardClient({
   const [paypalEmail, setPaypalEmail] = useState(initialAffiliate.paypal_email ?? '')
   const [payoutError, setPayoutError] = useState<string | null>(null)
   const [submittingPayout, setSubmittingPayout] = useState(false)
+  const [isEarningsInfoOpen, setIsEarningsInfoOpen] = useState(false)
 
   const referralLink = useMemo(
     () =>
@@ -358,11 +365,21 @@ export default function AffiliateDashboardClient({
           icon={BarChart3}
         />
         <StatCard
-          label="Total Earned"
+          label="Total Earned (Approx.)"
           value={formatUsdCurrency(stats.totalEarned)}
           helper="Lifetime commissions recorded across completed billing events."
           icon={DollarSign}
           accent
+          labelAction={
+            <button
+              type="button"
+              onClick={() => setIsEarningsInfoOpen(true)}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/8 bg-white/75 text-on-surface-variant transition hover:bg-white"
+              aria-label="Learn how approximate earnings are calculated"
+            >
+              <Info size={11} />
+            </button>
+          }
         />
         <StatCard
           label="Pending Payout"
@@ -718,6 +735,27 @@ export default function AffiliateDashboardClient({
               </button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEarningsInfoOpen} onOpenChange={setIsEarningsInfoOpen}>
+        <DialogContent className="max-w-lg rounded-[2rem] border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.96))] p-0 shadow-[0_28px_70px_rgba(25,28,29,0.14)]">
+          <div className="p-6">
+            <DialogHeader className="gap-3">
+              <div className="inline-flex w-fit rounded-full bg-[#008f44]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#008f44]">
+                Earnings Estimate
+              </div>
+              <DialogTitle className="text-2xl font-black tracking-tight text-on-background">
+                Why this is approximate
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-7 text-on-surface-variant">
+                Earnings shown here are indicative. Final payout can vary slightly based on how exchange-rate normalization is finalized for affiliate commissions.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-5 rounded-[1.2rem] border border-black/6 bg-white/80 p-4 text-sm leading-7 text-on-surface-variant">
+              This dashboard is designed to give you a strong estimate of your earnings in USD. If commission records involve multiple currencies, the display amount should be treated as indicative until payout calculations are finalized.
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

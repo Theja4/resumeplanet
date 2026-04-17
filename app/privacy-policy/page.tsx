@@ -27,7 +27,7 @@ const dataSections = [
   {
     title: 'Billing and transaction data',
     points: [
-      'Subscription state, Paddle customer identifiers, order status, and transaction references.',
+      'Subscription state, Paddle customer identifiers, billing status, and transaction references.',
       'Rezoomed does not store full card numbers; payments are handled by Paddle.',
     ],
   },
@@ -76,7 +76,7 @@ export default function PrivacyPolicyPage() {
               and how the current Rezoomed architecture handles that data.
             </p>
             <p className="mt-4 text-sm font-medium text-zinc-500">
-              Last updated: April 6, 2026
+              Last updated: April 17, 2026
             </p>
           </section>
 

@@ -36,6 +36,12 @@ export interface TemplatePreset {
   config: UniversalConfig
 }
 
+export interface OrganizationTemplatePreset extends TemplatePreset {
+  companyName: string
+  basePresetId: string
+  featured?: boolean
+}
+
 export const FONT_OPTIONS: FontOption[] = [
   { id: 'inter', label: 'Inter', value: 'Inter, ui-sans-serif, system-ui, sans-serif' },
   { id: 'calibri', label: 'Calibri', value: 'Calibri, Candara, "Segoe UI", sans-serif' },
@@ -246,6 +252,34 @@ function createPreset(
   }
 }
 
+function getPresetById(id: string): TemplatePreset | null {
+  return ATS_TEMPLATE_PRESETS.find(preset => preset.id === id) ?? null
+}
+
+function createOrganizationPreset(
+  id: string,
+  companyName: string,
+  description: string,
+  basePresetId: string,
+  config: Partial<UniversalConfig>,
+  featured = false
+): OrganizationTemplatePreset {
+  const basePreset = getPresetById(basePresetId)
+
+  return {
+    id,
+    label: companyName,
+    companyName,
+    description,
+    basePresetId,
+    featured,
+    config: sanitizeUniversalConfig({
+      ...(basePreset?.config ?? DEFAULT_UNIVERSAL_CONFIG),
+      ...config,
+    }),
+  }
+}
+
 export const ATS_TEMPLATE_PRESETS: TemplatePreset[] = [
   createPreset('executive', 'Executive', 'Strong hierarchy with a formal divider and clean dates.', {
     accentColor: '#1e293b',
@@ -381,8 +415,294 @@ export const ATS_TEMPLATE_PRESETS: TemplatePreset[] = [
   }),
 ]
 
+export const ORGANIZATION_TEMPLATE_PRESETS: OrganizationTemplatePreset[] = [
+  createOrganizationPreset(
+    'google',
+    'Google',
+    'Centered product-style hierarchy with a crisp sans-serif voice and restrained blue accents.',
+    'modern',
+    {
+      accentColor: '#4285F4',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'inter')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'centered',
+      sectionHeadingStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'hero',
+      density: 'relaxed',
+    },
+    true
+  ),
+  createOrganizationPreset(
+    'amazon',
+    'Amazon',
+    'Operationally dense, metric-first formatting tuned for tight one-page applications.',
+    'compact',
+    {
+      accentColor: '#FF9900',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'calibri')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'compact',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'dash',
+      skillsStyle: 'inline',
+      contactStyle: 'inline',
+      dateLayout: 'inline',
+      nameSize: 'standard',
+      density: 'compressed',
+    },
+    true
+  ),
+  createOrganizationPreset(
+    'apple',
+    'Apple',
+    'Minimal visual noise, centered branding, and a clean monochrome presentation.',
+    'centered',
+    {
+      accentColor: '#111827',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'helvetica')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'centered',
+      sectionHeadingStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'hero',
+      density: 'relaxed',
+    },
+    true
+  ),
+  createOrganizationPreset(
+    'jpmorgan-chase',
+    'JPMorganChase',
+    'Conservative finance styling with formal type, strong hierarchy, and navy accents.',
+    'executive',
+    {
+      accentColor: '#0F3D70',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'cambria')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'rule',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'walmart',
+    'Walmart',
+    'High-volume corporate formatting with a strong top banner and easy scan rhythm.',
+    'banner',
+    {
+      accentColor: '#0071CE',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'arial')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'banner',
+      sectionHeadingStyle: 'minimal',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'hero',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'bank-of-america',
+    'Bank of America',
+    'Traditional banking profile with formal headings and measured red accents.',
+    'executive',
+    {
+      accentColor: '#C41230',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'cambria')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'rule',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'wells-fargo',
+    'Wells Fargo',
+    'A conservative finance preset that stays dense but avoids visual clutter.',
+    'classic',
+    {
+      accentColor: '#B31B1B',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'georgia')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'rule',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'capital-one',
+    'Capital One',
+    'A cleaner consumer-fintech look with centered name placement and red brand cues.',
+    'centered',
+    {
+      accentColor: '#D03027',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'helvetica')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'centered',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'hero',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'pwc',
+    'PwC',
+    'Consulting-style compression with clear labels and warm orange emphasis.',
+    'compact',
+    {
+      accentColor: '#EB8C00',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'arial')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'compact',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'compressed',
+    }
+  ),
+  createOrganizationPreset(
+    'ey',
+    'EY',
+    'Minimal consulting hierarchy with dark neutral type and subdued amber accents.',
+    'balanced',
+    {
+      accentColor: '#6B5A00',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'helvetica')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'minimal',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'dash',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'oracle',
+    'Oracle',
+    'Enterprise-tech formatting with sharper section labels and a direct red accent.',
+    'modern',
+    {
+      accentColor: '#C74634',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'arial')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'plain',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'nvidia',
+    'NVIDIA',
+    'Modern tech hierarchy with green cues and a slightly stronger skills treatment.',
+    'modern',
+    {
+      accentColor: '#76B900',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'inter')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'square',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'lockheed-martin',
+    'Lockheed Martin',
+    'A formal defense-industry profile with classic alignment and blue section emphasis.',
+    'executive',
+    {
+      accentColor: '#005DAA',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'cambria')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'classic',
+      sectionHeadingStyle: 'rule',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'morgan-stanley',
+    'Morgan Stanley',
+    'A subdued institutional finance preset that favors serif formality and white space.',
+    'classic',
+    {
+      accentColor: '#1F365C',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'times')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'minimal',
+      sectionHeadingStyle: 'rule',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      contactStyle: 'stacked',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'relaxed',
+    }
+  ),
+  createOrganizationPreset(
+    'fidelity-investments',
+    'Fidelity Investments',
+    'A trust-first green preset that stays compact without losing ATS readability.',
+    'focused',
+    {
+      accentColor: '#006747',
+      fontFamily: FONT_OPTIONS.find(font => font.id === 'calibri')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+      headerStyle: 'compact',
+      sectionHeadingStyle: 'label',
+      bulletStyle: 'dash',
+      skillsStyle: 'divider',
+      contactStyle: 'inline',
+      dateLayout: 'inline',
+      nameSize: 'standard',
+      density: 'compressed',
+    }
+  ),
+]
+
 export function findMatchingTemplatePreset(config: UniversalConfig): string | null {
   const sanitizedConfig = sanitizeUniversalConfig(config)
   const serialized = JSON.stringify(sanitizedConfig)
   return ATS_TEMPLATE_PRESETS.find(preset => JSON.stringify(preset.config) === serialized)?.id ?? null
+}
+
+export function findMatchingOrganizationTemplatePreset(config: UniversalConfig): string | null {
+  const sanitizedConfig = sanitizeUniversalConfig(config)
+  const serialized = JSON.stringify(sanitizedConfig)
+  return ORGANIZATION_TEMPLATE_PRESETS.find(preset => JSON.stringify(preset.config) === serialized)?.id ?? null
+}
+
+export function getTemplatePresetById(id: string): TemplatePreset | null {
+  return getPresetById(id)
 }

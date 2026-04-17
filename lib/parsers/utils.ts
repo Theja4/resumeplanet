@@ -100,10 +100,13 @@ export function chunkText(
  * Ensure an item's bullets field is actually an array.
  * Some parsers or LLM responses may return a single string instead of string[].
  */
-function normalizeBulletsArray(item: any): any {
-  if (Array.isArray(item.bullets)) return item
-  if (typeof item.bullets === 'string' && item.bullets.length > 0) {
-    item.bullets = item.bullets.split('\n').map((s: string) => s.replace(/^[•\-\*▸▹›\s]+ /, '').trim()).filter(Boolean)
+type LooseRecord = Record<string, unknown>
+
+function normalizeBulletsArray(item: LooseRecord): LooseRecord {
+  const bullets = item.bullets
+  if (Array.isArray(bullets)) return item
+  if (typeof bullets === 'string' && bullets.length > 0) {
+    item.bullets = bullets.split('\n').map((s: string) => s.replace(/^[•\-\*▸▹›\s]+ /, '').trim()).filter(Boolean)
   } else {
     item.bullets = []
   }
@@ -116,15 +119,18 @@ function normalizeBulletsArray(item: any): any {
  * - Ensure required top‑level fields exist.
  * - Normalize bullets fields that might be strings instead of string[].
  */
-export function postProcessResume(data: any): any {
+export function postProcessResume(data: object): LooseRecord {
+  const mutableData = data as LooseRecord
   // Normalize and merge split bullet sentences for experience items
-  data.experience?.forEach((exp: any) => {
+  const experience = Array.isArray(mutableData.experience) ? mutableData.experience as LooseRecord[] : []
+  experience.forEach((exp) => {
     normalizeBulletsArray(exp)
+    const bullets = Array.isArray(exp.bullets) ? exp.bullets.filter((bullet): bullet is string => typeof bullet === 'string') : []
     const merged: string[] = []
-    for (let i = 0; i < exp.bullets.length; i++) {
-      const bullet = exp.bullets[i]
-      if (i < exp.bullets.length - 1) {
-        const next = exp.bullets[i + 1]
+    for (let i = 0; i < bullets.length; i++) {
+      const bullet = bullets[i]
+      if (i < bullets.length - 1) {
+        const next = bullets[i + 1]
         if (!/[.!?]$/.test(bullet) && /^[a-z]/.test(next)) {
           merged.push(bullet + ' ' + next)
           i++
@@ -137,13 +143,15 @@ export function postProcessResume(data: any): any {
   })
 
   // Same for volunteer items
-  data.volunteer?.forEach((v: any) => {
+  const volunteer = Array.isArray(mutableData.volunteer) ? mutableData.volunteer as LooseRecord[] : []
+  volunteer.forEach((v) => {
     normalizeBulletsArray(v)
+    const bullets = Array.isArray(v.bullets) ? v.bullets.filter((bullet): bullet is string => typeof bullet === 'string') : []
     const merged: string[] = []
-    for (let i = 0; i < v.bullets.length; i++) {
-      const bullet = v.bullets[i]
-      if (i < v.bullets.length - 1) {
-        const next = v.bullets[i + 1]
+    for (let i = 0; i < bullets.length; i++) {
+      const bullet = bullets[i]
+      if (i < bullets.length - 1) {
+        const next = bullets[i + 1]
         if (!/[.!?]$/.test(bullet) && /^[a-z]/.test(next)) {
           merged.push(bullet + ' ' + next)
           i++
@@ -156,10 +164,12 @@ export function postProcessResume(data: any): any {
   })
 
   // Custom sections with complex items that may have bullets
-  data.customSections?.forEach((section: any) => {
-    if (section.items && Array.isArray(section.items)) {
-      section.items.forEach((item: any) => {
-        normalizeBulletsArray(item)
+  const customSections = Array.isArray(mutableData.customSections) ? mutableData.customSections as LooseRecord[] : []
+  customSections.forEach((section) => {
+    if (Array.isArray(section.items)) {
+      section.items.forEach((item) => {
+        if (!item || typeof item !== 'object') return
+        normalizeBulletsArray(item as LooseRecord)
       })
     }
   })
@@ -167,7 +177,44 @@ export function postProcessResume(data: any): any {
   // Ensure required fields exist; if missing, set empty defaults
   const requiredTop = ['name', 'email', 'phone', 'location', 'summary']
   requiredTop.forEach((k) => {
-    if (!data[k]) data[k] = ''
+    if (!mutableData[k]) mutableData[k] = ''
   })
-  return data
+
+  if (Array.isArray(mutableData.skills)) {
+    mutableData.skills = mutableData.skills
+      .map((skill: unknown) => (typeof skill === 'string' ? skill.trim() : ''))
+      .filter(Boolean)
+  } else {
+    mutableData.skills = []
+  }
+
+  if (Array.isArray(mutableData.skillSections)) {
+    mutableData.skillSections = mutableData.skillSections
+      .map((section) => {
+        const safeSection = section && typeof section === 'object' ? section as LooseRecord : {}
+        return {
+          title: typeof safeSection.title === 'string' ? safeSection.title.trim() : '',
+          tag: typeof safeSection.tag === 'string' ? safeSection.tag.trim() : '',
+          skills: Array.isArray(safeSection.skills)
+            ? safeSection.skills
+              .map((skill: unknown) => (typeof skill === 'string' ? skill.trim() : ''))
+              .filter(Boolean)
+            : [],
+        }
+      })
+      .filter((section) => section.title || section.tag || section.skills.length > 0)
+  } else {
+    mutableData.skillSections = []
+  }
+
+  if (
+    Array.isArray(mutableData.skills) &&
+    mutableData.skills.length > 0 &&
+    Array.isArray(mutableData.skillSections) &&
+    mutableData.skillSections.length === 0
+  ) {
+    mutableData.skillSections = [{ title: '', tag: '', skills: [...mutableData.skills] as string[] }]
+  }
+
+  return mutableData
 }

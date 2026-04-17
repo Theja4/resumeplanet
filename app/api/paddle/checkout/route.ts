@@ -9,6 +9,7 @@ import {
   resolveAffiliatePaddleDiscountId,
 } from '@/lib/affiliate-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import {
   PADDLE_PRICES,
   getPaddleConfigurationError,
@@ -66,6 +67,10 @@ export async function POST(request: NextRequest) {
 
   // ── Order checkout ──────────────────────────────────────────────────────────
   if (mode === 'order') {
+    if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+      return err('This service is currently unavailable', 404)
+    }
+
     const resumeId = body.resumeId as string | undefined
     const uploadedResumeText = body.uploadedResumeText as string | undefined
     const jobTitle = body.jobTitle as string | undefined

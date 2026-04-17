@@ -121,26 +121,48 @@ export default async function AdminAnalyticsPage() {
   const supabase = createServiceRoleClient()
   const since30 = startOfDay(29).toISOString()
 
-  const [rowsResult, totalResult] = await Promise.all([
-    supabase
-      .from('resumes')
-      .select('created_at, parse_selected_source, parse_selected_score, parse_fast_score, parse_client_score, parse_repair_score, parse_repair_attempted, parse_source_text_length')
-      .gte('created_at', since30)
-      .order('created_at', { ascending: true }),
+  const [totalResult] = await Promise.all([
     supabase
       .from('resumes')
       .select('id', { count: 'exact', head: true }),
   ])
 
-  if (rowsResult.error) {
-    throw new Error(`Failed to load parser analytics: ${rowsResult.error.message}`)
-  }
-
   if (totalResult.error) {
     throw new Error(`Failed to load total resume count: ${totalResult.error.message}`)
   }
 
-  const rows = (rowsResult.data ?? []) as ResumeParseRow[]
+  const analyticsRowsResult = await supabase
+    .from('resumes')
+    .select('created_at, parse_selected_source, parse_selected_score, parse_fast_score, parse_client_score, parse_repair_score, parse_repair_attempted, parse_source_text_length')
+    .gte('created_at', since30)
+    .order('created_at', { ascending: true })
+
+  let rows: ResumeParseRow[]
+
+  if (analyticsRowsResult.error) {
+    const fallbackResult = await supabase
+      .from('resumes')
+      .select('created_at')
+      .gte('created_at', since30)
+      .order('created_at', { ascending: true })
+
+    if (fallbackResult.error) {
+      throw new Error(`Failed to load parser analytics: ${fallbackResult.error.message}`)
+    }
+
+    rows = (fallbackResult.data ?? []).map(row => ({
+      created_at: row.created_at,
+      parse_selected_source: null,
+      parse_selected_score: null,
+      parse_fast_score: null,
+      parse_client_score: null,
+      parse_repair_score: null,
+      parse_repair_attempted: null,
+      parse_source_text_length: null,
+    }))
+  } else {
+    rows = (analyticsRowsResult.data ?? []) as ResumeParseRow[]
+  }
   const instrumentedRows = rows.filter(row => row.parse_selected_source)
   const totalLast30 = rows.length
   const instrumentedLast30 = instrumentedRows.length
