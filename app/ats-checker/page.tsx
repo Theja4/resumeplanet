@@ -7,10 +7,12 @@ import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Free ATS Resume Checker | Rezoomed',
+  title: 'ATS Scanner | Rezoomed',
   description:
-    'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
+    'Scan your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
   keywords: [
+    'ats scanner',
+    'free ats scanner',
     'free ats resume checker',
     'ats checker',
     'resume checker',
@@ -26,14 +28,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    title: 'Free ATS Resume Checker | Rezoomed',
-    description: 'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
+    title: 'ATS Scanner | Rezoomed',
+    description: 'Scan your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
     url: '/ats-checker',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free ATS Resume Checker | Rezoomed',
-    description: 'Check your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
+    title: 'ATS Scanner | Rezoomed',
+    description: 'Scan your resume for ATS issues, keyword gaps, formatting problems, and recruiter readability before you apply. Free ATS score included.',
   },
 }
 
@@ -71,7 +73,7 @@ export default async function PublicATSCheckerPage() {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
-      { '@type': 'ListItem', position: 2, name: 'ATS Checker', item: `${siteUrl}/ats-checker` },
+      { '@type': 'ListItem', position: 2, name: 'ATS Scanner', item: `${siteUrl}/ats-checker` },
     ],
   }
   const faqJsonLd = {
@@ -105,15 +107,15 @@ export default async function PublicATSCheckerPage() {
           <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-end">
             <div className="space-y-3">
               <span className="inline-flex items-center rounded-full border border-primary-container/50 bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-                Resume checker
+                ATS Scanner
               </span>
               <h1 className="max-w-2xl text-3xl font-black tracking-tight text-on-background sm:text-4xl lg:text-[3.35rem] lg:leading-[0.98]">
-                Is your resume good enough?
+                ATS Scanner
               </h1>
             </div>
             <div className="space-y-3 lg:max-w-[26rem] lg:justify-self-end">
               <p className="text-sm leading-6 text-on-surface-variant sm:text-[15px]">
-                A free ATS score checker that catches parsing, keyword, structure, and recruiter-readability issues before your resume ever hits a rejection filter.
+                A free ATS scanner that catches parsing, keyword, structure, and recruiter-readability issues before your resume ever hits a rejection filter.
               </p>
               <div className="flex flex-wrap gap-2 text-[10px] text-on-surface-variant">
                 <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">1 scan before signup</span>
@@ -130,7 +132,7 @@ export default async function PublicATSCheckerPage() {
 
         <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>
-          <h2 className="mt-2 text-3xl font-black tracking-tight text-on-background">ATS checker questions</h2>
+          <h2 className="mt-2 text-3xl font-black tracking-tight text-on-background">ATS scanner questions</h2>
           <div className="mt-6 grid gap-4">
             {FAQS.map((faq) => (
               <div key={faq.question} className="rounded-[1.4rem] border border-black/6 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,250,249,0.96))] p-5">
