@@ -39,7 +39,7 @@ import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
-import { applyTailorAnalysisToResumeData } from '@/lib/tailorResume'
+import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
 import { scoreResume } from '@/lib/ats-scorer'
 import { syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
@@ -961,15 +961,17 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   function handleApplyTailorSection(sectionId: 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer') {
     if (!resumeData || !tailorAnalysis) return
 
-    const result = applyTailorAnalysisToResumeData(resumeData, tailorAnalysis, sectionId)
     setExpandedSection(sectionId)
-    setSectionHints(prev => new Set(prev).add(sectionId))
+    if (!canApplyTailorSection(tailorAnalysis, sectionId)) return
+
+    const result = applyTailorAnalysisToResumeData(resumeData, tailorAnalysis, sectionId)
 
     if (!result.changed) return
 
     history.pushHistory(resumeData, visibility)
     builderAnalytics.trackSectionEdit(sectionId, 'edit')
     setResumeData(result.data)
+    setSectionHints(prev => new Set(prev).add(sectionId))
   }
 
   function handleApplyTailorAll() {

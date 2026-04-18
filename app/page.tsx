@@ -436,7 +436,7 @@ export default async function LandingPage() {
               Ready to get <em>hired faster?</em>
             </h2>
             <p className="text-lg text-white/75">
-              Use Rezoomed to build stronger resumes, improve ATS fit, and get more callbacks.
+              Join <strong className="text-white font-black">500,000+</strong> professionals who use Rezoomed to get more callbacks.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link href="/auth/register">

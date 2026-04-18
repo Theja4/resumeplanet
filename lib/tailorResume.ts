@@ -258,6 +258,43 @@ function applyScopeMutations(
   return changed
 }
 
+export function canApplyTailorSection(
+  analysis: TailorAnalysis,
+  scope: MutableScope
+) {
+  if (scope === 'summary') {
+    return isMeaningfulText(analysis.tailoredHeadline) || isMeaningfulText(analysis.tailoredSummary)
+  }
+
+  if (scope === 'skills') {
+    return (
+      analysis.skillsPlan.recommendedOrder.length > 0 ||
+      analysis.skillsPlan.add.length > 0 ||
+      analysis.skillsPlan.deprioritize.length > 0
+    )
+  }
+
+  if (scope === 'experience') {
+    return (
+      analysis.bulletRewrites.some(rewrite => rewrite.sectionId === 'experience') ||
+      analysis.bulletOrderPlans.some(plan => plan.sectionId === 'experience')
+    )
+  }
+
+  if (scope === 'projects') {
+    return analysis.bulletRewrites.some(rewrite => rewrite.sectionId === 'projects')
+  }
+
+  if (scope === 'volunteer') {
+    return (
+      analysis.bulletRewrites.some(rewrite => rewrite.sectionId === 'volunteer') ||
+      analysis.bulletOrderPlans.some(plan => plan.sectionId === 'volunteer')
+    )
+  }
+
+  return false
+}
+
 function buildNoChangeResult(data: ResumeData) {
   const baseline = scoreResume(data)
   return {
@@ -285,13 +322,11 @@ export function applyTailorAnalysisToResumeData(
       return buildNoChangeResult(data)
     }
 
-    const after = scoreResume(next)
-    if (after.score < before.score) {
-      return buildNoChangeResult(data)
-    }
+    const synced = syncResumeData(next)
+    const after = scoreResume(synced)
 
     return {
-      data: next,
+      data: synced,
       changed: true,
       touchedSections: [scope],
       beforeScore: before.score,
@@ -310,10 +345,9 @@ export function applyTailorAnalysisToResumeData(
 
     if (!sectionChanged) continue
 
-    const scoredCandidate = scoreResume(candidate)
-    if (scoredCandidate.score < currentScore) continue
-
-    working = candidate
+    const syncedCandidate = syncResumeData(candidate)
+    const scoredCandidate = scoreResume(syncedCandidate)
+    working = syncedCandidate
     currentScore = scoredCandidate.score
     touchedSections.add(sectionId)
   }

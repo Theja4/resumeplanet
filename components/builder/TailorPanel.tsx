@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { ArrowUpRight, Briefcase, Loader2, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react'
 import { countWords } from '@/lib/text'
+import { canApplyTailorSection } from '@/lib/tailorResume'
 import type { TailorAnalysis, TailorIntensity } from '@/types'
 
 const SECTION_LABELS: Record<string, string> = {
@@ -93,6 +94,11 @@ export default function TailorPanel({
   const panelScrollRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const jobWordCount = countWords(jobDescription)
+  const hasDirectTailorChanges = analysis
+    ? ['summary', 'skills', 'experience', 'projects', 'volunteer'].some(sectionId =>
+        canApplyTailorSection(analysis, sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer')
+      )
+    : false
 
   useEffect(() => {
     if (!analysis || !panelScrollRef.current || !resultsRef.current) return
@@ -263,7 +269,8 @@ export default function TailorPanel({
 
             <button
               onClick={onApplyAll}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:brightness-105"
+              disabled={!hasDirectTailorChanges}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:brightness-100"
             >
               <Sparkles size={16} />
               Apply all tailored changes
@@ -317,34 +324,47 @@ export default function TailorPanel({
             {analysis.sectionFocus.length > 0 && (
               <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">Section playbook</p>
-                {analysis.sectionFocus.map(focus => (
-                  <div key={`${focus.sectionId}-${focus.title}`} className="rounded-[1.2rem] border border-black/6 bg-white/90 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-                          {SECTION_LABELS[focus.sectionId] ?? focus.sectionId}
-                        </p>
-                        <p className="mt-1 text-sm font-bold text-zinc-950">{focus.title}</p>
+                {analysis.sectionFocus.map(focus => {
+                  const canApply = canApplyTailorSection(
+                    analysis,
+                    focus.sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer'
+                  )
+
+                  return (
+                    <div key={`${focus.sectionId}-${focus.title}`} className="rounded-[1.2rem] border border-black/6 bg-white/90 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+                            {SECTION_LABELS[focus.sectionId] ?? focus.sectionId}
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-zinc-950">{focus.title}</p>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                          focus.priority === 'high'
+                            ? 'bg-red-100 text-red-700'
+                            : focus.priority === 'medium'
+                            ? 'bg-amber-100 text-amber-700'
+                            : 'bg-primary-container/35 text-on-primary-container'
+                        }`}>
+                          {focus.priority}
+                        </span>
                       </div>
-                      <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-                        focus.priority === 'high'
-                          ? 'bg-red-100 text-red-700'
-                          : focus.priority === 'medium'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-primary-container/35 text-on-primary-container'
-                      }`}>
-                        {focus.priority}
-                      </span>
+                      <p className="mt-2 text-sm leading-6 text-zinc-700">{focus.reason}</p>
+                      {canApply ? (
+                        <button
+                          onClick={() => onApplySection(focus.sectionId)}
+                          className="mt-3 inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-surface-container-low"
+                        >
+                          Apply section
+                        </button>
+                      ) : (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-surface-container-low px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-500">
+                          Guidance only
+                        </div>
+                      )}
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-zinc-700">{focus.reason}</p>
-                    <button
-                      onClick={() => onApplySection(focus.sectionId)}
-                      className="mt-3 inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-surface-container-low"
-                    >
-                      Apply section
-                    </button>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 

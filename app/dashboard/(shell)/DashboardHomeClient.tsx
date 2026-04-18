@@ -127,13 +127,12 @@ export default function DashboardHomeClient({
     resumeCount === null ? null : Math.max(0, 3 - resumeCount)
 
   useEffect(() => {
-    const controller = new AbortController()
+    let cancelled = false
 
     async function loadOverview() {
       try {
         const response = await fetch('/api/dashboard/overview', {
           cache: 'no-store',
-          signal: controller.signal,
         })
         const payload = (await response.json().catch(() => null)) as
           | (DashboardOverview & { success?: boolean; error?: string })
@@ -144,6 +143,7 @@ export default function DashboardHomeClient({
         }
 
         startTransition(() => {
+          if (cancelled) return
           setOverview({
             resumeCount: payload.resumeCount,
             lastScore: payload.lastScore,
@@ -152,11 +152,11 @@ export default function DashboardHomeClient({
           setOverviewError(null)
         })
       } catch (error) {
-        if (!controller.signal.aborted) {
+        if (!cancelled) {
           setOverviewError(error instanceof Error ? error.message : 'Could not load dashboard overview')
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!cancelled) {
           setIsLoadingOverview(false)
         }
       }
@@ -165,7 +165,7 @@ export default function DashboardHomeClient({
     void loadOverview()
 
     return () => {
-      controller.abort()
+      cancelled = true
     }
   }, [])
 

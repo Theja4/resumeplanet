@@ -111,18 +111,67 @@ export function getProjectDescription(project: Pick<ProjectItem, 'bullets' | 'de
   return project.description?.trim() ?? ''
 }
 
+function normalizeComparableText(value: string) {
+  return value
+    .replace(/[•\-*›▸▹]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+function shouldMergeProjectBullet(current: string, next: string) {
+  const currentTrimmed = current.trim()
+  const nextTrimmed = next.trim()
+
+  if (!currentTrimmed || !nextTrimmed) return false
+  if (/[.!?]$/.test(currentTrimmed)) return false
+  if (/^[a-z(]/.test(nextTrimmed)) return true
+  if (currentTrimmed.split(/\s+/).length <= 3) return true
+
+  return false
+}
+
+function mergeWrappedProjectBullets(bullets: string[]) {
+  const merged: string[] = []
+
+  for (const bullet of bullets) {
+    if (merged.length === 0) {
+      merged.push(bullet)
+      continue
+    }
+
+    const previous = merged[merged.length - 1] ?? ''
+    if (shouldMergeProjectBullet(previous, bullet)) {
+      merged[merged.length - 1] = `${previous} ${bullet}`.replace(/\s+/g, ' ').trim()
+      continue
+    }
+
+    merged.push(bullet)
+  }
+
+  return merged
+}
+
 function normalizeProjectItem(item: ProjectItem): ProjectItem {
   const description = getProjectDescription(item)
   const normalizedDescription = description.replace(/\s+/g, ' ').trim().toLowerCase()
-  const bullets = getProjectBullets(item).filter((bullet) => {
+  const mergedBullets = mergeWrappedProjectBullets(getProjectBullets(item))
+  const normalizedMergedBullets = normalizeComparableText(mergedBullets.join(' '))
+
+  const bullets = mergedBullets.filter((bullet) => {
     if (!normalizedDescription) return true
     return bullet.replace(/\s+/g, ' ').trim().toLowerCase() !== normalizedDescription
   })
 
+  const finalBullets =
+    normalizedDescription && normalizedMergedBullets === normalizeComparableText(description)
+      ? []
+      : bullets
+
   return {
     ...item,
     description,
-    bullets,
+    bullets: finalBullets,
   }
 }
 
@@ -138,8 +187,68 @@ export function getEducationDateLabel(education: Pick<EducationItem, 'startDate'
   return graduationDate
 }
 
+const GPA_SEGMENT_RE = /\b(?:CGPA|GPA)\b\s*[:\-]?\s*([0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?)/i
+const GPA_VALUE_ONLY_RE = /^([0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?)$/
+const GPA_REMOVAL_RE = /\s*(?:[|,;·•]\s*)?\b(?:CGPA|GPA)\b\s*[:\-]?\s*[0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?\s*/gi
 const LOCATION_LIKE_RE = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/
 const ROLE_FRAGMENT_RE = /(analyst|engineer|developer|manager|consultant|intern|designer|specialist|associate|lead|architect|administrator|product|business|full stack)/i
+
+function normalizeGpaValue(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  const segmentMatch = trimmed.match(GPA_SEGMENT_RE)
+  if (segmentMatch?.[1]) {
+    return segmentMatch[1].replace(/\s*\/\s*/g, ' / ').trim()
+  }
+
+  const valueOnlyMatch = trimmed.match(GPA_VALUE_ONLY_RE)
+  if (valueOnlyMatch?.[1]) {
+    return valueOnlyMatch[1].replace(/\s*\/\s*/g, ' / ').trim()
+  }
+
+  return trimmed
+}
+
+function stripEmbeddedGpa(value: string) {
+  return value
+    .replace(GPA_REMOVAL_RE, ' ')
+    .replace(/\(\s*\)/g, ' ')
+    .replace(/\s*[|,;·•-]\s*$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+function normalizeEducationItem(item: EducationItem): EducationItem {
+  const existingGpa = normalizeGpaValue(item.gpa ?? '')
+  const degreeWithoutGpa = stripEmbeddedGpa(item.degree ?? '')
+  const fieldWithoutGpa = stripEmbeddedGpa(item.field ?? '')
+  const derivedGpa =
+    existingGpa ||
+    normalizeGpaValue(item.degree ?? '') ||
+    normalizeGpaValue(item.field ?? '')
+
+  let degree = degreeWithoutGpa
+  let field = fieldWithoutGpa
+
+  if (!field) {
+    const degreeFieldMatch = degree.match(/^(.*?)\s+\bin\b\s+(.+)$/i)
+    if (degreeFieldMatch) {
+      degree = degreeFieldMatch[1]?.trim() ?? degree
+      field = degreeFieldMatch[2]?.trim() ?? ''
+    }
+  }
+
+  return {
+    ...item,
+    degree,
+    field,
+    gpa: derivedGpa,
+    startDate: item.startDate?.trim() ?? '',
+    endDate: item.endDate?.trim() ?? '',
+    graduationDate: item.graduationDate?.trim() || item.endDate?.trim() || '',
+  }
+}
 
 function normalizeExperienceLikeItem<T extends ExperienceItem>(item: T): T {
   const title = item.title?.trim() ?? ''
@@ -200,12 +309,7 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
     summary: data.summary ?? '',
     currentRole: normalizedCurrentRole,
     experience,
-    education: (data.education ?? []).map(item => ({
-      ...item,
-      startDate: item.startDate?.trim() ?? '',
-      endDate: item.endDate?.trim() ?? '',
-      graduationDate: item.graduationDate?.trim() || item.endDate?.trim() || '',
-    })),
+    education: (data.education ?? []).map(item => normalizeEducationItem(item)),
     skills,
     skillSections,
     certifications: data.certifications ?? [],

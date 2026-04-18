@@ -123,6 +123,104 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
   return <span ref={ref}>{n.toLocaleString()}{suffix}</span>
 }
 
+const LIVE_BASE = 50_000
+const LIVE_RATE = 10
+
+function getCountNow() {
+  const now = new Date()
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const mins = Math.floor((now.getTime() - midnight.getTime()) / 60_000)
+  return LIVE_BASE + mins * LIVE_RATE
+}
+
+function LiveCounter() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [display, setDisplay] = useState(getCountNow)
+  const [flash, setFlash] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          obs.disconnect()
+        }
+      },
+      { threshold: 0.4 }
+    )
+
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!visible) return
+
+    let cancelled = false
+    const target = getCountNow()
+    const startFrom = Math.min(display, target - LIVE_RATE * 2)
+    const begin = performance.now()
+    const dur = 1200
+
+    const raf = (t: number) => {
+      if (cancelled) return
+      const p = Math.min((t - begin) / dur, 1)
+      const e = 1 - Math.pow(1 - p, 4)
+      setDisplay(Math.round(startFrom + (target - startFrom) * e))
+      if (p < 1) requestAnimationFrame(raf)
+    }
+
+    requestAnimationFrame(raf)
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setDisplay(getCountNow())
+      setFlash(true)
+      window.setTimeout(() => setFlash(false), 500)
+    }, 60_000)
+
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setDisplay(getCountNow())
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  return (
+    <div ref={ref} className="flex flex-col items-center gap-2">
+      <div className="flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-2.5 py-1">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Live</span>
+      </div>
+      <div
+        className="bg-gradient-to-br from-[#026d32] to-[#30c06b] bg-clip-text text-4xl font-black tracking-tight text-transparent tabular-nums"
+        style={{ transition: `filter 0.4s ${E}`, filter: flash ? 'brightness(1.35)' : 'brightness(1)' }}
+      >
+        {display.toLocaleString()}+
+      </div>
+    </div>
+  )
+}
+
 // ─── ATS Score mock ───────────────────────────────────────────────────────────
 
 function ATSMock() {
@@ -477,7 +575,13 @@ export default function LandingFeatures() {
       <section className="relative py-14 px-6 overflow-hidden bg-gradient-to-b from-white via-[#f0fdf4] to-white border-y border-green-100/60">
         <ParallaxBlob className="w-96 h-48 bg-green-300/20 top-0 left-1/4 -translate-y-1/2" speed={0.08} />
         <ParallaxBlob className="w-72 h-40 bg-emerald-200/20 bottom-0 right-1/4 translate-y-1/2" speed={0.12} />
-        <div className="relative mx-auto grid max-w-4xl grid-cols-1 gap-10 sm:grid-cols-3 items-start">
+        <div className="relative mx-auto grid max-w-5xl grid-cols-2 items-start gap-10 md:grid-cols-4">
+          <Reveal className="text-center space-y-1">
+            <LiveCounter />
+            <div className="mx-auto max-w-[130px] text-xs font-semibold leading-snug text-zinc-500">
+              resumes optimized this week
+            </div>
+          </Reveal>
           {[
             { to: 5,   suffix: '×', label: 'more interview callbacks' },
             { to: 200, suffix: '+', label: 'ATS systems tested' },

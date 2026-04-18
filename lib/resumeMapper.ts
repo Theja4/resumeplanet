@@ -1,6 +1,6 @@
 import type { Resume, ResumeWorkExperience, ResumeEducation, ResumeProject } from './open-resume-parser/types'
-import type { ResumeData } from '@/types'
-import { syncResumeData } from '@/lib/resume-data'
+import type { ResumeData, SkillSection } from '@/types'
+import { splitSkillInput, syncResumeData } from '@/lib/resume-data'
 
 /**
  * Maps open-resume's Resume type → our ResumeData type.
@@ -9,7 +9,11 @@ import { syncResumeData } from '@/lib/resume-data'
  * which open-resume does not extract — they are left as empty arrays.
  */
 export function mapToResumeData(resume: Resume): ResumeData {
-  const mappedSkills = extractSkills(resume.skills)
+  const mappedSkillSections = extractSkillSections(resume.skills)
+  const mappedSkills =
+    mappedSkillSections.length > 0
+      ? mappedSkillSections.flatMap(section => section.skills)
+      : extractSkills(resume.skills)
 
   return syncResumeData({
     // Contact — from profile
@@ -30,9 +34,7 @@ export function mapToResumeData(resume: Resume): ResumeData {
 
     // Skills — flatten featuredSkills[].skill + descriptions[]
     skills: mappedSkills,
-    skillSections: mappedSkills.length > 0
-      ? [{ title: '', tag: '', skills: mappedSkills }]
-      : [],
+    skillSections: mappedSkillSections,
 
     // Projects
     projects: resume.projects.map(mapProject),
@@ -73,7 +75,7 @@ function mapEducation(edu: ResumeEducation): ResumeData['education'][0] {
     startDate: '',
     endDate: edu.date || '',
     graduationDate: edu.date || '',
-    gpa: edu.gpa || '',
+    gpa: normalizeEducationGpa(edu.gpa || edu.degree || ''),
   }
 }
 
@@ -108,6 +110,106 @@ function extractSkills(resumeSkills: Resume['skills']): string[] {
   }
   // Deduplicate preserving order
   return [...new Set(skills)]
+}
+
+function extractSkillSections(resumeSkills: Resume['skills']): SkillSection[] {
+  const descriptionLines = (resumeSkills.descriptions || [])
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+
+  const sections: SkillSection[] = []
+  let index = 0
+
+  while (index < descriptionLines.length) {
+    const line = descriptionLines[index]!
+    const nextLine = descriptionLines[index + 1] ?? ''
+
+    const inlineMatch = line.match(/^([A-Za-z][A-Za-z &/+()-]{1,40}?):\s+(.+)$/)
+    if (inlineMatch) {
+      const skills = splitSkillInput(inlineMatch[2]).map(skill => skill.trim()).filter(Boolean)
+      if (skills.length > 0) {
+        sections.push({
+          title: inlineMatch[1].trim(),
+          tag: '',
+          skills,
+        })
+      }
+      index += 1
+      continue
+    }
+
+    const mergedLabel =
+      isLikelySkillLabelFragment(line) && isLikelySkillLabelFragment(nextLine)
+        ? `${line.replace(/:$/, '').trim()} ${nextLine.replace(/:$/, '').trim()}`.trim()
+        : ''
+
+    if (mergedLabel && descriptionLines[index + 2]) {
+      const skills = splitSkillInput(descriptionLines[index + 2]!)
+        .map(skill => skill.trim())
+        .filter(Boolean)
+
+      if (skills.length > 0) {
+        sections.push({
+          title: mergedLabel,
+          tag: '',
+          skills,
+        })
+        index += 3
+        continue
+      }
+    }
+
+    if (isLikelySkillLabelFragment(line) && nextLine) {
+      const skills = splitSkillInput(nextLine).map(skill => skill.trim()).filter(Boolean)
+      if (skills.length > 0) {
+        sections.push({
+          title: line.replace(/:$/, '').trim(),
+          tag: '',
+          skills,
+        })
+        index += 2
+        continue
+      }
+    }
+
+    index += 1
+  }
+
+  return dedupeSkillSections(sections)
+}
+
+function isLikelySkillLabelFragment(value: string) {
+  const compact = value.trim()
+  if (!compact) return false
+  if (compact.includes(',')) return false
+  if (compact.length > 40) return false
+  if (/\d/.test(compact)) return false
+
+  const normalized = compact.replace(/:$/, '').trim()
+  const words = normalized.split(/\s+/).filter(Boolean)
+  if (words.length === 0 || words.length > 4) return false
+
+  return /^[A-Za-z][A-Za-z &/+()-]*:?$/.test(compact)
+}
+
+function dedupeSkillSections(sections: SkillSection[]) {
+  const seen = new Set<string>()
+
+  return sections
+    .map(section => ({
+      title: section.title.trim(),
+      tag: section.tag?.trim() ?? '',
+      skills: section.skills
+        .map(skill => skill.trim())
+        .filter(Boolean)
+        .filter((skill) => {
+          const key = `${section.title.toLowerCase()}::${skill.toLowerCase()}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        }),
+    }))
+    .filter(section => section.title || section.tag || section.skills.length > 0)
 }
 
 function extractLinkedinUrl(url: string): string {
@@ -192,8 +294,24 @@ function normalizeDate(dateStr: string): string {
 function splitDegreeField(degreeStr: string): { degree: string; field: string } {
   if (!degreeStr?.trim()) return { degree: '', field: '' }
 
-  const inMatch = degreeStr.match(/^(.*?)\bin\b\s+(.+)$/i)
+  const cleaned = degreeStr
+    .replace(/\s*(?:[|,;·•]\s*)?\b(?:CGPA|GPA)\b\s*[:\-]?\s*[0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?\s*/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  const inMatch = cleaned.match(/^(.*?)\bin\b\s+(.+)$/i)
   if (inMatch) return { degree: inMatch[1].trim(), field: inMatch[2].trim() }
 
-  return { degree: degreeStr.trim(), field: '' }
+  return { degree: cleaned, field: '' }
+}
+
+function normalizeEducationGpa(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+
+  const match =
+    trimmed.match(/\b(?:CGPA|GPA)\b\s*[:\-]?\s*([0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?)/i)
+    ?? trimmed.match(/^([0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?)$/)
+
+  return match?.[1] ? match[1].replace(/\s*\/\s*/g, ' / ').trim() : ''
 }

@@ -637,28 +637,69 @@ function parseSkills(lines: string[]): string[] {
   return result
 }
 
+function isLikelySkillLabelFragment(line: string) {
+  const compact = line.trim()
+  if (!compact) return false
+  if (compact.includes(',')) return false
+  if (compact.length > 40) return false
+  if (/\d/.test(compact)) return false
+
+  const normalized = compact.replace(/:$/, '').trim()
+  const words = normalized.split(/\s+/).filter(Boolean)
+  if (words.length === 0 || words.length > 4) return false
+
+  return /^[A-Za-z][A-Za-z &/+()-]*:?$/.test(compact)
+}
+
 function parseSkillSections(lines: string[]) {
   const sections: Array<{ title: string; skills: string[] }> = []
-  let currentSection: { title: string; skills: string[] } | null = null
+  let index = 0
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim()
-    if (!line) continue
+  while (index < lines.length) {
+    const line = lines[index]?.trim() ?? ''
+    if (!line) {
+      index += 1
+      continue
+    }
 
     const match = /^([A-Za-z][A-Za-z &/+()-]{1,40}):\s+(.+)$/.exec(line)
     if (match) {
       const title = match[1].trim()
       const skills = splitSkillInput(match[2]).filter(Boolean)
-      currentSection = { title, skills }
       if (skills.length > 0) {
-        sections.push(currentSection)
+        sections.push({ title, skills })
       }
+      index += 1
       continue
     }
 
-    if (currentSection && !detectSection(line) && !looksLikeCustomHeadingText(line)) {
-      currentSection.skills.push(...splitSkillInput(line))
+    const nextLine = lines[index + 1]?.trim() ?? ''
+    const thirdLine = lines[index + 2]?.trim() ?? ''
+
+    const mergedLabel =
+      isLikelySkillLabelFragment(line) && isLikelySkillLabelFragment(nextLine)
+        ? `${line.replace(/:$/, '').trim()} ${nextLine.replace(/:$/, '').trim()}`.trim()
+        : ''
+
+    if (mergedLabel && thirdLine && !detectSection(thirdLine) && !looksLikeCustomHeadingText(thirdLine)) {
+      const skills = splitSkillInput(thirdLine).filter(Boolean)
+      if (skills.length > 0) {
+        sections.push({ title: mergedLabel, skills })
+        index += 3
+        continue
+      }
     }
+
+    if (isLikelySkillLabelFragment(line) && nextLine && !detectSection(nextLine) && !looksLikeCustomHeadingText(nextLine)) {
+      const skills = splitSkillInput(nextLine).filter(Boolean)
+      if (skills.length > 0) {
+        sections.push({ title: line.replace(/:$/, '').trim(), skills })
+        index += 2
+        continue
+      }
+    }
+
+    index += 1
   }
 
   if (sections.length > 0) {
@@ -689,6 +730,7 @@ function parseEducation(lines: string[]): ResumeData['education'] {
   const entries: ResumeData['education'] = []
   const DEGREE_RE = /Bachelor|Master|PhD|Doctorate|MBA|B\.?S\.?|M\.?S\.?|B\.?E\.?|B\.?Tech|M\.?Tech|Associate/i
   const INSTITUTION_RE = /University|College|Institute|School|Academy/i
+  const GPA_RE = /(?:GPA|CGPA)\s*[:\s]+\s*([0-9]+(?:\.\d+)?(?:\s*\/\s*[0-9]+(?:\.\d+)?)?)/i
   const cleanedLines = lines.map(line => line.trim()).filter(Boolean)
   let index = 0
 
@@ -709,7 +751,7 @@ function parseEducation(lines: string[]): ResumeData['education'] {
       startDate: '',
       endDate: '',
       graduationDate: '',
-      gpa: /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(line)?.[1] ?? '',
+      gpa: GPA_RE.exec(line)?.[1]?.replace(/\s*\/\s*/g, ' / ') ?? '',
     }
 
     if (isLikelyDateLine(line)) {
@@ -747,7 +789,7 @@ function parseEducation(lines: string[]): ResumeData['education'] {
         entry.endDate = dates.end || dates.start
         entry.graduationDate = dates.end || dates.start
       } else if (!entry.gpa) {
-        entry.gpa = /(?:GPA|CGPA)[:\s]+(\d+\.?\d*)/i.exec(nextLine)?.[1] ?? ''
+        entry.gpa = GPA_RE.exec(nextLine)?.[1]?.replace(/\s*\/\s*/g, ' / ') ?? ''
       } else if (!entry.field && entry.degree && nextLine.length <= 100 && !isBulletLine(nextLine)) {
         entry.field = nextLine
       }
