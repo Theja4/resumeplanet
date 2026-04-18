@@ -8,6 +8,7 @@ interface Props {
   toSlug: string
   href: string
   className: string
+  style?: React.CSSProperties
   children: React.ReactNode
 }
 
@@ -16,12 +17,14 @@ export default function BlogRelatedPostLink({
   toSlug,
   href,
   className,
+  style,
   children,
 }: Props) {
   return (
     <Link
       href={href}
       className={className}
+      style={style}
       onClick={() => {
         Analytics.blogRelatedPostClicked({
           fromSlug,

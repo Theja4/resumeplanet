@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -92,6 +93,12 @@ function categoryStyle(cat: string) {
   return CATEGORY_COLORS[cat.toLowerCase()] ?? 'bg-zinc-100 text-zinc-600 ring-zinc-200'
 }
 
+function entryStyle(delay = 0): CSSProperties {
+  return {
+    transitionDelay: `${delay}s`,
+  }
+}
+
 export default async function BlogPostPage({
   params,
 }: {
@@ -168,7 +175,7 @@ export default async function BlogPostPage({
   }
 
   return (
-    <div className="min-h-screen bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+    <div className="min-h-screen overflow-x-hidden bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
       <ReadingProgress />
       <PublicSiteHeader active="blog" />
       <script
@@ -187,70 +194,108 @@ export default async function BlogPostPage({
         readTimeMinutes={readTimeMinutes}
       />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────────── */}
-      <div className={`relative ${coverImage ? 'pt-32 pb-0' : 'pt-32 pb-20 bg-[#030f07]'}`}>
-        {coverImage && (
+      <div className={`relative overflow-hidden ${coverImage ? 'pt-32 pb-20' : 'bg-[#030f07] pt-32 pb-20'}`}>
+        {coverImage ? (
           <>
-            {/* Full-bleed cover — heavily desaturated and dimmed */}
             <div
               className="absolute inset-0"
               style={{
                 backgroundImage: `url(${coverImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                filter: 'brightness(0.25) saturate(0.4)',
+                filter: 'brightness(0.22) saturate(0.42)',
               }}
             />
-            {/* Strong solid dark layer — kills light images completely */}
-            <div className="absolute inset-0 bg-zinc-950/70" />
-            {/* Gradient: full dark at top, fades to white at very bottom for content blend */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white" />
+            <div className="absolute inset-0 bg-zinc-950/76" />
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/20 via-zinc-950/30 to-white" />
           </>
-        )}
-        {!coverImage && (
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(2,109,50,0.18),transparent_60%)]" />
-        )}
+        ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.14),transparent_24%),radial-gradient(circle_at_top_right,rgba(48,192,107,0.10),transparent_22%),linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:100%_100%,100%_100%,36px_36px,36px_36px]" />
+        <div className="login-aurora pointer-events-none absolute -left-20 top-10 h-64 w-64 rounded-full bg-[#A3FFB3]/10 blur-3xl" />
+        <div className="login-aurora-two pointer-events-none absolute right-0 top-10 h-72 w-72 rounded-full bg-[#30c06b]/10 blur-3xl" />
 
-        <div className="relative max-w-4xl mx-auto px-6 pb-24">
-          {/* Back link */}
+        <div className="relative mx-auto max-w-[90rem] px-6 pb-24">
           <Link
             href="/blog"
-            className="group inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white/50 hover:text-white/90 transition-colors mb-10"
+            className="group mb-10 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-white/50 transition-colors hover:text-white/90"
           >
             <ArrowLeft size={13} strokeWidth={3} />
             All articles
           </Link>
 
-          {/* Meta */}
-          <div className="flex flex-wrap items-center gap-3 mb-7">
-            <span className={`inline-flex text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full ring-1 ${categoryStyle(post.category)}`}>
-              {post.category}
-            </span>
-            <span className="text-xs text-white/40 font-medium">{formatBlogDate(post.published_at)}</span>
-            <span className="text-white/20">·</span>
-            <span className="flex items-center gap-1.5 text-xs text-white/40 font-medium">
-              <Clock size={11} /> {readTimeMinutes} min read
-            </span>
-          </div>
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-end">
+            <div className="blog-load-in space-y-7" style={entryStyle(0)}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`inline-flex text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full ring-1 ${categoryStyle(post.category)}`}>
+                  {post.category}
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/34">Editorial analysis</span>
+              </div>
 
-          {/* Title */}
-          <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black tracking-tight text-white leading-[1.07] mb-7 max-w-3xl">
-            {post.title}
-          </h1>
+              <h1 className="max-w-4xl text-4xl font-black tracking-tight text-white leading-[1.03] sm:text-5xl lg:text-[3.9rem]">
+                {post.title}
+              </h1>
 
-          {/* Excerpt */}
-          <p className="text-lg text-white/55 leading-relaxed max-w-2xl mb-10">
-            {post.excerpt}
-          </p>
+              <p className="max-w-2xl text-lg leading-relaxed text-white/55">
+                {post.excerpt}
+              </p>
 
-          {/* Author */}
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] flex items-center justify-center text-[11px] font-black text-[#022c14] shadow-sm flex-shrink-0">
-              {post.author_name.charAt(0)}
+              <div className="flex flex-wrap items-center gap-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-[11px] font-black text-[#022c14] shadow-sm">
+                    {post.author_name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-white/90">{post.author_name}</p>
+                    <p className="text-[11px] text-white/35">Rezoomed Editorial</p>
+                  </div>
+                </div>
+                <span className="text-white/20">·</span>
+                <span className="text-xs font-medium text-white/40">{formatBlogDate(post.published_at)}</span>
+                <span className="text-white/20">·</span>
+                <span className="flex items-center gap-1.5 text-xs font-medium text-white/40">
+                  <Clock size={11} /> {readTimeMinutes} min read
+                </span>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-black text-white/90">{post.author_name}</p>
-              <p className="text-[11px] text-white/35">Rezoomed Editorial</p>
+
+            <div className="blog-load-in space-y-4" style={entryStyle(0.12)}>
+              {coverImage ? (
+                <div className="blog-glare-surface blog-glare-dark overflow-hidden rounded-[2rem] border border-white/10 bg-white/6 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+                  <div
+                    className="relative z-10 h-56 rounded-[1.35rem] bg-zinc-900"
+                    style={{
+                      backgroundImage: `url(${coverImage})`,
+                      backgroundPosition: 'center',
+                      backgroundSize: 'cover',
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              <div className="blog-glare-surface blog-glare-dark rounded-[2rem] border border-white/10 bg-white/6 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+                <div className="relative z-10">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">Story snapshot</p>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-[1.2rem] border border-white/8 bg-white/5 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/38">Published</p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-white/88">{formatBlogDate(post.published_at)}</p>
+                    </div>
+                    <div className="rounded-[1.2rem] border border-white/8 bg-white/5 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/38">Reading time</p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-white/88">{readTimeMinutes} min</p>
+                    </div>
+                    <div className="rounded-[1.2rem] border border-white/8 bg-white/5 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/38">Sections</p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-white/88">{articleSections.length || 1}</p>
+                    </div>
+                    <div className="rounded-[1.2rem] border border-white/8 bg-white/5 p-4">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/38">Category</p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-white/88">{post.category}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -262,48 +307,50 @@ export default async function BlogPostPage({
 
           {/* Article */}
           <div className="space-y-10 -mt-6">
-            <div className="relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.95))] p-6 shadow-[0_28px_90px_rgba(18,24,21,0.08)] sm:p-8 lg:p-10">
+            <div className="blog-load-in blog-glare-surface blog-glare-light relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.95))] p-6 shadow-[0_28px_90px_rgba(18,24,21,0.08)] sm:p-8 lg:p-10" style={entryStyle(0.08)}>
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.06),transparent_30%)]" />
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(2,109,50,0.25),transparent)]" />
-              <div className="relative mb-8 flex flex-wrap items-center gap-3 border-b border-black/5 pb-5">
+              <div className="relative z-10 mb-8 flex flex-wrap items-center gap-3 border-b border-black/5 pb-5">
                 <span className="inline-flex items-center rounded-full bg-[#026d32]/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#026d32]">
-                  Editor's guide
+                  Editor&apos;s guide
                 </span>
                 <p className="max-w-2xl text-sm leading-6 text-zinc-600">
                   Short, ATS-aware guidance built for fast scanning. Use the visuals and tables below as your checklist, not background noise.
                 </p>
               </div>
-              <article className="prose-article relative">
+              <article className="prose-article relative z-10">
               <MarkdownContent content={articleContent} inlineImages={inlineImages} imageAltBase={post.title} />
               </article>
             </div>
 
             {/* Bottom CTA */}
-            <div className="rounded-[2rem] bg-[#030f07] p-8 sm:p-10">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#A3FFB3] mb-3">
-                Turn advice into interviews
-              </p>
-              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white mb-3 leading-tight">
-                Put this article to work in Rezoomed.
-              </h3>
-              <p className="text-sm text-white/45 leading-7 max-w-lg mb-7">
-                Upload your resume, run a real ATS score, and tailor for a specific role — without losing your voice.
-              </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <BlogTrackedAppLink
-                  slug={post.slug} ctaType="bottom" ctaText="Start with free ATS score" position={1}
-                  href="/ats-checker"
-                  className="inline-flex items-center justify-center rounded-full bg-[#026d32] px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-[#019a47] hover:-translate-y-0.5 shadow-lg shadow-[#026d32]/30"
-                >
-                  Start with free ATS score
-                </BlogTrackedAppLink>
-                <BlogTrackedAppLink
-                  slug={post.slug} ctaType="bottom" ctaText="Create account" position={2}
-                  href="/auth/register"
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/8 px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-white/15 hover:-translate-y-0.5"
-                >
-                  Create free account <ArrowRight size={13} strokeWidth={2.5} />
-                </BlogTrackedAppLink>
+            <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[2rem] bg-[#030f07] p-8 sm:p-10" style={entryStyle(0.18)}>
+              <div className="relative z-10">
+                <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">
+                  Turn advice into interviews
+                </p>
+                <h3 className="mb-3 text-2xl font-black leading-tight tracking-tight text-white sm:text-3xl">
+                  Put this article to work in Rezoomed.
+                </h3>
+                <p className="mb-7 max-w-lg text-sm leading-7 text-white/45">
+                  Upload your resume, run a real ATS score, and tailor for a specific role — without losing your voice.
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <BlogTrackedAppLink
+                    slug={post.slug} ctaType="bottom" ctaText="Start with free ATS score" position={1}
+                    href="/ats-checker"
+                    className="inline-flex items-center justify-center rounded-full bg-[#026d32] px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-[#019a47] hover:-translate-y-0.5 shadow-lg shadow-[#026d32]/30"
+                  >
+                    Start with free ATS score
+                  </BlogTrackedAppLink>
+                  <BlogTrackedAppLink
+                    slug={post.slug} ctaType="bottom" ctaText="Create account" position={2}
+                    href="/auth/register"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/8 px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition-all hover:bg-white/15 hover:-translate-y-0.5"
+                  >
+                    Create free account <ArrowRight size={13} strokeWidth={2.5} />
+                  </BlogTrackedAppLink>
+                </div>
               </div>
             </div>
 
@@ -321,7 +368,8 @@ export default async function BlogPostPage({
                       fromSlug={post.slug}
                       toSlug={rp.slug}
                       href={`/blog/${rp.slug}`}
-                      className="group flex flex-col h-full rounded-[1.75rem] border border-zinc-100 bg-white p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                      className="blog-load-in group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-zinc-100 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+                      style={entryStyle(0.22)}
                     >
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#026d32] mb-3">{rp.category}</p>
                       <h4 className="text-base font-black leading-snug text-zinc-900 group-hover:text-[#026d32] transition-colors line-clamp-3 mb-3 flex-1">
@@ -338,10 +386,10 @@ export default async function BlogPostPage({
           {/* Sidebar */}
           <aside className="space-y-6 lg:sticky lg:top-24">
             {articleSections.length > 0 && (
-              <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(160deg,#050b07_0%,#0a1710_55%,#10261a_100%)] p-6 shadow-[0_28px_90px_rgba(4,10,7,0.28)]">
+              <div className="blog-load-in blog-glare-surface blog-glare-dark relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(160deg,#050b07_0%,#0a1710_55%,#10261a_100%)] p-6 shadow-[0_28px_90px_rgba(4,10,7,0.28)]" style={entryStyle(0.12)}>
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,192,107,0.14),transparent_24%)]" />
-                <p className="relative text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">In this article</p>
-                <div className="mt-4 space-y-3">
+                <p className="relative z-10 text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">In this article</p>
+                <div className="relative z-10 mt-4 space-y-3">
                   {articleSections.map(section => (
                     <a
                       key={section}
@@ -357,25 +405,29 @@ export default async function BlogPostPage({
             )}
 
             {/* CTA box */}
-            <div className="rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 space-y-4 shadow-[0_16px_48px_rgba(2,109,50,0.25)]">
-              <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center mb-1">
-                <span className="text-lg">🚀</span>
+            <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 shadow-[0_16px_48px_rgba(2,109,50,0.25)]" style={entryStyle(0.18)}>
+              <div className="relative z-10 space-y-4">
+                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+                  <span className="text-lg">🚀</span>
+                </div>
+                <h4 className="text-sm font-black leading-snug text-white">Ready to optimize your resume?</h4>
+                <p className="text-xs leading-relaxed text-white/55">
+                  Score, tailor, and rebuild in minutes. Free to start.
+                </p>
+                <BlogTrackedAppLink
+                  slug={post.slug} ctaType="sidebar" ctaText="Build my resume" position={1}
+                  href="/ats-checker"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#026d32] transition-all hover:bg-[#f0fdf4] shadow-sm"
+                >
+                  Get my ATS score
+                </BlogTrackedAppLink>
               </div>
-              <h4 className="text-sm font-black text-white leading-snug">Ready to optimize your resume?</h4>
-              <p className="text-xs leading-relaxed text-white/55">
-                Score, tailor, and rebuild in minutes. Free to start.
-              </p>
-              <BlogTrackedAppLink
-                slug={post.slug} ctaType="sidebar" ctaText="Build my resume" position={1}
-                href="/ats-checker"
-                className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#026d32] transition-all hover:bg-[#f0fdf4] shadow-sm"
-              >
-                Get my ATS score
-              </BlogTrackedAppLink>
             </div>
 
             {/* Share buttons */}
-            <BlogShareButtons slug={post.slug} title={post.title} />
+            <div className="blog-load-in" style={entryStyle(0.24)}>
+              <BlogShareButtons slug={post.slug} title={post.title} />
+            </div>
           </aside>
         </div>
       </main>

@@ -424,6 +424,109 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+.blog-load-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  filter: blur(0);
+  transition:
+    opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform, filter;
+}
+
+@starting-style {
+  .blog-load-in {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0);
+    filter: blur(10px);
+  }
+}
+
+@keyframes blog-glare-sweep {
+  0% {
+    transform: translate3d(-160%, 0, 0) rotate(14deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.08;
+  }
+  24% {
+    opacity: 0.2;
+  }
+  34% {
+    opacity: 0.12;
+  }
+  52%, 100% {
+    transform: translate3d(220%, 0, 0) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes blog-glare-breathe {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.blog-glare-surface {
+  position: relative;
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  contain: paint;
+}
+
+.blog-glare-surface::before {
+  content: '';
+  position: absolute;
+  top: -44%;
+  bottom: -44%;
+  left: -34%;
+  width: 42%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 34%,
+    var(--blog-glare-soft, rgba(255, 255, 255, 0.04)) 43%,
+    var(--blog-glare-peak, rgba(255, 255, 255, 0.28)) 50%,
+    var(--blog-glare-accent, rgba(163, 255, 179, 0.18)) 55%,
+    transparent 64%
+  );
+  transform: translate3d(-130%, 0, 0) rotate(14deg);
+  animation: blog-glare-sweep 9.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.blog-glare-surface::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 0%, var(--blog-glare-top, rgba(255, 255, 255, 0.16)), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 24%);
+  animation: blog-glare-breathe 7s ease-in-out infinite;
+}
+
+.blog-glare-dark {
+  --blog-glare-soft: rgba(255, 255, 255, 0.03);
+  --blog-glare-peak: rgba(255, 255, 255, 0.22);
+  --blog-glare-accent: rgba(163, 255, 179, 0.16);
+  --blog-glare-top: rgba(255, 255, 255, 0.16);
+}
+
+.blog-glare-light {
+  --blog-glare-soft: rgba(255, 255, 255, 0.08);
+  --blog-glare-peak: rgba(255, 255, 255, 0.52);
+  --blog-glare-accent: rgba(163, 255, 179, 0.1);
+  --blog-glare-top: rgba(255, 255, 255, 0.44);
+}
+
 @keyframes shimmer-sweep {
   0%        { transform: translateX(-100%) skewX(-15deg); }
   20%, 100% { transform: translateX(380%)  skewX(-15deg); }
@@ -522,6 +625,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .blog-load-in {
+    filter: none;
+    transition: none;
+  }
+
+  .blog-glare-surface::before,
+  .blog-glare-surface::after {
+    animation: none;
+  }
+
   .logo-marquee-track {
     animation: none;
     transform: none;

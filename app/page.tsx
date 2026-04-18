@@ -247,12 +247,6 @@ export default async function LandingPage() {
                 <p className="text-2xl font-black text-primary-landing leading-none">5×</p>
               </div>
             </div>
-            <div className="absolute right-[8%] bottom-[15%] flex items-center gap-3 ai-optimizing-float">
-              <div className="ai-label whitespace-nowrap rounded-full bg-zinc-900 px-4 py-2 text-[10px] font-bold text-white flex items-center gap-2 shadow-[0_20px_40px_rgba(15,23,18,0.22)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                AI OPTIMIZING...
-              </div>
-            </div>
           </div>
           <div className="relative z-10 max-w-6xl mx-auto w-full text-center space-y-6 reveal-on-scroll active stagger-1">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-container/30 text-on-primary-container text-xs font-bold uppercase tracking-widest border border-primary-container/50">
@@ -442,7 +436,7 @@ export default async function LandingPage() {
               Ready to get <em>hired faster?</em>
             </h2>
             <p className="text-lg text-white/75">
-              Join <strong className="text-white font-black">500,000+</strong> professionals who use Rezoomed to get more callbacks.
+              Use Rezoomed to build stronger resumes, improve ATS fit, and get more callbacks.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-3">
               <Link href="/auth/register">
