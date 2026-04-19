@@ -7,6 +7,7 @@ import { getOrganizationSameAsLinks, getSiteUrl, SITE_NAME } from '@/lib/site'
 import PromoBanner from '@/components/shared/PromoBanner'
 import PaddleProvider from '@/components/providers/PaddleProvider'
 import PostHogProvider from '@/components/providers/PostHogProvider'
+import GoogleAnalyticsProvider from '@/components/providers/GoogleAnalyticsProvider'
 import AffiliateReferralTracker from '@/components/providers/AffiliateReferralTracker'
 import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
 import CookieConsentBanner from '@/components/shared/CookieConsentBanner'
@@ -135,7 +136,10 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       data-analytics-default={analyticsEnabled ? 'granted' : 'denied'}
     >
-      <body suppressHydrationWarning className="min-h-full flex flex-col">
+      <body
+        suppressHydrationWarning
+        className={`min-h-full flex flex-col ${showCookieConsentBanner ? 'pt-28 sm:pt-24 lg:pt-20' : ''}`}
+      >
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
@@ -147,11 +151,13 @@ export default async function RootLayout({
         {showCookieConsentBanner ? <CookieConsentBanner /> : null}
         <AffiliateReferralTracker />
         <PostHogProvider enabled={analyticsEnabled}>
-          <PaddleProvider>
-            {bannerPromo && <PromoBanner promo={bannerPromo} />}
-            {children}
-            <PendingJobApplyPrompt />
-          </PaddleProvider>
+          <GoogleAnalyticsProvider enabled={analyticsEnabled}>
+            <PaddleProvider>
+              {bannerPromo && <PromoBanner promo={bannerPromo} />}
+              {children}
+              <PendingJobApplyPrompt />
+            </PaddleProvider>
+          </GoogleAnalyticsProvider>
         </PostHogProvider>
       </body>
     </html>

@@ -79,72 +79,81 @@ type Testimonial = {
   initials: string
   color: string
   featured: boolean
+  proof: string
 }
 
 const TESTIMONIALS: Testimonial[] = [
   {
     quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
     name: 'Priya Sharma',
-    role: 'Data Scientist at Meta',
+    role: 'Data scientist',
     initials: 'PS',
     color: 'from-[#dbeafe] to-[#93c5fd]',
     featured: true,
+    proof: 'Shared after resume tailoring + ATS scan',
   },
   {
     quote: "The AI identified achievements I hadn't even thought to include. The ATS score jumped from 62% to 94% on my first try.",
     name: 'Marcus Kane',
-    role: 'Marketing Director',
+    role: 'Marketing lead',
     initials: 'MK',
     color: 'from-[#ffe8bd] to-[#f5c87a]',
     featured: false,
+    proof: 'Shared after first resume upload',
   },
   {
     quote: "Rezoomed didn't just fix my resume — it helped me understand my own worth. I landed a Senior Role within two weeks.",
     name: 'Sarah Jenkins',
-    role: 'Senior Product Designer',
+    role: 'Product designer',
     initials: 'SJ',
     color: 'from-[#A3FFB3] to-[#80da92]',
     featured: false,
+    proof: 'Shared after resume rewrite',
   },
   {
     quote: "Switched from Jobscan. Night and day difference. Rezoomed actually shows you what to fix, not just a score.",
     name: "James O'Brien",
-    role: 'Engineering Manager',
+    role: 'Engineering manager',
     initials: 'JO',
     color: 'from-[#fce7f3] to-[#f9a8d4]',
     featured: false,
+    proof: 'Compared after ATS review',
   },
   {
     quote: "I was skeptical about AI resume tools, but Rezoomed surfaced keywords I'd never have thought to include. Got an offer 3 weeks later.",
     name: 'Aisha Thompson',
-    role: 'UX Researcher at Spotify',
+    role: 'UX researcher',
     initials: 'AT',
     color: 'from-[#d1fae5] to-[#6ee7b7]',
     featured: false,
+    proof: 'Shared after job-description tailoring',
   },
   {
     quote: "Applied to 12 roles, heard back from 9. My recruiter actually complimented my resume format — that's never happened before.",
     name: 'Daniel Park',
-    role: 'Software Engineer at Stripe',
+    role: 'Software engineer',
     initials: 'DP',
     color: 'from-[#ede9fe] to-[#c4b5fd]',
     featured: false,
+    proof: 'Shared after export + submit workflow',
   },
   {
     quote: "The tailor feature is insane. I paste a job description and it tells me exactly what's missing. Interviews went from 10% to 60% callback rate.",
     name: 'Leila Nasser',
-    role: 'Product Manager at Shopify',
+    role: 'Product manager',
     initials: 'LN',
     color: 'from-[#fff7ed] to-[#fed7aa]',
     featured: false,
+    proof: 'Shared after repeated ATS checks',
   },
   {
     quote: "I used three other tools before this. Rezoomed is the only one that felt like it actually understood what recruiters are looking for.",
     name: 'Ryan Okafor',
-    role: 'Operations Lead at Airbnb',
+    role: 'Operations lead',
     initials: 'RO',
     color: 'from-[#fef9c3] to-[#fde047]',
     featured: false,
+    proof: 'Shared after resume review + export',
   },
 ]
 
@@ -357,10 +366,13 @@ export default async function LandingPage() {
         <section className="py-28 bg-[#f8faf9] overflow-hidden">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center space-y-4 mb-16 reveal-on-scroll active">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">What people say</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#026d32]">User feedback</p>
               <h2 className="text-4xl font-black tracking-tight text-zinc-950 sm:text-5xl">
-                Trusted by job seekers worldwide.
+                Feedback from early Rezoomed users.
               </h2>
+              <p className="mx-auto max-w-2xl text-sm leading-7 text-zinc-600 sm:text-base">
+                Real feedback shared by users after uploads, ATS scans, and tailoring flows. We keep identity details lightweight on the public page for privacy.
+              </p>
             </div>
           </div>
 
@@ -376,10 +388,12 @@ export default async function LandingPage() {
                   }`}
                 >
                   <div className="space-y-4">
-                    <div className="flex">
-                      {[...Array(5)].map((_, j) => (
-                        <span key={j} className="text-[#FFB800] text-sm">★</span>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
+                        t.featured ? 'bg-white/15 text-white/85' : 'bg-[#008f44]/10 text-[#026d32]'
+                      }`}>
+                        Early user
+                      </span>
                     </div>
                     <p className={`text-base leading-7 ${t.featured ? 'text-white/90' : 'text-zinc-700'}`}>
                       &ldquo;{t.quote}&rdquo;
@@ -392,6 +406,7 @@ export default async function LandingPage() {
                     <div>
                       <p className={`text-sm font-black ${t.featured ? 'text-white' : 'text-zinc-900'}`}>{t.name}</p>
                       <p className={`text-xs ${t.featured ? 'text-white/60' : 'text-zinc-500'}`}>{t.role}</p>
+                      <p className={`mt-1 text-[11px] ${t.featured ? 'text-white/70' : 'text-zinc-400'}`}>{t.proof}</p>
                     </div>
                   </div>
                 </div>

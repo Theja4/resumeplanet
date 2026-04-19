@@ -202,6 +202,17 @@ function queueBrowserAnalytics(
     })
 }
 
+function queueGoogleAnalytics(callback: (gtag: NonNullable<Window['gtag']>) => void) {
+  if (!isBrowser() || !isAnalyticsAllowed()) return
+  if (typeof window.gtag !== 'function') return
+
+  try {
+    callback(window.gtag)
+  } catch {
+    // Analytics failures must never break the product flow.
+  }
+}
+
 function captureEvent<E extends AnalyticsEventName>(
   event: E,
   properties: AnalyticsEventMap[E],
@@ -209,6 +220,10 @@ function captureEvent<E extends AnalyticsEventName>(
 ) {
   queueBrowserAnalytics(posthog => {
     posthog.capture(event, properties, options)
+  })
+
+  queueGoogleAnalytics(gtag => {
+    gtag('event', event, properties as Record<string, unknown>)
   })
 }
 
@@ -223,6 +238,14 @@ function captureNativePageview(properties: AnalyticsEventMap['page_viewed']) {
       path: properties.path,
       referrer: properties.referrer,
       $current_url: window.location.href,
+    })
+  })
+
+  queueGoogleAnalytics(gtag => {
+    gtag('event', 'page_view', {
+      page_path: properties.path,
+      page_location: window.location.href,
+      page_referrer: properties.referrer,
     })
   })
 }

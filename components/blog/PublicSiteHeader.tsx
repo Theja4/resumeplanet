@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 export default function PublicSiteHeader({
   active = 'none',
 }: {
-  active?: 'home' | 'blog' | 'jobs' | 'none'
+  active?: 'home' | 'blog' | 'pricing' | 'jobs' | 'none'
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobileHeaderCondensed, setIsMobileHeaderCondensed] = useState(false)
@@ -102,8 +102,8 @@ export default function PublicSiteHeader({
           <Link className={`pointer-events-auto ${linkClass(active === 'blog')}`} href="/blog">
             Blog
           </Link>
-          <Link className={`pointer-events-auto ${linkClass(active === 'jobs')}`} href="/jobs">
-            Jobs
+          <Link className={`pointer-events-auto ${linkClass(active === 'pricing')}`} href="/pricing">
+            Pricing
           </Link>
         </div>
 
@@ -151,11 +151,11 @@ export default function PublicSiteHeader({
             Blog
           </Link>
           <Link
-            className={`block rounded-xl px-3 py-2 text-sm ${active === 'jobs' ? 'bg-primary-container/40 font-bold text-[#026d32]' : 'text-zinc-700'}`}
-            href="/jobs"
+            className={`block rounded-xl px-3 py-2 text-sm ${active === 'pricing' ? 'bg-primary-container/40 font-bold text-[#026d32]' : 'text-zinc-700'}`}
+            href="/pricing"
             onClick={() => setIsMobileMenuOpen(false)}
           >
-            Jobs
+            Pricing
           </Link>
 
           <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">

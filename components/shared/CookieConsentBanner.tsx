@@ -30,7 +30,7 @@ export default function CookieConsentBanner() {
   }
 
   return (
-    <div className="border-b border-emerald-950/10 bg-[linear-gradient(135deg,#eefaf0_0%,#ffffff_52%,#f4fbf5_100%)] px-4 py-4 shadow-[0_10px_30px_rgba(2,109,50,0.08)] sm:px-6">
+    <div className="fixed inset-x-0 top-0 z-[80] border-b border-emerald-950/10 bg-[linear-gradient(135deg,#eefaf0_0%,#ffffff_52%,#f4fbf5_100%)] px-4 py-4 shadow-[0_10px_30px_rgba(2,109,50,0.08)] sm:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1.5">
           <p className="inline-flex w-fit rounded-full bg-[#008f44]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-[#008f44]">
