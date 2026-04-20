@@ -312,8 +312,18 @@ function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData, scorerRes
   }
 
   const keywordWeakArea = scorerResult.weakAreas.find(area => area.criterionId === 'keywords')
-  const presentKeywords = getResumeSkills(data).filter(skill => includesKeyword(evidenceText, skill)).slice(0, 10)
-  const missingKeywords = (keywordWeakArea?.relevantText ?? []).slice(0, 10)
+  const allSkills = getResumeSkills(data).filter(skill => skill.trim())
+  const missingKeywordSet = new Set(
+    (keywordWeakArea?.relevantText ?? [])
+      .map(keyword => keyword.trim().toLowerCase())
+      .filter(Boolean)
+  )
+  const presentKeywords = allSkills
+    .filter(skill => !missingKeywordSet.has(skill.trim().toLowerCase()))
+    .slice(0, 10)
+  const missingKeywords = allSkills
+    .filter(skill => missingKeywordSet.has(skill.trim().toLowerCase()))
+    .slice(0, 10)
 
   return {
     presentKeywords,

@@ -45,6 +45,7 @@ export default function BillingUpgradeSection({
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const activePromo: PromoConfig | null = displayPromo ?? baseDisplayPromo ?? null
   const { openSubscriptionCheckout } = usePaddleCheckout()
+  const hasManagedSubscription = isPro && currentSubscriptionInterval !== null
   const monthlyOption = priceOptions.find(option => option.id === 'monthly') ?? priceOptions[0]
   const annualOption = priceOptions.find(option => option.id === 'annual') ?? priceOptions[1]
   const freeCurrencySymbol = monthlyOption?.display.currencySymbol ?? annualOption?.display.currencySymbol ?? '$'
@@ -133,7 +134,7 @@ export default function BillingUpgradeSection({
   }
 
   function getLockedMessage(optionId: string) {
-    if (!isPro) {
+    if (!hasManagedSubscription) {
       return undefined
     }
 
@@ -175,7 +176,7 @@ export default function BillingUpgradeSection({
             priceOption={monthlyOption}
             activePromo={activePromo}
             isCurrentPlan={isPro && currentSubscriptionInterval === 'monthly'}
-            onUpgrade={isPro ? undefined : () => handleUpgrade(monthlyOption.id)}
+            onUpgrade={hasManagedSubscription ? undefined : () => handleUpgrade(monthlyOption.id)}
             isUpgrading={isLoading}
             lockedMessage={getLockedMessage('monthly')}
             compact={compact}
@@ -190,7 +191,7 @@ export default function BillingUpgradeSection({
             priceOption={annualOption}
             activePromo={activePromo}
             isCurrentPlan={isPro && currentSubscriptionInterval === 'annual'}
-            onUpgrade={isPro ? undefined : () => handleUpgrade(annualOption.id)}
+            onUpgrade={hasManagedSubscription ? undefined : () => handleUpgrade(annualOption.id)}
             isUpgrading={isLoading}
             lockedMessage={getLockedMessage('annual')}
             compact={compact}

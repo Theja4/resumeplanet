@@ -438,11 +438,10 @@ function UploadZone({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         disabled={isExtracting}
-        className={`flex-1 ${compact ? 'min-h-[360px] gap-5 py-10' : publicMode ? 'min-h-[180px] py-8' : 'min-h-[280px]'} flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${
-          isDragging
+        className={`flex-1 ${compact ? 'min-h-[360px] gap-5 py-10' : publicMode ? 'min-h-[180px] py-8' : 'min-h-[280px]'} flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${isDragging
             ? 'border-primary bg-primary-container/15 scale-[1.01]'
             : 'border-outline-variant hover:border-primary/50 hover:bg-primary-container/5'
-        } ${isExtracting ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}
+          } ${isExtracting ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}
       >
         {isExtracting ? (
           <>
@@ -479,161 +478,7 @@ function UploadZone({
   )
 }
 
-function ATSModePreviewPanel({ publicMode = false }: { publicMode?: boolean }) {
-  const checks = [
-    { label: 'ATS parse rate', value: '95%', tone: 'bg-emerald-500' },
-    { label: 'Keyword clarity', value: '81%', tone: 'bg-emerald-500' },
-    { label: 'Formatting', value: '68%', tone: 'bg-amber-400' },
-    { label: 'Section flow', value: 'Needs work', tone: 'bg-red-400' },
-  ]
-  const scoreSnapshot = [
-    { label: 'Top blocker', value: 'Section flow', tone: 'bg-red-100 text-red-700' },
-    { label: 'Quick wins', value: '3 fixes', tone: 'bg-emerald-100 text-emerald-700' },
-  ]
-  const liveChecks = [
-    { label: 'Section headings', value: 'Clear', tone: 'bg-emerald-100 text-emerald-700' },
-    { label: 'Keyword match', value: 'Building', tone: 'bg-primary-container/45 text-on-primary-container' },
-    { label: 'Metrics coverage', value: 'Thin', tone: 'bg-amber-100 text-amber-700' },
-    { label: 'Readability', value: 'Stable', tone: 'bg-emerald-100 text-emerald-700' },
-  ]
 
-  return (
-    <div className="ats-preview-panel">
-      <DashboardSurface
-        variant="default"
-        className={publicMode ? 'flex min-h-[440px] p-5 lg:min-h-[540px] lg:p-6' : 'flex min-h-[360px] p-5 lg:min-h-[420px] lg:p-6'}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.24),transparent_36%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_42%)]" />
-        <div className="relative grid flex-1 gap-4 lg:grid-cols-[11rem_minmax(0,1fr)]">
-          <div className="flex h-full flex-col rounded-[1.4rem] border border-black/6 bg-white/86 p-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.82)]">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Resume score</p>
-            <div className="relative mx-auto mt-4 flex h-24 w-24 items-center justify-center">
-              <div className="ring-animation absolute inset-0 hidden rounded-full border-4 border-[#A3FFB3]/60 sm:block" />
-              <svg viewBox="0 0 120 120" className="absolute inset-0 h-full w-full -rotate-90">
-                <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(2,109,50,0.1)" strokeWidth="10" />
-                <circle
-                  cx="60"
-                  cy="60"
-                  r="46"
-                  fill="none"
-                  stroke="#14b86b"
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeDasharray="289"
-                  strokeDashoffset="58"
-                />
-              </svg>
-              <div className="relative text-center">
-                <div className="text-3xl font-black tracking-tight text-[#026d32]">88</div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">ATS</div>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-2.5">
-              {checks.map(check => (
-                <div key={check.label} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${check.tone} sm:animate-pulse`} />
-                    <span className="text-[11px] font-semibold text-on-surface-variant">{check.label}</span>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-                    {check.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {publicMode && (
-              <div className="mt-auto rounded-[1rem] border border-black/6 bg-[linear-gradient(180deg,rgba(247,250,248,0.94),rgba(255,255,255,0.92))] p-3 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">Scan snapshot</p>
-                <div className="mt-3 space-y-2.5">
-                  {scoreSnapshot.map(item => (
-                    <div key={item.label} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{item.label}</span>
-                        <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.tone}`}>
-                          {item.value}
-                        </span>
-                      </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-[#e1e7e2]">
-                        <div className={`h-full rounded-full ${item.label === 'Top blocker' ? 'w-[36%] bg-[linear-gradient(90deg,#ff8898,#ffb1b9)]' : 'w-[72%] bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]'}`} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="relative flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-black/6 bg-[linear-gradient(180deg,#eef4ef_0%,#f8fbf9_100%)] p-4">
-            <div className="scanning-animation" />
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">Detected issues</p>
-              <span className="rounded-full bg-white/92 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant shadow-sm">
-                4 priority fixes
-              </span>
-            </div>
-
-            <div className="mt-4 flex flex-1 flex-col space-y-4">
-              <div className="rounded-[1.2rem] border border-black/6 bg-white/92 p-4 shadow-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant">ATS parse rate</span>
-                  <span className="text-[11px] font-bold text-[#026d32]">Strong</span>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-2.5 overflow-hidden rounded-full bg-[#dfe5e4]">
-                    <div className="shimmer-effect h-full w-[92%] rounded-full bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]" />
-                  </div>
-                  <div className="h-2.5 rounded-full bg-[#e7ecea]" />
-                  <div className="h-2.5 w-[78%] rounded-full bg-[#e7ecea]" />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="rounded-[1rem] border border-[#f4d7ad] bg-[#fff6e7] px-3.5 py-3 text-sm text-[#8b5d0b] shadow-sm">
-                  Add measurable outcomes to 2 experience bullets.
-                </div>
-                <div className="rounded-[1rem] border border-[#f3d0d0] bg-[#fef1f1] px-3.5 py-3 text-sm text-[#a43838] shadow-sm">
-                  Summary reads generic for the target role.
-                </div>
-                <div className="rounded-[1rem] border border-[#d8eadb] bg-[#effaf1] px-3.5 py-3 text-sm text-[#026d32] shadow-sm">
-                  Skills section is easy for ATS systems to parse.
-                </div>
-              </div>
-
-              {publicMode && (
-                <div className="mt-auto rounded-[1.1rem] border border-black/6 bg-white/88 p-4 shadow-sm">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant">Live scan checks</p>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-on-primary-container">
-                      <span className="h-2 w-2 rounded-full bg-primary sm:animate-pulse" />
-                      Scanning
-                    </span>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {liveChecks.map(item => (
-                      <div key={item.label} className="rounded-[0.95rem] border border-black/6 bg-[rgba(247,250,248,0.96)] px-3 py-3">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{item.label}</p>
-                        <div className="mt-2 flex items-center justify-between gap-3">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#e2e8e3]">
-                            <div className="shimmer-effect h-full w-[72%] rounded-full bg-[linear-gradient(90deg,#1fc47a,#7be7ac)]" />
-                          </div>
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${item.tone}`}>
-                            {item.value}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </DashboardSurface>
-    </div>
-  )
-}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -675,19 +520,19 @@ export default function ATSCheckerClient({
     : 'Start with the highest-count areas to move the score fastest.'
   const breakdownLabels = isMatchMode
     ? {
-        keywordMatch: 'Requirement Fit',
-        formatting: 'Evidence Strength',
-        relevance: 'Domain Alignment',
-        completeness: 'Seniority Fit',
-        keywordDensity: 'Keyword Coverage',
-      }
+      keywordMatch: 'Requirement Fit',
+      formatting: 'Evidence Strength',
+      relevance: 'Domain Alignment',
+      completeness: 'Seniority Fit',
+      keywordDensity: 'Keyword Coverage',
+    }
     : {
-        keywordMatch: 'Keyword Coverage',
-        formatting: 'Formatting',
-        relevance: 'Relevance',
-        completeness: 'Completeness',
-        keywordDensity: 'Keyword Density',
-      }
+      keywordMatch: 'Keyword Coverage',
+      formatting: 'Formatting',
+      relevance: 'Relevance',
+      completeness: 'Completeness',
+      keywordDensity: 'Keyword Density',
+    }
   const notesHeading = isMatchMode ? 'Fit risks' : 'Formatting issues'
   const insightHeading = isMatchMode ? 'Fit insight' : 'Industry insight'
   const compactPublicUploadCard = publicMode && !showIntro && !isMatchMode
@@ -761,10 +606,10 @@ export default function ATSCheckerClient({
       setUploadedFile(
         draft.uploadedFile
           ? {
-              name: draft.uploadedFile.name,
-              text: draft.uploadedFile.text,
-              parsedData: draft.uploadedFile.parsedData ?? null,
-            }
+            name: draft.uploadedFile.name,
+            text: draft.uploadedFile.text,
+            parsedData: draft.uploadedFile.parsedData ?? null,
+          }
           : null
       )
       setJobDescription(draft.jobDescription)
@@ -1345,15 +1190,15 @@ export default function ATSCheckerClient({
           description={
             publicMode
               ? (
-                  isMatchMode
-                    ? 'Upload your resume, paste a full job description, and get a free match score before creating an account. Sign up only when you want AI tailoring and builder editing.'
-                    : 'Upload your resume and get a free ATS score before creating an account. Sign up only when you want AI optimisation and builder editing.'
-                )
+                isMatchMode
+                  ? 'Upload your resume, paste a full job description, and get a free match score before creating an account. Sign up only when you want AI tailoring and builder editing.'
+                  : 'Upload your resume and get a free ATS score before creating an account. Sign up only when you want AI optimisation and builder editing.'
+              )
               : (
-                  isMatchMode
-                    ? 'Compare your resume against a target role and surface the biggest keyword, relevance, and evidence gaps in one calmer workspace.'
-                    : 'Run a resume-only ATS check to catch structural, keyword, and recruiter-readability issues before you tailor for a specific job.'
-                )
+                isMatchMode
+                  ? 'Compare your resume against a target role and surface the biggest keyword, relevance, and evidence gaps in one calmer workspace.'
+                  : 'Run a resume-only ATS check to catch structural, keyword, and recruiter-readability issues before you tailor for a specific job.'
+              )
           }
           aside={
             publicMode ? (
@@ -1400,23 +1245,13 @@ export default function ATSCheckerClient({
 
       {/* ── Scanning Workspace ────────────────────────────────────────────────── */}
       <div className={
-        isMatchMode 
-          ? 'grid grid-cols-1 gap-8 lg:grid-cols-2' 
-          : (publicMode 
-              ? 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start'
-              : 'grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,36rem)_minmax(18rem,1fr)] lg:items-start')
+        isMatchMode
+          ? 'grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start'
+          : 'w-full'
       }>
 
         {/* Your Resume */}
-        <div
-          className={
-            isMatchMode
-              ? 'space-y-4'
-              : compactPublicUploadCard
-                ? 'order-2 w-full space-y-4'
-                : 'order-2 space-y-4'
-          }
-        >
+        <div className="w-full space-y-4">
           {!compactPublicUploadCard && (
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2.5">
@@ -1434,11 +1269,10 @@ export default function ATSCheckerClient({
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setInputMode('resume')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${
-                    inputMode === 'resume'
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${inputMode === 'resume'
                       ? 'bg-primary-container/30 border-2 border-primary/30'
                       : 'bg-surface-container-low border-2 border-transparent hover:border-primary/20'
-                  }`}
+                    }`}
                 >
                   <FileText
                     size={24}
@@ -1454,11 +1288,10 @@ export default function ATSCheckerClient({
                   onClick={() => {
                     setInputMode('upload')
                   }}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${
-                    inputMode === 'upload'
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${inputMode === 'upload'
                       ? 'bg-primary-container/30 border-2 border-primary/30'
                       : 'border-2 border-dashed border-outline-variant hover:border-primary/40 hover:bg-primary-container/10'
-                  }`}
+                    }`}
                 >
                   <Upload
                     size={24}
@@ -1569,12 +1402,6 @@ export default function ATSCheckerClient({
             </DashboardSurface>
           </div>
         )}
-
-        {!isMatchMode && (
-          <div className="order-1 hidden md:block">
-            <ATSModePreviewPanel publicMode={publicMode} />
-          </div>
-        )}
       </div>
 
       {/* ── Action Bar ───────────────────────────────────────────────────────── */}
@@ -1593,11 +1420,10 @@ export default function ATSCheckerClient({
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
-                    activeTab === tab
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${activeTab === tab
                       ? 'bg-zinc-950 text-white shadow-[0_12px_28px_rgba(17,24,39,0.14)]'
                       : 'border border-black/8 bg-white/84 text-on-surface-variant hover:bg-white'
-                  }`}
+                    }`}
                 >
                   {tab === 'results' ? 'Analysis Results' : 'AI Optimised'}
                 </button>
@@ -1662,11 +1488,10 @@ export default function ATSCheckerClient({
                         {getReviewSections(scanResult).map(section => (
                           <div
                             key={section.key}
-                            className={`flex items-center justify-between rounded-[1.1rem] px-4 py-3 ${
-                              section.count > 0
+                            className={`flex items-center justify-between rounded-[1.1rem] px-4 py-3 ${section.count > 0
                                 ? 'bg-red-50 text-red-700'
                                 : 'bg-emerald-50 text-emerald-700'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-3">
                               {section.count > 0 ? (
@@ -1717,12 +1542,12 @@ export default function ATSCheckerClient({
                 )}
 
                 <DashboardSurface variant="subtle" className="p-5">
-                      <div className="space-y-4">
-                        <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keyword insights</p>
-                          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">{keywordSectionTitle}</h3>
-                          <p className="mt-2 text-sm leading-6 text-on-surface-variant">{keywordSectionDescription}</p>
-                        </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keyword insights</p>
+                      <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">{keywordSectionTitle}</h3>
+                      <p className="mt-2 text-sm leading-6 text-on-surface-variant">{keywordSectionDescription}</p>
+                    </div>
 
                     {scanResult.missingKeywords.length > 0 && (
                       <div className="space-y-2">

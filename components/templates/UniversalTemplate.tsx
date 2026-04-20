@@ -12,9 +12,75 @@ interface UniversalTemplateProps extends TemplateProps {
   onNavigateToField?: (path: string) => void
 }
 
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
+
+function hasExperienceItemContent(item: {
+  company?: string
+  title?: string
+  name?: string
+  location?: string
+  startDate?: string
+  endDate?: string
+  date?: string
+  summary?: string
+  bullets?: string[]
+  highlights?: string[]
+}) {
+  return (
+    hasText(item.company) ||
+    hasText(item.title) ||
+    hasText(item.name) ||
+    hasText(item.location) ||
+    hasText(item.startDate) ||
+    hasText(item.endDate) ||
+    hasText(item.date) ||
+    hasText(item.summary) ||
+    Boolean(item.bullets?.some(hasText)) ||
+    Boolean(item.highlights?.some(hasText))
+  )
+}
+
+function hasEducationItemContent(item: {
+  institution?: string
+  degree?: string
+  field?: string
+  startDate?: string
+  endDate?: string
+  graduationDate?: string
+  gpa?: string
+}) {
+  return (
+    hasText(item.institution) ||
+    hasText(item.degree) ||
+    hasText(item.field) ||
+    hasText(item.startDate) ||
+    hasText(item.endDate) ||
+    hasText(item.graduationDate) ||
+    hasText(item.gpa)
+  )
+}
+
+function hasProjectItemContent(item: {
+  name?: string
+  description?: string
+  bullets?: string[]
+  technologies?: string[]
+}) {
+  return (
+    hasText(item.name) ||
+    hasText(item.description) ||
+    Boolean(item.bullets?.some(hasText)) ||
+    Boolean(item.technologies?.some(hasText))
+  )
+}
+
 export default function UniversalTemplate({
   data,
   isEditing,
+  showEmptyStateGuidance,
+  highlightedSectionId,
   onFieldChange,
   sectionOrder,
   sidebarSectionOrder,
@@ -56,6 +122,27 @@ export default function UniversalTemplate({
       : nameSize === 'large'
         ? 'text-base'
         : 'text-sm'
+  const shouldShowSectionGuidance = Boolean(showEmptyStateGuidance)
+  const normalizedSkillSections = normalizeSkillSections(data.skillSections, data.skills)
+
+  function renderSectionFrame(
+    sectionId: string,
+    content: React.ReactNode,
+    isSidebarContext: boolean = false,
+    isDarkSurface: boolean = false
+  ) {
+    if (!content) return null
+
+    return (
+      <SectionFocusFrame
+        isActive={highlightedSectionId === sectionId}
+        isSidebarContext={isSidebarContext}
+        isDarkSurface={isDarkSurface}
+      >
+        {content}
+      </SectionFocusFrame>
+    )
+  }
 
   function renderTags(tags: string[], pathPrefix: string) {
     return tags.map((tag, i) => (
@@ -312,6 +399,8 @@ export default function UniversalTemplate({
   }
 
   function renderSection(id: string, isSidebarContext: boolean = false) {
+    const shouldRenderGuidance = shouldShowSectionGuidance
+
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
       if (!custom) return null
@@ -367,107 +456,157 @@ export default function UniversalTemplate({
 
     switch (id) {
       case 'summary':
-        return data.summary ? (
+        return hasText(data.summary) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <EditableText value={data.summary} path="summary" isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`} as="p" />
           </div>
+        ) : shouldRenderGuidance ? (
+          <div>
+            {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} navigatePath="summary" onNavigateToField={onNavigateToField}>
+              Tip: lead with your target role, years of experience, and the outcomes you deliver.
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="summary" onNavigateToField={onNavigateToField}>
+              Example: Growth marketer with 5+ years improving retention, acquisition, and lifecycle conversion across SaaS.
+            </GhostHintText>
+          </div>
         ) : null
 
       case 'experience':
-        return data.experience.length > 0 ? (
+        return data.experience.some(hasExperienceItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Work Experience" accent={accent} /> : <SectionHeading title="Work Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
-              {data.experience.map((exp, ei) => (
-                <ExperienceItem
-                  key={ei}
-                  exp={exp}
-                  ei={ei}
-                  pathPrefix="experience"
-                  isEditing={isEditing}
-                  onFieldChange={onFieldChange}
-                  accent={accent}
-                  density={density}
-                  bulletStyle={bulletStyle}
-                  dateLayout={dateLayout}
+              {data.experience.map((exp, ei) =>
+                hasExperienceItemContent(exp) ? (
+                  <ExperienceItem
+                    key={ei}
+                    exp={exp}
+                    ei={ei}
+                    pathPrefix="experience"
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    accent={accent}
+                    density={density}
+                    bulletStyle={bulletStyle}
+                    dateLayout={dateLayout}
+                    onNavigateToField={onNavigateToField}
+                  />
+                ) : null
+              )}
+            </div>
+          </div>
+        ) : shouldRenderGuidance ? (
+          <div>
+            {isSidebarContext ? <SidebarLabel text="Work Experience" accent={accent} /> : <SectionHeading title="Work Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <div className={isCompressed ? 'space-y-2' : 'space-y-3'}>
+              <div>
+                <GhostHintText isSidebarContext={isSidebarContext} className="font-semibold" navigatePath="experience.0.title" onNavigateToField={onNavigateToField}>
+                  Your Job Title
+                </GhostHintText>
+                <GhostHintText isSidebarContext={isSidebarContext} className="mt-0.5" navigatePath="experience.0.company" onNavigateToField={onNavigateToField}>
+                  Company Name · City, ST · 2022 - Present
+                </GhostHintText>
+                <GhostHintList
+                  isSidebarContext={isSidebarContext}
+                  navigatePath="experience.0.bullets.0"
                   onNavigateToField={onNavigateToField}
+                  items={[
+                    'Start bullets with action + outcome + metric.',
+                    'Example: Increased trial-to-paid conversion by 18% by redesigning onboarding emails.',
+                  ]}
                 />
-              ))}
+              </div>
             </div>
           </div>
         ) : null
 
       case 'education':
-        return data.education.length > 0 ? (
+        return data.education.some(hasEducationItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Education" accent={accent} /> : <SectionHeading title="Education" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={isCompressed ? 'space-y-1.5' : 'space-y-3'}>
-              {data.education.map((edu, i) => (
-                <div key={i} className={dateLayout === 'right' ? 'flex justify-between items-start gap-4' : ''}>
-                  <div className="min-w-0 flex-1">
-                    <EditableText
-                      value={edu.institution}
-                      path={`education.${i}.institution`}
-                      isEditing={isEditing}
-                      onFieldChange={onFieldChange}
-                      onNavigateToField={onNavigateToField}
-                      className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900 break-words' : 'text-sm font-semibold text-gray-900 break-words'}
-                    />
-                    <div className="flex flex-wrap gap-x-2">
+              {data.education.map((edu, i) =>
+                hasEducationItemContent(edu) ? (
+                  <div key={i} className={dateLayout === 'right' ? 'flex justify-between items-start gap-4' : ''}>
+                    <div className="min-w-0 flex-1">
                       <EditableText
-                        value={edu.degree}
-                        path={`education.${i}.degree`}
+                        value={edu.institution}
+                        path={`education.${i}.institution`}
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
-                        className={isSidebarContext ? 'text-[10px] text-gray-600' : 'text-sm text-gray-600'}
+                        className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900 break-words' : 'text-sm font-semibold text-gray-900 break-words'}
                       />
-                      {edu.field && (
+                      <div className="flex flex-wrap gap-x-2">
                         <EditableText
-                          value={edu.field}
-                          path={`education.${i}.field`}
+                          value={edu.degree}
+                          path={`education.${i}.degree`}
                           isEditing={isEditing}
                           onFieldChange={onFieldChange}
                           onNavigateToField={onNavigateToField}
-                          className={isSidebarContext ? 'text-[10px] text-gray-500 italic' : 'text-sm text-gray-500 italic'}
+                          className={isSidebarContext ? 'text-[10px] text-gray-600' : 'text-sm text-gray-600'}
                         />
-                      )}
+                        {edu.field && (
+                          <EditableText
+                            value={edu.field}
+                            path={`education.${i}.field`}
+                            isEditing={isEditing}
+                            onFieldChange={onFieldChange}
+                            onNavigateToField={onNavigateToField}
+                            className={isSidebarContext ? 'text-[10px] text-gray-500 italic' : 'text-sm text-gray-500 italic'}
+                          />
+                        )}
+                      </div>
+                      {edu.gpa && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
                     </div>
-                    {edu.gpa && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
+                    {dateLayout === 'right' && getEducationDateLabel(edu) && (
+                      <EditableText
+                        value={getEducationDateLabel(edu)}
+                        path={`education.${i}.endDate`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
+                      />
+                    )}
+                    {dateLayout === 'inline' && getEducationDateLabel(edu) && (
+                      <EditableText
+                        value={getEducationDateLabel(edu)}
+                        path={`education.${i}.endDate`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
+                      />
+                    )}
                   </div>
-                  {dateLayout === 'right' && getEducationDateLabel(edu) && (
-                    <EditableText
-                      value={getEducationDateLabel(edu)}
-                      path={`education.${i}.endDate`}
-                      isEditing={isEditing}
-                      onFieldChange={onFieldChange}
-                      onNavigateToField={onNavigateToField}
-                      className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
-                    />
-                  )}
-                  {dateLayout === 'inline' && getEducationDateLabel(edu) && (
-                    <EditableText
-                      value={getEducationDateLabel(edu)}
-                      path={`education.${i}.endDate`}
-                      isEditing={isEditing}
-                      onFieldChange={onFieldChange}
-                      onNavigateToField={onNavigateToField}
-                      className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
-                    />
-                  )}
-                </div>
-              ))}
+                ) : null
+              )}
             </div>
+          </div>
+        ) : shouldRenderGuidance ? (
+          <div>
+            {isSidebarContext ? <SidebarLabel text="Education" accent={accent} /> : <SectionHeading title="Education" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} className="font-semibold" navigatePath="education.0.institution" onNavigateToField={onNavigateToField}>
+              Degree / Program
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-0.5" navigatePath="education.0.degree" onNavigateToField={onNavigateToField}>
+              School Name · Graduation Date
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="education.0.gpa" onNavigateToField={onNavigateToField}>
+              Add GPA only if it strengthens the application.
+            </GhostHintText>
           </div>
         ) : null
 
       case 'skills':
-        return ((data.skillSections?.length ?? 0) > 0 || data.skills.length > 0) ? (
+        return normalizedSkillSections.length > 0 ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Skills" accent={accent} /> : <SectionHeading title="Skills" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-relaxed`}>
-              {renderSkills(data.skillSections?.length ? data.skillSections : [{ title: 'Core Skills', skills: data.skills }], isSidebarContext, accent)}
+              {renderSkills(normalizedSkillSections, isSidebarContext, accent)}
             </div>
           </div>
         ) : null
@@ -539,38 +678,53 @@ export default function UniversalTemplate({
         ) : null
 
       case 'projects':
-        return data.projects.length > 0 ? (
+        return data.projects.some(hasProjectItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Projects" accent={accent} /> : <SectionHeading title="Projects" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
             <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
-              {data.projects.map((proj, i) => (
-                <div key={i}>
-                  <div className="flex justify-between items-start">
-                    <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
-                  </div>
-                  {proj.description && (
-                    <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
-                  )}
-                  {(proj.bullets?.length ?? 0) > 0 && (
-                    <div className="mt-1.5 space-y-1">
-                      {(proj.bullets ?? []).map((bullet, bulletIndex) => (
-                        <div key={bulletIndex} className="flex gap-2">
-                          <span style={{ color: accent, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
-                          <EditableText
-                            value={bullet}
-                            path={`projects.${i}.bullets.${bulletIndex}`}
-                            isEditing={isEditing}
-                            onFieldChange={onFieldChange}
-                            onNavigateToField={onNavigateToField}
-                            className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 leading-relaxed`}
-                          />
-                        </div>
-                      ))}
+              {data.projects.map((proj, i) =>
+                hasProjectItemContent(proj) ? (
+                  <div key={i}>
+                    <div className="flex justify-between items-start">
+                      <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
                     </div>
-                  )}
-                </div>
-              ))}
+                    {proj.description && (
+                      <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
+                    )}
+                    {(proj.bullets?.length ?? 0) > 0 && (
+                      <div className="mt-1.5 space-y-1">
+                        {(proj.bullets ?? []).map((bullet, bulletIndex) => (
+                          <div key={bulletIndex} className="flex gap-2">
+                            <span style={{ color: accent, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
+                            <EditableText
+                              value={bullet}
+                              path={`projects.${i}.bullets.${bulletIndex}`}
+                              isEditing={isEditing}
+                              onFieldChange={onFieldChange}
+                              onNavigateToField={onNavigateToField}
+                              className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 leading-relaxed`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null
+              )}
             </div>
+          </div>
+        ) : shouldRenderGuidance ? (
+          <div>
+            {isSidebarContext ? <SidebarLabel text="Projects" accent={accent} /> : <SectionHeading title="Projects" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} className="font-semibold" navigatePath="projects.0.name" onNavigateToField={onNavigateToField}>
+              Project Name
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-0.5" navigatePath="projects.0.description" onNavigateToField={onNavigateToField}>
+              Add one line on what you built, who it helped, and the result.
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="projects.0.description" onNavigateToField={onNavigateToField}>
+              Example: Built an internal dashboard that cut weekly reporting time by 6 hours.
+            </GhostHintText>
           </div>
         ) : null
 
@@ -682,41 +836,41 @@ export default function UniversalTemplate({
       <div style={{ backgroundColor: `${accent}15` }} className={`${sidebarWidth} shrink-0 text-gray-900 p-8 flex flex-col gap-1 min-h-full`}>
         {(sidebarSectionOrder || DEFAULT_VISIBILITY.sidebarSectionOrder || []).map(id => (
           <React.Fragment key={id}>
-            {renderSection(id, true)}
+            {renderSectionFrame(id, renderSection(id, true), true)}
           </React.Fragment>
         ))}
       </div>
 
       {/* Main Column */}
       <div className="flex-1 p-10 pt-12 text-gray-900">
-        {renderHeaderBlock()}
+        {renderSectionFrame('contact', renderHeaderBlock())}
         {(sectionOrder || DEFAULT_VISIBILITY.sectionOrder || [])
           .filter(id => id !== 'contact') // Safety filter for redundant contact sections
           .filter(id => !(sidebarSectionOrder || DEFAULT_VISIBILITY.sidebarSectionOrder || []).includes(id))
           .map(id => (
             <React.Fragment key={id}>
-              {renderSection(id)}
+              {renderSectionFrame(id, renderSection(id))}
             </React.Fragment>
           ))}
       </div>
     </div>
   ) : isBannerHeader ? (
     <div className="flex flex-col">
-      {renderBannerHeaderBlock()}
+      {renderSectionFrame('contact', renderBannerHeaderBlock(), false, true)}
       <div className={isCompressed ? 'p-8' : 'p-12'}>
         {singleColumnSectionIds.map(id => (
           <React.Fragment key={id}>
-            {renderSection(id)}
+            {renderSectionFrame(id, renderSection(id))}
           </React.Fragment>
         ))}
       </div>
     </div>
   ) : (
     <div className={isCompressed ? 'p-8' : 'p-12'}>
-      {renderHeaderBlock()}
+      {renderSectionFrame('contact', renderHeaderBlock())}
       {singleColumnSectionIds.map(id => (
         <React.Fragment key={id}>
-          {renderSection(id)}
+          {renderSectionFrame(id, renderSection(id))}
         </React.Fragment>
       ))}
     </div>
@@ -776,6 +930,104 @@ function SidebarLabel({ text, accent }: { text: string; accent: string }) {
     <p style={{ color: accent }} className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-3 mb-0.5">
       {text}
     </p>
+  )
+}
+
+function GhostHintText({
+  children,
+  isSidebarContext,
+  className = '',
+  navigatePath,
+  onNavigateToField,
+}: {
+  children: React.ReactNode
+  isSidebarContext: boolean
+  className?: string
+  navigatePath?: string
+  onNavigateToField?: (path: string) => void
+}) {
+  const baseClassName = `${isSidebarContext ? 'text-[10px]' : 'text-sm'} break-words italic text-gray-300 ${className}`
+
+  if (navigatePath && onNavigateToField) {
+    return (
+      <button
+        type="button"
+        onClick={() => onNavigateToField(navigatePath)}
+        className={`${baseClassName} block w-full cursor-text text-left transition-colors hover:text-gray-400 focus:outline-none`}
+      >
+        {children}
+      </button>
+    )
+  }
+
+  return <p aria-hidden="true" className={`${baseClassName} pointer-events-none select-none`}>{children}</p>
+}
+
+function GhostHintList({
+  items,
+  isSidebarContext,
+  navigatePath,
+  onNavigateToField,
+}: {
+  items: string[]
+  isSidebarContext: boolean
+  navigatePath?: string
+  onNavigateToField?: (path: string) => void
+}) {
+  const isInteractive = Boolean(navigatePath && onNavigateToField)
+
+  return (
+    <ul aria-hidden={isInteractive ? undefined : 'true'} className={`${isSidebarContext ? 'mt-1 space-y-1' : 'mt-1.5 space-y-1'}`}>
+      {items.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span className="shrink-0 text-gray-300">•</span>
+          <GhostHintText
+            isSidebarContext={isSidebarContext}
+            className="min-w-0"
+            navigatePath={navigatePath}
+            onNavigateToField={onNavigateToField}
+          >
+            {item}
+          </GhostHintText>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SectionFocusFrame({
+  children,
+  isActive,
+  isSidebarContext,
+  isDarkSurface,
+}: {
+  children: React.ReactNode
+  isActive: boolean
+  isSidebarContext?: boolean
+  isDarkSurface?: boolean
+}) {
+  if (!isActive) {
+    return <>{children}</>
+  }
+
+  const insetClassName = isSidebarContext ? '-inset-x-3 -inset-y-2.5' : '-inset-x-4 -inset-y-3'
+  const surfaceClassName = isDarkSurface
+    ? 'border-white/65 bg-white/10 shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_16px_36px_rgba(15,23,42,0.18)]'
+    : 'border-emerald-300/80 bg-emerald-50/70 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_16px_36px_rgba(16,185,129,0.12)]'
+
+  return (
+    <div className="relative">
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute ${insetClassName} rounded-[22px] border transition-all duration-150 ${surfaceClassName}`}
+      />
+      <div className="pointer-events-none absolute -top-2 right-0 z-10">
+        <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
+          Editing
+        </span>
+      </div>
+      <div className="relative z-[1]">{children}</div>
+    </div>
   )
 }
 

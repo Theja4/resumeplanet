@@ -41,7 +41,7 @@ import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
 import { scoreResume } from '@/lib/ats-scorer'
-import { syncResumeData } from '@/lib/resume-data'
+import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
 import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
 import type { BuilderSource } from '@/lib/analytics'
@@ -162,6 +162,112 @@ function getSectionItemCount(data: ResumeData, sectionId: string) {
   }
 }
 
+function createEmptySectionItem(sectionId: 'experience' | 'education' | 'projects') {
+  if (sectionId === 'experience') {
+    return {
+      company: '',
+      title: '',
+      location: '',
+      startDate: '',
+      endDate: '',
+      bullets: [],
+      bulletVisibility: [],
+    }
+  }
+
+  if (sectionId === 'education') {
+    return {
+      institution: '',
+      degree: '',
+      field: '',
+      startDate: '',
+      endDate: '',
+      graduationDate: '',
+      gpa: '',
+    }
+  }
+
+  return {
+    name: '',
+    description: '',
+    bullets: [],
+    technologies: [],
+  }
+}
+
+function hasMeaningfulText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
+
+function hasMeaningfulExperienceItem(item: ResumeData['experience'][number]) {
+  return (
+    hasMeaningfulText(item.company) ||
+    hasMeaningfulText(item.title) ||
+    hasMeaningfulText(item.location) ||
+    hasMeaningfulText(item.startDate) ||
+    hasMeaningfulText(item.endDate) ||
+    hasMeaningfulText(item.summary) ||
+    item.bullets.some(hasMeaningfulText)
+  )
+}
+
+function hasMeaningfulEducationItem(item: ResumeData['education'][number]) {
+  return (
+    hasMeaningfulText(item.institution) ||
+    hasMeaningfulText(item.degree) ||
+    hasMeaningfulText(item.field) ||
+    hasMeaningfulText(item.startDate) ||
+    hasMeaningfulText(item.endDate) ||
+    hasMeaningfulText(item.graduationDate) ||
+    hasMeaningfulText(item.gpa)
+  )
+}
+
+function hasMeaningfulProjectItem(item: ResumeData['projects'][number]) {
+  return (
+    hasMeaningfulText(item.name) ||
+    hasMeaningfulText(item.description) ||
+    item.bullets?.some(hasMeaningfulText) === true ||
+    item.technologies.some(hasMeaningfulText)
+  )
+}
+
+function hasMeaningfulCertificationItem(item: ResumeData['certifications'][number]) {
+  return hasMeaningfulText(item.name) || hasMeaningfulText(item.issuer) || hasMeaningfulText(item.date)
+}
+
+function hasMeaningfulCustomSection(section: NonNullable<ResumeData['customSections']>[number]) {
+  if (section.type === 'text') return hasMeaningfulText(section.text)
+  if (section.type === 'tags') return section.tags?.some(hasMeaningfulText) === true
+  if (section.type === 'complex') return section.items?.some(hasMeaningfulExperienceItem) === true
+  return false
+}
+
+function isResumeDataMeaningfullyEmpty(resumeData: ResumeData) {
+  return (
+    !hasMeaningfulText(resumeData.name) &&
+    !hasMeaningfulText(resumeData.currentRole) &&
+    !hasMeaningfulText(resumeData.email) &&
+    !hasMeaningfulText(resumeData.phone) &&
+    !hasMeaningfulText(resumeData.summary) &&
+    !hasMeaningfulText(resumeData.location) &&
+    !hasMeaningfulText(resumeData.linkedin) &&
+    !hasMeaningfulText(resumeData.website) &&
+    !resumeData.experience.some(hasMeaningfulExperienceItem) &&
+    !resumeData.education.some(hasMeaningfulEducationItem) &&
+    getResumeSkills(resumeData).length === 0 &&
+    !resumeData.projects.some(hasMeaningfulProjectItem) &&
+    !resumeData.certifications.some(hasMeaningfulCertificationItem) &&
+    !resumeData.languages.some(hasMeaningfulText) &&
+    !resumeData.volunteer.some(hasMeaningfulExperienceItem) &&
+    !resumeData.interests.some(hasMeaningfulText) &&
+    !resumeData.awards.some((award) => hasMeaningfulText(award.title) || hasMeaningfulText(award.issuer) || hasMeaningfulText(award.date)) &&
+    !resumeData.publications.some((publication) => hasMeaningfulText(publication.title) || hasMeaningfulText(publication.publisher) || hasMeaningfulText(publication.date)) &&
+    !resumeData.references.some(hasMeaningfulText) &&
+    !(resumeData.customSections?.some(hasMeaningfulCustomSection))
+  )
+}
+
 function trimLastVisibleBullet(data: ResumeData, visibility: BuilderVisibility, sectionId: string) {
   const items = getExperienceLikeItems(data, sectionId)
   if (!items?.length) return false
@@ -275,6 +381,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [activeMode, setActiveMode] = useState<BuilderMode>('builder')
   const [expandedSection, setExpandedSection] = useState<string | null>('contact')
   const [focusedFieldPath, setFocusedFieldPath] = useState<string | null>(null)
+  const [isEditorFocused, setIsEditorFocused] = useState(false)
+  const [isTitleFocused, setIsTitleFocused] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
@@ -292,6 +400,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const saveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const resumeRef = useRef<HTMLDivElement>(null)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const hasShownPageLimitAlertRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
@@ -322,6 +431,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     source: getBuilderAnalyticsSource(searchParams),
     activeSection: expandedSection,
   })
+  const previewHighlightedSectionId = isEditorFocused ? expandedSection : null
   const previousTemplateIdRef = useRef<string | null>(null)
 
   const applyUrlTemplateOverrides = useCallback((baseConfig: Partial<UniversalConfig> | null | undefined) => {
@@ -637,24 +747,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     // Define what constitutes a truly 'empty' resume to avoid ghost records on new drafts.
     // If it's a new draft, we only save if the user has actually done something.
     if (resumeId === 'draft') {
-      const isDataEmpty = 
-        !resumeData.name?.trim() && 
-        !resumeData.email?.trim() &&
-        !resumeData.phone?.trim() &&
-        !resumeData.summary?.trim() &&
-        !resumeData.location?.trim() &&
-        !resumeData.linkedin?.trim() &&
-        !resumeData.website?.trim() &&
-        resumeData.experience.length === 0 &&
-        resumeData.education.length === 0 &&
-        resumeData.skills.length === 0 &&
-        resumeData.projects.length === 0 &&
-        resumeData.certifications.length === 0 &&
-        resumeData.languages.length === 0 &&
-        resumeData.volunteer.length === 0 &&
-        resumeData.awards.length === 0 &&
-        resumeData.publications.length === 0 &&
-        (!resumeData.customSections || resumeData.customSections.length === 0)
+      const isDataEmpty = isResumeDataMeaningfullyEmpty(resumeData)
 
       const isTemplateDefault = 
         JSON.stringify(templateConfig) === JSON.stringify(DEFAULT_UNIVERSAL_CONFIG) &&
@@ -750,6 +843,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       const { left, right } = builderPanelWidthsRef.current
       setIsRightCollapsed(false)
       setExpandedSection(null)
+      setIsEditorFocused(false)
       setLeftWidth(Math.min(left, 320))
       setRightWidth(Math.max(right, 480))
       return
@@ -759,6 +853,12 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setLeftWidth(left)
     setRightWidth(right)
   }, [activeMode])
+
+  useEffect(() => {
+    if (!expandedSection) {
+      setIsEditorFocused(false)
+    }
+  }, [expandedSection])
 
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
@@ -945,6 +1045,30 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   function handleNavigateToField(path: string) {
     const sectionId = getSectionIdForFieldPath(path)
     if (!sectionId) return
+
+    const indexedFieldMatch = path.match(/^(experience|education|projects)\.(\d+)\./)
+    if (indexedFieldMatch) {
+      const indexedSectionId = indexedFieldMatch[1] as 'experience' | 'education' | 'projects'
+      const requestedIndex = Number(indexedFieldMatch[2])
+
+      setResumeData(previous => {
+        if (!previous) return previous
+
+        const currentItems = previous[indexedSectionId]
+        if (currentItems.length > requestedIndex) return previous
+
+        const nextItems = [...currentItems]
+        while (nextItems.length <= requestedIndex) {
+          nextItems.push(createEmptySectionItem(indexedSectionId))
+        }
+
+        return {
+          ...previous,
+          [indexedSectionId]: nextItems,
+        }
+      })
+    }
+
     setExpandedSection(sectionId)
     setFocusedFieldPath(path)
   }
@@ -1162,6 +1286,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
   }
 
+  function focusResumeTitle(selectAll: boolean = false) {
+    const input = titleInputRef.current
+    if (!input) return
+
+    input.focus()
+
+    if (selectAll) {
+      input.select()
+      return
+    }
+
+    const cursorPosition = input.value.length
+    input.setSelectionRange(cursorPosition, cursorPosition)
+  }
+
   const TemplateComponent = UniversalTemplate
 
   if (isLoading || !resumeData) {
@@ -1253,15 +1392,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             </div>
             <div className="w-px h-4 bg-zinc-200" />
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 px-3 py-1.5 shadow-[0_8px_24px_rgba(16,185,129,0.08)]">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <div
+              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-all ${
+                isTitleFocused
+                  ? 'border-emerald-300 bg-white shadow-[0_12px_30px_rgba(16,185,129,0.14)] ring-2 ring-emerald-100'
+                  : 'border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 shadow-[0_8px_24px_rgba(16,185,129,0.08)]'
+              }`}
+            >
+              <button
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => focusResumeTitle(true)}
+                className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${
+                  isTitleFocused
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                }`}
+                aria-label="Edit resume title"
+              >
                 <Pencil size={14} />
-              </div>
+              </button>
               <input
+                ref={titleInputRef}
                 type="text"
                 value={resumeTitle}
                 onChange={e => setResumeTitle(normalizeResumeTitle(e.target.value))}
+                onFocus={() => setIsTitleFocused(true)}
                 onBlur={async () => {
+                  setIsTitleFocused(false)
                   const normalizedTitle = normalizeResumeTitle(resumeTitle)
                   setResumeTitle(normalizedTitle)
                   if (resumeId === 'draft') return
@@ -1272,7 +1430,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     .eq('user_id', userId)
                 }}
                 placeholder="Untitled Resume"
-                className="w-56 border-none bg-transparent text-sm font-semibold text-emerald-950 outline-none placeholder:font-normal placeholder:text-emerald-400"
+                className={`w-56 rounded-lg border-none px-2 py-1.5 text-sm font-semibold text-emerald-950 outline-none transition-all placeholder:font-normal placeholder:text-emerald-400 ${
+                  isTitleFocused ? 'bg-white shadow-[inset_0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-transparent'
+                }`}
               />
             </div>
           </div>
@@ -1407,7 +1567,17 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   </div>
                 </button>
               ) : (
-                <div className="flex-1 overflow-y-auto">
+                <div
+                  className="flex-1 overflow-y-auto"
+                  onFocusCapture={() => setIsEditorFocused(true)}
+                  onBlurCapture={(event) => {
+                    const nextTarget = event.relatedTarget
+                    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+                      return
+                    }
+                    setIsEditorFocused(false)
+                  }}
+                >
                   <SectionList
                     resumeData={resumeData}
                     visibility={visibility}
@@ -1499,6 +1669,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               key={`print-${previewVersion}`}
               data={visibleData ?? resumeData}
               isEditing={false}
+              showEmptyStateGuidance
+              highlightedSectionId={previewHighlightedSectionId}
               onFieldChange={() => {}}
               sectionOrder={orderedSections}
               sidebarSectionOrder={orderedSidebarSections}
@@ -1582,6 +1754,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                           key={`preview-${previewVersion}-${pageIndex}`}
                           data={visibleData ?? resumeData}
                           isEditing={false}
+                          showEmptyStateGuidance
+                          highlightedSectionId={previewHighlightedSectionId}
                           onFieldChange={() => {}}
                           sectionOrder={orderedSections}
                           sidebarSectionOrder={orderedSidebarSections}

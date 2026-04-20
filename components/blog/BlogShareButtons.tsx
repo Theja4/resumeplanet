@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowUpRight, Link2, Share2, Check } from 'lucide-react'
 import { Analytics } from '@/lib/analytics'
 
@@ -77,14 +78,14 @@ export default function BlogShareButtons({ slug, title }: Props) {
           </button>
         </div>
       </div>
-      {showCopyToast && (
+      {showCopyToast && typeof document !== 'undefined' ? createPortal(
         <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-xl backdrop-blur-md">
             <Check size={16} className="text-[#A3FFB3]" />
             Link copied
           </div>
         </div>
-      )}
+      , document.body) : null}
     </div>
   )
 }

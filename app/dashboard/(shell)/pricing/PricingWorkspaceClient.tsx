@@ -40,10 +40,16 @@ export default function PricingWorkspaceClient({
   const [activePromo, setActivePromo] = useState<PromoConfig | null>(null)
   const hasAttemptedIntentRef = useRef(false)
   const { openSubscriptionCheckout } = usePaddleCheckout()
+  const isSubscribedMonthlyPro = isPro && currentSubscriptionInterval === 'monthly'
+  const isManualProAccess = isPro && currentSubscriptionInterval == null
 
   const ribbonCode = availablePromo?.paddleDiscountCode ?? null
   const ribbonDiscountPercent =
     availablePromo?.discountType === 'percent' ? availablePromo.discountValue : null
+  const shouldShowPromoRibbon =
+    Boolean(ribbonCode && ribbonDiscountPercent) &&
+    (!isPro || isSubscribedMonthlyPro)
+  const baseDisplayPromo = isManualProAccess ? availablePromo : null
   const exitPriceOption = useMemo(
     () => resolvePromoPriceOption(priceOptions, availablePromo),
     [priceOptions, availablePromo]
@@ -97,25 +103,27 @@ export default function PricingWorkspaceClient({
       exitPromo={availablePromo}
       exitPriceOption={exitPriceOption}
     >
-      {ribbonCode && ribbonDiscountPercent ? (
-        <PricingCodeRibbon
-          code={ribbonCode}
-          discountPercent={ribbonDiscountPercent}
-        />
-      ) : null}
+      <div className="space-y-4">
+        {shouldShowPromoRibbon ? (
+          <PricingCodeRibbon
+            code={ribbonCode!}
+            discountPercent={ribbonDiscountPercent!}
+          />
+        ) : null}
 
-      <BillingUpgradeSection
-        autoFillPromo={autoFillPromo}
-        baseDisplayPromo={null}
-        displayPromo={activePromo}
-        onDisplayPromoChange={setActivePromo}
-        isPro={isPro}
-        priceOptions={priceOptions}
-        currentSubscriptionInterval={currentSubscriptionInterval}
-        compact
-        pricingCountryCode={pricingCountryCode}
-        loginRedirectPath={loginRedirectPath}
-      />
+        <BillingUpgradeSection
+          autoFillPromo={autoFillPromo}
+          baseDisplayPromo={baseDisplayPromo}
+          displayPromo={activePromo}
+          onDisplayPromoChange={setActivePromo}
+          isPro={isPro}
+          priceOptions={priceOptions}
+          currentSubscriptionInterval={currentSubscriptionInterval}
+          compact
+          pricingCountryCode={pricingCountryCode}
+          loginRedirectPath={loginRedirectPath}
+        />
+      </div>
     </ExitIntentProvider>
   )
 }

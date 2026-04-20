@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { startTransition, useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
-import { BriefcaseBusiness, ClipboardCheck, Search, Upload } from 'lucide-react'
+import { BriefcaseBusiness, ClipboardCheck, Upload } from 'lucide-react'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { ADS_ENABLED } from '@/lib/ads'
@@ -290,26 +291,33 @@ export default function DashboardHomeClient({
             }
           />
 
-          <ActionCard
-            href="/dashboard/job-board"
-            title="Browse Job Board"
-            description="Search live openings from connected sources and push the best ones straight into your tracker."
-            icon={
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container/50 text-primary transition-transform group-hover:scale-110 sm:h-12 sm:w-12">
-                <Search size={22} strokeWidth={1.75} />
+          <DashboardSurface
+            variant="default"
+            className="relative hidden min-h-[17.5rem] overflow-hidden border border-white/70 bg-[linear-gradient(145deg,rgba(250,255,251,0.98),rgba(232,245,236,0.94))] p-0 xl:block"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.28),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.12),transparent_42%)]" />
+            <div className="relative flex h-full flex-col justify-between p-6">
+              <div className="max-w-[11rem] space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/75">
+                  Resume Patrol
+                </p>
+                <p className="text-lg font-black tracking-tight text-on-background">
+                  Keeping an eye on your next ATS win.
+                </p>
               </div>
-            }
-            badge={
-              <>
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container/50 text-primary transition-transform group-hover:scale-110 sm:h-12 sm:w-12">
-                  <Search size={22} strokeWidth={1.75} />
-                </div>
-                <span className="inline-flex rounded-full border border-[#008f44]/16 bg-[#008f44]/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-[#008f44]">
-                  Beta
-                </span>
-              </>
-            }
-          />
+
+              <div className="pointer-events-none relative ml-auto h-[15rem] w-full max-w-[14rem]">
+                <Image
+                  src="/ats-mascot.png"
+                  alt=""
+                  fill
+                  sizes="224px"
+                  className="object-contain object-right-bottom"
+                  priority
+                />
+              </div>
+            </div>
+          </DashboardSurface>
 
         </div>
       </div>

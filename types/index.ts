@@ -413,6 +413,8 @@ export interface APIResponse<T> {
 export interface TemplateProps {
   data: ResumeData
   isEditing?: boolean
+  showEmptyStateGuidance?: boolean
+  highlightedSectionId?: string | null
   onFieldChange?: (path: string, value: string) => void
   sectionOrder?: string[]
   sidebarSectionOrder?: string[]
