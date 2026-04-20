@@ -1,6 +1,7 @@
 'use client'
 
-import { ArrowUpRight, Link2, Share2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowUpRight, Link2, Share2, Check } from 'lucide-react'
 import { Analytics } from '@/lib/analytics'
 
 interface Props {
@@ -12,6 +13,14 @@ const SHARE_BUTTON_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[11px] font-black uppercase tracking-[0.16em] text-white/84 transition-all hover:-translate-y-0.5 hover:border-[#A3FFB3]/30 hover:bg-white/10 hover:text-white'
 
 export default function BlogShareButtons({ slug, title }: Props) {
+  const [showCopyToast, setShowCopyToast] = useState(false)
+
+  useEffect(() => {
+    if (!showCopyToast) return
+    const timer = setTimeout(() => setShowCopyToast(false), 2000)
+    return () => clearTimeout(timer)
+  }, [showCopyToast])
+
   async function handleShare(platform: 'twitter' | 'linkedin' | 'facebook' | 'copy_link') {
     const url = `${window.location.origin}/blog/${slug}`
     const encodedUrl = encodeURIComponent(url)
@@ -25,6 +34,7 @@ export default function BlogShareButtons({ slug, title }: Props) {
     if (platform === 'copy_link') {
       try {
         await navigator.clipboard.writeText(url)
+        setShowCopyToast(true)
       } catch {
         // Clipboard failures should not block the product.
       }
@@ -67,6 +77,14 @@ export default function BlogShareButtons({ slug, title }: Props) {
           </button>
         </div>
       </div>
+      {showCopyToast && (
+        <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow-xl backdrop-blur-md">
+            <Check size={16} className="text-[#A3FFB3]" />
+            Link copied
+          </div>
+        </div>
+      )}
     </div>
   )
 }

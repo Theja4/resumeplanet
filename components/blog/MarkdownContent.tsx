@@ -72,12 +72,12 @@ function renderInlineImageFigure(src: string, key: string, alt: string) {
   return (
     <figure
       key={key}
-      className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-[1.6rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(241,247,243,0.94))] p-2 shadow-[0_20px_60px_rgba(18,24,21,0.08)]"
+      className="relative mx-auto w-fit max-w-3xl overflow-hidden rounded-[1.6rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(241,247,243,0.94))] p-2 shadow-[0_20px_60px_rgba(18,24,21,0.08)]"
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_30%)]" />
       <div className="relative overflow-hidden rounded-[1.1rem] border border-black/5 bg-white">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className="mx-auto h-auto max-h-[520px] w-full object-contain" />
+        <img src={src} alt={alt} className="mx-auto h-auto max-h-[520px] object-contain" />
       </div>
     </figure>
   )
@@ -122,6 +122,80 @@ function isCompactLabelParagraph(text: string) {
   return text.length <= 72 && text.endsWith(':')
 }
 
+function isFaqHeading(text: string) {
+  const normalized = text.toLowerCase()
+  return normalized.includes('frequently asked questions') || normalized.startsWith('faq')
+}
+
+function renderFaqSection(
+  title: string,
+  items: Array<{ question: string; answers: string[] }>,
+  key: string
+) {
+  return (
+    <section
+      key={key}
+      className="relative my-6 overflow-hidden rounded-[2.2rem] border border-[#026d32]/10 bg-[linear-gradient(160deg,#f7fbf8_0%,#eef6f0_54%,#fdfefe_100%)] p-5 shadow-[0_24px_80px_rgba(18,24,21,0.08)] sm:p-7"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.07),transparent_24%)]" />
+      <div className="relative">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center rounded-full bg-[#026d32]/8 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-[#026d32]">
+            FAQ
+          </span>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+            Fast answers for Google applicants
+          </p>
+        </div>
+
+        <h2
+          id={slugifyHeading(title)}
+          className="max-w-3xl text-[2rem] font-black tracking-tight text-zinc-900 sm:text-[2.3rem] leading-[1.05]"
+        >
+          {renderInlineMarkdown(title)}
+        </h2>
+
+        <ol className="mt-6 space-y-4">
+          {items.map((item, index) => (
+            <li
+              key={`${item.question}-${index}`}
+              className="overflow-hidden rounded-[1.55rem] border border-black/6 bg-white/88 shadow-[0_12px_32px_rgba(18,24,21,0.05)] backdrop-blur-sm"
+            >
+              <details open={index === 0} className="group">
+                <summary className="list-none cursor-pointer px-5 py-4 sm:px-6 sm:py-5">
+                  <div className="flex items-start gap-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[1rem] bg-[linear-gradient(135deg,#026d32_0%,#0d8a43_100%)] text-[11px] font-black uppercase tracking-[0.14em] text-white shadow-[0_10px_24px_rgba(2,109,50,0.18)]">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-[1.15rem] font-black tracking-tight text-zinc-900 leading-snug">
+                        {renderInlineMarkdown(item.question)}
+                      </h3>
+                    </div>
+                    <span className="mt-1 text-xl font-light text-[#026d32] transition-transform duration-200 group-open:rotate-45">
+                      +
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="border-t border-black/5 bg-[linear-gradient(180deg,rgba(163,255,179,0.08),rgba(255,255,255,0.74))] px-5 py-4 sm:px-6 sm:py-5">
+                  <div className="space-y-3">
+                    {item.answers.map(answer => (
+                      <p key={answer} className="text-[1rem] leading-8 text-zinc-600">
+                        {renderInlineMarkdown(answer)}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function MarkdownContent({
@@ -129,22 +203,110 @@ export default function MarkdownContent({
   className = '',
   inlineImages = [],
   imageAltBase = '',
+  customBlocks,
 }: {
   content: string
   className?: string
   inlineImages?: string[]
   imageAltBase?: string
+  customBlocks?: Record<string, ReactNode>
 }) {
-  const lines  = content.replace(/\r\n/g, '\n').split('\n')
+  const lines = content.replace(/\r\n/g, '\n').split('\n')
   const blocks: ReactNode[] = []
-  let index    = 0
-  let isFirst  = true // for lead-paragraph treatment
+  let index = 0
+  let isFirst = true // for lead-paragraph treatment
 
   while (index < lines.length) {
     const rawLine = lines[index]
-    const line    = rawLine.trim()
+    const line = rawLine.trim()
 
     if (!line) { index++; continue }
+
+    if (/^\s*##\s+/.test(rawLine)) {
+      const headingText = rawLine.replace(/^\s*##\s+/, '').trim()
+
+      if (isFaqHeading(headingText)) {
+        index++
+
+        const faqItems: Array<{ question: string; answers: string[] }> = []
+
+        while (index < lines.length) {
+          const currentRawLine = lines[index]
+          const currentLine = currentRawLine.trim()
+
+          if (!currentLine) {
+            index++
+            continue
+          }
+
+          if (/^\s*##\s+/.test(currentRawLine)) {
+            break
+          }
+
+          if (!/^\s*###\s+/.test(currentRawLine)) {
+            index++
+            continue
+          }
+
+          const question = currentRawLine.replace(/^\s*###\s+/, '').trim()
+          index++
+
+          const answers: string[] = []
+          let paragraphLines: string[] = []
+
+          while (index < lines.length) {
+            const answerRawLine = lines[index]
+            const answerLine = answerRawLine.trim()
+
+            if (/^\s*##\s+/.test(answerRawLine) || /^\s*###\s+/.test(answerRawLine)) {
+              break
+            }
+
+            if (!answerLine) {
+              if (paragraphLines.length > 0) {
+                answers.push(paragraphLines.join(' ').trim())
+                paragraphLines = []
+              }
+              index++
+              continue
+            }
+
+            paragraphLines.push(answerLine)
+            index++
+          }
+
+          if (paragraphLines.length > 0) {
+            answers.push(paragraphLines.join(' ').trim())
+          }
+
+          if (question && answers.length > 0) {
+            faqItems.push({ question, answers })
+          }
+        }
+
+        if (faqItems.length > 0) {
+          blocks.push(renderFaqSection(headingText, faqItems, `faq-${blocks.length}`))
+          continue
+        }
+      }
+    }
+
+    if (/^\[\[[a-z0-9:_-]+\]\]$/i.test(line)) {
+      const blockKey = line.slice(2, -2)
+      const block = customBlocks?.[blockKey]
+      index++
+
+      if (block) {
+        isFirst = false
+        blocks.push(
+          <div key={`custom-${blockKey}-${blocks.length}`}>
+            {block}
+          </div>
+        )
+      }
+
+      continue
+    }
 
     // ── Spotlight card marker ─────────────────────────────────────────────
     if (line.startsWith('!!! ')) {
@@ -224,15 +386,15 @@ export default function MarkdownContent({
       if (dataRows.length === 0) continue
 
       const headers = dataRows[0]
-      const body    = dataRows.slice(1)
+      const body = dataRows.slice(1)
 
       // Detect Do / Don't table
-      const isDo   = (h: string) => /\bdo\b/i.test(h)  && !/don.?t/i.test(h)
+      const isDo = (h: string) => /\bdo\b/i.test(h) && !/don.?t/i.test(h)
       const isDont = (h: string) => /don.?t/i.test(h)
 
       // Detect Before / After table
       const isBefore = (h: string) => /\bbefore\b/i.test(h)
-      const isAfter  = (h: string) => /\bafter\b/i.test(h)
+      const isAfter = (h: string) => /\bafter\b/i.test(h)
 
       if (headers.length === 2 && isDo(headers[0]) && isDont(headers[1])) {
         // ── Premium Do's & Don'ts card ─────────────────────────────────
@@ -387,8 +549,8 @@ export default function MarkdownContent({
     const hMatch = rawLine.match(/^\s*(#{1,6})\s+(.*)$/)
     if (hMatch) {
       const level = hMatch[1].length
-      const text  = hMatch[2].trim()
-      const Tag   = `h${Math.min(level, 6)}` as ElementType
+      const text = hMatch[2].trim()
+      const Tag = `h${Math.min(level, 6)}` as ElementType
 
       const cls: Record<number, string> = {
         1: 'text-3xl sm:text-4xl font-black tracking-tight text-zinc-900 mt-6 mb-1 leading-[1.1]',
@@ -471,11 +633,11 @@ export default function MarkdownContent({
       while (peek < lines.length && !lines[peek].trim()) peek++
 
       // Separator = short line (≤120 chars) ending with ":" that signals a negation
-      const sepLine   = lines[peek]?.trim() ?? ''
-      const isSep     = sepLine.length > 0 &&
-                        sepLine.length <= 120 &&
-                        sepLine.endsWith(':') &&
-                        /don.?t|do\s+not|avoid|never|exclude|omit/i.test(sepLine)
+      const sepLine = lines[peek]?.trim() ?? ''
+      const isSep = sepLine.length > 0 &&
+        sepLine.length <= 120 &&
+        sepLine.endsWith(':') &&
+        /don.?t|do\s+not|avoid|never|exclude|omit/i.test(sepLine)
 
       if (isSep) {
         // Collect label (strip trailing colon and markdown bold markers)
@@ -494,7 +656,7 @@ export default function MarkdownContent({
 
           // Pad shorter column with empty strings so rows align
           const len = Math.max(dos.length, donts.length)
-          const dosP   = [...dos,   ...Array(len - dos.length).fill('')]
+          const dosP = [...dos, ...Array(len - dos.length).fill('')]
           const dontsP = [...donts, ...Array(len - donts.length).fill('')]
 
           blocks.push(

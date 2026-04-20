@@ -45,6 +45,15 @@ import { syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
 import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
 import type { BuilderSource } from '@/lib/analytics'
+import { getBlogResumeExampleById } from '@/lib/blog/resume-examples'
+
+interface StoredBlogResumeExampleRecord {
+  id: string
+  title: string
+  resume_data: ResumeData | null
+  template_config: Partial<UniversalConfig> | null
+  builder_visibility: Partial<BuilderVisibility> | null
+}
 
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
@@ -98,6 +107,27 @@ function getRenderableSectionIds(visibility: BuilderVisibility) {
       visibility.sections[sectionId] !== false &&
       allSectionIds.indexOf(sectionId) === index
   )
+}
+
+function mergeBuilderVisibilityWithDefaults(
+  savedVis: Partial<BuilderVisibility> | null | undefined
+): BuilderVisibility {
+  if (!savedVis || Object.keys(savedVis).length === 0) {
+    return structuredClone(DEFAULT_VISIBILITY)
+  }
+
+  return {
+    ...DEFAULT_VISIBILITY,
+    ...savedVis,
+    sections: { ...DEFAULT_VISIBILITY.sections, ...(savedVis.sections ?? {}) },
+    items: {
+      ...DEFAULT_VISIBILITY.items,
+      ...(savedVis.items ?? {}),
+    },
+    sectionOrder: savedVis.sectionOrder ?? DEFAULT_VISIBILITY.sectionOrder,
+    sidebarSectionOrder: savedVis.sidebarSectionOrder ?? DEFAULT_VISIBILITY.sidebarSectionOrder,
+    density: savedVis.density ?? DEFAULT_VISIBILITY.density,
+  }
 }
 
 function getExperienceLikeItems(data: ResumeData, sectionId: string) {
@@ -294,6 +324,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   })
   const previousTemplateIdRef = useRef<string | null>(null)
 
+  const applyUrlTemplateOverrides = useCallback((baseConfig: Partial<UniversalConfig> | null | undefined) => {
+    const config: UniversalConfig = sanitizeUniversalConfig(baseConfig)
+
+    if (accentParam) config.accentColor = accentParam
+    if (fontParam) {
+      const font = FONT_OPTIONS.find((f) => f.id === fontParam)
+      if (font) config.fontFamily = font.value
+    }
+    if (layoutParam) config.layout = layoutParam as UniversalConfig['layout']
+    if (headerParam) config.headerStyle = headerParam as UniversalConfig['headerStyle']
+    if (bulletParam) config.bulletStyle = bulletParam as UniversalConfig['bulletStyle']
+    if (densityParam) config.density = densityParam as UniversalConfig['density']
+
+    return sanitizeUniversalConfig(config)
+  }, [accentParam, bulletParam, densityParam, fontParam, headerParam, layoutParam])
+
   // Sync visibility density with template config density
   useEffect(() => {
     setVisibility(prev => ({ ...prev, density: templateConfig.density }))
@@ -484,9 +530,42 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
 
       if (resumeId === 'draft') {
-        setResumeData(EMPTY_RESUME_DATA)
-        setSavedData(EMPTY_RESUME_DATA)
-        setResumeTitle('Untitled Resume')
+        const exampleId = searchParams.get('example')
+        const staticExample = getBlogResumeExampleById(exampleId)
+        let storedExample: StoredBlogResumeExampleRecord | null = null
+
+        if (exampleId) {
+          const { data, error } = await supabase
+            .from('blog_resume_examples')
+            .select('id, title, resume_data, template_config, builder_visibility')
+            .eq('id', exampleId)
+            .eq('is_active', true)
+            .maybeSingle()
+
+          if (error) {
+            console.error('Failed to load blog resume example from table.', error)
+          } else if (data) {
+            storedExample = data as StoredBlogResumeExampleRecord
+          }
+        }
+
+        const initialData = syncResumeData(
+          storedExample?.resume_data ?? staticExample?.resumeData ?? EMPTY_RESUME_DATA
+        )
+        const initialVisibility = mergeBuilderVisibilityWithDefaults(
+          storedExample?.builder_visibility ?? staticExample?.visibility ?? DEFAULT_VISIBILITY
+        )
+        const initialTemplateConfig = applyUrlTemplateOverrides(
+          storedExample?.template_config ?? staticExample?.templateConfig ?? DEFAULT_UNIVERSAL_CONFIG
+        )
+
+        setResumeData(initialData)
+        setSavedData(initialData)
+        setResumeTitle(storedExample?.title ?? staticExample?.title ?? 'Untitled Resume')
+        setVisibility(initialVisibility)
+        setSavedVisibility(initialVisibility)
+        setTemplateConfig(initialTemplateConfig)
+        setSavedTemplateConfig(initialTemplateConfig)
         setIsLoading(false)
         return
       }
@@ -511,50 +590,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       // Load saved template config from DB
       const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
 
-      // Build final config: start with saved or default, then apply direct URL overrides
-      const config: UniversalConfig = sanitizeUniversalConfig(savedTemplateConfig ?? DEFAULT_UNIVERSAL_CONFIG)
-
-      // Apply URL param overrides
-      if (accentParam) config.accentColor = accentParam
-      if (fontParam) {
-        const font = FONT_OPTIONS.find((f) => f.id === fontParam)
-        if (font) config.fontFamily = font.value
-      }
-      if (layoutParam) config.layout = layoutParam as UniversalConfig['layout']
-      if (headerParam) config.headerStyle = headerParam as UniversalConfig['headerStyle']
-      if (bulletParam) config.bulletStyle = bulletParam as UniversalConfig['bulletStyle']
-      if (densityParam) config.density = densityParam as UniversalConfig['density']
-
-      const safeConfig = sanitizeUniversalConfig(config)
+      const safeConfig = applyUrlTemplateOverrides(savedTemplateConfig ?? DEFAULT_UNIVERSAL_CONFIG)
       setTemplateConfig(safeConfig)
       setSavedTemplateConfig(safeConfig)
 
       // Load saved visibility, merging with defaults to handle new fields
       const savedVis = (resume as Record<string, unknown>).builder_visibility as Partial<BuilderVisibility> | null
-      if (savedVis && Object.keys(savedVis).length > 0) {
-        const merged: BuilderVisibility = {
-          ...DEFAULT_VISIBILITY,
-          ...savedVis,
-          sections: { ...DEFAULT_VISIBILITY.sections, ...(savedVis.sections ?? {}) },
-          items: {
-            ...DEFAULT_VISIBILITY.items,
-            ...(savedVis.items ?? {}),
-          },
-          sectionOrder: savedVis.sectionOrder ?? DEFAULT_VISIBILITY.sectionOrder,
-          sidebarSectionOrder: savedVis.sidebarSectionOrder ?? DEFAULT_VISIBILITY.sidebarSectionOrder,
-          density: savedVis.density ?? 'relaxed',
-        }
-        setVisibility(merged)
-        setSavedVisibility(merged)
-      } else {
-        // If no saved visibility, use default
-        setVisibility(DEFAULT_VISIBILITY)
-        setSavedVisibility(DEFAULT_VISIBILITY)
-      }
+      const mergedVisibility = mergeBuilderVisibilityWithDefaults(savedVis)
+      setVisibility(mergedVisibility)
+      setSavedVisibility(mergedVisibility)
       setIsLoading(false)
     }
     load()
-  }, [accentParam, bulletParam, densityParam, fontParam, headerParam, layoutParam, resumeId, router, supabase, userId])
+  }, [applyUrlTemplateOverrides, resumeId, router, searchParams, supabase, userId])
 
   const setBuilderMode = useCallback((mode: BuilderMode) => {
     const params = new URLSearchParams(searchParams.toString())

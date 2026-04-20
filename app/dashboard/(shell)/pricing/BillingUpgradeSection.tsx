@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   type DiscountType,
   type PriceOption,
@@ -10,6 +11,7 @@ import {
 import PricingCard from '@/components/shared/PricingCard'
 import PromoCodeInput, { type PromoValidationResult } from '@/components/shared/PromoCodeInput'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
+import { setPricingCheckoutIntent } from '@/lib/pricingCheckoutIntent'
 
 interface Props {
   autoFillPromo?: string
@@ -21,6 +23,7 @@ interface Props {
   currentSubscriptionInterval?: 'monthly' | 'annual' | null
   compact?: boolean
   pricingCountryCode?: string | null
+  loginRedirectPath?: string | null
 }
 
 export default function BillingUpgradeSection({
@@ -33,7 +36,9 @@ export default function BillingUpgradeSection({
   currentSubscriptionInterval = null,
   compact = false,
   pricingCountryCode,
+  loginRedirectPath = null,
 }: Props) {
+  const router = useRouter()
   const [appliedPromotionId, setAppliedPromotionId] = useState<string | undefined>(undefined)
   const [appliedPromotionCode, setAppliedPromotionCode] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
@@ -95,6 +100,19 @@ export default function BillingUpgradeSection({
         : undefined
 
   async function handleUpgrade(priceId: string) {
+    if (loginRedirectPath) {
+      const selectedOption = priceOptions.find(option => option.id === priceId)
+      const promoApplies = promoAppliesToOption(activePromo, selectedOption ?? priceId)
+
+      setPricingCheckoutIntent({
+        priceId,
+        promotionId: promoApplies ? effectivePromotionId : undefined,
+        promotionCode: promoApplies ? effectivePromotionCode : undefined,
+      })
+      router.push(`/auth/login?next=${encodeURIComponent(loginRedirectPath)}`)
+      return
+    }
+
     setIsLoading(true)
     setCheckoutError(null)
 

@@ -1,6 +1,6 @@
 import type { BlogPost } from '@/lib/blog/shared'
 
-type BlogOverride = Pick<BlogPost, 'excerpt' | 'content'>
+type BlogOverride = Partial<Pick<BlogPost, 'title' | 'excerpt' | 'content'>>
 type BlogToolLink = {
   label: string
   href: string
@@ -433,106 +433,168 @@ That is where **Rezoomed** helps: ATS checks, bullet rewrites, stronger summarie
 - [St. Louis Fed: The Jobs and Degrees Underemployed College Graduates Have](https://www.stlouisfed.org/open-vault/2025/aug/jobs-degrees-underemployed-college-graduates-have)`,
   },
   'how-to-land-a-google-job': {
+    title: 'How to Get a Job at Google: Resume Example, Application Strategy, and Interview Prep',
     excerpt:
-      "How to land a Google job with a better application strategy, role-specific resume, ATS-friendly formatting, and interview preparation that matches Google's hiring constraints.",
-    content: `# How to Land a Google Job: Resume, Application, and Interview Guide
+      'How to get a job at Google in 2026: official application rules, a real Google-hired resume example, ATS-safe resume tips, and interview prep that makes each application count.',
+    content: `# How to Get a Job at Google: Resume Example, Application Strategy, and Interview Prep
 
-Landing a Google job is not about prestige. It is about fit. Google receives enormous volume, and the application constraints alone mean every submission has to count.
+Getting hired at Google is not just a prestige play. It is a precision play. Google publishes application rules that make weak, generic resumes more expensive than they are at most companies.
 
-Google's Careers Help guidance highlights a few rules candidates should know:
+According to Google Careers Help, you can apply to up to three jobs within a rolling 30-day window, your resume file must stay under 2 MB, and you cannot edit the application after you submit it. Google also says you usually need to wait 90 days before reapplying for the same role.
 
-- you can apply to up to three jobs in a rolling 30-day window
-- resumes must stay under 2 MB
-- submitted applications cannot be edited
-- reapplying to the same role usually requires waiting 90 days
+That changes the strategy immediately. A bad Google application is not just ineffective. It can waste one of your limited shots.
 
-That makes a generic resume expensive.
+!!! What this guide covers
+- how Google's official application rules should change your process
+- what a Google-ready resume example looks like in practice
+- how to tailor your resume for Google without sounding generic or AI-written
+- what to do before, during, and after you apply
 
-## 1. Pick the role before you rewrite the resume
+## Why Google applications need more strategy than most
 
-Do not apply to Google as a brand. Apply to one team, one function, and one problem set.
+Do not apply to Google as a logo. Apply to a specific function, level, and problem set.
 
-Review:
+That means:
 
-- minimum qualifications
-- preferred qualifications
-- domain context
-- seniority
-- evidence you can prove
+- reading the minimum qualifications like a hard filter
+- matching your resume to one target role at a time
+- avoiding resume versions that try to cover Cloud, Ads, Operations, and Trust & Safety at once
+- keeping every bullet truthful, specific, and easy to verify
 
-## 2. Respect the application constraints
+The goal is not to sound impressive in general. The goal is to look like a strong match for one exact opening.
 
-Because you cannot edit the application after submission, the cleanest workflow is:
+## What Google wants to see on a resume
 
-1. pull requirements from the posting
-2. tailor the resume
-3. check parser readability
-4. verify file size
-5. submit only when the story is complete
+The strongest Google resumes usually do four things quickly:
 
-## 3. Build a Google-ready resume
+- establish role fit in the top third of the page
+- show measurable impact instead of task lists
+- prove scope with numbers, systems, audiences, or complexity
+- stay clean enough for humans and parsers to read without effort
 
-A strong Google resume should:
+| Before | After |
+| --- | --- |
+| Responsible for training local businesses on marketing tools. | Delivered 7 digital marketing courses to audiences from 1:1 sessions to 500 attendees, expanding practical skills adoption across Birmingham. |
+| Worked with different teams on growth initiatives. | Partnered with councils, business groups, and internal leadership to open new training channels and increase Google Digital Garage footfall by 35%+. |
+| Managed digital campaigns and websites. | Built a digital sales pipeline worth GBP 450K+ in 7 months and raised website conversion value by GBP 620K within 6 months. |
 
-- show role fit fast
-- prove depth and ownership
-- use measurable results
-- stay clean enough for parsing
+## A real Google resume example you can customize
 
-Weak:
+Below is an adapted version of a public Google-hired resume sample. The original was published by Kickresume as a real Google Team Leader sample. I reformatted it into Rezoomed's cleaner, ATS-safe layout so you can study what actually makes it work and open the same version in the builder.
 
-> Worked with multiple teams to support process improvements.
+[[google-resume-example]]
 
-Better:
+### Why this Google resume example works
 
-> Led payment workflow improvements across engineering, operations, and analytics, reducing manual review time by 31% and improving release predictability.
+What stands out in this example is not the brand name. It is the evidence:
 
-## 4. Avoid the common Google-application mistakes
+- the target role is obvious at a glance
+- the bullets show operating scale with numbers instead of vague leadership language
+- the experience section moves from scope to outcomes fast
+- the skills are grouped by function, which is easier to scan than a random keyword dump
+
+The lesson is simple: Google-ready resumes do not try to look fancy. They reduce doubt.
+
+## How to tailor your resume for Google without sounding generic
+
+The easiest way to ruin a Google application is to stuff keywords into a resume that no longer sounds like a real person. Tailoring should sharpen the same career story, not replace it.
+
+Use this sequence:
+
+1. Start with the exact job posting.
+2. Highlight repeated nouns, verbs, tools, and business problems.
+3. Keep only the qualifications you can actually prove.
+4. Rewrite weak bullets so they show ownership, scope, and results.
+5. Run one final readability pass before exporting.
 
 | Do | Don't |
 | --- | --- |
-| Use one resume version per team or function. | Use the same resume for Cloud, Ads, Security, and Operations. |
-| Apply only when you clearly meet the minimum bar. | Burn all three application slots on loose matches. |
-| Check readability and file size before submission. | Upload a noisy resume and hope the parser gets it right. |
-| Reapply only after meaningful improvement. | Reapply quickly with the same evidence. |
+| Mirror the language of the role naturally in your summary and bullets. | Paste AI-generated phrases that sound polished but empty. |
+| Use metrics, stakeholders, systems, or scale to prove fit. | Rely on adjectives like strategic, passionate, or results-driven. |
+| Keep one resume version per role family. | Use one generic file for every Google opening. |
+| Remove anything that does not help this specific application. | Keep filler because it was on an older resume version. |
 
-## 5. Build proof beyond the resume
+## What to do before you click Apply
 
-For many Google roles, external proof matters:
+Google says your Careers Profile can save draft applications and pre-populate information from your last submitted application. That is useful, but it also means your base materials should be clean before you start reusing them.
 
-- portfolio projects
-- technical writing
-- case studies
-- shipped products
-- demos or GitHub work
+Use this pre-submit checklist:
 
-## 6. Prepare for structured interviews
+!!! Google application checklist
+- confirm you are applying to the best-fit role, not just the most recognizable team
+- make sure the resume file is under 2 MB
+- verify that the summary and first two experience entries match the job
+- remove decorative formatting that could hurt readability
+- double-check dates, company names, and core metrics
+- export only after the final review, because Google says you cannot edit the application after submission
 
-Organize stories in advance around:
+## Proof that matters outside the resume
 
-- impact
-- leadership
-- ambiguity
-- tradeoffs
-- failure and learning
+For some Google roles, the resume is only the first confidence check. The strongest supporting proof depends on the function:
 
-!!! A simple preparation set
-- 5 to 8 impact stories
-- 3 challenge stories
-- 3 leadership stories
-- 3 ambiguous-problem stories
+- engineering: GitHub work, shipped projects, architecture write-ups
+- product: launch notes, case studies, metrics ownership, cross-functional scope
+- marketing: campaign outcomes, funnels, growth experiments, enablement work
+- operations: process redesign, system rollouts, efficiency gains, stakeholder coordination
+
+If the role is competitive, attach proof to your profile, LinkedIn, portfolio, or personal site so the resume does not have to carry the entire credibility load.
+
+## How to prepare once a Google recruiter responds
+
+Resume quality gets you into the conversation. Interview preparation decides whether you stay there.
+
+Build a short story bank around:
+
+- impact you can quantify
+- ambiguous problems you untangled
+- times you influenced without direct authority
+- moments where you improved a system, not just completed a task
+- failures, tradeoffs, and what changed after you learned from them
+
+!!! Interview prep pack
+- 5 impact stories with clear numbers
+- 3 leadership or influence stories
+- 3 challenge stories with tradeoffs
+- 2 failure stories with specific learning
+- 1 tight explanation of why this Google role matches your background now
+
+## Frequently asked questions about Google jobs
+
+### Can I apply to more than one Google job at the same time?
+
+Yes, but Google Careers Help says you can apply to up to three jobs within a rolling 30-day window. Use those slots carefully.
+
+### Should I use the same resume for every Google application?
+
+No. Google roles can look similar on the surface and still require very different evidence. Tailor for the exact function, level, and team context.
+
+### Does Google require a cover letter?
+
+No. Google's Careers Help says education, work history, and cover letter are optional. That makes the resume even more important.
+
+### Can I edit my Google application after I submit it?
+
+No. Google says you can change an application before submission, including swapping the resume, but not after you submit.
 
 ## Final takeaway
 
-The strongest Google candidates are usually the clearest, not the loudest. If the fit is real, the resume should prove it quickly.
+The strongest Google candidates are usually the clearest, not the loudest. The winning pattern is:
 
-Use **Rezoomed** before you submit: check ATS alignment, tighten bullets, mirror the job description, and export a cleaner recruiter-ready version before you spend one of your application attempts.
+- pick the exact role first
+- tailor one resume for that role
+- prove fit with numbers and scope
+- keep formatting quiet and readable
+- review everything before submission
+
+If you want to move faster, use Rezoomed's [resume builder](/resume-builder) and [ATS checker](/ats-checker) together: open a strong base resume, customize it for the posting, and fix weak bullets before you spend one of your Google applications.
 
 ## Sources and further reading
 
 - [Google Careers Help: Apply for a job](https://support.google.com/googlecareers/answer/6095391?hl=en)
 - [Google Careers Help: Search for jobs](https://support.google.com/googlecareers/answer/9018529?hl=en)
-- [Grow with Google: Guide to Changing Careers](https://grow.google/grow-your-career/articles/career-change/)`,
+- [Google Careers Help: Manage my application and candidate data](https://support.google.com/googlecareers/answer/12174691?hl=en)
+- [Grow with Google: Guide to making a career change](https://www.grow.google/grow-your-career/articles/career-change)
+- [Kickresume: Google Team Leader Resume Sample](https://www.kickresume.com/en/help-center/google-team-leader-resume-sample/)`,
   },
 }
 
@@ -740,8 +802,7 @@ export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
   const nextPost = override
     ? {
         ...post,
-        excerpt: override.excerpt,
-        content: override.content,
+        ...override,
       }
     : post
 

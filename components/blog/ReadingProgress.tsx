@@ -1,17 +1,45 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function ReadingProgress() {
   const [pct, setPct] = useState(0)
+  const frameRef = useRef<number | null>(null)
+  const lastPctRef = useRef(0)
 
   useEffect(() => {
-    const onScroll = () => {
+    const syncProgress = () => {
       const total = document.documentElement.scrollHeight - window.innerHeight
-      setPct(total > 0 ? Math.min((window.scrollY / total) * 100, 100) : 0)
+      const nextPct = total > 0 ? Math.min((window.scrollY / total) * 100, 100) : 0
+
+      if (Math.abs(nextPct - lastPctRef.current) < 0.1) {
+        return
+      }
+
+      lastPctRef.current = nextPct
+      setPct(nextPct)
     }
+
+    const onScroll = () => {
+      if (frameRef.current !== null) return
+
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = null
+        syncProgress()
+      })
+    }
+
+    syncProgress()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('resize', onScroll)
+
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+      }
+    }
   }, [])
 
   return (

@@ -155,6 +155,7 @@ export default async function PricingPage({
               priceOptions={priceOptions}
               currentSubscriptionInterval={profile.subscription_interval}
               pricingCountryCode={pricingCountryCode}
+              consumeCheckoutIntent
             />
           </div>
         </DashboardSurface>

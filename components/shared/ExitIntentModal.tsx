@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Timer, CheckCircle2, ArrowRight, X, Sparkles, TrendingUp, ShieldCheck } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Timer, CheckCircle2, ArrowRight, X, BadgePercent } from 'lucide-react'
 import {
   PRO_PLAN,
   getEffectiveDisplay,
@@ -24,10 +24,10 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
   const [hasShown, setHasShown] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [timeLeft, setTimeLeft] = useState(promo.exitIntentTimerSeconds)
+  const mountedAtRef = useRef(0)
+  const lastPointerYRef = useRef<number | null>(null)
+  const pendingTopExitRef = useRef(false)
   const { openSubscriptionCheckout } = usePaddleCheckout()
-  const socialProofMessage =
-    process.env.NEXT_PUBLIC_EXIT_INTENT_SOCIAL_PROOF?.trim() ||
-    'Rezoomed helps job seekers tighten resumes and move faster before recruiters move on.'
 
   const showModal = useCallback(() => {
     const key = `exit-intent-${promo.id}`
@@ -42,37 +42,83 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
     })
   }, [promo.id, promo.paddleDiscountCode])
 
-  // Exit intent detection: trigger when cursor leaves from the top
+  // Exit intent detection: desktop only, no timer fallback.
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.innerWidth < 1024) return
+
+    mountedAtRef.current = Date.now()
+
     function triggerOpen() {
+      const dwellMs = Date.now() - mountedAtRef.current
+      if (dwellMs < 12000) return
       if (!hasShown) {
         showModal()
       }
     }
 
+    function isLikelyBrowserChromeExit() {
+      return (lastPointerYRef.current ?? 999) <= 140
+    }
+
+    function handlePointerMove(e: MouseEvent) {
+      lastPointerYRef.current = e.clientY
+    }
+
     function handleMouseLeave(e: MouseEvent) {
-      if (e.clientY <= 8) {
+      if (e.clientY <= 24) {
         triggerOpen()
       }
     }
 
     function handleMouseOut(e: MouseEvent) {
-      if (!e.relatedTarget && e.clientY <= 12) {
+      if (!e.relatedTarget && e.clientY <= 28) {
         triggerOpen()
       }
     }
 
-    const fallbackTimer = window.setTimeout(() => {
-      triggerOpen()
-    }, 15000)
+    function handleWindowBlur() {
+      if (isLikelyBrowserChromeExit()) {
+        pendingTopExitRef.current = true
+        if (document.visibilityState === 'visible') {
+          triggerOpen()
+        }
+      }
+    }
 
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden' && isLikelyBrowserChromeExit()) {
+        pendingTopExitRef.current = true
+        return
+      }
+
+      if (document.visibilityState === 'visible' && pendingTopExitRef.current) {
+        pendingTopExitRef.current = false
+        triggerOpen()
+      }
+    }
+
+    function handleWindowFocus() {
+      if (pendingTopExitRef.current) {
+        pendingTopExitRef.current = false
+        triggerOpen()
+      }
+    }
+
+    document.addEventListener('mousemove', handlePointerMove)
     document.addEventListener('mouseleave', handleMouseLeave)
     document.addEventListener('mouseout', handleMouseOut)
+    window.addEventListener('blur', handleWindowBlur)
+    window.addEventListener('focus', handleWindowFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      window.clearTimeout(fallbackTimer)
+      document.removeEventListener('mousemove', handlePointerMove)
       document.removeEventListener('mouseleave', handleMouseLeave)
       document.removeEventListener('mouseout', handleMouseOut)
+      window.removeEventListener('blur', handleWindowBlur)
+      window.removeEventListener('focus', handleWindowFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [hasShown, showModal])
   
@@ -137,22 +183,10 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
     monthlyEquivalent <= 5
       ? 'Less than a coffee for a stronger shot at interviews.'
       : 'A small cost compared with another missed interview cycle.'
-  const urgencyPoints = [
-    {
-      icon: TrendingUp,
-      title: 'Don’t get left behind',
-      body: 'Other applicants keep improving while you wait. Tighten your resume before they do.',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Stop the recruiter ghosting loop',
-      body: 'Sharper ATS alignment and clearer positioning give recruiters fewer reasons to skip you.',
-    },
-    {
-      icon: Sparkles,
-      title: 'Interview-ready faster',
-      body: socialProofMessage,
-    },
+  const proofPills = [
+    'Unlimited ATS scans',
+    'Tailor Mode',
+    'Custom exports',
   ]
 
   if (!isOpen) return null
@@ -164,7 +198,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
         onClick={handleClose}
       />
 
-      <div className="relative z-50 w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.96))] text-zinc-900 shadow-[0_30px_90px_rgba(15,23,42,0.18)]">
+      <div className="relative z-50 w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.96))] text-zinc-900 shadow-[0_30px_90px_rgba(15,23,42,0.18)]">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-20 top-10 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute -left-16 bottom-0 h-52 w-52 rounded-full bg-primary-container/60 blur-3xl" />
@@ -192,47 +226,23 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
             <X size={18} />
           </button>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-8">
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="inline-flex rounded-full bg-primary-container/45 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-primary-container">
-                  Rezoomed Pro
-                </div>
-                <div className="space-y-3">
-                  <h2 className="max-w-2xl text-[2.15rem] font-black leading-[0.96] tracking-tight text-on-background sm:text-[2.85rem]">
-                    Stop the recruiter ghosting loop.
-                  </h2>
-                  <p className="max-w-xl text-sm leading-7 text-on-surface-variant sm:text-[15px]">
-                    Other applicants keep improving while you wait. Unlock Pro now, sharpen your resume, and move back into the shortlist before this offer disappears.
-                  </p>
-                </div>
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary-container/45 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-primary-container">
+                <BadgePercent size={12} />
+                Rezoomed Pro
               </div>
-
-              <div className="grid gap-3">
-                {urgencyPoints.map(({ icon: Icon, title, body }) => (
-                  <div
-                    key={title}
-                    className="rounded-[1.35rem] border border-black/6 bg-white/80 px-4 py-4 shadow-[0_16px_36px_rgba(25,28,29,0.05)]"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-primary-container/45 text-primary">
-                        <Icon size={18} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-black tracking-tight text-on-background">
-                          {title}
-                        </p>
-                        <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                          {body}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-3">
+                <h2 className="max-w-xl text-[2.2rem] font-black leading-[0.95] tracking-tight text-on-background sm:text-[2.9rem]">
+                  Leave now and this offer goes with you.
+                </h2>
+                <p className="max-w-xl text-sm leading-7 text-on-surface-variant sm:text-[15px]">
+                  Unlock Pro while the discount is still active and tighten your resume before the next application cycle.
+                </p>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]">
               <div className="rounded-[1.6rem] border border-primary/12 bg-[linear-gradient(160deg,rgba(2,109,50,0.08),rgba(255,255,255,0.96))] p-5 shadow-[0_18px_42px_rgba(2,109,50,0.08)]">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary/70">
                   {intervalLabel} plan
@@ -249,9 +259,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
                     </span>
                   </div>
                   <p className="mt-2 text-sm font-semibold text-primary">
-                    {promo.paddleDiscountCode
-                      ? `${promo.paddleDiscountCode} applied`
-                      : 'Offer applied'}
+                    {promo.paddleDiscountCode ? `${promo.paddleDiscountCode} applied` : 'Offer applied'}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-on-surface-variant">
                     {valueMessage}
@@ -262,38 +270,55 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
                     </p>
                   ) : null}
                 </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {proofPills.map((pill) => (
+                    <span
+                      key={pill}
+                      className="inline-flex rounded-full border border-black/6 bg-white/80 px-3 py-1.5 text-[11px] font-bold text-zinc-700"
+                    >
+                      {pill}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-primary/75">
+                  Protected by our 14-day refund policy
+                </p>
               </div>
 
               <div className="rounded-[1.6rem] border border-black/6 bg-white/82 p-5 shadow-[0_16px_36px_rgba(25,28,29,0.05)]">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/60">
-                  Included in Pro
+                  Why people upgrade
                 </p>
                 <div className="mt-4 space-y-3">
-                  {PRO_PLAN.features.slice(0, 4).map((feature) => (
+                  {PRO_PLAN.features.slice(0, 3).map((feature) => (
                     <div key={feature} className="flex items-start gap-3">
                       <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-primary" />
                       <span className="text-sm leading-6 text-on-background">{feature}</span>
                     </div>
                   ))}
+                  <div className="rounded-[1rem] bg-primary-container/30 px-4 py-3 text-sm font-semibold text-on-primary-container">
+                    Better resume iterations now beat another missed callback later.
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-3">
-                <button
-                  onClick={handleClaim}
-                  disabled={isLoading}
-                  className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isLoading ? 'Opening checkout…' : 'Claim discount now'}
-                  {!isLoading ? <ArrowRight size={16} /> : null}
-                </button>
-                <button
-                  onClick={handleClose}
-                  className="w-full text-sm font-semibold text-on-surface-variant transition-colors hover:text-on-background"
-                >
-                  Skip it and keep full-price checkout
-                </button>
-              </div>
+            <div className="space-y-3">
+              <button
+                onClick={handleClaim}
+                disabled={isLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoading ? 'Opening checkout…' : 'Claim discount now'}
+                {!isLoading ? <ArrowRight size={16} /> : null}
+              </button>
+              <button
+                onClick={handleClose}
+                className="w-full text-sm font-semibold text-on-surface-variant transition-colors hover:text-on-background"
+              >
+                No thanks
+              </button>
             </div>
           </div>
         </div>

@@ -11,11 +11,15 @@ const UniversalTemplate = dynamic(
 interface UniversalTemplatePreviewProps {
   data: ResumeData
   config: UniversalConfig
+  sectionOrder?: string[]
+  sidebarSectionOrder?: string[]
 }
 
 export default function UniversalTemplatePreview({
   data,
   config,
+  sectionOrder,
+  sidebarSectionOrder,
 }: UniversalTemplatePreviewProps) {
   return (
     <UniversalTemplate
@@ -23,6 +27,8 @@ export default function UniversalTemplatePreview({
       isEditing={false}
       onFieldChange={() => {}}
       config={config}
+      sectionOrder={sectionOrder}
+      sidebarSectionOrder={sidebarSectionOrder}
       density={config.density}
     />
   )

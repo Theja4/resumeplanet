@@ -4,8 +4,11 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
 import BlogPostAnalyticsClient from '@/components/blog/BlogPostAnalyticsClient'
+import BlogFloatingRail from '@/components/blog/BlogFloatingRail'
 import BlogRelatedPostLink from '@/components/blog/BlogRelatedPostLink'
+import BlogResumeShowcase from '@/components/blog/BlogResumeShowcase'
 import BlogShareButtons from '@/components/blog/BlogShareButtons'
+import BlogTableOfContents from '@/components/blog/BlogTableOfContents'
 import BlogTrackedAppLink from '@/components/blog/BlogTrackedAppLink'
 import MarkdownContent from '@/components/blog/MarkdownContent'
 import ReadingProgress from '@/components/blog/ReadingProgress'
@@ -18,19 +21,30 @@ import {
   getPublishedBlogPostBySlug,
   getPublishedBlogPosts,
 } from '@/lib/blog'
+import { getBlogResumeExampleForSlug } from '@/lib/blog/resume-examples'
 import { buildBlogPostKeywords } from '@/lib/blog/seo'
 import { getSiteUrl } from '@/lib/site'
+import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-function slugifyHeading(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/['’]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+const GOOGLE_JOB_FAQS = [
+  {
+    question: 'Can I apply to more than one Google job at the same time?',
+    answer:
+      'Yes. Google Careers Help says candidates can apply to up to three jobs within a rolling 30-day window, so each application should be a strong fit.',
+  },
+  {
+    question: 'Does Google require a cover letter?',
+    answer:
+      "No. Google's Careers Help says education, work history, and cover letter are optional, which means the resume has to carry most of the positioning work.",
+  },
+  {
+    question: 'Can I edit my Google application after submission?',
+    answer:
+      'No. Google says candidates can make changes before submission, including loading a different resume, but cannot edit the application after it is submitted.',
+  },
+] as const
 
 function extractArticleSections(content: string) {
   return content
@@ -112,6 +126,11 @@ export default async function BlogPostPage({
 
   if (!post) notFound()
 
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const normalizedLines = post.content.replace(/\r\n/g, '\n').split('\n')
   const firstNonEmptyLineIndex = normalizedLines.findIndex(l => l.trim().length > 0)
   const articleContent =
@@ -126,6 +145,20 @@ export default async function BlogPostPage({
   const relatedPosts    = publishedPosts.filter(c => c.slug !== post.slug).slice(0, 3)
   const siteUrl         = getSiteUrl()
   const articleSections = extractArticleSections(articleContent).slice(0, 6)
+  const hasArticleToc = articleSections.length > 0
+  const resumeExample = getBlogResumeExampleForSlug(post.slug)
+  const customBlocks = resumeExample
+    ? {
+        'google-resume-example': (
+          <BlogResumeShowcase
+            slug={post.slug}
+            exampleId={resumeExample.id}
+            isAuthenticated={Boolean(user)}
+          />
+        ),
+      }
+    : undefined
+  const faqItems = post.slug === 'how-to-land-a-google-job' ? GOOGLE_JOB_FAQS : null
   const articleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -173,6 +206,51 @@ export default async function BlogPostPage({
       },
     ],
   }
+  const faqJsonLd = faqItems
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqItems.map(faq => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      }
+    : null
+  const howToJsonLd =
+    post.slug === 'how-to-land-a-google-job'
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: 'How to get a job at Google',
+          description: post.excerpt,
+          step: [
+            {
+              '@type': 'HowToStep',
+              name: 'Choose one target Google role',
+              text: 'Filter for the exact function, level, and team context before rewriting the resume.',
+            },
+            {
+              '@type': 'HowToStep',
+              name: 'Tailor the resume to that job',
+              text: 'Mirror the job language naturally and keep only evidence you can actually prove.',
+            },
+            {
+              '@type': 'HowToStep',
+              name: 'Check readability and file constraints',
+              text: 'Keep the resume ATS-safe, under 2 MB, and ready before submission because Google says you cannot edit after applying.',
+            },
+            {
+              '@type': 'HowToStep',
+              name: 'Submit and prepare for interviews',
+              text: 'Once the application is in, prepare concise stories about impact, leadership, ambiguity, and learning.',
+            },
+          ],
+        }
+      : null
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
@@ -186,6 +264,18 @@ export default async function BlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {faqJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      ) : null}
+      {howToJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+        />
+      ) : null}
 
       <BlogPostAnalyticsClient
         slug={post.slug}
@@ -302,11 +392,25 @@ export default async function BlogPostPage({
       </div>
 
       {/* ── Body ──────────────────────────────────────────────────────────────── */}
-      <main className="mx-auto max-w-[88rem] px-6 pb-28 lg:px-10">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+      <main className="mx-auto max-w-[108rem] px-4 pb-28 sm:px-6 lg:px-8 xl:px-8 2xl:px-10">
+        <div
+          className={[
+            'grid gap-8',
+            hasArticleToc
+              ? 'xl:grid-cols-[17rem_minmax(0,58rem)_17rem] xl:items-stretch xl:justify-center xl:gap-8 2xl:grid-cols-[18rem_minmax(0,60rem)_18rem] 2xl:gap-10'
+              : 'xl:grid-cols-[minmax(0,60rem)_17rem] xl:items-stretch xl:justify-center xl:gap-8 2xl:grid-cols-[minmax(0,62rem)_18rem] 2xl:gap-10',
+          ].join(' ')}
+        >
+          {hasArticleToc ? (
+            <aside className="hidden xl:block">
+              <BlogFloatingRail topOffset={124} bottomOffset={32}>
+                <BlogTableOfContents articleSections={articleSections} />
+              </BlogFloatingRail>
+            </aside>
+          ) : null}
 
           {/* Article */}
-          <div className="space-y-10 -mt-6">
+          <div className={`min-w-0 space-y-10 -mt-6 ${hasArticleToc ? 'xl:col-start-2' : ''}`}>
             <div className="blog-load-in blog-glare-surface blog-glare-light relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.95))] p-6 shadow-[0_28px_90px_rgba(18,24,21,0.08)] sm:p-8 lg:p-10" style={entryStyle(0.08)}>
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.06),transparent_30%)]" />
               <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(2,109,50,0.25),transparent)]" />
@@ -315,11 +419,16 @@ export default async function BlogPostPage({
                   Editor&apos;s guide
                 </span>
                 <p className="max-w-2xl text-sm leading-6 text-zinc-600">
-                  Short, ATS-aware guidance built for fast scanning. Use the visuals and tables below as your checklist, not background noise.
+                  Short, ATS-aware guidance built for fast scanning. Use the proof points, resume example, and checklists below as an execution guide.
                 </p>
               </div>
               <article className="prose-article relative z-10">
-              <MarkdownContent content={articleContent} inlineImages={inlineImages} imageAltBase={post.title} />
+              <MarkdownContent
+                content={articleContent}
+                inlineImages={inlineImages}
+                imageAltBase={post.title}
+                customBlocks={customBlocks}
+              />
               </article>
             </div>
 
@@ -383,51 +492,32 @@ export default async function BlogPostPage({
             )}
           </div>
 
-          {/* Sidebar */}
-          <aside className="space-y-6 lg:sticky lg:top-24">
-            {articleSections.length > 0 && (
-              <div className="blog-load-in blog-glare-surface blog-glare-dark relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-[linear-gradient(160deg,#050b07_0%,#0a1710_55%,#10261a_100%)] p-6 shadow-[0_28px_90px_rgba(4,10,7,0.28)]" style={entryStyle(0.12)}>
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,192,107,0.14),transparent_24%)]" />
-                <p className="relative z-10 text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">In this article</p>
-                <div className="relative z-10 mt-4 space-y-3">
-                  {articleSections.map(section => (
-                    <a
-                      key={section}
-                      href={`#${slugifyHeading(section)}`}
-                      className="relative flex items-start gap-3 rounded-[1.15rem] border border-white/8 bg-white/6 px-4 py-3 text-sm leading-6 text-white/84 backdrop-blur-sm transition-colors hover:border-[#A3FFB3]/35 hover:bg-white/10 hover:text-white"
-                    >
-                      <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#30c06b]" />
-                      <span>{section}</span>
-                    </a>
-                  ))}
+          {/* Right rail */}
+          <aside className={`hidden xl:block ${hasArticleToc ? 'xl:col-start-3' : ''}`}>
+            <BlogFloatingRail topOffset={124} bottomOffset={32} contentClassName="space-y-6">
+              <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 shadow-[0_16px_48px_rgba(2,109,50,0.25)]" style={entryStyle(0.18)}>
+                <div className="relative z-10 space-y-4">
+                  <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
+                    <span className="text-lg">🚀</span>
+                  </div>
+                  <h4 className="text-sm font-black leading-snug text-white">Ready to optimize your resume?</h4>
+                  <p className="text-xs leading-relaxed text-white/55">
+                    Score, tailor, and rebuild in minutes. Free to start.
+                  </p>
+                  <BlogTrackedAppLink
+                    slug={post.slug} ctaType="sidebar" ctaText="Build my resume" position={1}
+                    href="/ats-checker"
+                    className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#026d32] transition-all hover:bg-[#f0fdf4] shadow-sm"
+                  >
+                    Get my ATS score
+                  </BlogTrackedAppLink>
                 </div>
               </div>
-            )}
 
-            {/* CTA box */}
-            <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 shadow-[0_16px_48px_rgba(2,109,50,0.25)]" style={entryStyle(0.18)}>
-              <div className="relative z-10 space-y-4">
-                <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-                  <span className="text-lg">🚀</span>
-                </div>
-                <h4 className="text-sm font-black leading-snug text-white">Ready to optimize your resume?</h4>
-                <p className="text-xs leading-relaxed text-white/55">
-                  Score, tailor, and rebuild in minutes. Free to start.
-                </p>
-                <BlogTrackedAppLink
-                  slug={post.slug} ctaType="sidebar" ctaText="Build my resume" position={1}
-                  href="/ats-checker"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-white px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#026d32] transition-all hover:bg-[#f0fdf4] shadow-sm"
-                >
-                  Get my ATS score
-                </BlogTrackedAppLink>
+              <div className="blog-load-in" style={entryStyle(0.24)}>
+                <BlogShareButtons slug={post.slug} title={post.title} />
               </div>
-            </div>
-
-            {/* Share buttons */}
-            <div className="blog-load-in" style={entryStyle(0.24)}>
-              <BlogShareButtons slug={post.slug} title={post.title} />
-            </div>
+            </BlogFloatingRail>
           </aside>
         </div>
       </main>
