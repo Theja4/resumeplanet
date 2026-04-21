@@ -3,7 +3,8 @@ import localFont from "next/font/local";
 import { cookies, headers } from 'next/headers'
 import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
-import { getOrganizationSameAsLinks, getSiteUrl, SITE_NAME } from '@/lib/site'
+import { getSiteUrl, SITE_NAME } from '@/lib/site'
+import { DEFAULT_OG_IMAGE, DEFAULT_SEO_DESCRIPTION, getAbsoluteUrl } from '@/lib/seo'
 import PromoBanner from '@/components/shared/PromoBanner'
 import PaddleProvider from '@/components/providers/PaddleProvider'
 import PostHogProvider from '@/components/providers/PostHogProvider'
@@ -32,14 +33,13 @@ const geistMono = localFont({
 });
 
 const siteUrl = getSiteUrl()
-const organizationSameAs = getOrganizationSameAsLinks()
 
 export const metadata: Metadata = {
   title: {
     default: SITE_NAME,
     template: `%s | ${SITE_NAME}`,
   },
-  description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
+  description: DEFAULT_SEO_DESCRIPTION,
   applicationName: SITE_NAME,
   metadataBase: new URL(siteUrl),
   alternates: {
@@ -49,20 +49,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: SITE_NAME,
+    locale: 'en_US',
     title: SITE_NAME,
-    description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
+    description: DEFAULT_SEO_DESCRIPTION,
     url: siteUrl,
     images: [
       {
-        url: '/icon.png',
+        url: getAbsoluteUrl(DEFAULT_OG_IMAGE.url),
+        alt: DEFAULT_OG_IMAGE.alt,
+        width: DEFAULT_OG_IMAGE.width,
+        height: DEFAULT_OG_IMAGE.height,
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     title: SITE_NAME,
-    description: 'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.',
-    images: ['/icon.png'],
+    description: DEFAULT_SEO_DESCRIPTION,
+    images: [getAbsoluteUrl(DEFAULT_OG_IMAGE.url)],
   },
   icons: {
     icon: [
@@ -96,37 +100,6 @@ export default async function RootLayout({
     countryCode,
     consentPreference: cookieConsentPreference,
   })
-  const organizationJsonLd: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: SITE_NAME,
-    url: siteUrl,
-    logo: `${siteUrl}/icon.png`,
-    contactPoint: [
-      {
-        '@type': 'ContactPoint',
-        contactType: 'customer support',
-        email: 'support@rezoomed.com',
-      },
-    ],
-  }
-
-  if (organizationSameAs.length > 0) {
-    organizationJsonLd.sameAs = organizationSameAs
-  }
-
-  const websiteJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: SITE_NAME,
-    url: siteUrl,
-    publisher: {
-      '@type': 'Organization',
-      name: SITE_NAME,
-      logo: `${siteUrl}/icon.png`,
-    },
-    inLanguage: 'en',
-  }
 
   return (
     <html
@@ -140,14 +113,6 @@ export default async function RootLayout({
         suppressHydrationWarning
         className={`min-h-full flex flex-col ${showCookieConsentBanner ? 'pt-28 sm:pt-24 lg:pt-20' : ''}`}
       >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
         {showCookieConsentBanner ? <CookieConsentBanner /> : null}
         <AffiliateReferralTracker />
         <PostHogProvider enabled={analyticsEnabled}>

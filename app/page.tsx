@@ -6,12 +6,13 @@ import LandingFeatures from '@/components/landing/LandingFeatures'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
-import { getSiteUrl } from '@/lib/site'
+import { buildPublicMetadata, getAbsoluteUrl, toJsonLd } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPublicMetadata({
   title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
   description:
     'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
+  path: '/',
   keywords: [
     'ai resume builder',
     'ats checker',
@@ -26,23 +27,7 @@ export const metadata: Metadata = {
     'resume keyword optimization',
     'Rezoomed',
   ],
-  alternates: {
-    canonical: '/',
-  },
-  openGraph: {
-    type: 'website',
-    title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
-    description: 'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
-    url: '/',
-    images: [{ url: '/product-hero-v2.png' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Free AI Resume Builder & ATS Checker | Rezoomed',
-    description: 'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
-    images: ['/product-hero-v2.png'],
-  },
-}
+})
 
 const FAQS = [
   {
@@ -158,48 +143,77 @@ const TESTIMONIALS: Testimonial[] = [
 ]
 
 export default async function LandingPage() {
-  const siteUrl = getSiteUrl()
-  const productJsonLd = {
+  const siteUrl = getAbsoluteUrl('/')
+  const homepageJsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Rezoomed',
-    applicationCategory: 'BusinessApplication',
-    operatingSystem: 'Web',
-    description:
-      'AI resume builder, ATS checker, match score, and resume tailoring platform for job seekers.',
-    url: siteUrl,
-    image: `${siteUrl}/product-hero-v2.png`,
-    brand: {
-      '@type': 'Brand',
-      name: 'Rezoomed',
-    },
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-      availability: 'https://schema.org/InStock',
-      url: `${siteUrl}/pricing`,
-    },
-    featureList: [
-      'AI resume builder',
-      'ATS checker',
-      'Resume match score',
-      'Resume tailoring',
-      'PDF metadata enhancer',
-      'Cover letter generator',
-    ],
-  }
-  const faqJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQS.map(faq => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.answer,
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': `${siteUrl}/#webpage`,
+        url: siteUrl,
+        name: 'Free AI Resume Builder & ATS Checker | Rezoomed',
+        description:
+          'Build ATS-friendly resumes, check ATS score, match job descriptions, and tailor applications faster with Rezoomed.',
+        isPartOf: {
+          '@id': `${siteUrl}/#website`,
+        },
+        about: {
+          '@id': `${siteUrl}/#software`,
+        },
+        primaryImageOfPage: {
+          '@type': 'ImageObject',
+          url: getAbsoluteUrl('/product-hero-v2.png'),
+          width: 1792,
+          height: 1024,
+        },
+        inLanguage: 'en-US',
       },
-    })),
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${siteUrl}/#software`,
+        name: 'Rezoomed',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        description:
+          'AI resume builder, ATS checker, match score, and resume tailoring platform for job seekers.',
+        url: siteUrl,
+        image: getAbsoluteUrl('/product-hero-v2.png'),
+        publisher: {
+          '@id': `${siteUrl}/#organization`,
+        },
+        brand: {
+          '@type': 'Brand',
+          name: 'Rezoomed',
+        },
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
+          url: getAbsoluteUrl('/pricing'),
+        },
+        featureList: [
+          'AI resume builder',
+          'ATS checker',
+          'Resume match score',
+          'Resume tailoring',
+          'PDF metadata enhancer',
+          'Cover letter generator',
+        ],
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${siteUrl}/#faq`,
+        mainEntity: FAQS.map(faq => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      },
+    ],
   }
 
   return (
@@ -207,11 +221,7 @@ export default async function LandingPage() {
       <PublicSiteHeader active="home" />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: toJsonLd(homepageJsonLd) }}
       />
 
       <main className="pt-16">
