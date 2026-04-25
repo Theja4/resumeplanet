@@ -110,7 +110,17 @@
       "Bash(python3 -c ':*)",
       "Bash(find:*)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if any\\(x in k for x in ['pdf','jspdf','mammoth']\\)]\")",
-      "Bash(xxd /Users/thejach/Downloads/ResumePlanet/app/dashboard/\\\\\\(shell\\\\\\)/orders/new/page.tsx)"
+      "Bash(xxd /Users/thejach/Downloads/ResumePlanet/app/dashboard/\\\\\\(shell\\\\\\)/orders/new/page.tsx)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3344/)",
+      "Bash(curl -s http://localhost:3344/)",
+      "Bash(curl -s -o /dev/null -w \"wave-blue %{http_code}\\\\n\" \"http://localhost:3344/Brands/mascot-wave-blue.png\")",
+      "Bash(curl -s -o /dev/null -w \"magnify-blue %{http_code}\\\\n\" \"http://localhost:3344/Brands/mascot-magnify-blue.png\")",
+      "Bash(curl -s -o /dev/null -w \"magnify-pink %{http_code}\\\\n\" \"http://localhost:3344/Brands/mascot-magnify-pink.png\")",
+      "Bash(curl -s -o /dev/null -w \"hero-pink %{http_code}\\\\n\" \"http://localhost:3344/Brands/mascot-hero-pink.png\")",
+      "Bash(curl -s -o /dev/null -w \"papers-blue %{http_code}\\\\n\" \"http://localhost:3344/Brands/mascot-papers-blue.png\")",
+      "Bash(kill 6656)",
+      "Bash(kill 19564)",
+      "Bash(wait 19564)"
     ]
   }
 }
