@@ -1388,7 +1388,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               <span>Back</span>
             </Link>
             <div className="flex items-center gap-2">
-              <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
+              <Image src="/auth-login-logo.png" alt="Rezoomed logo" width={32} height={32} className="h-8 w-8 object-contain" />
               <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             </div>
             <div className="w-px h-4 bg-zinc-200" />

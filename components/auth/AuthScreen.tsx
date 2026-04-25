@@ -55,7 +55,13 @@ function sanitizeAuthNextPath(value: string | null) {
 function BrandLockup() {
   return (
     <Link href="/" className="inline-flex items-center gap-2">
-      <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
+      <Image
+        src="/auth-login-logo.png"
+        alt="Rezoomed logo"
+        width={32}
+        height={32}
+        className="h-8 w-8 object-contain"
+      />
       <span className="text-lg font-black tracking-tighter text-on-background">Rezoomed</span>
     </Link>
   )

@@ -80,11 +80,11 @@ export default function PublicSiteHeader({
 
           <Link href="/" className="flex items-center gap-2 text-xl font-bold text-zinc-900">
             <Image
-              src="/icon.png"
+              src="/auth-login-logo.png"
               alt="Rezoomed logo"
               width={32}
               height={32}
-              className={`rounded-md transition-all duration-300 ${isMobileHeaderCondensed ? 'h-7 w-7' : 'h-8 w-8'}`}
+              className={`object-contain transition-all duration-300 ${isMobileHeaderCondensed ? 'h-7 w-7' : 'h-8 w-8'}`}
             />
             <span className={`tracking-tighter transition-all duration-300 ${isMobileHeaderCondensed ? 'text-lg' : 'text-xl'}`}>
               Rezoomed

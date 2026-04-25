@@ -168,7 +168,7 @@ export default function Sidebar({ profile }: SidebarProps) {
       <div className="pointer-events-none absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.2),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.07),transparent_30%)]" />
       {/* Branding */}
       <div className="relative mb-10 flex items-center gap-3 px-2">
-        <Image src="/icon.png" alt="Rezoomed logo" width={28} height={28} className="rounded-md" />
+        <Image src="/auth-login-logo.png" alt="Rezoomed logo" width={32} height={32} className="h-8 w-8 object-contain" />
         <span className="text-xl font-black tracking-tighter text-primary">Rezoomed</span>
       </div>
 

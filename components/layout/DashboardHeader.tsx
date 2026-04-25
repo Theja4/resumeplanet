@@ -42,7 +42,7 @@ export default function DashboardHeader() {
         <div className="flex items-end justify-between gap-6">
           <div className="space-y-2">
             <span className="inline-flex items-center gap-2.5 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-              <Image src="/icon.png" alt="Rezoomed logo" width={20} height={20} className="rounded-sm" />
+              <Image src="/auth-login-logo.png" alt="Rezoomed logo" width={20} height={20} className="h-5 w-5 object-contain" />
               Rezoomed Workspace
             </span>
             <div>

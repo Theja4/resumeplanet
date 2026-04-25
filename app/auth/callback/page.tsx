@@ -84,11 +84,11 @@ export default function AuthCallbackPage() {
       <div className="callback-loader relative z-10 flex items-center justify-center gap-6 px-6">
         <div className="callback-logo-wrap shrink-0">
           <Image
-            src="/icon.png"
+            src="/auth-login-logo.png"
             alt="Rezoomed logo"
             width={80}
             height={80}
-            className="rounded-full shadow-[0_20px_50px_rgba(2,109,50,0.18)]"
+            className="h-20 w-20 object-contain drop-shadow-[0_20px_32px_rgba(2,109,50,0.18)]"
           />
         </div>
         <div className="callback-wordmark-wrap">
