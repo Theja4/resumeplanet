@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { findAffiliateByDiscountCode } from '@/lib/affiliate-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getActivePromotionByCode } from '@/lib/pricing'
@@ -20,53 +19,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ valid: false, errorMessage: 'Invalid request' })
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ valid: false, errorMessage: 'Unauthorized' }, { status: 401 })
-  }
-
   const code = ((body.code as string) ?? '').trim().toUpperCase()
   if (!code) {
     return NextResponse.json({ valid: false, errorMessage: 'Please enter a promo code' })
   }
 
   try {
-    const serviceSupabase = createServiceRoleClient()
-    const affiliate = await findAffiliateByDiscountCode(serviceSupabase, code)
+    const promo = getActivePromotionByCode(code)
 
-    if (affiliate) {
-      const affiliateBadge = `${affiliate.discount_percent}% OFF`
+    if (promo) {
+      if (!promo.paddleDiscountId) {
+        return NextResponse.json({
+          valid: false,
+          errorMessage: 'Invalid or expired promo code',
+        })
+      }
 
       return NextResponse.json({
         valid: true,
-        discountCode: affiliate.discount_code,
-        discountType: 'percent',
-        discountValue: affiliate.discount_percent,
-        appliesTo: 'all',
-        badge: affiliateBadge,
-        displayLabel: buildDisplayLabel('percent', affiliate.discount_percent),
+        promotionId: promo.id,
+        discountCode: promo.paddleDiscountCode ?? code,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+        appliesTo: promo.appliesTo,
+        badge: promo.badge,
+        displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
       })
     }
 
-    const promo = getActivePromotionByCode(code)
+    const serviceSupabase = createServiceRoleClient()
+    const affiliate = await findAffiliateByDiscountCode(serviceSupabase, code)
 
-    if (!promo || !promo.paddleDiscountId) {
+    if (!affiliate) {
       return NextResponse.json({
         valid: false,
         errorMessage: 'Invalid or expired promo code',
       })
     }
 
+    const affiliateBadge = `${affiliate.discount_percent}% OFF`
+
     return NextResponse.json({
       valid: true,
-      promotionId: promo.id,
-      discountCode: promo.paddleDiscountCode ?? code,
-      discountType: promo.discountType,
-      discountValue: promo.discountValue,
-      appliesTo: promo.appliesTo,
-      badge: promo.badge,
-      displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
+      discountCode: affiliate.discount_code,
+      discountType: 'percent',
+      discountValue: affiliate.discount_percent,
+      appliesTo: 'all',
+      badge: affiliateBadge,
+      displayLabel: buildDisplayLabel('percent', affiliate.discount_percent),
     })
   } catch (err) {
     console.error('Promo validation error:', err)
