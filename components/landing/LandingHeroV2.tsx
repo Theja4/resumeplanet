@@ -133,7 +133,7 @@ export default function LandingHeroV2() {
               style={{ animationDelay: '0.3s' }}
             >
               Build ATS-ready resumes, tailor them to any job in seconds, and catch every missing keyword —{' '}
-              <strong className="text-zinc-900 font-bold">all in one playful workflow.</strong>
+              <strong className="text-zinc-900 font-bold">all in one powerful workflow.</strong>
             </p>
 
             <div

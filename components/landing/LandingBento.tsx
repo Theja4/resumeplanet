@@ -74,7 +74,7 @@ export default function LandingBento() {
               Everything job seekers need
             </p>
             <h2 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
-              One playful toolkit.
+              One powerful toolkit.
               <br />
               <span className="landing-italic-safe bg-gradient-to-r from-[#00a84d] via-[#026d32] to-[#019a47] bg-clip-text text-transparent italic gradient-shift">
                 Infinite unfair advantage.

@@ -82,7 +82,7 @@ export default function LandingStats() {
           <div className="max-w-3xl mx-auto text-center mb-16">
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">The numbers</p>
             <h2 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
-              Proof that <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">playful tools</span> beat polished platitudes.
+              Proof that <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">powerful tools</span> beat polished platitudes.
             </h2>
           </div>
         </Reveal>
