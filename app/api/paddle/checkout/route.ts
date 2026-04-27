@@ -8,6 +8,10 @@ import {
   readAffiliateReferralCodeFromCookies,
   resolveAffiliatePaddleDiscountId,
 } from '@/lib/affiliate-server'
+import {
+  logDiscountCodeResolutionWarning,
+  resolveDiscountCodeForApplication,
+} from '@/lib/discount-code-resolution'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import {
@@ -21,7 +25,6 @@ import {
   PRO_PLAN,
   getProPlanForCountry,
   getActivePromotion,
-  getActivePromotionByCode,
   getActivePromotionById,
   type PromoConfig,
 } from '@/lib/pricing'
@@ -181,19 +184,30 @@ export async function POST(request: NextRequest) {
     const storedAffiliateCode = resolveAffiliateSourceCodeFromProfile(profile)
 
     if (requestedPromotionCode) {
-      const affiliate = await findAffiliateByDiscountCode(serviceSupabase, requestedPromotionCode)
+      const resolution = await resolveDiscountCodeForApplication(
+        serviceSupabase,
+        requestedPromotionCode,
+        {
+          scope: 'checkout-requested-code',
+          allowPromotionFallbackOnAffiliateLookupError: true,
+        }
+      )
 
-      if (affiliate) {
-        discountId = await resolveAffiliatePaddleDiscountId(serviceSupabase, affiliate)
+      if (resolution.status === 'affiliate') {
+        discountId = await resolveAffiliatePaddleDiscountId(serviceSupabase, resolution.affiliate)
         if (!discountId) {
+          logDiscountCodeResolutionWarning('affiliate_discount_not_configured_for_checkout', {
+            scope: 'checkout-requested-code',
+            code: resolution.code,
+            affiliateId: resolution.affiliate.id,
+          })
           return err('Affiliate discount is not configured for checkout', 500)
         }
-        affiliateDiscountCode = affiliate.discount_code
+        affiliateDiscountCode = resolution.affiliate.discount_code
+      } else if (resolution.status === 'promotion') {
+        selectedPromotion = resolution.promotion
       } else {
-        selectedPromotion = getActivePromotionByCode(requestedPromotionCode)
-        if (!selectedPromotion || !selectedPromotion.paddleDiscountId) {
-          return err('Invalid or expired promotion')
-        }
+        return err('Invalid or expired promotion')
       }
     } else {
       const fallbackAffiliateCodes = [cookieAffiliateCode, storedAffiliateCode].filter(
@@ -209,6 +223,11 @@ export async function POST(request: NextRequest) {
 
         discountId = await resolveAffiliatePaddleDiscountId(serviceSupabase, affiliate)
         if (!discountId) {
+          logDiscountCodeResolutionWarning('affiliate_discount_not_configured_for_checkout', {
+            scope: 'checkout-fallback-affiliate',
+            code: affiliate.discount_code,
+            affiliateId: affiliate.id,
+          })
           return err('Affiliate discount is not configured for checkout', 500)
         }
         affiliateDiscountCode = affiliate.discount_code
@@ -219,6 +238,15 @@ export async function POST(request: NextRequest) {
     if (!discountId && promotionId) {
       selectedPromotion = getActivePromotionById(promotionId)
       if (!selectedPromotion || !selectedPromotion.paddleDiscountId) {
+        if (selectedPromotion && !selectedPromotion.paddleDiscountId) {
+          logDiscountCodeResolutionWarning('promotion_missing_paddle_discount_id', {
+            scope: 'checkout-promotion-id',
+            code: selectedPromotion.paddleDiscountCode ?? promotionId,
+            promotionId: selectedPromotion.id,
+            promotionCode: selectedPromotion.paddleDiscountCode,
+            hasPaddleDiscountId: false,
+          })
+        }
         return err('Invalid or expired promotion')
       }
     } else if (!discountId && activePromo?.isAutoApply && activePromo.paddleDiscountId) {

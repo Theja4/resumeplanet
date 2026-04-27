@@ -1,6 +1,7 @@
 'use client'
 
-import { X, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
+import Image from 'next/image'
+import { X, Zap, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { PRO_FEATURES } from '@/lib/proFeatures'
 import type { ProFeatureKey } from '@/lib/proFeatures'
@@ -14,13 +15,14 @@ export default function ProGateModal({ feature, onClose }: ProGateModalProps) {
   if (!feature) return null
 
   const config = PRO_FEATURES[feature]
+  const isTailorFeature = feature === 'tailor'
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 py-6 sm:p-6">
       <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40" onClick={onClose}></div>
 
       <div
-        className="relative z-50 w-full max-w-lg bg-white rounded-xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] overflow-hidden font-body text-zinc-900"
+        className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-white rounded-xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] font-body text-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-[#a3ffb3]/40 px-6 py-2 flex justify-center items-center gap-2">
@@ -53,10 +55,23 @@ export default function ProGateModal({ feature, onClose }: ProGateModalProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 mb-8">
-            <div className="sm:col-span-2 bg-zinc-50 rounded-xl p-6 flex items-center justify-center">
-              <div className="h-16 w-16 rounded-2xl bg-[#a3ffb3]/40 flex items-center justify-center">
-                <Zap size={28} className="text-[#026d32]" />
-              </div>
+            <div className="sm:col-span-2 relative min-h-40 overflow-hidden rounded-xl bg-[#a3ffb3]/20">
+              {isTailorFeature ? (
+                <Image
+                  src="/pro-gate-tailor-v2.jpg"
+                  alt="Rezoomed Tailor Mode mascot"
+                  fill
+                  priority
+                  sizes="(min-width: 640px) 192px, 100vw"
+                  className="object-cover object-center"
+                />
+              ) : (
+                <div className="flex h-full min-h-40 items-center justify-center">
+                  <div className="h-16 w-16 rounded-2xl bg-[#a3ffb3]/40 flex items-center justify-center">
+                    <Zap size={28} className="text-[#026d32]" />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="sm:col-span-3 space-y-4 py-2">
@@ -81,9 +96,10 @@ export default function ProGateModal({ feature, onClose }: ProGateModalProps) {
             <div className="flex justify-center">
               <button
                 onClick={onClose}
-                className="text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
+                className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
               >
-                Maybe later
+                {isTailorFeature ? <ArrowLeft size={16} /> : null}
+                {isTailorFeature ? 'Back' : 'Maybe later'}
               </button>
             </div>
           </div>

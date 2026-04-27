@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { findAffiliateByDiscountCode } from '@/lib/affiliate-server'
+import { resolveDiscountCodeForApplication } from '@/lib/discount-code-resolution'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
-import { getActivePromotionByCode } from '@/lib/pricing'
 
 function buildDisplayLabel(discountType: 'percent' | 'fixed', discountValue: number) {
   if (discountType === 'percent') {
@@ -25,48 +24,46 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const promo = getActivePromotionByCode(code)
+    const serviceSupabase = createServiceRoleClient()
+    const resolution = await resolveDiscountCodeForApplication(serviceSupabase, code, {
+      scope: 'validate-promo',
+      allowPromotionFallbackOnAffiliateLookupError: true,
+    })
 
-    if (promo) {
-      if (!promo.paddleDiscountId) {
-        return NextResponse.json({
-          valid: false,
-          errorMessage: 'Invalid or expired promo code',
-        })
-      }
+    if (resolution.status === 'affiliate') {
+      const affiliateBadge = `${resolution.affiliate.discount_percent}% OFF`
 
       return NextResponse.json({
         valid: true,
-        promotionId: promo.id,
-        discountCode: promo.paddleDiscountCode ?? code,
-        discountType: promo.discountType,
-        discountValue: promo.discountValue,
-        appliesTo: promo.appliesTo,
-        badge: promo.badge,
-        displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
+        source: 'affiliate',
+        discountCode: resolution.affiliate.discount_code,
+        discountType: 'percent',
+        discountValue: resolution.affiliate.discount_percent,
+        appliesTo: 'all',
+        badge: affiliateBadge,
+        displayLabel: buildDisplayLabel('percent', resolution.affiliate.discount_percent),
       })
     }
 
-    const serviceSupabase = createServiceRoleClient()
-    const affiliate = await findAffiliateByDiscountCode(serviceSupabase, code)
-
-    if (!affiliate) {
+    if (resolution.status !== 'promotion') {
       return NextResponse.json({
         valid: false,
         errorMessage: 'Invalid or expired promo code',
       })
     }
 
-    const affiliateBadge = `${affiliate.discount_percent}% OFF`
+    const promo = resolution.promotion
 
     return NextResponse.json({
       valid: true,
-      discountCode: affiliate.discount_code,
-      discountType: 'percent',
-      discountValue: affiliate.discount_percent,
-      appliesTo: 'all',
-      badge: affiliateBadge,
-      displayLabel: buildDisplayLabel('percent', affiliate.discount_percent),
+      source: 'promotion',
+      promotionId: promo.id,
+      discountCode: promo.paddleDiscountCode ?? code,
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      appliesTo: promo.appliesTo,
+      badge: promo.badge,
+      displayLabel: buildDisplayLabel(promo.discountType, promo.discountValue),
     })
   } catch (err) {
     console.error('Promo validation error:', err)

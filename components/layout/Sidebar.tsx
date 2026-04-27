@@ -41,7 +41,7 @@ const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem
     title: 'Workspace',
     items: [
       { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
-      { href: '/dashboard/job-board', label: 'Job Board', Icon: Search, badge: 'Beta' },
+      { href: '/dashboard/job-board', label: 'Job Board', Icon: Search, badge: 'Soon' },
       { href: '/dashboard/jobs', label: 'Job Tracker', Icon: BriefcaseBusiness },
     ],
   },
