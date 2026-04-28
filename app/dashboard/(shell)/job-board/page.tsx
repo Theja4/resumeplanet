@@ -145,7 +145,7 @@ export default function DashboardJobBoardPage() {
                 </div>
 
                 <Image
-                  src="/job-board-coming-soon-mascot-v3.png"
+                  src="/job-board-coming-soon-mascot-v4.webp"
                   alt="Rezoomed mascot holding a job briefcase"
                   width={720}
                   height={944}

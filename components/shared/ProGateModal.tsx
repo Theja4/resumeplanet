@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { X, Zap, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { X, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 import { PRO_FEATURES } from '@/lib/proFeatures'
 import type { ProFeatureKey } from '@/lib/proFeatures'
@@ -18,94 +18,106 @@ export default function ProGateModal({ feature, onClose }: ProGateModalProps) {
   const isTailorFeature = feature === 'tailor'
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 py-6 sm:p-6">
-      <div className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40" onClick={onClose}></div>
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-10 lg:pb-16 lg:pt-14">
+      <div
+        className="fixed inset-0 bg-zinc-950/45 backdrop-blur-md"
+        onClick={onClose}
+      />
 
       <div
-        className="relative z-50 max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto bg-white rounded-xl shadow-[0_24px_48px_-12px_rgba(0,0,0,0.06)] font-body text-zinc-900"
+        className="relative z-50 w-full max-w-lg overflow-y-auto rounded-[2rem] border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.99),rgba(244,250,246,0.97))] text-zinc-900 shadow-[0_30px_90px_rgba(15,23,42,0.18)] max-h-[calc(100dvh-4rem)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-[#a3ffb3]/40 px-6 py-2 flex justify-center items-center gap-2">
-          <Zap size={16} className="text-[#026d32]" />
-          <span className="text-xs font-bold tracking-[0.05em] uppercase text-[#19793c] leading-none">
+        {/* Top badge bar */}
+        <div className="relative flex items-center border-b border-black/6 bg-[linear-gradient(90deg,rgba(163,255,179,0.4),rgba(255,255,255,0.94))] px-5 py-2.5 sm:px-7">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/12 bg-white/86 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-primary">
+            <Zap size={14} />
             Pro Feature
-          </span>
+          </div>
         </div>
 
-        <div className="p-8 md:p-10 relative bg-white">
+        <div className="relative p-5 sm:p-6">
+          {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-800 transition-colors"
+            className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/6 bg-white/85 text-zinc-500 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-colors hover:text-zinc-900"
             aria-label="Close"
           >
-            <X size={24} />
+            <X size={18} />
           </button>
 
-          <div className="mb-8">
-            <span className="text-zinc-900 font-extrabold text-lg tracking-tighter">Rezoomed</span>
-          </div>
-
-          <div className="space-y-4 mb-8">
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-zinc-900 leading-[1.1]">
-              Unlock <span className="text-[#80da92]">{config.title}</span>
+          {/* Heading */}
+          <div className="mt-4 space-y-3 pr-8">
+            <h2 className="max-w-md text-[2.05rem] font-black leading-[0.98] text-on-background sm:text-[2.55rem]">
+              Unlock {config.label}.
             </h2>
-            <p className="text-zinc-600 text-lg font-medium max-w-md">
+            <p className="max-w-md text-sm leading-6 text-on-surface-variant sm:text-[15px]">
               {config.description}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-6 mb-8">
-            <div className="sm:col-span-2 relative min-h-40 overflow-hidden rounded-xl bg-[#a3ffb3]/20">
-              {isTailorFeature ? (
+          {/* Feature card with mascot */}
+          <div className="mt-5 grid grid-cols-[auto_1fr] gap-4 rounded-[1.4rem] border border-primary/12 bg-white/82 p-3.5 shadow-[0_18px_42px_rgba(2,109,50,0.08)]">
+            {isTailorFeature ? (
+              <div className="relative h-28 w-28 overflow-hidden rounded-[1rem] border border-primary/12 bg-primary-container/30 sm:h-32 sm:w-32">
                 <Image
                   src="/pro-gate-tailor-v2.jpg"
                   alt="Rezoomed Tailor Mode mascot"
                   fill
                   priority
-                  sizes="(min-width: 640px) 192px, 100vw"
+                  sizes="128px"
                   className="object-cover object-center"
                 />
-              ) : (
-                <div className="flex h-full min-h-40 items-center justify-center">
-                  <div className="h-16 w-16 rounded-2xl bg-[#a3ffb3]/40 flex items-center justify-center">
-                    <Zap size={28} className="text-[#026d32]" />
-                  </div>
+              </div>
+            ) : (
+              <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-[1rem] border border-primary/12 bg-primary-container/30 sm:h-32 sm:w-32">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-container/60">
+                  <Zap size={24} className="text-primary" />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            <div className="sm:col-span-3 space-y-4 py-2">
+            <div className="flex flex-col justify-center gap-3 py-1">
               {config.bullets.map((bullet) => (
-                <div key={bullet} className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-[#026d32] shrink-0" />
-                  <span className="text-sm font-medium text-zinc-900 leading-tight">{bullet}</span>
+                <div key={bullet} className="flex items-start gap-2.5">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-primary" />
+                  <span className="text-sm font-semibold leading-tight text-zinc-800">{bullet}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="space-y-4 text-center sm:text-left relative z-20">
+          {/* FOMO stat — tailor only */}
+          {isTailorFeature && (
+            <div className="mt-5 rounded-[1.1rem] border border-primary/15 bg-primary-container/25 px-4 py-3.5 text-center">
+              <p className="text-[1.35rem] font-black leading-tight text-primary">80%</p>
+              <p className="mt-1 text-xs font-bold text-on-surface-variant">
+                more callbacks with a tailored resume vs. a generic one.
+              </p>
+            </div>
+          )}
+
+          {/* CTA */}
+          <div className="mt-5 space-y-2.5">
             <Link
               href="/dashboard/pricing"
               onClick={onClose}
-              className="w-full py-4 px-8 bg-[#a3ffb3] hover:bg-[#9bf7ac] transition-all duration-200 text-[#19793c] font-bold text-lg rounded-full flex items-center justify-center gap-2 group"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-4 text-sm font-black uppercase tracking-[0.14em] text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
             >
               Upgrade to Pro
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              <ArrowRight size={16} />
             </Link>
-            <div className="flex justify-center">
-              <button
-                onClick={onClose}
-                className="inline-flex items-center gap-2 text-zinc-500 hover:text-zinc-700 text-sm font-semibold transition-colors"
-              >
-                {isTailorFeature ? <ArrowLeft size={16} /> : null}
-                {isTailorFeature ? 'Back' : 'Maybe later'}
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-full text-sm font-semibold text-on-surface-variant transition-colors hover:text-on-background"
+            >
+              Maybe later
+            </button>
           </div>
 
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-[#a3ffb3]/20 rounded-full blur-[80px] pointer-events-none"></div>
-          <div className="absolute -top-24 -left-24 w-64 h-64 bg-[#80da92]/10 rounded-full blur-[80px] pointer-events-none"></div>
+          <p className="mt-4 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/70">
+            Protected by our 14-day refund policy
+          </p>
         </div>
       </div>
     </div>

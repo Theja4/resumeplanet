@@ -308,7 +308,7 @@ export default function DashboardHomeClient({
 
               <div className="pointer-events-none relative ml-auto h-[15rem] w-full max-w-[14rem]">
                 <Image
-                  src="/ats-mascot.png"
+                  src="/ats-mascot.webp"
                   alt=""
                   fill
                   sizes="224px"

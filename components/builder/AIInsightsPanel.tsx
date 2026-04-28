@@ -811,10 +811,10 @@ export default function AIInsightsPanel({
           <div className="mt-4 space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">AI Insights</h3>
             <p className="text-[24px] font-black tracking-tight leading-[1.03] text-white">
-              Don&apos;t send another resume <span className="text-[#9df7bf]">unreviewed</span>.
+              Tired of applying and <span className="text-[#9df7bf]">never hearing back</span>?
             </p>
             <p className="text-sm leading-relaxed text-white/82">
-              One missed keyword or weak bullet can be enough to lose momentum before a recruiter ever reads the rest.
+              Most rejections happen before a human ever sees your resume. A single missing keyword or weak bullet is enough to get filtered out by ATS software.
             </p>
           </div>
 
@@ -836,13 +836,13 @@ export default function AIInsightsPanel({
           <div className="mt-4 rounded-[1.5rem] border border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] p-4 shadow-lg shadow-black/15">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
               <Wand2 size={12} className="text-[#9df7bf]" />
-              Why People Use It
+              The Hard Truth
             </div>
             <p className="mt-3 text-sm font-bold leading-snug text-white">
-              The resumes that get more traction are usually reviewed, tightened, and tailored before they are sent.
+              75% of resumes are rejected by ATS before a recruiter ever opens them.
             </p>
             <p className="mt-2 text-[12px] leading-relaxed text-white/78">
-              Pro helps you catch issues early and tailor faster for each role instead of sending the same version everywhere.
+              If you&apos;re getting ghosted, it&apos;s probably not you — it&apos;s your resume formatting and missing keywords. Pro catches what you can&apos;t see.
             </p>
           </div>
 
@@ -850,7 +850,7 @@ export default function AIInsightsPanel({
             <div className="flex items-start gap-3">
               <Zap size={15} className="mt-0.5 shrink-0 text-[#026d32]" />
               <p className="text-[12px] font-bold leading-relaxed">
-                Every unreviewed application is still a blind bet.
+                Every application you send unreviewed is another chance to get ghosted.
               </p>
             </div>
           </div>
@@ -865,7 +865,7 @@ export default function AIInsightsPanel({
             </Link>
 
             <p className="mt-3 text-center text-[11px] font-medium leading-relaxed text-white/65">
-              Scan. Fix. Tailor. Apply sharper.
+              Stop guessing. Start getting callbacks.
             </p>
           </div>
         </div>

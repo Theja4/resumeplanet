@@ -467,7 +467,7 @@ function HeroSection() {
               {/* Glow behind mascot */}
               <div className="absolute inset-0 blur-[80px] bg-[#A3FFB3]/20 rounded-full scale-125" />
               <Image
-                src="/ats-mascot.png"
+                src="/ats-mascot.webp"
                 alt="Rezoomed mascot"
                 width={380}
                 height={460}
@@ -1073,7 +1073,7 @@ function CTASection() {
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           >
             <Image
-              src="/ats-mascot.png"
+              src="/ats-mascot.webp"
               alt="Rezoomed mascot"
               width={120}
               height={145}

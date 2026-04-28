@@ -276,7 +276,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
 
             <div className="relative order-first min-h-[12rem] overflow-hidden rounded-[1.5rem] border border-primary/12 bg-primary-container/30 shadow-[0_18px_42px_rgba(2,109,50,0.08)] lg:order-last lg:min-h-full">
               <Image
-                src="/exit-intent-mascot.png"
+                src="/exit-intent-mascot.webp"
                 alt="Rezoomed mascot"
                 fill
                 priority

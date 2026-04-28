@@ -129,7 +129,8 @@ export default function UniversalTemplate({
       : nameSize === 'large'
         ? 'text-base'
         : 'text-sm'
-  const shouldShowSectionGuidance = Boolean(showEmptyStateGuidance)
+  const shouldShowSectionGuidance = (sectionId: string) =>
+    Boolean(showEmptyStateGuidance && highlightedSectionId === sectionId)
   const normalizedSkillSections = normalizeSkillSections(data.skillSections, data.skills)
 
   function renderSectionFrame(
@@ -652,7 +653,7 @@ export default function UniversalTemplate({
   }
 
   function renderSection(id: string, isSidebarContext: boolean = false) {
-    const shouldRenderGuidance = shouldShowSectionGuidance
+    const shouldRenderGuidance = shouldShowSectionGuidance(id)
 
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
