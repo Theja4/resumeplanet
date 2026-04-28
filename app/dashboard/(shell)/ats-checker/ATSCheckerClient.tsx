@@ -179,11 +179,6 @@ function normalizeResumeTitle(title: string) {
 
 function buildAtsBuilderHref(resumeId: string, mode: AnalysisMode) {
   const params = new URLSearchParams({
-    layout: ATS_PREVIEW_CONFIG.layout,
-    header: ATS_PREVIEW_CONFIG.headerStyle,
-    bullet: ATS_PREVIEW_CONFIG.bulletStyle,
-    density: ATS_PREVIEW_CONFIG.density,
-    accent: ATS_PREVIEW_CONFIG.accentColor,
     trimOverflow: '1',
     source: mode === 'match' ? 'match' : 'ats',
   })

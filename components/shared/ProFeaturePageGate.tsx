@@ -24,7 +24,7 @@ type FeatureGateVisual = {
 const FEATURE_VISUALS: Record<string, FeatureGateVisual> = {
   'Tailor Mode': {
     eyebrow: 'Role-specific rewrites',
-    mascotSrc: '/pro-gate-tailor-v3.png',
+    mascotSrc: '/pro-gate-tailor-v4.webp',
     mascotAlt: 'Rezoomed mascot tailoring a resume',
     ctaTitle: 'Unlock Tailor Mode',
     ctaDescription: 'Paste a job description, apply the strongest rewrites, and keep your resume honest.',
@@ -32,7 +32,7 @@ const FEATURE_VISUALS: Record<string, FeatureGateVisual> = {
   },
   'Match Score': {
     eyebrow: 'Resume-to-role fit',
-    mascotSrc: '/pro-gate-match-v3.png',
+    mascotSrc: '/pro-gate-match-v4.webp',
     mascotAlt: 'Rezoomed mascot presenting a match score',
     ctaTitle: 'Unlock Match Score',
     ctaDescription: 'See fit gaps before you apply and focus your edits on the requirements that matter.',
@@ -40,7 +40,7 @@ const FEATURE_VISUALS: Record<string, FeatureGateVisual> = {
   },
   'Cover Letter': {
     eyebrow: 'Application letter draft',
-    mascotSrc: '/pro-gate-cover-letter-v3.png',
+    mascotSrc: '/pro-gate-cover-letter-v4.webp',
     mascotAlt: 'Rezoomed mascot holding a cover letter',
     ctaTitle: 'Unlock Cover Letters',
     ctaDescription: 'Turn your resume and target job into a cleaner first draft without starting from zero.',
@@ -48,7 +48,7 @@ const FEATURE_VISUALS: Record<string, FeatureGateVisual> = {
   },
   'Metadata Enhancer': {
     eyebrow: 'Hidden PDF cleanup',
-    mascotSrc: '/pro-gate-metadata-v3.png',
+    mascotSrc: '/pro-gate-metadata-v4.webp',
     mascotAlt: 'Rezoomed mascot checking PDF metadata',
     ctaTitle: 'Unlock Metadata Enhancer',
     ctaDescription: 'Find weak PDF fields, understand what they affect, and export a cleaner file.',
@@ -58,7 +58,7 @@ const FEATURE_VISUALS: Record<string, FeatureGateVisual> = {
 
 const DEFAULT_VISUAL: FeatureGateVisual = {
   eyebrow: 'Pro workflow',
-  mascotSrc: '/pro-gate-tailor-v3.png',
+  mascotSrc: '/pro-gate-tailor-v4.webp',
   mascotAlt: 'Rezoomed mascot',
   ctaTitle: 'Unlock Pro',
   ctaDescription: 'Upgrade once and use every advanced resume workflow in the dashboard.',

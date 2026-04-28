@@ -115,8 +115,8 @@ export default function DashboardJobBoardPage() {
           <div className="group relative min-h-[31rem]">
             <div className="absolute inset-0 rounded-[2rem] border border-white/70 bg-white/66 shadow-[0_28px_70px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-all duration-500 group-hover:-translate-y-1 group-hover:shadow-[0_34px_82px_rgba(15,23,42,0.16)]" />
             <div className="relative flex min-h-[31rem] flex-col justify-between gap-5 p-4 sm:p-5">
-              <div className="rounded-[1.5rem] border border-black/5 bg-zinc-950 p-4 text-white shadow-[0_20px_48px_rgba(15,23,42,0.18)]">
-                <div className="flex items-center justify-between gap-3">
+              <div className="relative overflow-hidden rounded-[1.5rem] border border-black/5 bg-zinc-950 p-4 text-white shadow-[0_20px_48px_rgba(15,23,42,0.18)]">
+                <div className="relative z-10 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Preview</p>
                     <p className="mt-1 text-lg font-black tracking-tight">Ranked opportunities</p>
@@ -124,7 +124,7 @@ export default function DashboardJobBoardPage() {
                   <BriefcaseBusiness size={20} className="text-emerald-300" strokeWidth={2.2} />
                 </div>
 
-                <div className="mt-4 space-y-2.5">
+                <div className="relative z-10 mt-4 space-y-2.5">
                   {previewJobs.map(job => (
                     <div key={job.title} className="rounded-[1rem] border border-white/10 bg-white/9 p-3 transition-all duration-300 hover:translate-x-1 hover:border-white/20 hover:bg-white/14">
                       <div className="flex items-start justify-between gap-3">
@@ -143,6 +143,16 @@ export default function DashboardJobBoardPage() {
                     </div>
                   ))}
                 </div>
+
+                <Image
+                  src="/job-board-coming-soon-mascot-v3.png"
+                  alt="Rezoomed mascot holding a job briefcase"
+                  width={720}
+                  height={944}
+                  priority
+                  sizes="(min-width: 1024px) 260px, 40vw"
+                  className="pointer-events-none absolute bottom-0 right-0 z-20 hidden h-[15rem] w-auto translate-x-3 translate-y-3 drop-shadow-[0_24px_40px_rgba(15,23,42,0.18)] transition-transform duration-500 group-hover:translate-y-1 group-hover:rotate-1 md:block lg:h-[17rem]"
+                />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
@@ -155,15 +165,6 @@ export default function DashboardJobBoardPage() {
                 ))}
               </div>
 
-              <Image
-                src="/job-board-coming-soon-mascot-v3.png"
-                alt="Rezoomed mascot holding a job briefcase"
-                width={720}
-                height={944}
-                priority
-                sizes="(min-width: 1024px) 300px, 45vw"
-                className="pointer-events-none absolute bottom-2 right-0 hidden h-[19rem] w-auto drop-shadow-[0_24px_40px_rgba(15,23,42,0.12)] transition-transform duration-500 group-hover:-translate-y-2 group-hover:rotate-1 md:block lg:-right-2 lg:h-[21rem]"
-              />
             </div>
           </div>
         </div>

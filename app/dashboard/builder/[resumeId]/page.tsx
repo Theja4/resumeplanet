@@ -100,6 +100,10 @@ function getBuilderAnalyticsSource(searchParams: ReturnType<typeof useSearchPara
   return 'scratch'
 }
 
+function shouldIgnoreTemplateQueryOverrides(source: string | null) {
+  return source === 'ats' || source === 'match'
+}
+
 function getRenderableSectionIds(visibility: BuilderVisibility) {
   return [...(visibility.sectionOrder ?? []), ...(visibility.sidebarSectionOrder ?? [])].filter(
     (sectionId, index, allSectionIds) =>
@@ -365,12 +369,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const requestedMode = searchParams.get('mode')
+  const sourceParam = searchParams.get('source')
   const accentParam = searchParams.get('accent')
   const fontParam = searchParams.get('font')
   const layoutParam = searchParams.get('layout')
   const headerParam = searchParams.get('header')
   const bulletParam = searchParams.get('bullet')
   const densityParam = searchParams.get('density')
+  const ignoreTemplateQueryOverrides = shouldIgnoreTemplateQueryOverrides(sourceParam)
 
   const { requirePro, blockedFeature, clearBlockedFeature } = useProGate()
 
@@ -437,6 +443,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const applyUrlTemplateOverrides = useCallback((baseConfig: Partial<UniversalConfig> | null | undefined) => {
     const config: UniversalConfig = sanitizeUniversalConfig(baseConfig)
 
+    if (ignoreTemplateQueryOverrides) {
+      return config
+    }
+
     if (accentParam) config.accentColor = accentParam
     if (fontParam) {
       const font = FONT_OPTIONS.find((f) => f.id === fontParam)
@@ -448,7 +458,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (densityParam) config.density = densityParam as UniversalConfig['density']
 
     return sanitizeUniversalConfig(config)
-  }, [accentParam, bulletParam, densityParam, fontParam, headerParam, layoutParam])
+  }, [accentParam, bulletParam, densityParam, fontParam, headerParam, ignoreTemplateQueryOverrides, layoutParam])
 
   // Sync visibility density with template config density
   useEffect(() => {
