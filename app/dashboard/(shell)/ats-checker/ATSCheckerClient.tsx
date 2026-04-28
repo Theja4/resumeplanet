@@ -506,12 +506,12 @@ export default function ATSCheckerClient({
   const optimiseButtonLoadingLabel = isMatchMode
     ? 'AI Tailoring… can take 1-2 min'
     : 'AI Improving… can take 1-2 min'
-  const keywordSectionTitle = isMatchMode ? 'Coverage against the target role.' : 'Coverage across your resume.'
+  const keywordSectionTitle = isMatchMode ? 'Coverage against the target role.' : 'Skill evidence across your resume.'
   const keywordSectionDescription = isMatchMode
     ? 'The strongest signals and gaps against the pasted job description.'
-    : 'The strongest signals and missing ATS fundamentals detected in the resume itself.'
-  const missingKeywordLabel = isMatchMode ? 'Missing keywords' : 'Missing signals'
-  const presentKeywordLabel = isMatchMode ? 'Present keywords' : 'Detected strengths'
+    : 'Skills listed on the resume and whether the work experience backs them up.'
+  const missingKeywordLabel = isMatchMode ? 'Missing keywords' : 'Listed skills needing evidence'
+  const presentKeywordLabel = isMatchMode ? 'Present keywords' : 'Skills backed by bullets'
   const mustHaveLabel = isMatchMode ? 'Must-have' : 'Priority gaps'
   const niceToHaveLabel = isMatchMode ? 'Nice-to-have' : 'Existing strengths'
   const reviewHeading = isMatchMode ? 'Review what is hurting fit.' : 'Review what to fix.'
