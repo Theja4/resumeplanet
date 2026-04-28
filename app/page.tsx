@@ -163,9 +163,9 @@ export default async function LandingPage() {
         },
         primaryImageOfPage: {
           '@type': 'ImageObject',
-          url: getAbsoluteUrl('/product-hero-v2.png'),
+          url: getAbsoluteUrl('/product-hero-v2.jpg'),
           width: 1792,
-          height: 1024,
+          height: 836,
         },
         inLanguage: 'en-US',
       },
@@ -178,7 +178,7 @@ export default async function LandingPage() {
         description:
           'AI resume builder, ATS checker, match score, and resume tailoring platform for job seekers.',
         url: siteUrl,
-        image: getAbsoluteUrl('/product-hero-v2.png'),
+        image: getAbsoluteUrl('/product-hero-v2.jpg'),
         publisher: {
           '@id': `${siteUrl}/#organization`,
         },

@@ -16,6 +16,17 @@ function SectionHeadingPreview({
   style: UniversalConfig['sectionHeadingStyle']
   accent: string
 }) {
+  if (style === 'latex-rule') {
+    return (
+      <div className="space-y-0.5">
+        <div className="text-[7px] font-normal leading-none text-black" style={{ fontVariantCaps: 'small-caps' }}>
+          {title}
+        </div>
+        <div className="h-px bg-black" />
+      </div>
+    )
+  }
+
   if (style === 'minimal') {
     return <div className="text-[6px] font-semibold uppercase tracking-[0.16em] text-zinc-700">{title}</div>
   }
@@ -74,10 +85,13 @@ function HeaderPreview({
   accent: string
 }) {
   const isBanner = config.headerStyle === 'banner'
-  const isCentered = config.headerStyle === 'centered'
+  const isTimeless = config.headerStyle === 'timeless'
+  const isCentered = config.headerStyle === 'centered' || isTimeless
   const isCompact = config.headerStyle === 'compact'
   const titleClassName =
-    config.nameSize === 'hero'
+    isTimeless
+      ? 'text-[9px]'
+      : config.nameSize === 'hero'
       ? 'text-[8px]'
       : config.nameSize === 'large'
         ? 'text-[7px]'
@@ -89,7 +103,20 @@ function HeaderPreview({
         ? 'text-[5px]'
         : 'text-[4.5px]'
 
-  const content = (
+  const content = isTimeless ? (
+    <div className="text-center font-serif text-black">
+      <div className={`${titleClassName} font-bold leading-none`} style={{ fontVariantCaps: 'small-caps' }}>
+        Alexandra Reed
+      </div>
+      <div className="mt-1 flex flex-wrap justify-center gap-x-0.5 text-[4.8px] leading-tight text-black">
+        <span>(555) 123-4567</span>
+        <span>|</span>
+        <span className="underline">alex@email.com</span>
+        <span>|</span>
+        <span className="underline">linkedin.com/in/alex</span>
+      </div>
+    </div>
+  ) : (
     <>
       <div className={`${titleClassName} font-black uppercase tracking-[0.16em] text-zinc-900 ${isCentered ? 'text-center' : ''}`}>
         Alexandra Reed
@@ -143,6 +170,30 @@ function ExperiencePreview({
   bulletGlyph: string
 }) {
   const dateText = '2022-Present'
+  const isLatex = config.bulletStyle === 'latex' || config.sectionHeadingStyle === 'latex-rule'
+
+  if (isLatex) {
+    return (
+      <div className="space-y-0.5 pl-1.5 font-serif text-black">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 text-[6px] font-bold leading-tight text-black">Senior Product Manager</div>
+          <div className="shrink-0 text-[5.5px] leading-tight text-black">{dateText}</div>
+        </div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 text-[5px] italic leading-tight text-black">Northwind Systems</div>
+          <div className="shrink-0 text-[5px] italic leading-tight text-black">Seattle, WA</div>
+        </div>
+        <div className="space-y-0 pl-2">
+          {['Scaled onboarding conversion', 'Reduced manual reporting'].map((line) => (
+            <div key={line} className="flex items-start gap-1">
+              <span className="text-[5px] leading-tight text-black">{bulletGlyph}</span>
+              <span className="text-[5px] leading-tight text-black">{line}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-1">
@@ -207,6 +258,7 @@ export default function TemplatePresetThumbnail({
       : safeConfig.bulletStyle === 'square'
         ? '■'
         : '•'
+  const isTimeless = safeConfig.headerStyle === 'timeless'
 
   return (
     <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
@@ -245,7 +297,7 @@ export default function TemplatePresetThumbnail({
             </div>
           </div>
         ) : (
-          <div className={`flex h-full flex-col p-3 ${safeConfig.headerStyle === 'compact' ? 'gap-2.5' : 'gap-3'}`}>
+          <div className={`flex h-full flex-col ${isTimeless ? 'gap-2.5 p-3 font-serif' : safeConfig.headerStyle === 'compact' ? 'gap-2.5 p-3' : 'gap-3 p-3'}`}>
             <HeaderPreview config={safeConfig} accent={accent} />
 
             <div className="space-y-2.5">

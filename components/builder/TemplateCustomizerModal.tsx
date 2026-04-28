@@ -128,6 +128,8 @@ function getFontLabel(fontFamily: string) {
 
 function getHeaderFingerprintLabel(config: UniversalConfig) {
   switch (config.headerStyle) {
+    case 'timeless':
+      return 'Timeless header'
     case 'centered':
       return 'Centered name'
     case 'banner':
@@ -315,12 +317,17 @@ export default function TemplateCustomizerModal({
                           setLocalConfig(preset.config)
                           setActiveOrganizationPresetId(null)
                         }}
-                        className={`rounded-[24px] border p-3 text-left transition-all ${
+                        className={`relative overflow-hidden rounded-[24px] border p-3 text-left transition-all ${
                           isSelected
                             ? 'border-emerald-500 bg-emerald-50 shadow-[0_14px_36px_rgba(16,185,129,0.14)]'
                             : 'border-zinc-200 bg-white hover:border-zinc-300 hover:shadow-[0_12px_28px_rgba(15,23,42,0.08)]'
                         }`}
                       >
+                        {preset.badge && (
+                          <span className="pointer-events-none absolute right-[-34px] top-4 z-10 w-32 rotate-45 bg-black py-1 text-center text-[9px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
+                            {preset.badge}
+                          </span>
+                        )}
                         <TemplatePresetThumbnail config={preset.config} />
                         <div className="mt-3 flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">

@@ -3,6 +3,38 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@font-face {
+  font-family: "Computer Modern Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/computer-modern/CMUSerif-Roman.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Computer Modern Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/computer-modern/CMUSerif-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Computer Modern Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/computer-modern/CMUSerif-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Computer Modern Serif";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/computer-modern/CMUSerif-BoldItalic.woff2") format("woff2");
+}
+
 @theme {
   --color-surface-container: #edeeef;
   --color-primary-fixed-dim: #80da92;

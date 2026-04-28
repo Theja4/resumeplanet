@@ -29,22 +29,29 @@ export async function generateDOCX(
   const accent = hexToDocx(safeConfig.accentColor ?? '#4F46E5')
   const font = primaryFont(safeConfig.fontFamily ?? 'Calibri')
   const isCompressed = safeConfig.density === 'compressed'
+  const isLatexStyle = safeConfig.headerStyle === 'timeless' || safeConfig.bulletStyle === 'latex' || safeConfig.sectionHeadingStyle === 'latex-rule'
   const spacingAfter = isCompressed ? 80 : 160
   const bulletMarker = safeConfig.bulletStyle === 'dash' ? '- ' : safeConfig.bulletStyle === 'square' ? '▪ ' : '• '
-  const headerAlignment = safeConfig.headerStyle === 'centered' ? AlignmentType.CENTER : AlignmentType.LEFT
-  const nameSize = safeConfig.nameSize === 'hero' ? 56 : safeConfig.nameSize === 'large' ? 48 : 42
+  const headerAlignment = safeConfig.headerStyle === 'centered' || safeConfig.headerStyle === 'timeless' ? AlignmentType.CENTER : AlignmentType.LEFT
+  const nameSize = safeConfig.headerStyle === 'timeless' ? 50 : safeConfig.nameSize === 'hero' ? 56 : safeConfig.nameSize === 'large' ? 48 : 42
   const skillSeparator = safeConfig.skillsStyle === 'divider' ? '  •  ' : ', '
 
   // ── Style helpers ──────────────────────────────────────────────────────────
 
   const sectionHeading = (text: string) =>
     new Paragraph({
-      children: [new TextRun({ text: text.toUpperCase(), bold: true, color: accent, font, size: 18 })],
-      spacing: { before: isCompressed ? 160 : 240, after: 40 },
-      ...(safeConfig.sectionHeadingStyle === 'rule'
+      children: [new TextRun({
+        text: safeConfig.sectionHeadingStyle === 'latex-rule' ? text : text.toUpperCase(),
+        bold: safeConfig.sectionHeadingStyle !== 'latex-rule',
+        color: isLatexStyle ? '000000' : accent,
+        font,
+        size: safeConfig.sectionHeadingStyle === 'latex-rule' ? 24 : 18,
+      })],
+      spacing: { before: isLatexStyle ? 120 : isCompressed ? 160 : 240, after: isLatexStyle ? 20 : 40 },
+      ...(safeConfig.sectionHeadingStyle === 'rule' || safeConfig.sectionHeadingStyle === 'latex-rule'
         ? {
             border: {
-              bottom: { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC', space: 2 },
+              bottom: { style: BorderStyle.SINGLE, size: 4, color: isLatexStyle ? '000000' : 'CCCCCC', space: 2 },
             },
           }
         : {}),
@@ -59,11 +66,11 @@ export async function generateDOCX(
   const bullet = (text: string) =>
     new Paragraph({
       children: [
-        new TextRun({ text: bulletMarker, font, size: 20, color: accent }),
-        new TextRun({ text, font, size: 20 }),
+        new TextRun({ text: bulletMarker, font, size: isLatexStyle ? 19 : 20, color: isLatexStyle ? '000000' : accent }),
+        new TextRun({ text, font, size: isLatexStyle ? 19 : 20, color: isLatexStyle ? '000000' : undefined }),
       ],
-      indent: { left: 360 },
-      spacing: { after: spacingAfter / 2 },
+      indent: { left: isLatexStyle ? 460 : 360 },
+      spacing: { after: isLatexStyle ? 20 : spacingAfter / 2 },
     })
 
   const gap = () => new Paragraph({ children: [new TextRun({ text: '' })], spacing: { after: spacingAfter } })
@@ -214,7 +221,9 @@ export async function generateDOCX(
 
   // ── Header ─────────────────────────────────────────────────────────────────
 
-  const contact = [data.email, data.phone, data.location, data.linkedin, data.website]
+  const contact = (safeConfig.headerStyle === 'timeless'
+    ? [data.phone, data.email, data.linkedin, data.website, data.location]
+    : [data.email, data.phone, data.location, data.linkedin, data.website])
     .filter(Boolean)
 
   const headerParas: Array<InstanceType<typeof Paragraph>> = [
@@ -223,7 +232,7 @@ export async function generateDOCX(
       alignment: headerAlignment,
       spacing: { after: 60 },
     }),
-    ...(data.currentRole ? [new Paragraph({
+    ...(data.currentRole && safeConfig.headerStyle !== 'timeless' ? [new Paragraph({
       children: [new TextRun({ text: data.currentRole, font, size: 22, color: accent })],
       alignment: headerAlignment,
       spacing: { after: 60 },
@@ -236,7 +245,7 @@ export async function generateDOCX(
             spacing: { after: index === contact.length - 1 ? 200 : 40 },
           }))
         : [new Paragraph({
-            children: [new TextRun({ text: contact.join('  ·  '), font, size: 18, color: '666666' })],
+            children: [new TextRun({ text: contact.join(safeConfig.headerStyle === 'timeless' ? '  |  ' : '  ·  '), font, size: safeConfig.headerStyle === 'timeless' ? 20 : 18, color: safeConfig.headerStyle === 'timeless' ? '000000' : '666666' })],
             alignment: headerAlignment,
             spacing: { after: 200 },
           })]

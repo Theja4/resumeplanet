@@ -34,7 +34,7 @@ function hexToRgb(hex) {
 
 function getBaseFont(fontFamily) {
   const value = (fontFamily || '').toLowerCase()
-  if (value.includes('times') || value.includes('georgia')) return 'times'
+  if (value.includes('times') || value.includes('georgia') || value.includes('computer modern') || value.includes('latin modern') || value.includes('cmu')) return 'times'
   if (value.includes('courier') || value.includes('mono')) return 'courier'
   return 'helvetica'
 }
@@ -49,8 +49,12 @@ function buildOrderedSectionIds(sectionOrder, sidebarSectionOrder) {
   return [...main, ...sidebar]
 }
 
-function getContactLine(data) {
-  return [data.email, data.phone, data.location, data.linkedin, data.website].filter(Boolean).join('  |  ')
+function getContactLine(data, timeless = false) {
+  const values = timeless
+    ? [data.phone, data.email, data.linkedin, data.website, data.location]
+    : [data.email, data.phone, data.location, data.linkedin, data.website]
+
+  return values.filter(Boolean).join('  |  ')
 }
 
 function getCustomSection(data, id) {
@@ -95,6 +99,26 @@ function hasSectionContent(data, id) {
 
 function createLayoutTokens(config) {
   const compressed = config?.density === 'compressed'
+  const latex = config?.headerStyle === 'timeless' || config?.bulletStyle === 'latex' || config?.sectionHeadingStyle === 'latex-rule'
+
+  if (latex) {
+    return {
+      bodyFontSize: 10,
+      metaFontSize: 10,
+      headingFontSize: 12,
+      itemTitleFontSize: 11,
+      sectionGap: 0.7,
+      itemGap: 0.2,
+      paragraphGap: 0.6,
+      bulletGap: 0,
+      headingAfter: 1.1,
+      titleAfter: 0.1,
+      companyAfter: 0.7,
+      detailAfter: 0.8,
+      dateColumnWidth: 45,
+      blockMinHeight: 12,
+    }
+  }
 
   return {
     bodyFontSize: compressed ? 9.8 : 10.2,
@@ -123,6 +147,7 @@ function createPdfWriter(doc, accent, fontName, config) {
   const contentWidth = pageWidth - marginX * 2
   const bottomLimit = pageHeight - marginBottom
   const tokens = createLayoutTokens(config)
+  const isLatexStyle = config?.headerStyle === 'timeless' || config?.bulletStyle === 'latex' || config?.sectionHeadingStyle === 'latex-rule'
   let y = marginTop
 
   function lineHeight(fontSize, multiplier = 1.25) {
@@ -220,7 +245,7 @@ function createPdfWriter(doc, accent, fontName, config) {
 
   function drawDivider(after = tokens.headingAfter, startX = marginX, endX = pageWidth - marginX) {
     ensureSpace(2.5)
-    doc.setDrawColor(229, 231, 235)
+    doc.setDrawColor(isLatexStyle ? 0 : 229, isLatexStyle ? 0 : 231, isLatexStyle ? 0 : 235)
     doc.setLineWidth(0.2)
     doc.line(startX, y, endX, y)
     y += after
@@ -229,6 +254,14 @@ function createPdfWriter(doc, accent, fontName, config) {
   function writeSectionHeading(title, styleVariant = 'rule') {
     if (!title) return
     ensureSpace(tokens.blockMinHeight)
+
+    if (styleVariant === 'latex-rule') {
+      setTextStyle({ fontSize: tokens.headingFontSize, fontStyle: 'normal', color: [0, 0, 0] })
+      doc.text(String(title), marginX, y)
+      y += lineHeight(tokens.headingFontSize, 1.08)
+      drawDivider(tokens.headingAfter)
+      return
+    }
 
     if (styleVariant === 'minimal') {
       setTextStyle({ fontSize: tokens.headingFontSize, fontStyle: 'bold', color: [17, 24, 39] })
@@ -256,12 +289,14 @@ function createPdfWriter(doc, accent, fontName, config) {
       const text = String(item || '').trim()
       if (!text) continue
       ensureSpace(lineHeight(fontSize, 1.3))
-      setTextStyle({ fontSize, fontStyle: 'normal', color: [55, 65, 81] })
-      doc.text('-', marginX, y)
-      const wrapped = doc.splitTextToSize(text, contentWidth - indent)
+      const markerX = isLatexStyle ? marginX + 8 : marginX
+      const textX = markerX + indent
+      setTextStyle({ fontSize, fontStyle: 'normal', color: isLatexStyle ? [0, 0, 0] : [55, 65, 81] })
+      doc.text(isLatexStyle ? '•' : '-', markerX, y)
+      const wrapped = doc.splitTextToSize(text, pageWidth - marginX - textX)
       for (let index = 0; index < wrapped.length; index += 1) {
         ensureSpace(lineHeight(fontSize, 1.3))
-        doc.text(wrapped[index], marginX + indent, y)
+        doc.text(wrapped[index], textX, y)
         y += lineHeight(fontSize, 1.3)
       }
       y += tokens.bulletGap
@@ -270,7 +305,8 @@ function createPdfWriter(doc, accent, fontName, config) {
 
   function writeHeader(data, config) {
     const banner = config?.headerStyle === 'banner'
-    const contact = getContactLine(data)
+    const timeless = config?.headerStyle === 'timeless'
+    const contact = getContactLine(data, timeless)
 
     if (banner) {
       const bannerHeight = 30
@@ -297,6 +333,22 @@ function createPdfWriter(doc, accent, fontName, config) {
       }
 
       y = bannerHeight + 10
+      return
+    }
+
+    if (timeless) {
+      const centerX = pageWidth / 2
+      setTextStyle({ fontSize: 25, fontStyle: 'bold', color: [0, 0, 0] })
+      doc.text(data.name || 'Your Name', centerX, y, { align: 'center' })
+      y += lineHeight(25, 1.02)
+
+      if (contact) {
+        setTextStyle({ fontSize: 10, fontStyle: 'normal', color: [0, 0, 0] })
+        doc.text(contact, centerX, y, { align: 'center' })
+        y += lineHeight(10, 1.25)
+      }
+
+      y += 2
       return
     }
 
@@ -333,6 +385,7 @@ function createPdfWriter(doc, accent, fontName, config) {
     contentWidth,
     marginX,
     tokens,
+    isLatexStyle,
     sectionHeadingStyle: config?.sectionHeadingStyle ?? 'rule',
     skillsStyle: config?.skillsStyle ?? 'inline',
     dateLayout: config?.dateLayout ?? 'right',
@@ -363,11 +416,13 @@ function renderExperienceItems(writer, items) {
 
   for (const item of items) {
     const roleText = item.title || item.name || ''
-    const companyLine = [item.company, item.location].filter(Boolean).join('  |  ')
+    const companyLine = writer.isLatexStyle ? item.company : [item.company, item.location].filter(Boolean).join('  |  ')
+    const locationLine = writer.isLatexStyle ? item.location : ''
     const dateLabel = [item.startDate || item.date, item.endDate].filter(Boolean).join(' - ')
     const showRightDate = writer.dateLayout === 'right' && Boolean(dateLabel)
     const dateColumnWidth = showRightDate ? writer.tokens.dateColumnWidth : 0
-    const leftMaxWidth = dateLabel ? writer.contentWidth - dateColumnWidth - 4 : writer.contentWidth
+    const itemX = writer.isLatexStyle ? writer.marginX + 4 : writer.marginX
+    const leftMaxWidth = dateLabel ? writer.pageWidth - writer.marginX - itemX - dateColumnWidth - 4 : writer.pageWidth - writer.marginX - itemX
     const bullets = item.bullets || item.highlights || []
     const keepTogetherHeight =
       writer.estimateWrappedHeight(roleText, {
@@ -400,7 +455,8 @@ function renderExperienceItems(writer, items) {
       writer.writeWrappedText(roleText, {
         fontSize: writer.tokens.itemTitleFontSize,
         fontStyle: 'bold',
-        color: [17, 24, 39],
+        color: writer.isLatexStyle ? [0, 0, 0] : [17, 24, 39],
+        x: itemX,
         maxWidth: leftMaxWidth,
         after: writer.tokens.titleAfter,
         lineMultiplier: 1.12,
@@ -411,18 +467,30 @@ function renderExperienceItems(writer, items) {
       writer.setY(startY)
       writer.writeRightAlignedText(dateLabel, writer.pageWidth - writer.marginX, {
         fontSize: writer.tokens.metaFontSize,
-        color: [107, 114, 128],
+        color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
       })
       writer.setY(Math.max(writer.getY(), startY + 4.8))
     }
 
-    if (companyLine) {
+    if (companyLine || locationLine) {
+      const companyStartY = writer.getY()
       writer.writeWrappedText(companyLine, {
         fontSize: writer.tokens.metaFontSize,
-        color: [107, 114, 128],
+        fontStyle: writer.isLatexStyle ? 'italic' : 'normal',
+        color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
+        x: itemX,
         maxWidth: leftMaxWidth,
         after: writer.tokens.companyAfter,
       })
+      if (locationLine) {
+        writer.setY(companyStartY)
+        writer.writeRightAlignedText(locationLine, writer.pageWidth - writer.marginX, {
+          fontSize: writer.tokens.metaFontSize,
+          fontStyle: 'italic',
+          color: [0, 0, 0],
+        })
+        writer.setY(Math.max(writer.getY(), companyStartY + 4.8))
+      }
     }
 
     if (!showRightDate && dateLabel) {
@@ -436,7 +504,9 @@ function renderExperienceItems(writer, items) {
     if (item.summary) {
       writer.writeWrappedText(item.summary, {
         fontSize: writer.tokens.bodyFontSize,
-        color: [55, 65, 81],
+        color: writer.isLatexStyle ? [0, 0, 0] : [55, 65, 81],
+        x: itemX,
+        maxWidth: writer.pageWidth - writer.marginX - itemX,
         after: writer.tokens.paragraphGap,
       })
     }
@@ -454,6 +524,49 @@ function renderEducationSection(writer, items) {
   for (const item of items) {
     const degreeLine = [item.degree, item.field].filter(Boolean).join(' - ')
     const educationDate = getEducationDateLabel(item)
+
+    if (writer.isLatexStyle) {
+      const itemX = writer.marginX + 4
+      const leftMaxWidth = writer.pageWidth - writer.marginX - itemX - (educationDate ? writer.tokens.dateColumnWidth : 0) - 4
+
+      writer.ensureSpace(writer.tokens.blockMinHeight - 2)
+      writer.writeWrappedText(item.institution || '', {
+        fontSize: writer.tokens.itemTitleFontSize,
+        fontStyle: 'bold',
+        color: [0, 0, 0],
+        x: itemX,
+        maxWidth: writer.pageWidth - writer.marginX - itemX,
+        after: writer.tokens.titleAfter,
+      })
+
+      const detail = `${degreeLine}${item.gpa ? `${degreeLine ? ', ' : ''}GPA: ${item.gpa}` : ''}`
+      const detailStartY = writer.getY()
+
+      if (detail) {
+        writer.writeWrappedText(detail, {
+          fontSize: writer.tokens.metaFontSize,
+          fontStyle: 'italic',
+          color: [0, 0, 0],
+          x: itemX,
+          maxWidth: leftMaxWidth,
+          after: writer.tokens.companyAfter,
+        })
+      }
+
+      if (educationDate) {
+        writer.setY(detailStartY)
+        writer.writeRightAlignedText(educationDate, writer.pageWidth - writer.marginX, {
+          fontSize: writer.tokens.metaFontSize,
+          fontStyle: 'italic',
+          color: [0, 0, 0],
+        })
+        writer.setY(Math.max(writer.getY(), detailStartY + 4.8))
+      }
+
+      writer.setY(writer.getY() + writer.tokens.itemGap)
+      continue
+    }
+
     const showRightDate = writer.dateLayout === 'right' && Boolean(educationDate)
     const dateColumnWidth = showRightDate ? writer.tokens.dateColumnWidth : 0
     const leftMaxWidth = educationDate ? writer.contentWidth - dateColumnWidth - 4 : writer.contentWidth
@@ -525,6 +638,37 @@ function renderProjectsSection(writer, items) {
 
   for (const item of items) {
     const bullets = getProjectBullets(item)
+
+    if (writer.isLatexStyle) {
+      const itemX = writer.marginX + 4
+      const technologies = item.technologies?.length ? ` | ${item.technologies.join(', ')}` : ''
+
+      writer.ensureSpace(writer.tokens.blockMinHeight)
+      writer.writeWrappedText(`${item.name || ''}${technologies}`, {
+        fontSize: writer.tokens.metaFontSize,
+        fontStyle: 'normal',
+        color: [0, 0, 0],
+        x: itemX,
+        maxWidth: writer.pageWidth - writer.marginX - itemX,
+        after: writer.tokens.titleAfter,
+        lineMultiplier: 1.12,
+      })
+
+      if (item.description) {
+        writer.writeWrappedText(item.description, {
+          fontSize: writer.tokens.bodyFontSize,
+          color: [0, 0, 0],
+          x: itemX,
+          maxWidth: writer.pageWidth - writer.marginX - itemX,
+          after: writer.tokens.paragraphGap,
+        })
+      }
+
+      writer.writeBulletList(bullets, 4.5, writer.tokens.bodyFontSize)
+      writer.setY(writer.getY() + writer.tokens.itemGap)
+      continue
+    }
+
     const keepTogetherHeight =
       writer.estimateWrappedHeight(item.name || '', {
         fontSize: writer.tokens.itemTitleFontSize - 0.2,
@@ -716,7 +860,9 @@ function renderSkillsSection(writer, data) {
     const line = label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
     writer.writeWrappedText(line, {
       fontSize: writer.tokens.bodyFontSize,
-      color: [55, 65, 81],
+      color: writer.isLatexStyle ? [0, 0, 0] : [55, 65, 81],
+      x: writer.isLatexStyle ? writer.marginX + 4 : writer.marginX,
+      maxWidth: writer.isLatexStyle ? writer.contentWidth - 4 : writer.contentWidth,
       after: writer.tokens.paragraphGap,
     })
   }
@@ -753,7 +899,7 @@ export async function generateResumePdfBlob({ data, config, sectionOrder, sideba
 
   doc.setCreationDate(new Date())
 
-  const writer = createPdfWriter(doc, [accent.r, accent.g, accent.b], fontName)
+  const writer = createPdfWriter(doc, [accent.r, accent.g, accent.b], fontName, safeConfig)
   writer.sectionHeadingStyle = safeConfig.sectionHeadingStyle
   writer.writeHeader(data, safeConfig)
 

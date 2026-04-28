@@ -5,9 +5,9 @@ export const DEFAULT_SEO_DESCRIPTION =
   'Rezoomed helps job seekers build ATS-friendly resumes, check ATS performance, match job descriptions, and land more interviews.'
 
 export const DEFAULT_OG_IMAGE = {
-  url: '/product-hero-v2.png',
+  url: '/product-hero-v2.jpg',
   width: 1792,
-  height: 1024,
+  height: 836,
   alt: 'Rezoomed product screenshot',
 } as const
 

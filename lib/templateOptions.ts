@@ -33,6 +33,7 @@ export interface TemplatePreset {
   id: string
   label: string
   description: string
+  badge?: string
   config: UniversalConfig
 }
 
@@ -43,6 +44,7 @@ export interface OrganizationTemplatePreset extends TemplatePreset {
 }
 
 export const FONT_OPTIONS: FontOption[] = [
+  { id: 'computer-modern', label: 'Computer Modern', value: '"Computer Modern Serif", "Latin Modern Roman", "CMU Serif", "Times New Roman", Times, serif' },
   { id: 'inter', label: 'Inter', value: 'Inter, ui-sans-serif, system-ui, sans-serif' },
   { id: 'calibri', label: 'Calibri', value: 'Calibri, Candara, "Segoe UI", sans-serif' },
   { id: 'arial', label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
@@ -119,6 +121,7 @@ export const COLOR_THEMES: ColorTheme[] = [
 ]
 
 export const HEADER_STYLE_OPTIONS: Array<TemplateOption<UniversalHeaderStyle>> = [
+  { value: 'timeless', label: 'Timeless', description: 'Jake-style centered LaTeX header.' },
   { value: 'classic', label: 'Classic', description: 'Left-aligned with a clear divider.' },
   { value: 'banner', label: 'Banner', description: 'Tinted header block, still single-column.' },
   { value: 'minimal', label: 'Minimal', description: 'Plain hierarchy with more white space.' },
@@ -127,12 +130,14 @@ export const HEADER_STYLE_OPTIONS: Array<TemplateOption<UniversalHeaderStyle>> =
 ]
 
 export const SECTION_HEADING_OPTIONS: Array<TemplateOption<UniversalSectionHeadingStyle>> = [
+  { value: 'latex-rule', label: 'LaTeX Rule', description: 'Small caps heading with a black rule.' },
   { value: 'rule', label: 'Rule', description: 'Uppercase heading with an underline.' },
   { value: 'label', label: 'Label', description: 'Label treatment with a trailing rule.' },
   { value: 'minimal', label: 'Minimal', description: 'Simple title-case headings.' },
 ]
 
 export const BULLET_STYLE_OPTIONS: Array<TemplateOption<UniversalBulletStyle>> = [
+  { value: 'latex', label: 'LaTeX', description: 'Compact itemize bullets.' },
   { value: 'plain', label: 'Dot', description: 'Standard ATS-safe bullets.' },
   { value: 'dash', label: 'Dash', description: 'Flat, understated bullets.' },
   { value: 'square', label: 'Square', description: 'Sharper bullet marker.' },
@@ -171,7 +176,7 @@ function isNonEmptyString(value: unknown): value is string {
 
 function normalizeHeaderStyle(value: unknown): UniversalHeaderStyle {
   if (value === 'sidebar-integrated') return 'compact'
-  if (value === 'classic' || value === 'banner' || value === 'minimal' || value === 'centered' || value === 'compact') {
+  if (value === 'classic' || value === 'banner' || value === 'minimal' || value === 'centered' || value === 'compact' || value === 'timeless') {
     return value
   }
   return DEFAULT_UNIVERSAL_CONFIG.headerStyle
@@ -179,7 +184,7 @@ function normalizeHeaderStyle(value: unknown): UniversalHeaderStyle {
 
 function normalizeBulletStyle(value: unknown): UniversalBulletStyle {
   if (value === 'timeline') return 'plain'
-  if (value === 'plain' || value === 'dash' || value === 'square') return value
+  if (value === 'plain' || value === 'dash' || value === 'square' || value === 'latex') return value
   return DEFAULT_UNIVERSAL_CONFIG.bulletStyle
 }
 
@@ -190,7 +195,7 @@ function normalizeSkillsStyle(value: unknown): UniversalSkillsStyle {
 }
 
 function normalizeSectionHeadingStyle(value: unknown): UniversalSectionHeadingStyle {
-  if (value === 'rule' || value === 'label' || value === 'minimal') return value
+  if (value === 'rule' || value === 'label' || value === 'minimal' || value === 'latex-rule') return value
   return DEFAULT_UNIVERSAL_CONFIG.sectionHeadingStyle
 }
 
@@ -242,12 +247,14 @@ function createPreset(
   id: string,
   label: string,
   description: string,
-  config: Partial<UniversalConfig>
+  config: Partial<UniversalConfig>,
+  badge?: string
 ): TemplatePreset {
   return {
     id,
     label,
     description,
+    badge,
     config: sanitizeUniversalConfig({ ...DEFAULT_UNIVERSAL_CONFIG, ...config }),
   }
 }
@@ -281,6 +288,18 @@ function createOrganizationPreset(
 }
 
 export const ATS_TEMPLATE_PRESETS: TemplatePreset[] = [
+  createPreset('timeless', 'Timeless', 'Jake Gutierrez LaTeX layout with a centered Computer Modern header, black rules, and compact bullets.', {
+    accentColor: '#000000',
+    fontFamily: FONT_OPTIONS.find(font => font.id === 'computer-modern')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,
+    headerStyle: 'timeless',
+    sectionHeadingStyle: 'latex-rule',
+    bulletStyle: 'latex',
+    skillsStyle: 'inline',
+    contactStyle: 'inline',
+    dateLayout: 'right',
+    nameSize: 'hero',
+    density: 'compressed',
+  }, 'Popular'),
   createPreset('executive', 'Executive', 'Strong hierarchy with a formal divider and clean dates.', {
     accentColor: '#1e293b',
     fontFamily: FONT_OPTIONS.find(font => font.id === 'cambria')?.value ?? DEFAULT_UNIVERSAL_CONFIG.fontFamily,

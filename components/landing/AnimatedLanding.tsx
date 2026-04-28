@@ -596,10 +596,10 @@ function ProductShowcase() {
           style={{ scale: imgScale, y: imgY }}
         >
           <Image
-            src="/product-hero-v2.png"
+            src="/product-hero-v2.jpg"
             alt="Rezoomed product screenshot"
             width={1792}
-            height={1024}
+            height={836}
             className="w-full h-auto"
           />
           {/* Glare overlay */}

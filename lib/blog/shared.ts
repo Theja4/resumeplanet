@@ -22,24 +22,24 @@ export interface BlogMediaFallback {
 
 const BLOG_MEDIA_FALLBACKS: Record<string, BlogMediaFallback> = {
   '10-job-search-tips-strategies-for-2026': {
-    coverImage: '/blog/search-2026-hero.png',
-    inlineImages: ['/blog/search-2026-workflow.png'],
+    coverImage: '/blog/search-2026-hero.jpg',
+    inlineImages: ['/blog/search-2026-workflow.jpg'],
   },
   'how-to-follow-up-on-a-job-application-templates-guide': {
-    coverImage: '/blog/follow-up-hero.png',
-    inlineImages: ['/blog/follow-up-template.png'],
+    coverImage: '/blog/follow-up-hero.jpg',
+    inlineImages: ['/blog/follow-up-template.jpg'],
   },
   'us-resume-format-best-practices-examples': {
-    coverImage: '/blog/us-resume-format-hero.png',
-    inlineImages: ['/blog/us-resume-format-layout.png'],
+    coverImage: '/blog/us-resume-format-hero.jpg',
+    inlineImages: ['/blog/us-resume-format-layout.jpg'],
   },
   'top-20-us-jobs-workers-have-more-school-than-roles-require': {
-    coverImage: '/blog/overeducated-jobs-hero.png',
-    inlineImages: ['/blog/overeducated-jobs-map.png'],
+    coverImage: '/blog/overeducated-jobs-hero.jpg',
+    inlineImages: ['/blog/overeducated-jobs-map.jpg'],
   },
   'how-to-land-a-google-job': {
-    coverImage: '/blog/google-job-hero.png',
-    inlineImages: ['/blog/google-job-strategy.png'],
+    coverImage: '/blog/google-job-hero.jpg',
+    inlineImages: ['/blog/google-job-strategy.jpg'],
   },
 }
 
@@ -81,7 +81,7 @@ export function getBlogMediaFallback(slug: string) {
   }
 
   if (GENERATED_BLOG_MEDIA_SLUGS.has(slug)) {
-    const ext = slug.startsWith('how-to-land-a-job-at-') ? 'svg' : 'png'
+    const ext = slug.startsWith('how-to-land-a-job-at-') ? 'svg' : 'jpg'
     return {
       coverImage: `/blog/${slug}-hero.${ext}`,
       inlineImages: [`/blog/${slug}-inline.${ext}`],

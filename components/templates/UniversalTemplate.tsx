@@ -107,11 +107,18 @@ export default function UniversalTemplate({
   const isSidebar = layout === 'sidebar' || layout === 'sidebar-left' || layout === 'sidebar-right'
   const isSidebarRight = layout === 'sidebar-right'
   const isBannerHeader = headerStyle === 'banner'
-  const isCenteredHeader = headerStyle === 'centered'
+  const isTimelessHeader = headerStyle === 'timeless'
+  const isLatexStyle = isTimelessHeader || bulletStyle === 'latex' || sectionHeadingStyle === 'latex-rule'
+  const isCenteredHeader = headerStyle === 'centered' || isTimelessHeader
   const isClassicHeader = headerStyle === 'classic'
   const isCompactHeader = headerStyle === 'compact'
-  const nameClassName =
-    nameSize === 'hero'
+  const nameClassName = isTimelessHeader
+    ? nameSize === 'hero'
+      ? 'text-[34px]'
+      : nameSize === 'large'
+        ? 'text-[31px]'
+        : 'text-[28px]'
+    : nameSize === 'hero'
       ? 'text-[44px]'
       : nameSize === 'large'
         ? 'text-4xl'
@@ -159,6 +166,57 @@ export default function UniversalTemplate({
     accentValue: string
   ) {
     const normalizedSections = normalizeSkillSections(sections)
+
+    if (!isSidebarContext && isLatexStyle) {
+      return (
+        <div className="mt-0.5 text-[13px] leading-[1.25] text-black">
+          {normalizedSections.map((section, sectionIndex) => (
+            <div key={sectionIndex}>
+              {section.title && (
+                <>
+                  <EditableText
+                    value={section.title}
+                    path={`skillSections.${sectionIndex}.title`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className="font-bold text-black"
+                  />
+                  {section.tag ? (
+                    <span>
+                      {' ('}
+                      <EditableText
+                        value={section.tag}
+                        path={`skillSections.${sectionIndex}.tag`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className="font-bold text-black"
+                      />
+                      {')'}
+                    </span>
+                  ) : null}
+                  <span>{': '}</span>
+                </>
+              )}
+              {section.skills.map((skill, skillIndex) => (
+                <React.Fragment key={skillIndex}>
+                  <EditableText
+                    value={skill}
+                    path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className="text-black"
+                  />
+                  {skillIndex < section.skills.length - 1 && <span>, </span>}
+                </React.Fragment>
+              ))}
+            </div>
+          ))}
+        </div>
+      )
+    }
 
     if (skillsStyle === 'stacked') {
       return (
@@ -280,15 +338,48 @@ export default function UniversalTemplate({
     { value: data.location, path: 'location' },
   ].filter((item): item is { value: string; path: string } => Boolean(item.value))
 
+  const timelessContactItems = [
+    { value: data.phone, path: 'phone' },
+    { value: data.email, path: 'email' },
+    { value: data.linkedin, path: 'linkedin' },
+    { value: data.website, path: 'website' },
+    { value: data.location, path: 'location' },
+  ].filter((item): item is { value: string; path: string } => Boolean(item.value))
+
   function renderContactInfo(centered: boolean) {
-    if (contactItems.length === 0) return null
+    const resolvedContactItems = isTimelessHeader ? timelessContactItems : contactItems
+    if (resolvedContactItems.length === 0) return null
+
+    if (isTimelessHeader) {
+      return (
+        <div className="mt-1 flex flex-wrap justify-center gap-x-1 text-center text-[13px] leading-[1.15] text-black">
+          {resolvedContactItems.map((item, index) => {
+            const isLink = item.path === 'email' || item.path === 'linkedin' || item.path === 'website'
+
+            return (
+              <React.Fragment key={item.path}>
+                {index > 0 && <span aria-hidden="true" className="px-1 text-black">|</span>}
+                <EditableText
+                  value={item.value}
+                  path={item.path}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className={`break-words text-black ${isLink ? 'underline underline-offset-2' : ''}`}
+                />
+              </React.Fragment>
+            )
+          })}
+        </div>
+      )
+    }
 
     const baseClassName = isCompressed ? 'text-xs text-gray-500 break-words' : 'text-sm text-gray-500 break-words'
 
     if (contactStyle === 'stacked') {
       return (
         <div className={`mt-3 space-y-1 ${centered ? 'text-center' : ''}`}>
-          {contactItems.map((item) => (
+          {resolvedContactItems.map((item) => (
             <EditableText
               key={item.path}
               value={item.value}
@@ -305,7 +396,7 @@ export default function UniversalTemplate({
 
     return (
       <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-1 ${centered ? 'justify-center' : ''}`}>
-        {contactItems.map((item) => (
+        {resolvedContactItems.map((item) => (
           <EditableText
             key={item.path}
             value={item.value}
@@ -368,32 +459,195 @@ export default function UniversalTemplate({
   }
 
   function renderHeaderBlock() {
+    const headerMarginClassName = isTimelessHeader
+      ? 'mb-4 text-center'
+      : isCenteredHeader
+        ? 'mb-7 text-center'
+        : isCompactHeader
+          ? 'mb-4'
+          : isCompressed
+            ? 'mb-5'
+            : 'mb-7'
+    const headerNameClassName = isTimelessHeader
+      ? `${nameClassName} font-bold text-black break-words leading-none text-center`
+      : `${nameClassName} font-bold text-gray-900 break-words tracking-tight leading-[0.95] ${isCenteredHeader ? 'text-center' : ''}`
+
     return (
-      <div className={isCenteredHeader ? 'mb-7 text-center' : isCompactHeader ? 'mb-4' : isCompressed ? 'mb-5' : 'mb-7'}>
+      <div className={headerMarginClassName}>
         <EditableText
           value={data.name}
           path="name"
           isEditing={isEditing}
           onFieldChange={onFieldChange}
           onNavigateToField={onNavigateToField}
-          className={`${nameClassName} font-bold text-gray-900 break-words tracking-tight leading-[0.95] ${isCenteredHeader ? 'text-center' : ''}`}
+          style={isTimelessHeader ? { fontVariantCaps: 'small-caps' } : undefined}
+          className={headerNameClassName}
           as="h1"
           fallback="Your Name"
         />
-        <EditableText
-          value={data.currentRole}
-          path="currentRole"
-          isEditing={isEditing}
-          onFieldChange={onFieldChange}
-          onNavigateToField={onNavigateToField}
-          style={{ color: accent }}
-          className={`${roleClassName} ${isCompactHeader ? 'mt-1.5' : 'mt-2'} block font-semibold uppercase break-words tracking-[0.18em] ${isCenteredHeader ? 'text-center' : ''}`}
-          fallback="Your Professional Title"
-        />
+        {!isTimelessHeader && (
+          <EditableText
+            value={data.currentRole}
+            path="currentRole"
+            isEditing={isEditing}
+            onFieldChange={onFieldChange}
+            onNavigateToField={onNavigateToField}
+            style={{ color: accent }}
+            className={`${roleClassName} ${isCompactHeader ? 'mt-1.5' : 'mt-2'} block font-semibold uppercase break-words tracking-[0.18em] ${isCenteredHeader ? 'text-center' : ''}`}
+            fallback="Your Professional Title"
+          />
+        )}
 
         {isClassicHeader && <div className="mt-4 h-px w-full bg-gray-200" />}
 
         {renderContactInfo(isCenteredHeader)}
+      </div>
+    )
+  }
+
+  function renderLatexEducationItems() {
+    return (
+      <div className="space-y-[5px]">
+        {data.education.map((edu, i) => {
+          if (!hasEducationItemContent(edu)) return null
+
+          const degreeLine = [edu.degree, edu.field].filter(Boolean).join(', ')
+          const educationDate = getEducationDateLabel(edu)
+
+          return (
+            <div key={i} className="pl-[14px] text-black">
+              <div className="flex items-start justify-between gap-4">
+                <EditableText
+                  value={edu.institution}
+                  path={`education.${i}.institution`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className="min-w-0 flex-1 break-words text-[15px] font-bold leading-[1.12] text-black"
+                />
+              </div>
+
+              {(degreeLine || educationDate || edu.gpa) && (
+                <div className="mt-[1px] flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 break-words text-[13px] italic leading-[1.15] text-black">
+                    {degreeLine ? (
+                      <>
+                        <EditableText
+                          value={edu.degree}
+                          path={`education.${i}.degree`}
+                          isEditing={isEditing}
+                          onFieldChange={onFieldChange}
+                          onNavigateToField={onNavigateToField}
+                          className="text-[13px] italic leading-[1.15] text-black"
+                        />
+                        {edu.field ? <span>, </span> : null}
+                        {edu.field ? (
+                          <EditableText
+                            value={edu.field}
+                            path={`education.${i}.field`}
+                            isEditing={isEditing}
+                            onFieldChange={onFieldChange}
+                            onNavigateToField={onNavigateToField}
+                            className="text-[13px] italic leading-[1.15] text-black"
+                          />
+                        ) : null}
+                      </>
+                    ) : null}
+                    {edu.gpa ? <span>{degreeLine ? ', ' : ''}GPA: {edu.gpa}</span> : null}
+                  </div>
+                  {educationDate && (
+                    <EditableText
+                      value={educationDate}
+                      path={`education.${i}.endDate`}
+                      isEditing={isEditing}
+                      onFieldChange={onFieldChange}
+                      onNavigateToField={onNavigateToField}
+                      className="ml-4 shrink-0 text-right text-[13px] italic leading-[1.15] text-black"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  function renderLatexProjectItems() {
+    return (
+      <div className="space-y-[5px]">
+        {data.projects.map((project, projectIndex) => {
+          if (!hasProjectItemContent(project)) return null
+
+          const technologies = project.technologies?.filter(hasText) ?? []
+
+          return (
+            <div key={projectIndex} className="pl-[14px] text-black">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 break-words text-[13px] leading-[1.15] text-black">
+                  <EditableText
+                    value={project.name}
+                    path={`projects.${projectIndex}.name`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className="font-bold text-black"
+                  />
+                  {technologies.length > 0 && (
+                    <>
+                      <span> | </span>
+                      <span className="italic">
+                        {technologies.map((technology, technologyIndex) => (
+                          <React.Fragment key={technologyIndex}>
+                            <EditableText
+                              value={technology}
+                              path={`projects.${projectIndex}.technologies.${technologyIndex}`}
+                              isEditing={isEditing}
+                              onFieldChange={onFieldChange}
+                              onNavigateToField={onNavigateToField}
+                              className="italic text-black"
+                            />
+                            {technologyIndex < technologies.length - 1 && <span>, </span>}
+                          </React.Fragment>
+                        ))}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {project.description && (
+                <EditableText
+                  value={project.description}
+                  path={`projects.${projectIndex}.description`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className="mt-[2px] block break-words text-[13px] leading-[1.22] text-black"
+                  as="p"
+                />
+              )}
+
+              {(project.bullets?.length ?? 0) > 0 && (
+                <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] leading-[1.22] text-black">
+                  {(project.bullets ?? []).map((bullet, bulletIndex) => (
+                    <li key={bulletIndex}>
+                      <EditableText
+                        value={bullet}
+                        path={`projects.${projectIndex}.bullets.${bulletIndex}`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className="break-words text-[13px] leading-[1.22] text-black"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
       </div>
     )
   }
@@ -431,7 +685,7 @@ export default function UniversalTemplate({
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
+            <div className={isLatexStyle && !isSidebarContext ? 'space-y-[5px]' : isCompressed ? 'space-y-3' : 'space-y-5'}>
               {custom.items.map((exp, ei) => (
                 <ExperienceItem
                   key={ei}
@@ -477,7 +731,7 @@ export default function UniversalTemplate({
         return data.experience.some(hasExperienceItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Work Experience" accent={accent} /> : <SectionHeading title="Work Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
+            <div className={isLatexStyle && !isSidebarContext ? 'space-y-[5px]' : isCompressed ? 'space-y-3' : 'space-y-5'}>
               {data.experience.map((exp, ei) =>
                 hasExperienceItemContent(exp) ? (
                   <ExperienceItem
@@ -526,6 +780,7 @@ export default function UniversalTemplate({
         return data.education.some(hasEducationItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Education" accent={accent} /> : <SectionHeading title="Education" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {isLatexStyle && !isSidebarContext ? renderLatexEducationItems() : (
             <div className={isCompressed ? 'space-y-1.5' : 'space-y-3'}>
               {data.education.map((edu, i) =>
                 hasEducationItemContent(edu) ? (
@@ -585,6 +840,7 @@ export default function UniversalTemplate({
                 ) : null
               )}
             </div>
+            )}
           </div>
         ) : shouldRenderGuidance ? (
           <div>
@@ -642,7 +898,7 @@ export default function UniversalTemplate({
         return data.volunteer.length > 0 ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Volunteer" accent={accent} /> : <SectionHeading title="Volunteer" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
+            <div className={isLatexStyle && !isSidebarContext ? 'space-y-[5px]' : isCompressed ? 'space-y-3' : 'space-y-5'}>
               {data.volunteer.map((exp, ei) => (
                 <ExperienceItem
                   key={ei}
@@ -681,6 +937,7 @@ export default function UniversalTemplate({
         return data.projects.some(hasProjectItemContent) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Projects" accent={accent} /> : <SectionHeading title="Projects" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {isLatexStyle && !isSidebarContext ? renderLatexProjectItems() : (
             <div className={isCompressed ? 'space-y-3' : 'space-y-5'}>
               {data.projects.map((proj, i) =>
                 hasProjectItemContent(proj) ? (
@@ -712,6 +969,7 @@ export default function UniversalTemplate({
                 ) : null
               )}
             </div>
+            )}
           </div>
         ) : shouldRenderGuidance ? (
           <div>
@@ -830,6 +1088,7 @@ export default function UniversalTemplate({
   const singleColumnSectionIds = [...(sectionOrder || DEFAULT_VISIBILITY.sectionOrder || []), ...(sidebarSectionOrder || DEFAULT_VISIBILITY.sidebarSectionOrder || [])]
     .filter((value, index, array) => array.indexOf(value) === index)
     .filter(id => id !== 'contact')
+  const pagePaddingClassName = isLatexStyle ? 'p-12' : isCompressed ? 'p-8' : 'p-12'
   const bodyContent = isSidebar ? (
     <div className={`flex flex-1 ${isSidebarRight ? 'flex-row-reverse' : 'flex-row'}`}>
       {/* Sidebar */}
@@ -857,7 +1116,7 @@ export default function UniversalTemplate({
   ) : isBannerHeader ? (
     <div className="flex flex-col">
       {renderSectionFrame('contact', renderBannerHeaderBlock(), false, true)}
-      <div className={isCompressed ? 'p-8' : 'p-12'}>
+      <div className={pagePaddingClassName}>
         {singleColumnSectionIds.map(id => (
           <React.Fragment key={id}>
             {renderSectionFrame(id, renderSection(id))}
@@ -866,7 +1125,7 @@ export default function UniversalTemplate({
       </div>
     </div>
   ) : (
-    <div className={isCompressed ? 'p-8' : 'p-12'}>
+    <div className={pagePaddingClassName}>
       {renderSectionFrame('contact', renderHeaderBlock())}
       {singleColumnSectionIds.map(id => (
         <React.Fragment key={id}>
@@ -898,6 +1157,17 @@ function SectionHeading({
 }) {
   const isCompressed = density === 'compressed'
   const spacingClassName = isCompressed ? 'mt-3 mb-1.5' : 'mt-6 mb-3'
+
+  if (styleVariant === 'latex-rule') {
+    return (
+      <h2
+        className="mt-3 mb-1 border-b border-black pb-[1px] text-[18px] font-normal leading-none text-black"
+        style={{ fontVariantCaps: 'small-caps' }}
+      >
+        {title}
+      </h2>
+    )
+  }
 
   if (styleVariant === 'minimal') {
     return (
@@ -1102,6 +1372,75 @@ function ExperienceItem({
       ) : null}
     </>
   ) : null
+
+  if (bulletStyle === 'latex') {
+    const bulletItems = exp.bullets && exp.bullets.length > 0 ? exp.bullets : exp.highlights ?? []
+    const bulletPath = exp.bullets && exp.bullets.length > 0 ? 'bullets' : 'highlights'
+
+    return (
+      <div className="pl-[14px] text-black">
+        <div className="flex items-start justify-between gap-4">
+          <EditableText
+            value={exp.title || exp.name}
+            path={`${pathPrefix}.${ei}.title`}
+            isEditing={isEditing}
+            onFieldChange={onFieldChange}
+            onNavigateToField={onNavigateToField}
+            className="min-w-0 flex-1 break-words text-[15px] font-bold leading-[1.12] text-black"
+          />
+          {dateContent && (
+            <span className="ml-4 shrink-0 text-right text-[15px] leading-[1.12] text-black">
+              {dateContent}
+            </span>
+          )}
+        </div>
+
+        {(exp.company || exp.location) && (
+          <div className="mt-[1px] flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              {exp.company && (
+                <EditableText
+                  value={exp.company}
+                  path={`${pathPrefix}.${ei}.company`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className="block break-words text-[13px] italic leading-[1.15] text-black"
+                />
+              )}
+            </div>
+            {exp.location && (
+              <EditableText
+                value={exp.location}
+                path={`${pathPrefix}.${ei}.location`}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+                className="ml-4 shrink-0 text-right text-[13px] italic leading-[1.15] text-black"
+              />
+            )}
+          </div>
+        )}
+
+        {bulletItems.length > 0 && (
+          <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] leading-[1.22] text-black">
+            {bulletItems.map((b: string, bi: number) => (
+              <li key={bi} className="pl-0">
+                <EditableText
+                  value={b}
+                  path={`${pathPrefix}.${ei}.${bulletPath}.${bi}`}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className="break-words text-[13px] leading-[1.22] text-black"
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div>
