@@ -6,7 +6,6 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 import { parseResume } from '../lib/parsers/index';
-import fs from 'fs';
 
 async function main() {
   const sampleText = `John Doe

@@ -2,7 +2,6 @@
 
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { Sparkles } from 'lucide-react'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 
 const PAGE_TITLES: [string, string][] = [

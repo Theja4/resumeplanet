@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
 import { FREE_PLAN } from '@/lib/pricing'
@@ -362,6 +363,7 @@ interface UploadZoneProps {
   onClear: () => void
   publicMode?: boolean
   compact?: boolean
+  showClearButton?: boolean
 }
 
 function UploadZone({
@@ -373,6 +375,7 @@ function UploadZone({
   onClear,
   publicMode = false,
   compact = false,
+  showClearButton = true,
 }: UploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -397,13 +400,15 @@ function UploadZone({
               <p className="text-[10px] text-on-surface-variant">{wordCount} words extracted</p>
             </div>
           </div>
-          <button
-            onClick={onClear}
-            className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
-            aria-label="Remove file"
-          >
-            <X size={14} />
-          </button>
+          {showClearButton ? (
+            <button
+              onClick={onClear}
+              className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+              aria-label="Remove file"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
         </div>
         <button
           onClick={() => inputRef.current?.click()}
@@ -1096,7 +1101,7 @@ export default function ATSCheckerClient({
       {!pro && !publicMode && scansLeft === 0 && (
         <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
           You have used all {FREE_PLAN.limits.atsScansPerDay} free scans today. Scans reset every 24 hours.{' '}
-          <a href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</a> for unlimited scans.
+          <Link href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</Link> for unlimited scans.
         </div>
       )}
 
@@ -1108,18 +1113,18 @@ export default function ATSCheckerClient({
               : 'Your free pre-signup ATS scan is already used. Log in or create a free account to run another scan.'}
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <a
+            <Link
               href="/auth/login"
               className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:border-emerald-400 hover:text-emerald-900"
             >
               Log in
-            </a>
-            <a
+            </Link>
+            <Link
               href="/auth/register"
               className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
             >
               Create free account
-            </a>
+            </Link>
           </div>
         </div>
       )}
@@ -1157,9 +1162,9 @@ export default function ATSCheckerClient({
       {!pro && !publicMode && (
         <p className="text-center text-xs text-on-surface-variant">
           Free plan: {FREE_PLAN.limits.atsScansPerDay} {isMatchMode ? 'match' : 'ATS'} scans / day with basic analysis.{' '}
-          <a href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
+          <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
             Upgrade for advanced AI analysis + resume optimisation.
-          </a>
+          </Link>
         </p>
       )}
 
@@ -1231,9 +1236,9 @@ export default function ATSCheckerClient({
                 <p className="text-lg font-black leading-tight text-on-background">
                   {scansLeft} of {FREE_PLAN.limits.atsScansPerDay} scans remaining today.
                 </p>
-                <a href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                <Link href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                   Upgrade for unlimited <ChevronRight size={12} />
-                </a>
+                </Link>
               </div>
             )
           }
@@ -1343,6 +1348,7 @@ export default function ATSCheckerClient({
                   onClear={() => { setUploadedFile(null); setExtractError(null) }}
                   publicMode={publicMode}
                   compact={compactPublicUploadCard}
+                  showClearButton={!isMatchMode}
                 />
               )}
             </div>
@@ -1852,12 +1858,14 @@ export default function ATSCheckerClient({
                   >
                     {isOpeningOptimisedEditor ? 'Opening editor…' : 'Open in editor'}
                   </button>
-                  <button
-                    onClick={() => setActiveTab('results')}
-                    className="px-5 py-3 bg-surface-container-low text-on-surface-variant rounded-xl text-sm font-semibold hover:bg-surface-container transition-colors"
-                  >
-                    Back to Analysis
-                  </button>
+                  {!isMatchMode ? (
+                    <button
+                      onClick={() => setActiveTab('results')}
+                      className="px-5 py-3 bg-surface-container-low text-on-surface-variant rounded-xl text-sm font-semibold hover:bg-surface-container transition-colors"
+                    >
+                      Back to Analysis
+                    </button>
+                  ) : null}
                 </div>
 
                 {openOptimisedError && (

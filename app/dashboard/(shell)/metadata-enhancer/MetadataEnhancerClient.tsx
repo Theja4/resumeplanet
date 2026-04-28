@@ -11,7 +11,6 @@ import {
   Download,
   Wand2,
   ChevronDown,
-  X,
 } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { MAX_RESUME_UPLOAD_BYTES, MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
@@ -436,12 +435,6 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
                       {(uploadedFile.size / 1024).toFixed(0)} KB · Click to replace
                     </p>
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setUploadedFile(null); setAuditResult(null) }}
-                    className="ml-2 rounded-full p-1 text-on-surface-variant hover:bg-black/10"
-                  >
-                    <X size={14} />
-                  </button>
                 </div>
               ) : (
                 <>

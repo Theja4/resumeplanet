@@ -21,7 +21,6 @@ function buildUpdatedSkillSections(data: ResumeData, nextSkills: string[]) {
   }
 
   const currentSections = normalizeSkillSections(data.skillSections, data.skills)
-  const existingSkills = currentSections.flatMap(section => section.skills)
   const lowerNextSkills = new Map(normalizedSkills.map(skill => [skill.toLowerCase(), skill]))
   const assigned = new Set<string>()
 

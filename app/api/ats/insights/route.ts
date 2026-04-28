@@ -10,7 +10,7 @@ import {
   improvesIntendedCriterion,
   startsWithWeakResumePhrase,
 } from '@/lib/ai-insights'
-import { getEducationDateLabel, getProjectBullets, getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
+import { getEducationDateLabel, getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 

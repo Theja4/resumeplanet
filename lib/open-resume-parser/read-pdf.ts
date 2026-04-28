@@ -1,7 +1,7 @@
 // Getting pdfjs to work is tricky. The following 3 lines would make it work
 // https://stackoverflow.com/a/63486898/7699841
 import * as pdfjs from "pdfjs-dist";
-// @ts-ignore
+// @ts-expect-error pdfjs-dist does not expose typed worker entry metadata here.
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.entry";
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -38,7 +38,6 @@ export const readPdf = async (fileUrl: string): Promise<TextItems> => {
     const pageTextItems = textContent.items.map((item) => {
       const {
         str: text,
-        dir, // Remove text direction
         transform,
         fontName: pdfFontName,
         ...otherProps

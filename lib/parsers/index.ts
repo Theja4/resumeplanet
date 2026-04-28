@@ -3,6 +3,8 @@ import pdfjsParser from './pdfjs'
 import claudeParser from './claude'
 
 export async function parseResume(buffer: Buffer, fileType: string, _plan?: 'standard'): Promise<ResumeData> {
+  void _plan
+
   try {
     // LLM-based parser (semantic extraction via Gemini on OpenRouter)
     return await claudeParser.parse(buffer, fileType)

@@ -85,7 +85,8 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     if (target) {
       target.focus()
       target.select()
-      setPendingFocusIndex(null)
+      const frame = window.requestAnimationFrame(() => setPendingFocusIndex(null))
+      return () => window.cancelAnimationFrame(frame)
     }
   }, [pendingFocusIndex, sections.length])
 

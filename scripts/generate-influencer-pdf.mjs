@@ -1,5 +1,4 @@
 import puppeteer from 'puppeteer-core';
-import { writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 const html = `<!DOCTYPE html>

@@ -3,6 +3,8 @@ import { getPublishedBlogPosts } from '@/lib/blog'
 import { getBlogMediaFallback } from '@/lib/blog/shared'
 import { getSiteUrl } from '@/lib/site'
 
+type SitemapChangeFrequency = NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>
+
 const PUBLIC_ROUTES = [
   '/',
   '/blog',
@@ -27,7 +29,7 @@ function getRoutePriority(route: string) {
   return 0.5
 }
 
-function getRouteChangeFrequency(route: string) {
+function getRouteChangeFrequency(route: string): SitemapChangeFrequency {
   if (route === '/' || route === '/jobs') return 'daily'
   return 'weekly'
 }
@@ -40,7 +42,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = PUBLIC_ROUTES.map(route => ({
     url: `${siteUrl}${route}`,
     lastModified: now,
-    changeFrequency: getRouteChangeFrequency(route) as any,
+    changeFrequency: getRouteChangeFrequency(route),
     priority: getRoutePriority(route),
   }))
 

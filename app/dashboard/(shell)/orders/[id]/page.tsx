@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Check, Clock, Download, ShieldCheck, Star, Trophy, Users, Globe } from 'lucide-react'
+import { Check, Clock, Download, ShieldCheck, Trophy, Users } from 'lucide-react'
 import type { Order } from '@/types'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { HUMAN_WRITTEN_ORDER } from '@/lib/pricing'
@@ -242,7 +242,7 @@ export default async function OrderDetailPage({ params, searchParams }: Props) {
             {o.job_description && (
               <div className="mt-8 pt-8 border-t border-black/5">
                 <p className="text-[10px] font-black text-on-surface-variant/40 uppercase tracking-[0.2em] mb-3">Target Context</p>
-                <p className="text-sm text-on-surface-variant leading-7 line-clamp-3 italic">"{o.job_description}"</p>
+                <p className="text-sm text-on-surface-variant leading-7 line-clamp-3 italic">&ldquo;{o.job_description}&rdquo;</p>
               </div>
             )}
           </DashboardSurface>

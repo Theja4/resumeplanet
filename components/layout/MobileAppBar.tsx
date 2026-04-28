@@ -47,7 +47,8 @@ export default function MobileAppBar({ initials }: { initials: string }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    setMenuOpen(false)
+    const frame = window.requestAnimationFrame(() => setMenuOpen(false))
+    return () => window.cancelAnimationFrame(frame)
   }, [pathname])
 
   return (

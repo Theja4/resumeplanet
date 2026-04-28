@@ -14,8 +14,8 @@ import {
 } from 'framer-motion'
 import {
   Sparkles, BarChart3, Target, FileText, Wand2, Shield,
-  FileUser, BriefcaseBusiness, Check, ArrowRight, Star,
-  ChevronRight, Zap, TrendingUp, Users,
+  FileUser, Check, ArrowRight, Star,
+  ChevronRight, Zap, TrendingUp,
 } from 'lucide-react'
 
 // ── Easing ──────────────────────────────────────────────────────────────────
@@ -33,7 +33,8 @@ function seededRandom(seed: number) {
 function FloatingParticles() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => {
-    setMounted(true)
+    const frame = window.requestAnimationFrame(() => setMounted(true))
+    return () => window.cancelAnimationFrame(frame)
   }, [])
 
   if (!mounted) {
@@ -275,11 +276,14 @@ function Typewriter({ words, className = '' }: { words: string[]; className?: st
   const [hasAnimated, setHasAnimated] = useState(false)
 
   useEffect(() => {
-    setHasAnimated(true)
+    const frame = window.requestAnimationFrame(() => setHasAnimated(true))
     const timer = setInterval(() => {
       setIdx(i => (i + 1) % words.length)
     }, 3000)
-    return () => clearInterval(timer)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      clearInterval(timer)
+    }
   }, [words.length])
 
   return (

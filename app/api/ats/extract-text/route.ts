@@ -4,7 +4,6 @@ import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { resumeDataToPlainText } from '@/lib/resume-data'
-import type { ResumeData } from '@/types'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES

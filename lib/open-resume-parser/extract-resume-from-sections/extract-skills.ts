@@ -12,7 +12,7 @@ const initialFeaturedSkills: FeaturedSkill[] = Array(6).fill({
 });
 
 // Simple deep clone for small objects
-const deepClone = <T extends { [key: string]: any }>(object: T): T =>
+const deepClone = <T>(object: T): T =>
   JSON.parse(JSON.stringify(object));
 
 export const extractSkills = (sections: ResumeSectionToLines) => {

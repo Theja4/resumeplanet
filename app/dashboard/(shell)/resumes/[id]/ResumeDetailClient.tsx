@@ -7,7 +7,7 @@ import { ArrowLeft, BarChart2, Layout, Save, X, Plus, Trash2, PenLine } from 'lu
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { getEducationDateLabel, getResumeSkills, syncResumeData } from '@/lib/resume-data'
+import { getEducationDateLabel, syncResumeData } from '@/lib/resume-data'
 import BuilderSkillsEditor from '@/components/builder/SkillsEditor'
 import { updateResumeData } from '../actions'
 import type { Resume, ATSScore, ResumeData, ExperienceItem, EducationItem } from '@/types'

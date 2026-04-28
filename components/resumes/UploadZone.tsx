@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import type { Resume, ResumeData } from '@/types'
@@ -129,128 +129,125 @@ export default function UploadZone({
     setIsTakingLong(false)
   }
 
-  const uploadFile = useCallback(
-    async (file: File) => {
-      // Validate first
-      const validationError = validateFile(file)
-      if (validationError) {
-        setErrorMessage(validationError)
-        setState('error')
-        return
-      }
+  async function uploadFile(file: File) {
+    // Validate first
+    const validationError = validateFile(file)
+    if (validationError) {
+      setErrorMessage(validationError)
+      setState('error')
+      return
+    }
 
-      // Phase 1: Client-side parsing
-      setState('uploading')
-      resetProgress()
-      setErrorMessage(null)
-      stopLongRunningTimer()
-      const parseStartedAt = performance.now()
+    // Phase 1: Client-side parsing
+    setState('uploading')
+    resetProgress()
+    setErrorMessage(null)
+    stopLongRunningTimer()
+    const parseStartedAt = performance.now()
 
-      Analytics.resumeUploaded({
-        fileSize: file.size,
-        pageCount: 1,
-        fileType: file.type || 'application/pdf',
+    Analytics.resumeUploaded({
+      fileSize: file.size,
+      pageCount: 1,
+      fileType: file.type || 'application/pdf',
+    })
+
+    let parsedData: Awaited<ReturnType<typeof parsePdfClient>> | null = null
+    try {
+      parsedData = await parsePdfClient(file)
+      Analytics.resumeParseCompleted({
+        sectionCount: countResumeSections(parsedData),
+        durationMs: Math.round(performance.now() - parseStartedAt),
       })
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err)
+      Analytics.resumeParseFailed({
+        error: errMsg,
+      })
+    }
 
-      let parsedData: Awaited<ReturnType<typeof parsePdfClient>> | null = null
-      try {
-        parsedData = await parsePdfClient(file)
-        Analytics.resumeParseCompleted({
-          sectionCount: countResumeSections(parsedData),
-          durationMs: Math.round(performance.now() - parseStartedAt),
-        })
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err)
-        Analytics.resumeParseFailed({
-          error: errMsg,
-        })
+    setProgressMonotonic(30)
+
+    // Phase 2: Upload + save to server (server receives parsed data)
+    setState('parsing')
+    setProgressMonotonic(40)
+    startLongRunningTimer()
+    startParsingAnimation()
+
+    const formData = new FormData()
+    formData.append('file', file)
+    if (parsedData) {
+      formData.append('parsedData', JSON.stringify(parsedData))
+    }
+
+    const xhr = new XMLHttpRequest()
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        // 40-60% range for upload
+        const uploadProgress = 40 + Math.round((event.loaded / event.total) * 20)
+        setProgressMonotonic(uploadProgress)
       }
+    }
 
-      setProgressMonotonic(30)
+    xhr.onload = () => {
+      stopAnimation()
+      stopLongRunningTimer()
 
-      // Phase 2: Upload + save to server (server receives parsed data)
-      setState('parsing')
-      setProgressMonotonic(40)
-      startLongRunningTimer()
-      startParsingAnimation()
-
-      const formData = new FormData()
-      formData.append('file', file)
-      if (parsedData) {
-        formData.append('parsedData', JSON.stringify(parsedData))
-      }
-
-      const xhr = new XMLHttpRequest()
-
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          // 40-60% range for upload
-          const uploadProgress = 40 + Math.round((event.loaded / event.total) * 20)
-          setProgressMonotonic(uploadProgress)
-        }
-      }
-
-      xhr.onload = () => {
-        stopAnimation()
-        stopLongRunningTimer()
-
-        if (xhr.status === 409) {
-          // Duplicate file — parse the response to get the existing resume ID
-          try {
-            const body = JSON.parse(xhr.responseText)
-            setErrorMessage(
-              body.error === 'DUPLICATE_FILE'
-                ? 'This file was already uploaded recently.'
-                : (ERROR_MESSAGES[body.error] ?? ERROR_MESSAGES.default)
-            )
-          } catch {
-            setErrorMessage(ERROR_MESSAGES.default)
-          }
-          setState('error')
-          return
-        }
-
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const body = JSON.parse(xhr.responseText)
-            if (body.success && body.data) {
-              setProgressMonotonic(100)
-              setState('done')
-              requestAnimationFrame(() => {
-                onUploadSuccess(body.data as Resume)
-                setState('idle')
-                resetProgress()
-              })
-              return
-            }
-          } catch {
-            // fall through to error
-          }
-        }
-
-        // Non-2xx or bad body
+      if (xhr.status === 409) {
+        // Duplicate file — parse the response to get the existing resume ID
         try {
           const body = JSON.parse(xhr.responseText)
-          const base = ERROR_MESSAGES[body.error] ?? ERROR_MESSAGES.default
-          setErrorMessage(body.detail ? `${base} (${body.detail})` : base)
+          setErrorMessage(
+            body.error === 'DUPLICATE_FILE'
+              ? 'This file was already uploaded recently.'
+              : (ERROR_MESSAGES[body.error] ?? ERROR_MESSAGES.default)
+          )
         } catch {
           setErrorMessage(ERROR_MESSAGES.default)
         }
         setState('error')
+        return
       }
 
-      xhr.onerror = () => {
-        stopAnimation()
-        stopLongRunningTimer()
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const body = JSON.parse(xhr.responseText)
+          if (body.success && body.data) {
+            setProgressMonotonic(100)
+            setState('done')
+            requestAnimationFrame(() => {
+              onUploadSuccess(body.data as Resume)
+              setState('idle')
+              resetProgress()
+            })
+            return
+          }
+        } catch {
+          // fall through to error
+        }
+      }
+
+      // Non-2xx or bad body
+      try {
+        const body = JSON.parse(xhr.responseText)
+        const base = ERROR_MESSAGES[body.error] ?? ERROR_MESSAGES.default
+        setErrorMessage(body.detail ? `${base} (${body.detail})` : base)
+      } catch {
         setErrorMessage(ERROR_MESSAGES.default)
-        setState('error')
       }
+      setState('error')
+    }
 
-      xhr.open('POST', '/api/resume/parse')
-      xhr.send(formData)
-    },
-    [onUploadSuccess]
-  )
+    xhr.onerror = () => {
+      stopAnimation()
+      stopLongRunningTimer()
+      setErrorMessage(ERROR_MESSAGES.default)
+      setState('error')
+    }
+
+    xhr.open('POST', '/api/resume/parse')
+    xhr.send(formData)
+  }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()

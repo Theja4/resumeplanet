@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, Sparkles, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, CreditCard, ListChecks, Lock, Target } from 'lucide-react'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import UpgradeButton from './UpgradeButton'
 
@@ -10,8 +10,6 @@ interface ProFeaturePageGateProps {
   description: string
   bullets: string[]
   analyticsLocation: string
-  backHref?: string
-  backLabel?: string
 }
 
 type FeatureGateVisual = {
@@ -88,28 +86,20 @@ const FEATURE_CARD_STYLES = [
   },
 ]
 
+const FEATURE_CARD_ICONS = [Target, ListChecks, CreditCard]
+
 export default function ProFeaturePageGate({
   feature,
   title,
   description,
   bullets,
   analyticsLocation,
-  backHref = '/dashboard/resumes',
-  backLabel = 'Back',
 }: ProFeaturePageGateProps) {
   const visual = FEATURE_VISUALS[feature] ?? DEFAULT_VISUAL
 
   return (
     <div className="mx-auto max-w-7xl">
       <DashboardSurface variant="default" className="p-5 sm:p-7 lg:p-8">
-        <Link
-          href={backHref}
-          aria-label="Close"
-          className="absolute right-4 top-4 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/6 bg-white/88 text-on-surface-variant shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-colors hover:text-on-background"
-        >
-          <X size={18} strokeWidth={2.2} />
-        </Link>
-
         <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.34),transparent_52%),radial-gradient(circle_at_top_right,rgba(2,109,50,0.12),transparent_42%)]" />
 
         <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,34rem)] lg:items-center">
@@ -150,13 +140,6 @@ export default function ProFeaturePageGate({
                     className="!rounded-full !bg-zinc-950 !px-6 !py-3.5 !text-sm !font-black !uppercase !tracking-[0.14em] !text-white !shadow-[0_18px_38px_rgba(15,23,42,0.18)] hover:!-translate-y-0.5 hover:!bg-zinc-900"
                   />
                 </div>
-                <Link
-                  href={backHref}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-black/8 bg-white/82 px-5 py-3 text-sm font-bold text-on-surface transition-all hover:-translate-y-0.5 hover:bg-white"
-                >
-                  <ArrowLeft size={16} strokeWidth={2.2} />
-                  {backLabel}
-                </Link>
               </div>
               <p className="text-sm leading-6 text-on-surface-variant">
                 {visual.ctaDescription}
@@ -176,7 +159,10 @@ export default function ProFeaturePageGate({
                 className="object-contain object-center p-5 transition-transform duration-500 hover:scale-[1.03]"
               />
             </div>
-            <div className="absolute -bottom-4 left-5 right-5 rounded-[1.25rem] border border-white/70 bg-white/88 px-4 py-3 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-xl">
+            <Link
+              href="/dashboard/pricing"
+              className="absolute -bottom-4 left-5 right-5 rounded-[1.25rem] border border-white/70 bg-white/88 px-4 py-3 shadow-[0_20px_50px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_24px_58px_rgba(15,23,42,0.16)]"
+            >
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Pro Access</p>
@@ -184,7 +170,7 @@ export default function ProFeaturePageGate({
                 </div>
                 <ArrowRight size={18} className="shrink-0 text-primary" strokeWidth={2.2} />
               </div>
-            </div>
+            </Link>
           </div>
         </div>
       </DashboardSurface>
@@ -192,13 +178,14 @@ export default function ProFeaturePageGate({
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         {bullets.map((bullet, index) => {
           const style = FEATURE_CARD_STYLES[index % FEATURE_CARD_STYLES.length]
+          const FeatureIcon = FEATURE_CARD_ICONS[index % FEATURE_CARD_ICONS.length]
           return (
           <div
             key={bullet}
             className={`group rounded-[1.25rem] border px-4 py-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 ${style.card}`}
           >
             <div className={`flex h-9 w-9 items-center justify-center rounded-full transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110 ${style.icon}`}>
-              <Sparkles size={16} strokeWidth={2.2} />
+              <FeatureIcon size={16} strokeWidth={2.2} />
             </div>
             <p className="mt-3 text-sm leading-6 text-on-surface">{bullet}</p>
           </div>

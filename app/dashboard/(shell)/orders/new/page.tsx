@@ -11,7 +11,6 @@ import {
   Loader2,
   Target,
   Users,
-  Apple,
   FileUp,
   Upload,
 } from 'lucide-react'
@@ -284,19 +283,18 @@ export default function NewOrderPage() {
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
 
   useEffect(() => {
-    if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
-      router.replace('/dashboard')
-    }
-  }, [router])
-
-  if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
-    return null
-  }
-
-  useEffect(() => {
     async function loadResumes() {
+      if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+        router.replace('/dashboard')
+        setIsLoadingResumes(false)
+        return
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setIsLoadingResumes(false)
+        return
+      }
 
       const { data } = await supabase
         .from('resumes')
@@ -309,7 +307,11 @@ export default function NewOrderPage() {
     }
 
     loadResumes()
-  }, [supabase])
+  }, [router, supabase])
+
+  if (!HUMAN_WRITTEN_SERVICE_ENABLED) {
+    return null
+  }
 
   async function handleFileUpload(file: File) {
     setIsExtracting(true)

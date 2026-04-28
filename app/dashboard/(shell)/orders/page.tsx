@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ShoppingBag, Plus, ArrowRight, ShieldCheck, Trophy, Zap, Timer, Apple, Globe, Infinity } from 'lucide-react'
+import { Plus, ArrowRight, ShieldCheck, Trophy, Zap, Timer } from 'lucide-react'
 
 import type { Order } from '@/types'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'

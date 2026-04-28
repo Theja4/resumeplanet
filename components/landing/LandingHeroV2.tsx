@@ -36,9 +36,6 @@ export default function LandingHeroV2() {
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setActiveWordIndex(INITIAL_WORD_INDEX)
-      setTypedWord(ROTATING_WORDS[INITIAL_WORD_INDEX])
-      setIsHoldingWord(true)
       return
     }
 

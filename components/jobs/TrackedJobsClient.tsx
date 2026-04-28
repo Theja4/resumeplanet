@@ -331,8 +331,9 @@ export default function TrackedJobsClient({
   }, [trackedJobs])
 
   useEffect(() => {
+    const saveResetTimers = saveResetTimersRef.current
     return () => {
-      Object.values(saveResetTimersRef.current).forEach(timer => clearTimeout(timer))
+      Object.values(saveResetTimers).forEach(timer => clearTimeout(timer))
     }
   }, [])
 
@@ -895,46 +896,6 @@ export default function TrackedJobsClient({
         { applied_at: trackerDateToTimestamp(normalized || '') ?? null },
         'We could not save that application date right now.'
       )
-    }
-  }
-
-  async function handleInlineAppliedToday(trackedJobId: string) {
-    const trackedJob = trackedJobs.find(job => job.id === trackedJobId)
-
-    if (!trackedJob) {
-      return
-    }
-
-    const currentValue = getDisplayedAppliedOn(trackedJob)
-    const today = getTodayTrackerDate()
-
-    setInlineDrafts(current => ({
-      ...current,
-      [trackedJobId]: {
-        ...current[trackedJobId],
-        appliedOn: today,
-      },
-    }))
-
-    if (today === currentValue) {
-      return
-    }
-
-    const didSave = await patchTrackedJob(
-      trackedJobId,
-      { appliedOn: today },
-      { applied_at: trackerDateToTimestamp(today) },
-      'We could not save that application date right now.'
-    )
-
-    if (!didSave) {
-      setInlineDrafts(current => ({
-        ...current,
-        [trackedJobId]: {
-          ...current[trackedJobId],
-          appliedOn: currentValue,
-        },
-      }))
     }
   }
 

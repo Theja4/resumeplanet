@@ -3,9 +3,6 @@ export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5
 export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
 
 // ── Rezoomed LLM Pipeline v3 ────────────────────────────────────────────────
-// Swap this one line if DeepSeek faces regulatory issues
-const PRIMARY_MODEL = 'deepseek/deepseek-v3.2'
-
 const FALLBACK_CHAIN = [
   'deepseek/deepseek-v3.2',        // $0.26/$0.38 per 1M — best value
   'google/gemini-2.5-flash',       // $0.30/$2.50 — safe fallback
@@ -387,8 +384,8 @@ export async function callClaude(options: {
     }
 
     return content
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('CLAUDE_TIMEOUT')
     }
     throw error
@@ -396,8 +393,6 @@ export async function callClaude(options: {
     clearTimeout(timeoutId)
   }
 }
-
-const CLAUDE_FALLBACK = process.env.ANTHROPIC_FALLBACK_MODEL || 'qwen/qwen-plus'
 
 function parseJSON<T>(raw: string): T {
   const cleaned = raw
