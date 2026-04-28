@@ -4,7 +4,7 @@ import type { ResumeData, UniversalConfig } from '@/types'
 
 // Convert #RRGGBB hex to the 6-char hex string docx expects (no #)
 function hexToDocx(hex: string): string {
-  return (hex || '#4F46E5').replace('#', '').slice(0, 6).toUpperCase()
+  return (hex || '#026d32').replace('#', '').slice(0, 6).toUpperCase()
 }
 
 // Extract a short font name docx can use (strip fallbacks)
@@ -26,7 +26,7 @@ export async function generateDOCX(
   } = await import('docx')
 
   const safeConfig = sanitizeUniversalConfig(config)
-  const accent = hexToDocx(safeConfig.accentColor ?? '#4F46E5')
+  const accent = hexToDocx(safeConfig.accentColor ?? '#026d32')
   const font = primaryFont(safeConfig.fontFamily ?? 'Calibri')
   const isCompressed = safeConfig.density === 'compressed'
   const isLatexStyle = safeConfig.headerStyle === 'timeless' || safeConfig.bulletStyle === 'latex' || safeConfig.sectionHeadingStyle === 'latex-rule'

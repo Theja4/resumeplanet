@@ -464,7 +464,7 @@ export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
   contactStyle: 'inline',
   dateLayout: 'right',
   nameSize: 'large',
-  accentColor: '#4F46E5', // indigo
+  accentColor: '#026d32', // Forest green preset
   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
   density: 'relaxed',
 }

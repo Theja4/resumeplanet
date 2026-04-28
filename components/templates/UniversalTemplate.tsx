@@ -102,7 +102,7 @@ export default function UniversalTemplate({
     density = 'relaxed',
   } = safeConfig
 
-  const accent = accentColor || '#4F46E5'
+  const accent = accentColor || '#026d32'
   const isCompressed = density === 'compressed'
   const isSidebar = layout === 'sidebar' || layout === 'sidebar-left' || layout === 'sidebar-right'
   const isSidebarRight = layout === 'sidebar-right'
@@ -480,7 +480,6 @@ export default function UniversalTemplate({
           isEditing={isEditing}
           onFieldChange={onFieldChange}
           onNavigateToField={onNavigateToField}
-          style={isTimelessHeader ? { fontVariantCaps: 'small-caps' } : undefined}
           className={headerNameClassName}
           as="h1"
           fallback="Your Name"

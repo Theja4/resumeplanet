@@ -16,13 +16,13 @@ function sanitizePdfText(value) {
 }
 
 function hexToRgb(hex) {
-  const normalized = (hex || '#4F46E5').replace('#', '').trim()
+  const normalized = (hex || '#026d32').replace('#', '').trim()
   const six = normalized.length === 3
     ? normalized.split('').map(char => char + char).join('')
     : normalized
 
   if (!/^[0-9a-fA-F]{6}$/.test(six)) {
-    return { r: 79, g: 70, b: 229 }
+    return { r: 2, g: 109, b: 50 }
   }
 
   return {
@@ -316,7 +316,7 @@ function createPdfWriter(doc, accent, fontName, config) {
       y = 11
 
       setTextStyle({ fontSize: 24, fontStyle: 'bold', color: [255, 255, 255] })
-      doc.text((data.name || 'Your Name').toUpperCase(), marginX, y)
+      doc.text(data.name || 'Your Name', marginX, y)
       y += lineHeight(24, 1.05)
 
       setTextStyle({ fontSize: 11, fontStyle: 'bold', color: [229, 231, 235] })
@@ -873,7 +873,7 @@ function renderSkillsSection(writer, data) {
 export async function generateResumePdfBlob({ data, config, sectionOrder, sidebarSectionOrder }) {
   const { jsPDF } = await import('jspdf')
   const safeConfig = sanitizeUniversalConfig(config || {})
-  const accent = hexToRgb(safeConfig.accentColor || '#4F46E5')
+  const accent = hexToRgb(safeConfig.accentColor || '#026d32')
   const fontName = getBaseFont(safeConfig.fontFamily)
   const doc = new jsPDF({
     orientation: 'portrait',
