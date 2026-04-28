@@ -96,7 +96,7 @@ export default function LandingHeroV2() {
         ))}
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-6 pt-28 pb-20 md:pt-36 md:pb-28">
+      <div className="relative mx-auto max-w-7xl px-6 pt-28 pb-20 md:pt-36 md:pb-24">
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)]">
           {/* ── Left: copy ─────────────────────────────────────────── */}
           <div className="relative z-20 min-w-0 text-center lg:text-left">
@@ -113,7 +113,7 @@ export default function LandingHeroV2() {
 
             <h1
               aria-label="Resumes that get you hired"
-              className="hero-headline hero-text-rise mx-auto mt-6 font-extrabold tracking-normal leading-[0.95] text-zinc-950 text-5xl md:text-6xl lg:mx-0 lg:text-[4.8rem] xl:text-[5.5rem]"
+              className="hero-headline hero-text-rise mx-auto mt-6 font-extrabold tracking-normal leading-[0.95] text-zinc-950 text-[2.6rem] sm:text-5xl md:text-6xl lg:mx-0 lg:text-[4.8rem] xl:text-[5.5rem]"
               style={{ animationDelay: '0.15s' }}
             >
               <span className="block">Resumes that</span>
@@ -146,7 +146,7 @@ export default function LandingHeroV2() {
                 </button>
               </Link>
               <Link href="/ats-checker">
-                <button className="inline-flex items-center gap-2 rounded-full border-2 border-zinc-200 bg-white px-7 py-3.5 text-base font-bold text-zinc-900 transition-all hover:border-[#00a84d] hover:text-[#026d32] cursor-pointer">
+                <button className="inline-flex items-center gap-2 rounded-full border-2 border-zinc-200 bg-black px-7 py-3.5 text-base font-bold text-white transition-all hover:bg-zinc-900 cursor-pointer">
                   <Zap size={16} />
                   Try ATS scan
                 </button>
@@ -161,7 +161,10 @@ export default function LandingHeroV2() {
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} size={14} className="fill-[#ffb800] text-[#ffb800]" />
                 ))}
-                <span className="ml-1 font-semibold text-zinc-800">4.9 · loved</span>
+                <span className="ml-1.5 text-zinc-900">
+                  <span className="font-black">4.9</span>
+                  <span className="ml-1 text-zinc-500 font-medium">Stars Rated</span>
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 size={16} className="text-[#00a84d]" />
@@ -183,15 +186,15 @@ export default function LandingHeroV2() {
                 </div>
                 <span className="h-2.5 w-24 rounded-full bg-[#00a84d]/20" />
               </div>
-              <div
-                ref={mascotRef}
-                className="pointer-events-none absolute left-1/2 top-[43%] z-30 h-[440px] w-[440px] md:h-[540px] md:w-[540px] lg:h-[600px] lg:w-[600px]"
+              <Link
+                href="/auth/register"
+                className="absolute left-1/2 top-[43%] z-30 h-[440px] w-[440px] md:h-[540px] md:w-[540px] lg:h-[600px] lg:w-[600px] cursor-pointer"
                 style={{
                   transform: `translate(calc(-50% + ${parallax.x}px), calc(-50% + ${parallax.y}px))`,
                   transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
                 }}
               >
-                <div className="mascot-bob relative h-full w-full">
+                <div ref={mascotRef} className="mascot-bob relative h-full w-full">
                   <div className="absolute left-[7%] top-[13%] text-[#00a84d] sparkle-twinkle z-10" style={{ animationDelay: '0s' }}>
                     <Sparkles size={22} />
                   </div>
@@ -211,7 +214,7 @@ export default function LandingHeroV2() {
                     }}
                   />
                 </div>
-              </div>
+              </Link>
               <div className="absolute left-7 right-7 top-[86px] space-y-4">
                 <span className="block h-4 w-3/5 rounded-full bg-zinc-900/10" />
                 <span className="block h-3 w-4/5 rounded-full bg-[#00a84d]/15" />

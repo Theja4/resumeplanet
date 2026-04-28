@@ -7,6 +7,8 @@ import LandingBento from '@/components/landing/LandingBento'
 import LandingStats from '@/components/landing/LandingStats'
 import LandingWorkflow from '@/components/landing/LandingWorkflow'
 import LandingFinalCTA from '@/components/landing/LandingFinalCTA'
+import LandingTestimonials from '@/components/landing/LandingTestimonials'
+import LandingFaqs from '@/components/landing/LandingFaqs'
 import { buildPublicMetadata, getAbsoluteUrl, toJsonLd } from '@/lib/seo'
 
 export const metadata: Metadata = buildPublicMetadata({
@@ -30,121 +32,45 @@ export const metadata: Metadata = buildPublicMetadata({
   ],
 })
 
-const FAQS = [
-  {
-    question: 'What is Rezoomed?',
-    answer:
-      'Rezoomed is an AI resume builder and ATS checker that helps job seekers optimize resumes, match job descriptions, and export recruiter-ready files faster.',
-  },
-  {
-    question: 'How does the ATS resume checker work?',
-    answer:
-      'You upload a resume and Rezoomed analyzes parseability, keyword alignment, formatting, and recruiter readability so you can fix issues before applying.',
-  },
-  {
-    question: 'Can Rezoomed tailor my resume to a job description?',
-    answer:
-      'Yes. Rezoomed can compare your resume to a target job description, surface gaps, and help rewrite bullets and summaries around role-specific keywords.',
-  },
-  {
-    question: 'Does Rezoomed include more than a resume builder?',
-    answer:
-      'Yes. Rezoomed also includes ATS checking, resume match score, resume tailoring, metadata enhancement, and export workflows for job seekers.',
-  },
-  {
-    question: 'Is Rezoomed useful for ATS resume optimization?',
-    answer:
-      'Yes. Rezoomed is designed to improve ATS resume performance with clearer structure, stronger keyword coverage, and better formatting for applicant tracking systems.',
-  },
-] as const
-
-type Testimonial = {
-  quote: string
-  name: string
-  role: string
-  initials: string
-  color: string
-  featured: boolean
-  proof: string
-}
-
-const TESTIMONIALS: Testimonial[] = [
-  {
-    quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
-    name: 'Priya Sharma',
-    role: 'Data scientist',
-    initials: 'PS',
-    color: 'from-[#dbeafe] to-[#93c5fd]',
-    featured: true,
-    proof: 'Shared after resume tailoring + ATS scan',
-  },
-  {
-    quote: "The AI identified achievements I hadn't even thought to include. The ATS score jumped from 62% to 94% on my first try.",
-    name: 'Marcus Kane',
-    role: 'Marketing lead',
-    initials: 'MK',
-    color: 'from-[#ffe8bd] to-[#f5c87a]',
-    featured: false,
-    proof: 'Shared after first resume upload',
-  },
-  {
-    quote: "Rezoomed didn't just fix my resume — it helped me understand my own worth. I landed a Senior Role within two weeks.",
-    name: 'Sarah Jenkins',
-    role: 'Product designer',
-    initials: 'SJ',
-    color: 'from-[#A3FFB3] to-[#80da92]',
-    featured: false,
-    proof: 'Shared after resume rewrite',
-  },
-  {
-    quote: "Switched from Jobscan. Night and day difference. Rezoomed actually shows you what to fix, not just a score.",
-    name: "James O'Brien",
-    role: 'Engineering manager',
-    initials: 'JO',
-    color: 'from-[#fce7f3] to-[#f9a8d4]',
-    featured: false,
-    proof: 'Compared after ATS review',
-  },
-  {
-    quote: "I was skeptical about AI resume tools, but Rezoomed surfaced keywords I'd never have thought to include. Got an offer 3 weeks later.",
-    name: 'Aisha Thompson',
-    role: 'UX researcher',
-    initials: 'AT',
-    color: 'from-[#d1fae5] to-[#6ee7b7]',
-    featured: false,
-    proof: 'Shared after job-description tailoring',
-  },
-  {
-    quote: "Applied to 12 roles, heard back from 9. My recruiter actually complimented my resume format — that's never happened before.",
-    name: 'Daniel Park',
-    role: 'Software engineer',
-    initials: 'DP',
-    color: 'from-[#ede9fe] to-[#c4b5fd]',
-    featured: false,
-    proof: 'Shared after export + submit workflow',
-  },
-  {
-    quote: "The tailor feature is insane. I paste a job description and it tells me exactly what's missing. Interviews went from 10% to 60% callback rate.",
-    name: 'Leila Nasser',
-    role: 'Product manager',
-    initials: 'LN',
-    color: 'from-[#fff7ed] to-[#fed7aa]',
-    featured: false,
-    proof: 'Shared after repeated ATS checks',
-  },
-  {
-    quote: "I used three other tools before this. Rezoomed is the only one that felt like it actually understood what recruiters are looking for.",
-    name: 'Ryan Okafor',
-    role: 'Operations lead',
-    initials: 'RO',
-    color: 'from-[#fef9c3] to-[#fde047]',
-    featured: false,
-    proof: 'Shared after resume review + export',
-  },
-]
-
 export default async function LandingPage() {
   const siteUrl = getAbsoluteUrl('/')
+  
+  // Define FAQ JSON-LD data for SEO (Server Side)
+  const FAQS_DATA = [
+    {
+      question: 'How does the ATS Scanner improve my interview chances?',
+      answer: 'Most companies use Applicant Tracking Systems (ATS) to filter resumes. Our scanner "X-rays" your file to find formatting traps, hidden tables, and missing keywords that cause auto-rejections. By fixing these before you apply, you ensure your resume actually reaches a human recruiter.',
+    },
+    {
+      question: 'What is a Match Score and how should I use it?',
+      answer: 'The Match Score is a real-time analysis of how well your resume aligns with a specific job description. We look for technical skills, soft skills, and industry keywords. Aim for a score of 85% or higher to be considered a top-tier candidate for that specific role.',
+    },
+    {
+      question: 'How does the "Tailor Mode" feature work?',
+      answer: 'Tailor Mode is our most powerful tool. Instead of manually editing your resume for every job, our AI analyzes the job description and suggests specific bullet point rewrites and summary adjustments. It helps you speak the recruiter\'s language in seconds, not hours.',
+    },
+    {
+      question: 'Can I export my resume to both PDF and Word (DOCX)?',
+      answer: 'Yes. While our recruiter-grade PDF export ensures your layout stays pixel-perfect, we also offer editable DOCX (Word) exports for Pro users. Both formats are fully optimized for ATS readability and modern hiring workflows.',
+    },
+    {
+      question: 'Is my personal data secure and private?',
+      answer: 'Absolutely. Your privacy is our priority. We do not sell your data to third parties or recruiters. Your resumes are stored securely and only used to provide you with AI-powered insights and tailoring suggestions.',
+    },
+    {
+      question: 'Can I import my existing resume or LinkedIn profile?',
+      answer: 'Yes! You don\'t have to start from scratch. You can upload any existing PDF/DOCX resume or even a LinkedIn export. Our parser will instantly structure your experience into our builder so you can start optimizing immediately.',
+    },
+    {
+      question: 'What is the difference between the Free and Pro plans?',
+      answer: 'Our Free plan includes basic resume building and daily ATS scans. The Pro plan unlocks our most advanced features: Unlimited Resume Tailoring, Match Scores, DOCX exports, and access to our premium AI models for more nuanced writing suggestions.',
+    },
+    {
+      question: 'How do I optimize my PDF metadata for ATS?',
+      answer: 'Many users don\'t realize that PDFs contain hidden metadata that can conflict with your resume content. Rezoomed automatically cleans and optimizes your file\'s metadata (Title, Author, Subject) during export to ensure ATS systems don\'t get confused by "old" file info.',
+    },
+  ]
+
   const homepageJsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -205,7 +131,7 @@ export default async function LandingPage() {
       {
         '@type': 'FAQPage',
         '@id': `${siteUrl}/#faq`,
-        mainEntity: FAQS.map(faq => ({
+        mainEntity: FAQS_DATA.map(faq => ({
           '@type': 'Question',
           name: faq.question,
           acceptedAnswer: {
@@ -236,86 +162,9 @@ export default async function LandingPage() {
 
         <LandingWorkflow />
 
-        {/* ── Testimonials ───────────────────────────────────────────────── */}
-        <section className="py-24 md:py-32 overflow-hidden"
-          style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8faf9 100%)' }}>
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center space-y-4 mb-16">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">User feedback</p>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
-                Quiet wins from <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">real job seekers.</span>
-              </h2>
-              <p className="mx-auto max-w-2xl text-base text-zinc-600 leading-relaxed">
-                Feedback shared after uploads, ATS scans, and tailoring flows. Identity kept light on the public page.
-              </p>
-            </div>
-          </div>
+        <LandingTestimonials />
 
-          <div className="testimonial-mask">
-            <div className="testimonial-track flex w-max gap-6 px-6">
-              {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
-                <div
-                  key={`${t.name}-${i}`}
-                  className={`w-[340px] shrink-0 rounded-3xl p-7 flex flex-col justify-between space-y-5 ${
-                    t.featured
-                      ? 'bg-gradient-to-br from-[#00a84d] via-[#019a47] to-[#026d32] border border-[#026d32] shadow-[0_30px_60px_-20px_rgba(2,109,50,0.5)]'
-                      : 'bg-white border border-zinc-100 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.08)]'
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                        t.featured ? 'bg-white/20 text-white' : 'bg-[#A3FFB3]/30 text-[#026d32]'
-                      }`}>
-                        Early user
-                      </span>
-                    </div>
-                    <p className={`text-base leading-7 ${t.featured ? 'text-white/95' : 'text-zinc-700'}`}>
-                      &ldquo;{t.quote}&rdquo;
-                    </p>
-                  </div>
-                  <div className={`flex items-center gap-3 pt-2 border-t ${t.featured ? 'border-white/20' : 'border-zinc-100'}`}>
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${t.featured ? 'bg-white/20 text-white' : `bg-gradient-to-br ${t.color} text-zinc-800`}`}>
-                      {t.initials}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-black ${t.featured ? 'text-white' : 'text-zinc-900'}`}>{t.name}</p>
-                      <p className={`text-xs ${t.featured ? 'text-white/70' : 'text-zinc-500'}`}>{t.role}</p>
-                      <p className={`mt-1 text-[11px] ${t.featured ? 'text-white/70' : 'text-zinc-400'}`}>{t.proof}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FAQ ─────────────────────────────────────────────────── */}
-        <section className="bg-[#f8faf9] px-6 py-24 md:py-32">
-          <div className="mx-auto max-w-4xl space-y-8">
-            <div className="space-y-3 text-center md:text-left">
-              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">FAQ</p>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
-                Quick <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">answers.</span>
-              </h2>
-            </div>
-
-            <div className="space-y-4">
-              {FAQS.map(faq => (
-                <details
-                  key={faq.question}
-                  className="group rounded-[1.75rem] border border-zinc-100 bg-white p-6 md:p-7 shadow-[0_12px_30px_rgba(18,24,21,0.04)] transition-all hover:border-[#A3FFB3] hover:shadow-[0_18px_40px_rgba(2,109,50,0.08)]"
-                >
-                  <summary className="cursor-pointer list-none text-lg md:text-xl font-black tracking-tight text-zinc-950 flex items-center justify-between">
-                    {faq.question}
-                    <span className="text-[#00a84d] transition-transform group-open:rotate-45 text-2xl font-light">+</span>
-                  </summary>
-                  <p className="mt-4 text-sm leading-7 text-zinc-600">{faq.answer}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
+        <LandingFaqs />
 
         <LandingFinalCTA />
       </main>

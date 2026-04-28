@@ -1110,13 +1110,36 @@
   pointer-events: none;
 }
 
+/* ── Workflow section ───────────────────────────────────────── */
+.wf-card {
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.35);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wf-card:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 50px 120px -30px rgba(0, 0, 0, 0.4),
+                0 0 60px -10px rgba(163, 255, 179, 0.15);
+  }
+}
+
+@keyframes wf-step-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,0.3), 0 12px 32px -8px rgba(0,0,0,0.2), 0 0 20px rgba(255,255,255,0.05); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,255,255,0.4), 0 12px 32px -8px rgba(0,0,0,0.2), 0 0 28px rgba(255,255,255,0.12); }
+}
+.wf-step-ring {
+  animation: wf-step-glow 3s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot-bob, .mascot-bob-reverse, .mascot-wiggle,
   .sparkle-twinkle, .orbit-slow, .orbit-medium,
   .badge-drift-up, .badge-drift-down, .confetti-piece,
   .rotating-words-track, .cursor-blink, .rotating-word-wrapper::after, .hero-cursor, .hero-typewriter-cursor, .scan-pulse,
   .gradient-shift, .ring-expand::before, .ring-expand::after,
-  .marquee-vertical-track, .marquee-vertical-track-reverse {
+  .marquee-vertical-track, .marquee-vertical-track-reverse,
+  .wf-step-ring {
     animation: none !important;
   }
 }

@@ -6,12 +6,12 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 
 export default function LandingFinalCTA() {
   return (
-    <section className="relative overflow-hidden px-6 py-24 md:py-32">
+    <section className="relative overflow-hidden px-6 py-24 md:py-28">
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse at 20% 30%, rgba(163,255,179,0.9) 0%, transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(2,109,50,0.8) 0%, transparent 60%), linear-gradient(135deg, #011a0b 0%, #022c14 40%, #00a84d 100%)',
+            'radial-gradient(ellipse at 20% 30%, rgba(163,255,179,0.7) 0%, transparent 65%), radial-gradient(ellipse at 80% 70%, rgba(2,109,50,0.7) 0%, transparent 60%), linear-gradient(135deg, #011a0b 0%, #022c14 40%, #00a84d 100%)',
         }}
       />
 
@@ -57,7 +57,7 @@ export default function LandingFinalCTA() {
           </div>
           <h2 className="mt-5 text-4xl md:text-6xl lg:text-[5rem] font-black tracking-tighter leading-[1.12] text-white">
             Your next yes is<br />
-            <span className="landing-italic-safe italic bg-gradient-to-r from-[#A3FFB3] via-white to-[#A3FFB3] bg-clip-text text-transparent gradient-shift">
+            <span className="landing-italic-safe italic bg-gradient-to-r from-[#A3FFB3] to-white bg-clip-text text-transparent drop-shadow-sm">
               one upload away.
             </span>
           </h2>
@@ -73,11 +73,6 @@ export default function LandingFinalCTA() {
                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                 </span>
                 <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[#A3FFB3]/50 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              </button>
-            </Link>
-            <Link href="/pricing">
-              <button className="rounded-full border border-white/30 bg-white/5 px-8 py-3.5 text-base font-bold text-white backdrop-blur transition-all hover:bg-white/15 cursor-pointer">
-                See pricing
               </button>
             </Link>
           </div>
@@ -97,7 +92,7 @@ export default function LandingFinalCTA() {
           <div className="absolute left-1/2 top-1/2 h-[260px] w-[260px] md:h-[330px] md:w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" />
 
           {/* Transparent mascot floats centered with halo */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 mascot-bob">
+          <Link href="/auth/register" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 mascot-bob cursor-pointer z-20">
             <Image
               src="/Brands/mascot-hero-pink.png"
               alt="Rezoomed hero mascot"
@@ -105,7 +100,7 @@ export default function LandingFinalCTA() {
               height={600}
               className="relative h-[280px] w-[280px] md:h-[380px] md:w-[380px] object-contain drop-shadow-[0_24px_38px_rgba(0,0,0,0.24)]"
             />
-          </div>
+          </Link>
         </div>
       </div>
     </section>

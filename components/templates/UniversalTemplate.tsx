@@ -662,7 +662,15 @@ export default function UniversalTemplate({
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <EditableText value={custom.text} path={`${id}.text`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`} as="p" />
+            <EditableText
+              value={custom.text}
+              path={`${id}.text`}
+              isEditing={isEditing}
+              onFieldChange={onFieldChange}
+              onNavigateToField={onNavigateToField}
+              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}
+              as="p"
+            />
           </div>
         )
       }
@@ -671,7 +679,7 @@ export default function UniversalTemplate({
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <p className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700`}>
+            <p className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700`}>
               <span className={isCompressed ? 'leading-tight' : 'leading-normal'}>
                 {renderTags(custom.tags, `${id}.tags`)}
               </span>
@@ -712,7 +720,15 @@ export default function UniversalTemplate({
         return hasText(data.summary) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <EditableText value={data.summary} path="summary" isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`} as="p" />
+            <EditableText
+              value={data.summary}
+              path="summary"
+              isEditing={isEditing}
+              onFieldChange={onFieldChange}
+              onNavigateToField={onNavigateToField}
+              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}
+              as="p"
+            />
           </div>
         ) : shouldRenderGuidance ? (
           <div>

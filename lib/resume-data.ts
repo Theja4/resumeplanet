@@ -17,12 +17,13 @@ function dedupe(values: string[]) {
 }
 
 export function splitSkillInput(value: string) {
+  const explicitSeparatorPattern = /[,\n|;·•∙⋅]+/
   const directParts = value
-    .split(/[,\n|;]+/)
+    .split(explicitSeparatorPattern)
     .map(part => part.trim())
     .filter(Boolean)
 
-  if (directParts.length > 1) return directParts
+  if (explicitSeparatorPattern.test(value)) return directParts
 
   const compact = value.trim().replace(/\s+/g, ' ')
   if (!compact) return []
@@ -37,11 +38,14 @@ export function splitSkillInput(value: string) {
     'demonstrations', 'interviewing', 'reporting', 'automation', 'testing', 'delivery',
   ])
 
+  const connectors = new Set(['&', 'and', 'or', 'for', 'with', 'in', 'on', 'at', 'of', 'to', 'by', 'the', 'a', 'an'])
+
   const looksLikeBoundaryToken = (token: string) =>
     /^[A-Z]/.test(token) || /^[A-Z0-9/&+-]{2,}$/.test(token) || token.includes('/')
 
   const looksLikePhraseEnd = (token: string, phrase: string[]) => {
     const lower = token.toLowerCase()
+    if (connectors.has(lower)) return false
     if (phraseEndHints.has(lower)) return true
     if (/^(uat|jira|sql|python|java|git|rag)$/i.test(token)) return true
     if (token.includes('/')) return true
@@ -69,9 +73,29 @@ export function splitSkillInput(value: string) {
   return phrases.length > 1 ? phrases : [compact]
 }
 
+function normalizeSkillValues(values: string[]) {
+  const splitValues = values.flatMap(splitSkillInput)
+  const mergedValues: string[] = []
+
+  for (let index = 0; index < splitValues.length; index += 1) {
+    const current = splitValues[index]
+    const next = splitValues[index + 1]
+
+    if (/^[A-Z0-9]+\/[A-Z0-9]+$/i.test(current) && /^testing$/i.test(next ?? '')) {
+      mergedValues.push(`${current} ${next}`)
+      index += 1
+      continue
+    }
+
+    mergedValues.push(current)
+  }
+
+  return dedupe(mergedValues)
+}
+
 export function flattenSkillSections(skillSections: SkillSection[] | undefined | null) {
   if (!skillSections?.length) return []
-  return dedupe(skillSections.flatMap(section => section.skills ?? []))
+  return normalizeSkillValues(skillSections.flatMap(section => section.skills ?? []))
 }
 
 export function normalizeSkillSections(
@@ -82,7 +106,7 @@ export function normalizeSkillSections(
     .map(section => ({
       title: (section.title ?? '').trim(),
       tag: (section.tag ?? '').trim(),
-      skills: dedupe((section.skills ?? []).flatMap(splitSkillInput)),
+      skills: normalizeSkillValues(section.skills ?? []),
     }))
     .filter(section => section.title || section.tag || section.skills.length > 0)
 
@@ -93,7 +117,7 @@ export function normalizeSkillSections(
     {
       title: 'Core Skills',
       tag: '',
-      skills: dedupe(fallbackSkills.flatMap(splitSkillInput)),
+      skills: normalizeSkillValues(fallbackSkills),
     },
   ]
 }

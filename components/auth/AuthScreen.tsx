@@ -120,11 +120,11 @@ const AUTH_COPY: Record<AuthMode, AuthCopy> = {
     securityNote: 'Secure sessions with Google OAuth and password authentication.',
   },
   register: {
-    badge: 'Create account',
+    badge: '',
     heroTitle: 'Create your account and start building faster.',
     heroDescription:
       'Set up your workspace once, then start tailoring resumes, checking ATS performance, and exporting polished versions from one place.',
-    cardTitle: 'Create your account.',
+    cardTitle: '',
     cardDescription: 'Use Google for the fastest setup or register with email and password.',
     googleLabel: 'Sign up with Google',
     submitLabel: 'Create account',
@@ -559,27 +559,26 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
             </div>
           </section>
 
-          <aside className="rounded-[1.5rem] bg-white/88 p-5 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center">
+          <aside className="rounded-[1.5rem] bg-white/88 p-5 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center lg:overflow-y-auto">
             <div className="flex items-center lg:hidden">
               <BrandLockup />
             </div>
 
             <div className="mt-6 flex h-full flex-col lg:mx-auto lg:mt-0 lg:w-full lg:max-w-[360px] lg:justify-center">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-2 rounded-full bg-primary-container/55 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-                  <Lock size={12} strokeWidth={2.5} />
-                  {copy.badge}
-                </span>
-              </div>
+              {copy.badge && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-primary-container/55 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
+                    <Lock size={12} strokeWidth={2.5} />
+                    {copy.badge}
+                  </span>
+                </div>
+              )}
 
-              <div className="mt-5">
-                <h2 className="text-[2rem] font-black tracking-tight text-on-background sm:text-[2.6rem]">
+              {copy.cardTitle && (
+                <h2 className="mt-5 text-[2rem] font-black tracking-tight text-on-background sm:text-[2.6rem]">
                   {copy.cardTitle}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-on-surface-variant sm:text-base">
-                  {copy.cardDescription}
-                </p>
-              </div>
+              )}
 
               {authErrorMessage ? (
                 <div className="mt-5 rounded-[1.25rem] bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-[0_12px_30px_rgba(185,28,28,0.08)]">

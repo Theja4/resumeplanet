@@ -70,19 +70,18 @@ function sanitizePdfFilename(value: string) {
 
 function FieldCard({
   field,
-  isFixed,
-  onFix,
-  showFixButton,
+  isApplied,
+  onToggleApplied,
 }: {
   field: MetadataField
-  isFixed: boolean
-  onFix: (fieldId: string) => void
-  showFixButton: boolean
+  isApplied: boolean
+  onToggleApplied: (fieldId: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const displayStatus: MetadataFieldStatus = isFixed ? 'good' : field.status
+  const displayStatus: MetadataFieldStatus = isApplied ? 'good' : field.status
   const cfg = statusConfig(displayStatus)
   const Icon = cfg.icon
+  const isIssue = field.status !== 'good'
 
   return (
     <div className={`rounded-[1.25rem] border p-5 transition-all duration-300 ${cfg.bg}`}>
@@ -93,11 +92,11 @@ function FieldCard({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-bold text-on-background">{field.label}</span>
               <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em] ${cfg.chip}`}>
-                {isFixed ? 'Fixed' : cfg.label}
+                {isApplied ? 'Applied' : cfg.label}
               </span>
             </div>
             <p className="text-xs text-on-surface-variant truncate max-w-xs">
-              {isFixed
+              {isApplied
                 ? field.suggestedValue || '(set)'
                 : field.currentValue || '(not set)'}
             </p>
@@ -105,15 +104,20 @@ function FieldCard({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {!isFixed && field.status !== 'good' && showFixButton && (
+          {isIssue && (
             <button
-              onClick={() => onFix(field.id)}
-              className="rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-zinc-800 hover:-translate-y-0.5"
+              onClick={() => onToggleApplied(field.id)}
+              aria-pressed={isApplied}
+              className={`rounded-full px-3 py-1.5 text-xs font-bold transition-all hover:-translate-y-0.5 ${
+                isApplied
+                  ? 'bg-white text-on-surface-variant ring-1 ring-black/10 hover:bg-black/5'
+                  : 'bg-zinc-950 text-white hover:bg-zinc-800'
+              }`}
             >
-              Fix Issue
+              {isApplied ? 'Unapply' : 'Apply Fix'}
             </button>
           )}
-          {field.status !== 'good' && (
+          {isIssue && (
             <button
               onClick={() => setExpanded(v => !v)}
               className="rounded-full p-1.5 text-on-surface-variant transition hover:bg-black/5"
@@ -128,13 +132,13 @@ function FieldCard({
         </div>
       </div>
 
-      {expanded && !isFixed && field.status !== 'good' && (
+      {expanded && isIssue && (
         <div className="mt-4 space-y-3 border-t border-black/6 pt-4">
           <p className="text-sm leading-6 text-on-surface-variant">{field.explanation}</p>
           {field.suggestedValue && (
             <div className="rounded-[0.75rem] bg-white/80 px-4 py-3">
               <p className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">
-                Suggested value
+                {isApplied ? 'Applied value' : 'Suggested value'}
               </p>
               <p className="text-sm font-medium text-on-background">{field.suggestedValue}</p>
             </div>
@@ -214,7 +218,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
   const [isAuditing, setIsAuditing] = useState(false)
   const [auditError, setAuditError] = useState<string | null>(null)
   const [auditResult, setAuditResult] = useState<MetadataAuditResult | null>(null)
-  const [fixedFields, setFixedFields] = useState<Set<string>>(new Set())
+  const [appliedFields, setAppliedFields] = useState<Set<string>>(new Set())
   const [isDownloading, setIsDownloading] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -233,7 +237,8 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
     setUploadedFile(file)
     setAuditError(null)
     setAuditResult(null)
-    setFixedFields(new Set())
+    setAppliedFields(new Set())
+    setDownloadError(null)
   }, [])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -248,7 +253,8 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
   async function runAudit() {
     setAuditError(null)
     setAuditResult(null)
-    setFixedFields(new Set())
+    setAppliedFields(new Set())
+    setDownloadError(null)
     setIsAuditing(true)
 
     try {
@@ -298,34 +304,55 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
 
   // ── Fix logic ─────────────────────────────────────────────────────────────────
 
-  function fixField(fieldId: string) {
-    setFixedFields(prev => new Set([...prev, fieldId]))
+  function toggleAppliedField(fieldId: string) {
+    setAppliedFields(prev => {
+      const next = new Set(prev)
+      if (next.has(fieldId)) {
+        next.delete(fieldId)
+      } else {
+        next.add(fieldId)
+      }
+      return next
+    })
+    setDownloadError(null)
   }
 
-  function fixAll() {
+  function applyAll() {
     if (!auditResult) return
     const issueIds = auditResult.fields
       .filter(f => f.status !== 'good')
       .map(f => f.id)
-    setFixedFields(new Set(issueIds))
+    setAppliedFields(new Set(issueIds))
+    setDownloadError(null)
+  }
+
+  function unapplyAll() {
+    setAppliedFields(new Set())
+    setDownloadError(null)
   }
 
   const issueFields = auditResult?.fields.filter(f => f.status !== 'good') ?? []
-  const allFixed = issueFields.length > 0 && issueFields.every(f => fixedFields.has(f.id))
-  const anyFixed = fixedFields.size > 0
+  const appliedIssueFields = issueFields.filter(f => appliedFields.has(f.id))
+  const allApplied = issueFields.length > 0 && issueFields.every(f => appliedFields.has(f.id))
+  const anyApplied = appliedIssueFields.length > 0
 
   // ── Download ─────────────────────────────────────────────────────────────────
 
   async function handleDownload() {
     if (!auditResult || !uploadedFile) return
     setDownloadError(null)
+
+    if (!anyApplied) {
+      setDownloadError('Apply at least one metadata fix before downloading.')
+      return
+    }
+
     setIsDownloading(true)
 
     try {
       const fixes: Record<string, string> = {}
       for (const field of auditResult.fields) {
-        const shouldApply = fixedFields.has(field.id) || field.status === 'good'
-        if (shouldApply && field.suggestedValue) {
+        if (appliedFields.has(field.id)) {
           fixes[field.id] = field.suggestedValue
         }
       }
@@ -346,7 +373,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
       const a = document.createElement('a')
       const titleField = auditResult.fields.find(field => field.id === 'title')
       const preferredTitle =
-        titleField && (fixedFields.has('title') || titleField.status === 'good')
+        titleField && appliedFields.has('title')
           ? titleField.suggestedValue || titleField.currentValue
           : null
       const safeTitle = preferredTitle ? sanitizePdfFilename(preferredTitle) : ''
@@ -366,7 +393,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const canAudit = inputMode === 'upload' ? !!uploadedFile : !!selectedResumeId
-  const canDownload = auditResult?.sourceMode === 'upload' && !!uploadedFile && anyFixed
+  const canDownload = auditResult?.sourceMode === 'upload' && !!uploadedFile && anyApplied
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -388,7 +415,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
                   setInputMode(mode)
                   setAuditResult(null)
                   setAuditError(null)
-                  setFixedFields(new Set())
+                  setAppliedFields(new Set())
                 }}
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${
                   inputMode === mode
@@ -463,7 +490,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
                       onClick={() => {
                         setSelectedResumeId(r.id)
                         setAuditResult(null)
-                        setFixedFields(new Set())
+                        setAppliedFields(new Set())
                       }}
                       className={`flex items-center gap-3 rounded-[1rem] border px-4 py-3 text-left transition-all ${
                         selectedResumeId === r.id
@@ -509,48 +536,57 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
       {/* Results */}
       {auditResult && (
         <div className="space-y-4">
-          {/* Fix All Banner */}
-          {issueFields.length > 0 && !allFixed && (
-            <DashboardSurface variant="accent" className="px-6 py-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-on-background">
-                    {issueFields.length} metadata {issueFields.length === 1 ? 'issue' : 'issues'} found
-                  </p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    Apply all suggested fixes in one click.
-                  </p>
-                </div>
-                <button
-                  onClick={fixAll}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-800"
-                >
-                  <Wand2 size={15} strokeWidth={2} />
-                  Fix All
-                </button>
-              </div>
-            </DashboardSurface>
-          )}
-
-          {allFixed && (
+          {/* Action Banner */}
+          {issueFields.length > 0 && (
             <DashboardSurface variant="accent" className="px-6 py-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 size={20} className="text-emerald-600 shrink-0" strokeWidth={2} />
+                  {allApplied ? (
+                    <CheckCircle2 size={20} className="text-emerald-600 shrink-0" strokeWidth={2} />
+                  ) : null}
                   <div>
-                    <p className="text-sm font-bold text-on-background">All issues fixed!</p>
+                    <p className="text-sm font-bold text-on-background">
+                      {allApplied
+                        ? 'All issues fixed!'
+                        : `${issueFields.length} metadata ${issueFields.length === 1 ? 'issue' : 'issues'} found`}
+                    </p>
                     <p className="text-xs text-on-surface-variant mt-0.5">
-                      {auditResult.sourceMode === 'upload'
-                        ? 'Download your optimized PDF below.'
-                        : 'These optimized values will improve ATS parseability when you export your resume.'}
+                      {allApplied
+                        ? auditResult.sourceMode === 'upload'
+                          ? 'Download your optimized PDF below.'
+                          : 'These optimized values will improve ATS parseability when you export your resume.'
+                        : anyApplied
+                          ? `${appliedIssueFields.length} of ${issueFields.length} fixes applied. Download now or keep tweaking.`
+                          : 'Apply suggested fixes individually or all at once.'}
                     </p>
                   </div>
                 </div>
-                {canDownload && (
+                <div className="flex items-center gap-2 shrink-0">
+                  {!allApplied && (
+                    <button
+                      onClick={applyAll}
+                      className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-800"
+                    >
+                      <Wand2 size={15} strokeWidth={2} />
+                      Apply All
+                    </button>
+                  )}
+                  {anyApplied && (
+                    <button
+                      onClick={unapplyAll}
+                      className="inline-flex items-center gap-2 rounded-full bg-white text-on-surface-variant ring-1 ring-black/10 px-5 py-2.5 text-sm font-bold transition-all hover:-translate-y-0.5 hover:bg-black/5"
+                    >
+                      Unapply All
+                    </button>
+                  )}
+                </div>
+              </div>
+              {canDownload && (
+                <div className="mt-4 flex items-center gap-3 border-t border-black/6 pt-4">
                   <button
                     onClick={handleDownload}
                     disabled={isDownloading}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-emerald-700 disabled:opacity-50"
                   >
                     {isDownloading ? (
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -559,12 +595,15 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
                     )}
                     Download Optimized PDF
                   </button>
-                )}
-              </div>
+                  <span className="text-xs text-on-surface-variant">
+                    Only applied fixes will be written to the PDF.
+                  </span>
+                </div>
+              )}
               {downloadError && (
                 <p className="mt-3 text-xs text-red-500">{downloadError}</p>
               )}
-              {auditResult.sourceMode === 'saved' && (
+              {auditResult.sourceMode === 'saved' && anyApplied && (
                 <p className="mt-3 text-xs text-on-surface-variant">
                   To download a PDF with these metadata fields applied, export your resume from the
                   Resume Builder and re-upload it here.
@@ -579,9 +618,8 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
               <FieldCard
                 key={field.id}
                 field={field}
-                isFixed={fixedFields.has(field.id)}
-                onFix={fixField}
-                showFixButton={issueFields.length > 1}
+                isApplied={appliedFields.has(field.id)}
+                onToggleApplied={toggleAppliedField}
               />
             ))}
           </div>

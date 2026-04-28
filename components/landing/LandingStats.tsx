@@ -69,7 +69,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 
 export default function LandingStats() {
   return (
-    <section className="relative overflow-hidden px-6 py-24 md:py-32"
+    <section className="relative overflow-hidden px-6 py-24 md:py-28"
       style={{
         background: 'linear-gradient(180deg, #f8faf9 0%, #edf7f0 55%, #f8faf9 100%)',
       }}
@@ -79,7 +79,7 @@ export default function LandingStats() {
 
       <div className="relative mx-auto max-w-7xl">
         <Reveal>
-          <div className="max-w-3xl mx-auto text-center mb-16">
+          <div className="max-w-3xl mx-auto text-center mb-10">
             <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">The numbers</p>
             <h2 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
               Proof that <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">powerful tools</span> beat polished platitudes.

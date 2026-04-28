@@ -1734,13 +1734,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     <div
                       className="relative overflow-hidden w-full z-10"
                       style={(() => {
+                        // When a section is highlighted, the editing frame uses negative
+                        // insets (-12px). Add padding to the clip height so the frame
+                        // isn't clipped when the highlighted section is near the bottom.
+                        const highlightPad = previewHighlightedSectionId ? 16 : 0
                         if (pageIndex === 0) {
-                          // Page 1: clip at pageBreakY, leaving (PAGE_H - pageBreakY) as bottom padding
-                          return { marginTop: 0, height: `${effectivePageBreakY}px` }
+                          return { marginTop: 0, height: `${effectivePageBreakY + highlightPad}px`, paddingBottom: `${highlightPad}px` }
                         }
-                        // Page 2+: top padding mirrors page 1's bottom padding
                         const topPad = PAGE_H - effectivePageBreakY
-                        return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING}px` }
+                        return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING + highlightPad}px`, paddingBottom: `${highlightPad}px` }
                       })()}
                     >
                       <div
