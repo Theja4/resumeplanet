@@ -234,9 +234,17 @@ export default function TemplateCustomizerModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[90rem] overflow-hidden rounded-[30px] bg-white shadow-2xl"
+        className="relative flex max-h-[90vh] w-full max-w-[90rem] overflow-hidden rounded-[30px] bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/6 bg-white/85 text-zinc-500 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-colors hover:text-zinc-900"
+          aria-label="Close"
+        >
+          <X size={18} />
+        </button>
         <div className="relative flex w-[31rem] shrink-0 flex-col border-r border-zinc-100 bg-zinc-50/80 pt-7">
           <div className="border-b border-zinc-100 px-6 pb-5">
             <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-1 shadow-sm ring-1 ring-zinc-100">

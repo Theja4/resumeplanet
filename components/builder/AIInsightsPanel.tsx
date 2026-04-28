@@ -84,6 +84,7 @@ const LOCKED_STATE_HIGHLIGHTS = [
 
 function scoreColor(score: number) {
   if (score >= 80) return '#026d32'
+  if (score >= 71) return '#22c55e'
   if (score >= 60) return '#ca8a04'
   return '#ef4444'
 }
