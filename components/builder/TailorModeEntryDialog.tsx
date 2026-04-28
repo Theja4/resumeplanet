@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, FileText, Plus, Sparkles, Upload, X } from 'lucide-react'
 import UploadZone from '@/components/resumes/UploadZone'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import type { Resume } from '@/types'
 
 interface TailorModeEntryDialogProps {
@@ -22,6 +23,7 @@ function formatUpdatedAt(dateString: string) {
 
 export default function TailorModeEntryDialog({ resumes }: TailorModeEntryDialogProps) {
   const router = useRouter()
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(resumes), [resumes])
 
   const closeDialog = useCallback(() => {
     router.push('/dashboard')
@@ -154,7 +156,7 @@ export default function TailorModeEntryDialog({ resumes }: TailorModeEntryDialog
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-bold text-on-surface">
-                            {resume.title}
+                            {getResumeTitleLabel(resume, resumeTitleLabels)}
                           </span>
                           <span className="mt-1 block text-xs text-on-surface-variant">
                             Updated {formatUpdatedAt(resume.updated_at ?? resume.created_at)}

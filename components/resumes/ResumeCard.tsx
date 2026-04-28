@@ -33,12 +33,13 @@ function scoreBadgeClass(score: number) {
 
 interface ResumeCardProps {
   resume: Resume
+  displayTitle?: string
   latestScore?: number
   onDelete: () => void
   onRename: (title: string) => void
 }
 
-export default function ResumeCard({ resume, latestScore, onDelete, onRename }: ResumeCardProps) {
+export default function ResumeCard({ resume, displayTitle = resume.title, latestScore, onDelete, onRename }: ResumeCardProps) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [titleValue, setTitleValue] = useState(resume.title)
@@ -97,9 +98,9 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
               <Link
                 href={`/dashboard/builder/${resume.id}`}
                 className="font-bold text-on-surface text-lg truncate leading-tight hover:text-primary transition-colors"
-                title={resume.title}
+                title={displayTitle}
               >
-                {resume.title}
+                {displayTitle}
               </Link>
             </div>
           )}
@@ -147,7 +148,7 @@ export default function ResumeCard({ resume, latestScore, onDelete, onRename }: 
           <AlertDialogHeader>
             <AlertDialogTitle className="text-on-surface font-black">Delete resume?</AlertDialogTitle>
             <AlertDialogDescription className="text-on-surface-variant">
-              This will permanently delete <strong>{resume.title}</strong>. This action cannot be undone.
+              This will permanently delete <strong>{displayTitle}</strong>. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

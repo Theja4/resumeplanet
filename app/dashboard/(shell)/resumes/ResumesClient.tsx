@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { FileText } from 'lucide-react'
 import UploadZone from '@/components/resumes/UploadZone'
@@ -12,6 +12,7 @@ import { DashboardPageIntro, DashboardSurface } from '@/components/layout/Dashbo
 import { ADS_ENABLED } from '@/lib/ads'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import { deleteResume, renameResume } from './actions'
 import type { Resume, Profile } from '@/types'
 
@@ -31,6 +32,7 @@ export default function ResumesClient({
   const limitReached = searchParams.get('status') === 'limit-reached'
   const [resumes, setResumes] = useState<Resume[]>(initialResumes)
   const [showPaywall, setShowPaywall] = useState(limitReached)
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(resumes), [resumes])
 
   useEffect(() => {
     if (limitReached) {
@@ -104,6 +106,7 @@ export default function ResumesClient({
             <div key={resume.id} className="contents">
               <ResumeCard
                 resume={resume}
+                displayTitle={getResumeTitleLabel(resume, resumeTitleLabels)}
                 latestScore={latestScores[resume.id]}
                 onDelete={() => handleDelete(resume.id)}
                 onRename={(title) => handleRename(resume.id, title)}

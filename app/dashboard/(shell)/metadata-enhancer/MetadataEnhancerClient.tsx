@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import {
   Upload,
   FileText,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { MAX_RESUME_UPLOAD_BYTES, MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import type { MetadataAuditResult, MetadataField, MetadataFieldStatus } from '@/app/api/resume/metadata-audit/route'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -211,6 +212,7 @@ function MagicLoadingCard() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClientProps) {
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(resumes), [resumes])
   const [inputMode, setInputMode] = useState<'upload' | 'resume'>('upload')
   const [selectedResumeId, setSelectedResumeId] = useState(resumes[0]?.id ?? '')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
@@ -499,7 +501,7 @@ export default function MetadataEnhancerClient({ resumes }: MetadataEnhancerClie
                       }`}
                     >
                       <FileText size={16} strokeWidth={1.75} className="shrink-0" />
-                      <span className="truncate text-sm">{r.title || 'Untitled Resume'}</span>
+                      <span className="truncate text-sm">{getResumeTitleLabel(r, resumeTitleLabels)}</span>
                     </button>
                   ))}
                 </div>

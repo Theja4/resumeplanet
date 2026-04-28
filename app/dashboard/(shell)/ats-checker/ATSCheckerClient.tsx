@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
@@ -11,6 +11,7 @@ import { ADS_ENABLED } from '@/lib/ads'
 import { countWords } from '@/lib/text'
 import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import { resumeDataToPlainText } from '@/lib/resume-data'
 import AdBanner from '@/components/shared/AdBanner'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
@@ -536,6 +537,7 @@ export default function ATSCheckerClient({
   const notesHeading = isMatchMode ? 'Fit risks' : 'Formatting issues'
   const insightHeading = isMatchMode ? 'Fit insight' : 'Industry insight'
   const compactPublicUploadCard = publicMode && !showIntro && !isMatchMode
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(resumes), [resumes])
 
   const [inputMode, setInputMode] = useState<'resume' | 'upload'>(resumes.length > 0 ? 'resume' : 'upload')
   const [selectedResumeId, setSelectedResumeId] = useState<string>(resumes[0]?.id ?? '')
@@ -1318,7 +1320,7 @@ export default function ATSCheckerClient({
                     className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {resumes.map(r => (
-                      <option key={r.id} value={r.id}>{r.title}</option>
+                      <option key={r.id} value={r.id}>{getResumeTitleLabel(r, resumeTitleLabels)}</option>
                     ))}
                   </select>
 

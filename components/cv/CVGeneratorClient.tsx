@@ -22,6 +22,7 @@ import {
 } from '@/lib/cv/shared'
 import { getCoverLetterDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
 import { MAX_RESUME_UPLOAD_LABEL } from '@/lib/uploadLimits'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import type { Resume, ResumeData, TailorIntensity } from '@/types'
 
 const PAGE_HEIGHT_PX = 1123
@@ -130,6 +131,7 @@ export default function CVGeneratorClient({
       ),
     [resumes],
   )
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(availableResumes), [availableResumes])
 
   const [sourceMode, setSourceMode] = useState<SourceMode>(availableResumes.length > 0 ? 'saved' : 'upload')
   const [selectedResumeId, setSelectedResumeId] = useState(availableResumes[0]?.id ?? '')
@@ -417,7 +419,7 @@ export default function CVGeneratorClient({
                     ) : null}
                     {availableResumes.map(resume => (
                       <option key={resume.id} value={resume.id}>
-                        {resume.title}
+                        {getResumeTitleLabel(resume, resumeTitleLabels)}
                       </option>
                     ))}
                   </select>

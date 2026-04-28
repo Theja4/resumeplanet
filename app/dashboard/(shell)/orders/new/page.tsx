@@ -1,6 +1,6 @@
 'use client'
 
-import { type ReactNode, type DragEvent, useEffect, useRef, useState } from 'react'
+import { type ReactNode, type DragEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -17,6 +17,7 @@ import {
 import type { Resume } from '@/types'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { HUMAN_WRITTEN_ORDER } from '@/lib/pricing'
+import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 
@@ -281,6 +282,7 @@ export default function NewOrderPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoadingResumes, setIsLoadingResumes] = useState(true)
+  const resumeTitleLabels = useMemo(() => buildResumeTitleLabelMap(resumes), [resumes])
 
   useEffect(() => {
     async function loadResumes() {
@@ -419,7 +421,7 @@ export default function NewOrderPage() {
                         <SelectionCard
                           key={resume.id}
                           selected={selectedResumeId === resume.id}
-                          title={resume.title || 'Untitled Resume'}
+                          title={getResumeTitleLabel(resume, resumeTitleLabels)}
                           subtitle={`Updated ${new Date(resume.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                           onClick={() => {
                             setSelectedResumeId(resume.id)
@@ -627,7 +629,10 @@ export default function NewOrderPage() {
                   <div className="rounded-[1.5rem] border border-black/6 bg-white/84 p-5 shadow-[0_16px_36px_rgba(25,28,29,0.04)]">
                     <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/40 mb-4">Brief Details</p>
                     <div className="space-y-3">
-                      <SummaryRow label="Resume" value={selectedResume?.title || uploadedResumeFile?.name || 'Uploaded File'} />
+                      <SummaryRow
+                        label="Resume"
+                        value={selectedResume ? getResumeTitleLabel(selectedResume, resumeTitleLabels) : uploadedResumeFile?.name || 'Uploaded File'}
+                      />
                       <SummaryRow label="Target role" value={jobTitle} />
                       <SummaryRow label="Industry" value={industry} />
                       <SummaryRow label="Experience" value={yearsExp} />
