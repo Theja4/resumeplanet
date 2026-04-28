@@ -325,7 +325,7 @@ export default function SubItemList({
       </div>
 
       {/* Item editor */}
-      <div ref={rootRef} className="p-4 overflow-y-auto">
+      <div ref={rootRef} className="p-4">
         {(sectionId === 'experience' || sectionId.startsWith('custom_')) && (
           <ExperienceItemEditor
             item={item as ExperienceItem}

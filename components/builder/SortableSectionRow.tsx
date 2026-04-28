@@ -242,7 +242,7 @@ export default function SortableSectionRow({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className={`mb-2 last:mb-0 transition-all ${isExpanded ? 'rounded-xl shadow-sm border border-emerald-100/50 bg-surface-container-lowest overflow-hidden' : 'rounded-xl hover:bg-zinc-100'}`}>
+    <div ref={setNodeRef} style={style} className={`mb-2 last:mb-0 transition-all ${isExpanded ? 'rounded-xl shadow-sm border border-emerald-100/50 bg-surface-container-lowest' : 'rounded-xl hover:bg-zinc-100'}`}>
       {/* Section row header */}
       <div className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-all ${isExpanded ? 'text-emerald-700' : 'text-zinc-600'} ${isHidden ? 'opacity-50' : ''}`} onClick={(e) => {
         // Prevent expand if clicking visibility toggle or drag handle

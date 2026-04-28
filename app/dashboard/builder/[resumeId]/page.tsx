@@ -758,7 +758,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
 
     setIsSaving(true)
-    clearTimeout(saveTimerRef.current)
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = undefined
+    }
     const visibleResumeData = getVisibleResumeData(resumeData, visibility)
     const atsScore = scoreResume(visibleResumeData).score
 
