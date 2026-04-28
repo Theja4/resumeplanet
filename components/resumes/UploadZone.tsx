@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import type { Resume, ResumeData } from '@/types'
@@ -70,6 +70,14 @@ export default function UploadZone({
   const animationRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const longRunningTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const progressRef = useRef(0)
+
+  // Clean up timers on unmount to prevent leaks during upload/parse
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) clearInterval(animationRef.current)
+      if (longRunningTimerRef.current) clearTimeout(longRunningTimerRef.current)
+    }
+  }, [])
 
   function validateFile(file: File): string | null {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase()

@@ -114,13 +114,13 @@ export async function POST(request: NextRequest) {
 
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, plan')
     .eq('id', user.id)
     .single()
 
-  const profile = profileData as Profile | null
+  const profile = profileData as Pick<Profile, 'id' | 'plan'> | null
 
-  if (!isPro(profile)) {
+  if (!isPro(profile as Profile | null)) {
     return NextResponse.json({ success: false, error: 'PRO_REQUIRED' }, { status: 403 })
   }
 

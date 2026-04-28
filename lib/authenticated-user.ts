@@ -28,16 +28,21 @@ function isRetryableSupabaseError(error: SupabaseResultWithError['error']) {
 }
 
 async function retrySupabaseRequest<T extends SupabaseResultWithError>(
-  request: () => PromiseLike<T>
+  request: () => PromiseLike<T>,
+  maxRetries = 2
 ) {
-  const firstResult = await request()
+  let lastResult = await request()
 
-  if (!isRetryableSupabaseError(firstResult.error)) {
-    return firstResult
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (!isRetryableSupabaseError(lastResult.error)) {
+      return lastResult
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250 * Math.pow(2, attempt - 1)))
+    lastResult = await request()
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 250))
-  return request()
+  return lastResult
 }
 
 const readAuthenticatedUserContext = cache(async (): Promise<AuthenticatedUserContext | null> => {

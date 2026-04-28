@@ -15,23 +15,27 @@ export default async function ResumesPage() {
 
   const resumes = (resumesResult.data ?? []) as Resume[]
 
-  // Fetch latest ATS score for each resume in a single query
-  const resumeIds = resumes.map((r) => r.id)
-  const latestScores: Record<string, number> = Object.fromEntries(
-    resumes
-      .filter((resume): resume is Resume & { ats_score: number } => typeof resume.ats_score === 'number')
-      .map(resume => [resume.id, resume.ats_score])
-  )
+  // Build score map from denormalized ats_score field first
+  const latestScores: Record<string, number> = {}
+  const missingScoreIds: string[] = []
 
-  if (resumeIds.length > 0) {
+  for (const resume of resumes) {
+    if (typeof resume.ats_score === 'number') {
+      latestScores[resume.id] = resume.ats_score
+    } else {
+      missingScoreIds.push(resume.id)
+    }
+  }
+
+  // Only query ats_scores table for resumes missing the denormalized value
+  if (missingScoreIds.length > 0) {
     const { data: scores } = await supabase
       .from('ats_scores')
-      .select('resume_id, score, created_at')
-      .in('resume_id', resumeIds)
+      .select('resume_id, score')
+      .in('resume_id', missingScoreIds)
       .order('created_at', { ascending: false })
 
     if (scores) {
-      // Keep only the most recent score per resume
       for (const score of scores) {
         if (score.resume_id && !(score.resume_id in latestScores)) {
           latestScores[score.resume_id] = score.score

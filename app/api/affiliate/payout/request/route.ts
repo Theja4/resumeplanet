@@ -36,12 +36,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Early exit for obvious under-minimum balances. The DB RPC
+    // `request_affiliate_payout` enforces the minimum atomically,
+    // so this is just a fast-fail — not a security boundary.
     const stats = await getAffiliateStats(auth.serviceSupabase, auth.affiliate.id)
 
     if (stats.pendingPayout < 10) {
       return buildPayoutErrorResponse('Minimum payout is $10.00')
     }
 
+    // The RPC creates the payout row inside a transaction, so
+    // concurrent requests will not produce duplicate payouts.
     const payout = await createAffiliatePayoutRequest(
       auth.serviceSupabase,
       auth.affiliate.id,

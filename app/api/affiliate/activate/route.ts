@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
   }
 
   const [profileResult, affiliateResult] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('affiliates').select('*').eq('user_id', user.id).maybeSingle(),
+    supabase.from('profiles').select('id, email, full_name, plan').eq('id', user.id).single(),
+    supabase.from('affiliates').select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, paypal_email').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (profileResult.error) {
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       commission_percent: AFFILIATE_ACTIVATION_COMMISSION_PERCENT,
       paypal_email: null,
     })
-    .select('*')
+    .select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, paypal_email')
     .single()
 
   if (insertError || !affiliate) {

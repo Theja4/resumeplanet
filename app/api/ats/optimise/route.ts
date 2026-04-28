@@ -77,6 +77,7 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
     publications: data?.publications ?? [],
     references: data?.references ?? [],
     customSections: data?.customSections ?? [],
+    skillSections: data?.skillSections ?? [],
   }
 }
 

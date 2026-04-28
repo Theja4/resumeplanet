@@ -554,6 +554,7 @@ export function FeatureShowcase({
               type="button"
               onClick={() => handleFeatureSelect(index)}
               aria-pressed={isActive}
+              aria-label={`Feature ${index + 1}: ${item.badge}`}
               className={`group cursor-pointer rounded-[1.2rem] text-left transition-all duration-500 ${
                 isActive
                   ? 'bg-zinc-950 text-white shadow-[0_20px_40px_rgba(17,24,39,0.14)]'
@@ -566,7 +567,7 @@ export function FeatureShowcase({
               <span className={`mt-2 block h-[3px] rounded-full ${isActive ? 'bg-white/10' : 'bg-zinc-900/6'}`}>
                 {isActive ? (
                   <span
-                    key={`${item.id}-${activeIndex}`}
+                    key={`${item.id}-progress`}
                     className="login-progress-fill block h-full rounded-full bg-primary-container"
                   />
                 ) : null}

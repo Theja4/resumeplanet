@@ -24,15 +24,21 @@ export const AFFILIATE_ACTIVATION_COMMISSION_PERCENT = readPercentEnv(
   40
 )
 
+if (AFFILIATE_ACTIVATION_DISCOUNT_PERCENT + AFFILIATE_ACTIVATION_COMMISSION_PERCENT > 100) {
+  console.error(
+    `[affiliate] Invalid config: discount (${AFFILIATE_ACTIVATION_DISCOUNT_PERCENT}%) + commission (${AFFILIATE_ACTIVATION_COMMISSION_PERCENT}%) exceeds 100%. Capping commission.`
+  )
+}
+
 const AFFILIATE_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{2,39}$/
 const AFFILIATE_ACTIVATION_BASE_CODE_PATTERN = /^[A-Z0-9]{4,8}$/
 const RESERVED_REF_SOURCES = new Set(['BLOG'])
 
-function roundCurrencyAmount(value: number) {
+export function roundCurrencyAmount(value: number) {
   return Math.round(value * 100) / 100
 }
 
-function toCurrencyAmount(value: string | number | null | undefined) {
+export function toCurrencyAmount(value: string | number | null | undefined) {
   const numeric = typeof value === 'number' ? value : Number(value ?? 0)
   if (!Number.isFinite(numeric)) {
     return 0

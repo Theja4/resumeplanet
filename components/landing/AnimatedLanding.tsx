@@ -45,7 +45,7 @@ function FloatingParticles() {
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
       {Array.from({ length: 20 }).map((_, i) => (
         <motion.div
-          key={i}
+          key={`particle-${i}`}
           className="absolute rounded-full"
           style={{
             width: seededRandom(i * 4) * 4 + 2,

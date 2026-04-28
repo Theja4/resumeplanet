@@ -61,13 +61,18 @@ export async function readAIRequestCache<T>({
   signature: string
   version: number
 }) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('ai_request_cache')
     .select('payload')
     .eq('user_id', userId)
     .eq('feature', feature)
     .eq('signature', signature)
     .maybeSingle()
+
+  if (error) {
+    console.error(`readAIRequestCache failed [${feature}]:`, error.message)
+    return null
+  }
 
   const row = data as AIRequestCacheRow<T> | null
   if (!row?.payload) return null
@@ -90,7 +95,7 @@ export async function writeAIRequestCache<T>({
   version: number
   data: T
 }) {
-  await supabase
+  const { error } = await supabase
     .from('ai_request_cache')
     .upsert(
       {
@@ -107,4 +112,8 @@ export async function writeAIRequestCache<T>({
         onConflict: 'user_id,feature,signature',
       }
     )
+
+  if (error) {
+    console.error(`writeAIRequestCache failed [${feature}]:`, error.message)
+  }
 }

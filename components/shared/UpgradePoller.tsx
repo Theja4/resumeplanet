@@ -14,17 +14,27 @@ export default function UpgradePoller({ upgraded, isPro }: Props) {
   const router = useRouter()
   const attempts = useRef(0)
   const running = useRef(false)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (!upgraded || isPro) return
 
-    const id = setInterval(async () => {
+    // Clear any stale interval from a previous effect cycle
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
+    attempts.current = 0
+
+    intervalRef.current = setInterval(async () => {
       if (running.current) return
       running.current = true
 
       attempts.current += 1
       if (attempts.current >= MAX_ATTEMPTS) {
-        clearInterval(id)
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        intervalRef.current = null
         running.current = false
         return
       }
@@ -33,7 +43,8 @@ export default function UpgradePoller({ upgraded, isPro }: Props) {
         const res = await fetch('/api/paddle/sync-subscription', { method: 'POST' })
         const json = await res.json()
         if (json.isPro) {
-          clearInterval(id)
+          if (intervalRef.current) clearInterval(intervalRef.current)
+          intervalRef.current = null
           router.refresh()
         }
       } catch {
@@ -43,7 +54,12 @@ export default function UpgradePoller({ upgraded, isPro }: Props) {
       running.current = false
     }, 2000)
 
-    return () => clearInterval(id)
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
   }, [upgraded, isPro, router])
 
   return null

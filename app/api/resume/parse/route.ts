@@ -140,7 +140,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .from('resumes')
     .select('id')
     .eq('user_id', user.id)
-    .or(`title.eq."${originalFilename}",file_hash.eq."${fileHash}"`)
+    .or(`title.eq.${originalFilename},file_hash.eq.${fileHash}`)
     .gte('created_at', since)
     .maybeSingle()
 

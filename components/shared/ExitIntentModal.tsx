@@ -27,6 +27,8 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
   const mountedAtRef = useRef(0)
   const lastPointerYRef = useRef<number | null>(null)
   const pendingTopExitRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
   const { openSubscriptionCheckout } = usePaddleCheckout()
 
   const showModal = useCallback(() => {
@@ -132,14 +134,13 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
         if (t <= 1) {
           clearInterval(timer)
           setIsOpen(false)
-          onClose()
+          onCloseRef.current()
           return 0
         }
         return t - 1
       })
     }, 1000)
     return () => clearInterval(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, promo.exitIntentTimerSeconds])
 
   function handleClose() {

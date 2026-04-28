@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { PlanProvider } from '@/lib/context/PlanContext'
 import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
@@ -30,7 +31,7 @@ export default async function DashboardLayout({
           {/* Page content */}
           <main className="relative flex-1 px-3 py-5 pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-8 md:pb-10 xl:px-10">
             <div className="mx-auto w-full max-w-[1240px]">
-              {children}
+              <Suspense>{children}</Suspense>
             </div>
           </main>
         </div>

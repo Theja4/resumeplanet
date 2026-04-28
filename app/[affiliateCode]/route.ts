@@ -53,7 +53,7 @@ export async function GET(
     maxAge: AFFILIATE_REFERRAL_COOKIE_MAX_AGE,
     path: '/',
     sameSite: 'lax',
-    httpOnly: false,
+    httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
   })
 

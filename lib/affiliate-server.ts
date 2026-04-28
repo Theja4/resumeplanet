@@ -7,6 +7,8 @@ import {
   AFFILIATE_REFERRALS_PER_PAGE,
   normalizeAffiliateCode,
   readAffiliateReferralCodeFromCookieStore,
+  roundCurrencyAmount,
+  toCurrencyAmount,
 } from '@/lib/affiliate'
 import type {
   Affiliate,
@@ -31,19 +33,6 @@ export interface AffiliateAuthContext {
 
 export function logAffiliateInfrastructureError(scope: string, error: unknown) {
   console.error(`[affiliate] ${scope}`, error)
-}
-
-function roundCurrencyAmount(value: number) {
-  return Math.round(value * 100) / 100
-}
-
-function toCurrencyAmount(value: string | number | null | undefined) {
-  const numeric = typeof value === 'number' ? value : Number(value ?? 0)
-  if (!Number.isFinite(numeric)) {
-    return 0
-  }
-
-  return roundCurrencyAmount(numeric)
 }
 
 function parseAffiliateRow(row: Record<string, unknown>): Affiliate {

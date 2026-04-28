@@ -340,15 +340,13 @@ export function applyTailorAnalysisToResumeData(
   const touchedSections = new Set<MutableScope>()
 
   for (const sectionId of APPLY_ORDER) {
-    const candidate = structuredClone(working)
-    const sectionChanged = applyScopeMutations(candidate, analysis, sectionId)
+    const sectionChanged = applyScopeMutations(working, analysis, sectionId)
 
     if (!sectionChanged) continue
 
-    const syncedCandidate = syncResumeData(candidate)
-    const scoredCandidate = scoreResume(syncedCandidate)
-    working = syncedCandidate
-    currentScore = scoredCandidate.score
+    working = syncResumeData(working)
+    const scored = scoreResume(working)
+    currentScore = scored.score
     touchedSections.add(sectionId)
   }
 

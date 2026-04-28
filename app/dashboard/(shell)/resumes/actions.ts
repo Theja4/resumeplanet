@@ -21,7 +21,16 @@ export async function deleteResume(id: string) {
     .single()
 
   // Delete DB row (cascades to ats_scores)
-  await supabase.from('resumes').delete().eq('id', id).eq('user_id', user.id)
+  const { error: deleteError } = await supabase
+    .from('resumes')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (deleteError) {
+    console.error(`deleteResume failed for ${id}:`, deleteError.message)
+    return
+  }
 
   // Delete from storage if path exists
   if (resume?.original_file_url) {

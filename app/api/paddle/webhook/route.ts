@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod/v4'
 import {
   fromMinorUnitAmount,
   normalizeAffiliateCode,
+  roundCurrencyAmount,
   toMonthlyRecurringRevenue,
 } from '@/lib/affiliate'
 import {
@@ -14,6 +16,61 @@ import { verifyPaddleWebhook } from '@/lib/paddle'
 import { findProPriceOptionByPaddleId } from '@/lib/pricing'
 import { captureServerAnalyticsEvent } from '@/lib/analytics-server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
+
+// ── Webhook payload schemas ─────────────────────────────────────────────────
+
+const paddleCustomDataSchema = z.object({
+  mode: z.string().optional(),
+  userId: z.string().optional(),
+  userEmail: z.string().optional(),
+  orderId: z.string().optional(),
+  affiliateDiscountCode: z.string().optional(),
+  posthogDistinctId: z.string().optional(),
+}).passthrough().optional().default({})
+
+const paddlePriceSchema = z.object({
+  id: z.string(),
+  unitPrice: z.object({ amount: z.union([z.string(), z.number()]) }).optional(),
+  billingCycle: z.object({
+    interval: z.string(),
+    frequency: z.number().optional(),
+  }).optional(),
+}).passthrough()
+
+const paddleItemSchema = z.object({
+  price: paddlePriceSchema.optional(),
+}).passthrough()
+
+const paddleTransactionSchema = z.object({
+  id: z.string(),
+  subscriptionId: z.string().optional().nullable(),
+  customerId: z.string().optional().nullable(),
+  customData: paddleCustomDataSchema,
+  items: z.array(paddleItemSchema).optional().default([]),
+  details: z.object({
+    totals: z.object({
+      total: z.union([z.string(), z.number()]).optional(),
+    }).optional(),
+  }).optional(),
+  status: z.string().optional(),
+}).passthrough()
+
+const paddleSubscriptionSchema = z.object({
+  id: z.string(),
+  status: z.string(),
+  customerId: z.string().optional().nullable(),
+  customData: paddleCustomDataSchema,
+  items: z.array(paddleItemSchema).optional().default([]),
+}).passthrough()
+
+const paddleWebhookEventSchema = z.object({
+  eventType: z.string(),
+  data: z.record(z.string(), z.unknown()),
+}).passthrough()
+
+type PaddleTransaction = z.infer<typeof paddleTransactionSchema>
+type PaddleSubscription = z.infer<typeof paddleSubscriptionSchema>
+type PaddleCustomData = z.infer<typeof paddleCustomDataSchema>
 
 function resolveInterval(priceId: string | undefined | null): 'monthly' | 'annual' | null {
   if (!priceId) return null
@@ -43,9 +100,6 @@ function resolveReferralStatus(status: string | undefined | null): 'active' | 't
   return 'churned'
 }
 
-function roundCurrencyAmount(value: number) {
-  return Math.round(value * 100) / 100
-}
 
 // Service role client for webhook (bypasses RLS)
 function createServiceClient() {
@@ -62,8 +116,7 @@ function throwIfError(error: { message: string } | null, context: string) {
 
 async function resolveReferredUserEmail(
   supabase: ServiceClient,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  customData: any
+  customData: PaddleCustomData,
 ) {
   const explicitEmail =
     typeof customData?.userEmail === 'string' ? customData.userEmail.trim().toLowerCase() : ''
@@ -91,8 +144,7 @@ async function resolveReferredUserEmail(
   return data?.email ?? 'unknown@rezoomed.local'
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractAffiliateDiscountCode(customData: any) {
+function extractAffiliateDiscountCode(customData: PaddleCustomData) {
   const value = typeof customData?.affiliateDiscountCode === 'string'
     ? customData.affiliateDiscountCode
     : null
@@ -104,8 +156,7 @@ async function upsertAffiliateReferralFromSubscriptionLike(
   params: {
     affiliateCode: string | null
     subscriptionId: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    customData: any
+    customData: PaddleCustomData
     priceId: string | undefined | null
     priceAmount: string | number | undefined | null
     priceInterval: string | undefined | null
@@ -143,8 +194,7 @@ async function upsertAffiliateReferralFromSubscriptionLike(
   return { affiliate, referral }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function syncAffiliateReferralFromSubscription(subscription: any, supabase: ServiceClient) {
+async function syncAffiliateReferralFromSubscription(subscription: PaddleSubscription, supabase: ServiceClient) {
   const price = subscription.items?.[0]?.price
   const existingReferral = await getAffiliateReferralBySubscriptionId(supabase, subscription.id)
 
@@ -182,8 +232,7 @@ async function syncAffiliateReferralFromSubscription(subscription: any, supabase
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveAffiliateTransactionContext(transaction: any, supabase: ServiceClient) {
+async function resolveAffiliateTransactionContext(transaction: PaddleTransaction, supabase: ServiceClient) {
   const existingReferral = await getAffiliateReferralBySubscriptionId(supabase, transaction.subscriptionId)
 
   if (existingReferral) {
@@ -213,8 +262,7 @@ async function resolveAffiliateTransactionContext(transaction: any, supabase: Se
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function recordAffiliateCommission(transaction: any, supabase: ServiceClient) {
+async function recordAffiliateCommission(transaction: PaddleTransaction, supabase: ServiceClient) {
   const context = await resolveAffiliateTransactionContext(transaction, supabase)
 
   if (!context) {
@@ -313,10 +361,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let event: any
+  let rawEvent: unknown
   try {
-    event = verifyPaddleWebhook(
+    rawEvent = verifyPaddleWebhook(
       rawBody,
       signature,
       process.env.PADDLE_WEBHOOK_SECRET
@@ -326,12 +373,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  const eventResult = paddleWebhookEventSchema.safeParse(rawEvent)
+  if (!eventResult.success) {
+    console.error('Paddle webhook payload validation failed:', eventResult.error.message)
+    return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 })
+  }
+
+  const event = eventResult.data
   const supabase = createServiceClient()
 
   try {
     switch (event.eventType) {
       case 'transaction.completed': {
-        const tx = event.data
+        const tx = paddleTransactionSchema.parse(event.data)
         const customData = tx.customData ?? {}
         if (customData.mode === 'order') {
           await handleOrderCompleted(tx, supabase)
@@ -341,49 +395,60 @@ export async function POST(request: NextRequest) {
         break
       }
       case 'subscription.activated': {
-        await handleSubscriptionActivated(event.data, supabase)
+        const sub = paddleSubscriptionSchema.parse(event.data)
+        await handleSubscriptionActivated(sub, supabase)
         break
       }
       case 'subscription.created': {
-        await handleSubscriptionCreated(event.data, supabase)
+        const sub = paddleSubscriptionSchema.parse(event.data)
+        await handleSubscriptionCreated(sub, supabase)
         break
       }
       case 'subscription.updated': {
-        await handleSubscriptionUpdated(event.data, supabase)
+        const sub = paddleSubscriptionSchema.parse(event.data)
+        await handleSubscriptionUpdated(sub, supabase)
         break
       }
       case 'subscription.canceled': {
-        await handleSubscriptionCanceled(event.data, supabase)
+        const sub = paddleSubscriptionSchema.parse(event.data)
+        await handleSubscriptionCanceled(sub, supabase)
         break
       }
       case 'transaction.payment_failed': {
-        await handlePaymentFailed(event.data, supabase)
+        const tx = paddleTransactionSchema.parse(event.data)
+        await handlePaymentFailed(tx, supabase)
         break
       }
       default:
         break
     }
   } catch (err) {
-    console.error(`Paddle webhook error [${event?.eventType}]:`, err)
-    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
+    // Log the error but return 200 so Paddle doesn't retry indefinitely.
+    // Signature was already verified — the failure is in our business logic.
+    console.error(`Paddle webhook error [${event.eventType}]:`, err)
   }
 
   return NextResponse.json({ received: true })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleOrderCompleted(transaction: any, supabase: ServiceClient) {
+async function handleOrderCompleted(transaction: PaddleTransaction, supabase: ServiceClient) {
   const { orderId } = transaction.customData ?? {}
   if (!orderId) return
 
-  // Idempotency check
+  // Idempotency check — skip if already paid with matching transaction
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .select('status')
+    .select('status, paddle_transaction_id')
     .eq('id', orderId)
     .single()
   throwIfError(orderError, `handleOrderCompleted lookup ${orderId}`)
-  if (!order || order.status === 'paid') return
+  if (!order) return
+  if (order.status === 'paid') {
+    if (order.paddle_transaction_id && order.paddle_transaction_id !== transaction.id) {
+      console.warn(`handleOrderCompleted: order ${orderId} already paid by transaction ${order.paddle_transaction_id}, ignoring duplicate from ${transaction.id}`)
+    }
+    return
+  }
 
   const { error: updateError } = await supabase
     .from('orders')
@@ -394,7 +459,7 @@ async function handleOrderCompleted(transaction: any, supabase: ServiceClient) {
     .eq('id', orderId)
   throwIfError(updateError, `handleOrderCompleted update ${orderId}`)
 
-  const analyticsDistinctId = transaction.customData?.posthogDistinctId as string | undefined
+  const analyticsDistinctId = transaction.customData?.posthogDistinctId
   if (analyticsDistinctId) {
     await captureServerAnalyticsEvent(analyticsDistinctId, 'checkout_completed', {
       product: 'writing_service',
@@ -406,8 +471,7 @@ async function handleOrderCompleted(transaction: any, supabase: ServiceClient) {
   console.log(`Order ${orderId} marked as paid`)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSubscriptionFromTransaction(transaction: any, supabase: ServiceClient) {
+async function handleSubscriptionFromTransaction(transaction: PaddleTransaction, supabase: ServiceClient) {
   const { userId } = transaction.customData ?? {}
   if (!userId) return
 
@@ -430,7 +494,7 @@ async function handleSubscriptionFromTransaction(transaction: any, supabase: Ser
   await recordAffiliateCommission(transaction, supabase)
 
   const analyticsDistinctId =
-    (transaction.customData?.posthogDistinctId as string | undefined) ?? userId
+    transaction.customData?.posthogDistinctId ?? userId
   if (analyticsDistinctId) {
     await captureServerAnalyticsEvent(analyticsDistinctId, 'checkout_completed', {
       product: 'pro_subscription',
@@ -442,13 +506,11 @@ async function handleSubscriptionFromTransaction(transaction: any, supabase: Ser
   console.log(`User ${userId} upgraded to Pro (via transaction), interval: ${subscriptionInterval}`)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSubscriptionCreated(subscription: any, supabase: ServiceClient) {
+async function handleSubscriptionCreated(subscription: PaddleSubscription, supabase: ServiceClient) {
   await syncAffiliateReferralFromSubscription(subscription, supabase)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSubscriptionActivated(subscription: any, supabase: ServiceClient) {
+async function handleSubscriptionActivated(subscription: PaddleSubscription, supabase: ServiceClient) {
   const userId = subscription.customData?.userId
   if (!userId) return
 
@@ -473,8 +535,7 @@ async function handleSubscriptionActivated(subscription: any, supabase: ServiceC
   console.log(`User ${userId} subscription activated, interval: ${subscriptionInterval}`)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSubscriptionUpdated(subscription: any, supabase: ServiceClient) {
+async function handleSubscriptionUpdated(subscription: PaddleSubscription, supabase: ServiceClient) {
   const isActive = ['active', 'trialing'].includes(subscription.status)
   const priceId = subscription.items?.[0]?.price?.id ?? null
   const subscriptionInterval = isActive ? resolveInterval(priceId) : null
@@ -496,8 +557,7 @@ async function handleSubscriptionUpdated(subscription: any, supabase: ServiceCli
   await syncAffiliateReferralFromSubscription(subscription, supabase)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handleSubscriptionCanceled(subscription: any, supabase: ServiceClient) {
+async function handleSubscriptionCanceled(subscription: PaddleSubscription, supabase: ServiceClient) {
   await updateProfileBySubscriptionReference(
     supabase,
     subscription.id,
@@ -516,8 +576,7 @@ async function handleSubscriptionCanceled(subscription: any, supabase: ServiceCl
   console.log(`Subscription ${subscription.id} cancelled`)
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function handlePaymentFailed(transaction: any, supabase: ServiceClient) {
+async function handlePaymentFailed(transaction: PaddleTransaction, supabase: ServiceClient) {
   // Don't downgrade immediately — Paddle retries
   const subscriptionId = transaction.subscriptionId
   if (!subscriptionId) return

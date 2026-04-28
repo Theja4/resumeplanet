@@ -79,7 +79,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     result = await callClaudeJSONRace<ApplyFixResponse>({
-      model: process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2',
+      model: (() => {
+        const m = process.env.ANTHROPIC_MODEL_PREMIUM
+        if (!m) console.warn('ANTHROPIC_MODEL_PREMIUM is not set — falling back to default model')
+        return m || 'deepseek/deepseek-v3.2'
+      })(),
       system: APPLY_SYSTEM,
       prompt,
       maxTokens: 512,
