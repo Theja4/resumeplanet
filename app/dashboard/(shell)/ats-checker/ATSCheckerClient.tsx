@@ -12,7 +12,8 @@ import { countWords } from '@/lib/text'
 import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
 import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
-import { resumeDataToPlainText } from '@/lib/resume-data'
+import { getResumeSkills, resumeDataToPlainText } from '@/lib/resume-data'
+import { scoreResume } from '@/lib/ats-scorer'
 import AdBanner from '@/components/shared/AdBanner'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
@@ -52,7 +53,32 @@ interface OptimiseResponse {
   keywordsAdded: string[]
   improvementsCount: number
   changesSummary: string
+  optimisedScore: number
+  scoreGain: number
   resumeData: ResumeData
+}
+
+interface ChangeComparison {
+  id: string
+  kind:
+    | 'summary'
+    | 'skills'
+    | 'experience-summary'
+    | 'experience-bullet'
+    | 'project-description'
+    | 'project-bullet'
+    | 'volunteer-summary'
+    | 'volunteer-bullet'
+  section: string
+  title: string
+  beforeValue: string
+  afterValue: string
+  before: string
+  after: string
+  itemIndex?: number
+  bulletIndex?: number
+  afterSkills?: string[]
+  afterSkillSections?: ResumeData['skillSections']
 }
 
 interface UploadedResumeFile {
@@ -99,6 +125,8 @@ interface ATSCheckerSessionDraft {
   optimisedResumeId: string | null
   openOptimisedError: string | null
   activeTab: 'results' | 'optimised'
+  appliedOptimisedChangeIds?: string[]
+  hasTouchedOptimisedChangeSelection?: boolean
 }
 
 type AnalysisMode = 'ats' | 'match'
@@ -172,6 +200,19 @@ const ATS_PREVIEW_SECTION_ORDER = [
 
 const ATS_PREVIEW_PAGE_WIDTH = 794
 const ATS_PREVIEW_PAGE_HEIGHT = 1123
+const SCAN_RESULTS_REVEAL_DELAY_MS = 5000
+
+function wait(ms: number) {
+  return new Promise(resolve => window.setTimeout(resolve, ms))
+}
+
+async function waitForScanReveal(startedAt: number) {
+  const elapsed = performance.now() - startedAt
+  const remaining = SCAN_RESULTS_REVEAL_DELAY_MS - elapsed
+  if (remaining > 0) {
+    await wait(remaining)
+  }
+}
 
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
@@ -241,6 +282,258 @@ function getReviewSections(result: ScanResponse) {
     { key: 'education', label: 'Education', count: counts.education },
     { key: 'formatting', label: 'Formatting', count: counts.formatting },
   ]
+}
+
+function compactChangeText(value: string | null | undefined) {
+  return (value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function truncateChangeText(value: string, maxLength = 420) {
+  const compact = compactChangeText(value)
+  if (compact.length <= maxLength) return compact
+  return `${compact.slice(0, maxLength - 3).trim()}...`
+}
+
+function hasTextChange(before: string | null | undefined, after: string | null | undefined) {
+  const beforeText = compactChangeText(before)
+  const afterText = compactChangeText(after)
+  return afterText.length > 0 && beforeText !== afterText
+}
+
+function formatScoreGain(gain: number) {
+  if (gain > 0) return `+${gain}`
+  return String(gain)
+}
+
+function scoreGainToneClass(gain: number) {
+  if (gain > 0) return 'bg-emerald-100 text-emerald-700'
+  if (gain < 0) return 'bg-red-100 text-red-700'
+  return 'bg-surface-container-high text-on-surface-variant'
+}
+
+function labelExperienceItem(
+  item: ResumeData['experience'][number] | ResumeData['projects'][number] | undefined,
+  fallback: string
+) {
+  if (!item) return fallback
+  if ('company' in item) {
+    const title = compactChangeText(item.title)
+    const company = compactChangeText(item.company)
+    if (title && company) return `${title} at ${company}`
+    return title || company || fallback
+  }
+
+  return compactChangeText(item.name) || fallback
+}
+
+function pushChangeComparison(
+  changes: ChangeComparison[],
+  comparison: Omit<ChangeComparison, 'before' | 'after' | 'beforeValue' | 'afterValue'> & { before?: string | null; after?: string | null }
+) {
+  if (!hasTextChange(comparison.before, comparison.after)) return
+
+  const beforeValue = compactChangeText(comparison.before)
+  const afterValue = compactChangeText(comparison.after)
+
+  changes.push({
+    ...comparison,
+    beforeValue,
+    afterValue,
+    before: truncateChangeText(beforeValue || 'Not present in the original resume.'),
+    after: truncateChangeText(afterValue),
+  })
+}
+
+function collectExperienceChanges(
+  changes: ChangeComparison[],
+  sectionKey: 'experience' | 'volunteer',
+  sectionLabel: string,
+  beforeItems: ResumeData['experience'],
+  afterItems: ResumeData['experience']
+) {
+  const itemCount = Math.max(beforeItems.length, afterItems.length)
+
+  for (let itemIndex = 0; itemIndex < itemCount; itemIndex += 1) {
+    const beforeItem = beforeItems[itemIndex]
+    const afterItem = afterItems[itemIndex]
+    const title = labelExperienceItem(afterItem ?? beforeItem, `${sectionLabel} ${itemIndex + 1}`)
+
+    pushChangeComparison(
+      changes,
+      {
+        id: `${sectionKey}-summary-${itemIndex}`,
+        kind: sectionKey === 'experience' ? 'experience-summary' : 'volunteer-summary',
+        section: sectionLabel,
+        title: `${title} summary`,
+        itemIndex,
+        before: beforeItem?.summary,
+        after: afterItem?.summary,
+      }
+    )
+
+    const beforeBullets = beforeItem?.bullets ?? []
+    const afterBullets = afterItem?.bullets ?? []
+    const bulletCount = Math.max(beforeBullets.length, afterBullets.length)
+
+    for (let bulletIndex = 0; bulletIndex < bulletCount; bulletIndex += 1) {
+      pushChangeComparison(
+        changes,
+        {
+          id: `${sectionKey}-bullet-${itemIndex}-${bulletIndex}`,
+          kind: sectionKey === 'experience' ? 'experience-bullet' : 'volunteer-bullet',
+          section: sectionLabel,
+          title,
+          itemIndex,
+          bulletIndex,
+          before: beforeBullets[bulletIndex],
+          after: afterBullets[bulletIndex],
+        }
+      )
+    }
+  }
+}
+
+function collectProjectChanges(
+  changes: ChangeComparison[],
+  beforeProjects: ResumeData['projects'],
+  afterProjects: ResumeData['projects']
+) {
+  const projectCount = Math.max(beforeProjects.length, afterProjects.length)
+
+  for (let projectIndex = 0; projectIndex < projectCount; projectIndex += 1) {
+    const beforeProject = beforeProjects[projectIndex]
+    const afterProject = afterProjects[projectIndex]
+    const title = labelExperienceItem(afterProject ?? beforeProject, `Project ${projectIndex + 1}`)
+
+    pushChangeComparison(
+      changes,
+      {
+        id: `project-description-${projectIndex}`,
+        kind: 'project-description',
+        section: 'Projects',
+        title,
+        itemIndex: projectIndex,
+        before: beforeProject?.description,
+        after: afterProject?.description,
+      }
+    )
+
+    const beforeBullets = beforeProject?.bullets ?? []
+    const afterBullets = afterProject?.bullets ?? []
+    const bulletCount = Math.max(beforeBullets.length, afterBullets.length)
+
+    for (let bulletIndex = 0; bulletIndex < bulletCount; bulletIndex += 1) {
+      pushChangeComparison(
+        changes,
+        {
+          id: `project-bullet-${projectIndex}-${bulletIndex}`,
+          kind: 'project-bullet',
+          section: 'Projects',
+          title,
+          itemIndex: projectIndex,
+          bulletIndex,
+          before: beforeBullets[bulletIndex],
+          after: afterBullets[bulletIndex],
+        }
+      )
+    }
+  }
+}
+
+function buildChangeComparisons(beforeData: ResumeData, afterData: ResumeData) {
+  const changes: ChangeComparison[] = []
+
+  pushChangeComparison(
+    changes,
+    {
+      id: 'summary',
+      kind: 'summary',
+      section: 'Summary',
+      title: 'Professional summary',
+      before: beforeData.summary,
+      after: afterData.summary,
+    }
+  )
+
+  const beforeSkills = getResumeSkills(beforeData).join(', ')
+  const afterSkills = getResumeSkills(afterData).join(', ')
+  pushChangeComparison(
+    changes,
+    {
+      id: 'skills',
+      kind: 'skills',
+      section: 'Skills',
+      title: 'Skills and keywords',
+      before: beforeSkills || 'No skills listed.',
+      after: afterSkills,
+      afterSkills: afterData.skills,
+      afterSkillSections: afterData.skillSections,
+    }
+  )
+
+  collectExperienceChanges(changes, 'experience', 'Experience', beforeData.experience, afterData.experience)
+  collectProjectChanges(changes, beforeData.projects, afterData.projects)
+  collectExperienceChanges(changes, 'volunteer', 'Volunteer', beforeData.volunteer, afterData.volunteer)
+
+  return changes
+}
+
+function cloneResumeDataForSelection(data: ResumeData): ResumeData {
+  return structuredClone(data)
+}
+
+function applySelectedChangeComparisons(
+  beforeData: ResumeData,
+  changes: ChangeComparison[],
+  appliedChangeIds: Set<string>
+) {
+  const nextData = cloneResumeDataForSelection(beforeData)
+
+  for (const change of changes) {
+    if (!appliedChangeIds.has(change.id)) continue
+
+    switch (change.kind) {
+      case 'summary':
+        nextData.summary = change.afterValue
+        break
+      case 'skills':
+        nextData.skills = [...(change.afterSkills ?? [])]
+        nextData.skillSections = change.afterSkillSections ? structuredClone(change.afterSkillSections) : []
+        break
+      case 'experience-summary':
+      case 'volunteer-summary': {
+        const items = change.kind === 'experience-summary' ? nextData.experience : nextData.volunteer
+        if (typeof change.itemIndex === 'number' && items[change.itemIndex]) {
+          items[change.itemIndex].summary = change.afterValue
+        }
+        break
+      }
+      case 'experience-bullet':
+      case 'volunteer-bullet': {
+        const items = change.kind === 'experience-bullet' ? nextData.experience : nextData.volunteer
+        if (typeof change.itemIndex === 'number' && typeof change.bulletIndex === 'number' && items[change.itemIndex]) {
+          const bullets = [...(items[change.itemIndex].bullets ?? [])]
+          bullets[change.bulletIndex] = change.afterValue
+          items[change.itemIndex].bullets = bullets
+        }
+        break
+      }
+      case 'project-description':
+        if (typeof change.itemIndex === 'number' && nextData.projects[change.itemIndex]) {
+          nextData.projects[change.itemIndex].description = change.afterValue
+        }
+        break
+      case 'project-bullet':
+        if (typeof change.itemIndex === 'number' && typeof change.bulletIndex === 'number' && nextData.projects[change.itemIndex]) {
+          const bullets = [...(nextData.projects[change.itemIndex].bullets ?? [])]
+          bullets[change.bulletIndex] = change.afterValue
+          nextData.projects[change.itemIndex].bullets = bullets.filter(Boolean)
+        }
+        break
+    }
+  }
+
+  return nextData
 }
 
 function RoadToNinetyUpsell({
@@ -503,10 +796,10 @@ export default function ATSCheckerClient({
   const scoreRingLabel = isMatchMode ? 'Match Score' : 'ATS Score'
   const scoreBadgeLabel = isMatchMode ? 'Role Match' : 'ATS Readiness'
   const scanButtonLabel = isMatchMode ? 'Run Match Score' : 'Run ATS Scan'
-  const optimiseButtonLabel = isMatchMode ? 'AI Tailor Resume' : 'AI Improve Resume'
+  const optimiseButtonLabel = isMatchMode ? 'AI Tailor Resume' : 'AI Insights'
   const optimiseButtonLoadingLabel = isMatchMode
     ? 'AI Tailoring… can take 1-2 min'
-    : 'AI Improving… can take 1-2 min'
+    : 'Applying AI insights… can take 1-2 min'
   const keywordSectionTitle = isMatchMode ? 'Coverage against the target role.' : 'Skill evidence across your resume.'
   const keywordSectionDescription = isMatchMode
     ? 'The strongest signals and gaps against the pasted job description.'
@@ -514,7 +807,6 @@ export default function ATSCheckerClient({
   const missingKeywordLabel = isMatchMode ? 'Missing keywords' : 'Listed skills needing evidence'
   const presentKeywordLabel = isMatchMode ? 'Present keywords' : 'Skills backed by bullets'
   const mustHaveLabel = isMatchMode ? 'Must-have' : 'Priority gaps'
-  const niceToHaveLabel = isMatchMode ? 'Nice-to-have' : 'Existing strengths'
   const reviewHeading = isMatchMode ? 'Review what is hurting fit.' : 'Review what to fix.'
   const reviewDescription = isMatchMode
     ? 'Start with the areas where the resume is missing direct evidence for the role.'
@@ -561,6 +853,8 @@ export default function ATSCheckerClient({
   const [isOptimising, setIsOptimising] = useState(false)
   const [optimiseError, setOptimiseError] = useState<string | null>(null)
   const [optimiseResult, setOptimiseResult] = useState<OptimiseResponse | null>(null)
+  const [appliedOptimisedChangeIds, setAppliedOptimisedChangeIds] = useState<string[]>([])
+  const [hasTouchedOptimisedChangeSelection, setHasTouchedOptimisedChangeSelection] = useState(false)
   const [activeTab, setActiveTab] = useState<'results' | 'optimised'>('results')
   const [previewViewportNode, setPreviewViewportNode] = useState<HTMLDivElement | null>(null)
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
@@ -621,6 +915,14 @@ export default function ATSCheckerClient({
       setCustomizeError(draft.customizeError)
       setOptimiseError(draft.optimiseError)
       setOptimiseResult(draft.optimiseResult)
+      setAppliedOptimisedChangeIds(
+        Array.isArray(draft.appliedOptimisedChangeIds)
+          ? draft.appliedOptimisedChangeIds
+          : draft.scanResult && draft.optimiseResult
+            ? buildChangeComparisons(draft.scanResult.resumeData, draft.optimiseResult.resumeData).map(change => change.id)
+            : []
+      )
+      setHasTouchedOptimisedChangeSelection(Boolean(draft.hasTouchedOptimisedChangeSelection))
       setOptimisedResumeId(draft.optimisedResumeId)
       setOpenOptimisedError(draft.openOptimisedError)
       setActiveTab(draft.activeTab)
@@ -676,6 +978,8 @@ export default function ATSCheckerClient({
       setCustomizeError(null)
       setOptimiseError(null)
       setOptimiseResult(null)
+      setAppliedOptimisedChangeIds([])
+      setHasTouchedOptimisedChangeSelection(false)
       setOptimisedResumeId(null)
       setOpenOptimisedError(null)
       setActiveTab('results')
@@ -738,14 +1042,18 @@ export default function ATSCheckerClient({
       customizeError,
       optimiseError,
       optimiseResult,
+      appliedOptimisedChangeIds,
+      hasTouchedOptimisedChangeSelection,
       optimisedResumeId,
       openOptimisedError,
       activeTab,
     } satisfies ATSCheckerSessionDraft)
   }, [
     activeTab,
+    appliedOptimisedChangeIds,
     customizeError,
     draftKey,
+    hasTouchedOptimisedChangeSelection,
     hasRestoredDraft,
     inputMode,
     jobDescription,
@@ -831,6 +1139,8 @@ export default function ATSCheckerClient({
   }
 
   async function handleScan() {
+    if (isScanning) return
+
     if (isAnonymousAtsMode && hasUsedPublicAtsScan) {
       setPublicAuthPromptReason('rescan')
       setScanError(null)
@@ -843,9 +1153,12 @@ export default function ATSCheckerClient({
     setOpenOptimisedError(null)
     setScanResult(null)
     setOptimiseResult(null)
+    setAppliedOptimisedChangeIds([])
+    setHasTouchedOptimisedChangeSelection(false)
     setOptimisedResumeId(null)
     setIsScanning(true)
 
+    const scanStartedAt = performance.now()
     const resumeText = getResumeText()
     const resumeId = inputMode === 'resume' ? selectedResumeId : undefined
 
@@ -867,9 +1180,11 @@ export default function ATSCheckerClient({
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
+        await waitForScanReveal(scanStartedAt)
         setScanError(ERROR_MESSAGES[json.error ?? 'INTERNAL_ERROR'] ?? json.error)
         return
       }
+      await waitForScanReveal(scanStartedAt)
       setScanResult(json.data)
       shouldAutoScrollResultsRef.current = true
       Analytics.atsScoreViewed({
@@ -886,6 +1201,7 @@ export default function ATSCheckerClient({
         void router.prefetch('/dashboard/resumes')
       }
     } catch {
+      await waitForScanReveal(scanStartedAt)
       setScanError(ERROR_MESSAGES['INTERNAL_ERROR'])
     } finally {
       setIsScanning(false)
@@ -915,6 +1231,7 @@ export default function ATSCheckerClient({
     setOptimiseError(null)
     setOpenOptimisedError(null)
     setOptimisedResumeId(null)
+    setHasTouchedOptimisedChangeSelection(false)
     setIsOptimising(true)
     const resumeText = getResumeText()
     try {
@@ -936,6 +1253,8 @@ export default function ATSCheckerClient({
         return
       }
       setOptimiseResult(json.data)
+      setAppliedOptimisedChangeIds(buildChangeComparisons(scanResult.resumeData, json.data.resumeData).map(change => change.id))
+      setHasTouchedOptimisedChangeSelection(false)
       setActiveTab('optimised')
     } catch {
       setOptimiseError(ERROR_MESSAGES['INTERNAL_ERROR'])
@@ -1032,6 +1351,55 @@ export default function ATSCheckerClient({
     }
   }
 
+  async function saveOptimisedResumeForEditor() {
+    if (!optimiseResult || !profile?.id || !selectedOptimisedResumeData) {
+      throw new Error('Optimise the resume first before opening it in the editor.')
+    }
+
+    const selectedText = resumeDataToText(selectedOptimisedResumeData)
+    const selectedScore = scoreResume(selectedOptimisedResumeData).score
+    const payload = {
+      raw_text: selectedText,
+      parsed_data: selectedOptimisedResumeData,
+      ats_score: isMatchMode ? null : selectedScore,
+      builder_visibility: {
+        ...DEFAULT_VISIBILITY,
+        density: ATS_PREVIEW_CONFIG.density,
+      },
+      template_config: ATS_PREVIEW_CONFIG,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (optimisedResumeId) {
+      const { error } = await supabase
+        .from('resumes')
+        .update(payload)
+        .eq('id', optimisedResumeId)
+        .eq('user_id', profile.id)
+
+      if (error) throw error
+      return optimisedResumeId
+    }
+
+    const baseTitle = normalizeResumeTitle(getSourceResumeTitle())
+    const { data, error } = await supabase
+      .from('resumes')
+      .insert({
+        user_id: profile.id,
+        title: `${baseTitle} Optimised`,
+        ...payload,
+      })
+      .select('id')
+      .single()
+
+    if (error || !data?.id) {
+      throw error ?? new Error('Failed to prepare optimised resume')
+    }
+
+    setOptimisedResumeId(data.id)
+    return data.id
+  }
+
   async function handleOpenOptimisedEditor() {
     setOpenOptimisedError(null)
 
@@ -1045,44 +1413,16 @@ export default function ATSCheckerClient({
       return
     }
 
-    if (!optimiseResult || !profile?.id) {
+    if (!optimiseResult || !profile?.id || !selectedOptimisedResumeData) {
       setOpenOptimisedError('Optimise the resume first before opening it in the editor.')
-      return
-    }
-
-    if (optimisedResumeId) {
-      router.push(buildAtsBuilderHref(optimisedResumeId, mode))
       return
     }
 
     setIsOpeningOptimisedEditor(true)
 
     try {
-      const baseTitle = normalizeResumeTitle(getSourceResumeTitle())
-      const { data, error } = await supabase
-        .from('resumes')
-        .insert({
-          user_id: profile.id,
-          title: `${baseTitle} Optimised`,
-          raw_text: optimiseResult.optimisedText,
-          parsed_data: optimiseResult.resumeData,
-          ats_score: isMatchMode ? null : (scanResult?.score ?? null),
-          builder_visibility: {
-            ...DEFAULT_VISIBILITY,
-            density: ATS_PREVIEW_CONFIG.density,
-          },
-          template_config: ATS_PREVIEW_CONFIG,
-          updated_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single()
-
-      if (error || !data?.id) {
-        throw error ?? new Error('Failed to prepare optimised resume')
-      }
-
-      setOptimisedResumeId(data.id)
-      router.push(buildAtsBuilderHref(data.id, mode))
+      const resumeId = await saveOptimisedResumeForEditor()
+      router.push(buildAtsBuilderHref(resumeId, mode))
     } catch (error) {
       console.error('Failed to open optimised resume in editor:', error)
       setOpenOptimisedError('Could not open the optimised resume in the editor. Please try again.')
@@ -1091,8 +1431,97 @@ export default function ATSCheckerClient({
     }
   }
 
+  async function handleDownloadOptimisedResume() {
+    setOpenOptimisedError(null)
+
+    if (publicMode) {
+      if (scanResult) {
+        Analytics.atsScoreUpgradePromptClicked({
+          currentScore: scanResult.score,
+        })
+      }
+      router.push('/auth/register')
+      return
+    }
+
+    if (!optimiseResult || !profile?.id || !selectedOptimisedResumeData) {
+      setOpenOptimisedError('Optimise the resume first before downloading.')
+      return
+    }
+
+    setIsOpeningOptimisedEditor(true)
+
+    try {
+      const resumeId = await saveOptimisedResumeForEditor()
+      const href = buildAtsBuilderHref(resumeId, mode)
+      const separator = href.includes('?') ? '&' : '?'
+      router.push(`${href}${separator}download=pdf`)
+    } catch (error) {
+      console.error('Failed to prepare optimised resume download:', error)
+      setOpenOptimisedError('Could not prepare the optimised resume download. Please try again.')
+    } finally {
+      setIsOpeningOptimisedEditor(false)
+    }
+  }
+
   const previewFrameHeight = Math.round(ATS_PREVIEW_PAGE_HEIGHT * previewScale) + 28
   const previewFrameWidth = Math.round(ATS_PREVIEW_PAGE_WIDTH * previewScale)
+  const optimisedChangeComparisons = useMemo(() => {
+    if (!scanResult || !optimiseResult) return []
+    return buildChangeComparisons(scanResult.resumeData, optimiseResult.resumeData)
+  }, [scanResult, optimiseResult])
+  const appliedOptimisedChangeIdSet = useMemo(
+    () => new Set(appliedOptimisedChangeIds),
+    [appliedOptimisedChangeIds]
+  )
+  const selectedOptimisedResumeData = useMemo(() => {
+    if (!scanResult || !optimiseResult) return null
+    return applySelectedChangeComparisons(
+      scanResult.resumeData,
+      optimisedChangeComparisons,
+      appliedOptimisedChangeIdSet
+    )
+  }, [appliedOptimisedChangeIdSet, optimisedChangeComparisons, optimiseResult, scanResult])
+  const optimisedScore = scanResult && selectedOptimisedResumeData
+    ? scoreResume(selectedOptimisedResumeData).score
+    : null
+  const optimisedScoreGain = scanResult && optimisedScore !== null
+    ? optimisedScore - scanResult.score
+    : 0
+
+  useEffect(() => {
+    if (!optimiseResult) return
+    if (hasTouchedOptimisedChangeSelection) return
+    if (optimisedChangeComparisons.length === 0) return
+    if (appliedOptimisedChangeIds.length > 0) return
+
+    setAppliedOptimisedChangeIds(optimisedChangeComparisons.map(change => change.id))
+  }, [
+    appliedOptimisedChangeIds.length,
+    hasTouchedOptimisedChangeSelection,
+    optimiseResult,
+    optimisedChangeComparisons,
+  ])
+
+  function toggleOptimisedChange(changeId: string) {
+    setHasTouchedOptimisedChangeSelection(true)
+    setAppliedOptimisedChangeIds(prev => (
+      prev.includes(changeId)
+        ? prev.filter(id => id !== changeId)
+        : [...prev, changeId]
+    ))
+  }
+
+  function applyAllOptimisedChanges() {
+    setHasTouchedOptimisedChangeSelection(true)
+    setAppliedOptimisedChangeIds(optimisedChangeComparisons.map(change => change.id))
+  }
+
+  function revertAllOptimisedChanges() {
+    setHasTouchedOptimisedChangeSelection(true)
+    setAppliedOptimisedChangeIds([])
+  }
+
   const scanActionBlock = (
     <>
       {!pro && !publicMode && scansLeft === 0 && (
@@ -1135,16 +1564,25 @@ export default function ATSCheckerClient({
       <div className={`flex justify-center ${compactPublicUploadCard ? 'pt-0' : publicMode ? 'pt-0' : 'pt-2'}`}>
         <button
           onClick={handleScan}
-          disabled={!canScan}
-          className={`group flex items-center justify-center gap-3 bg-zinc-950 font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none ${compactPublicUploadCard ? 'w-full rounded-2xl px-8 py-5 text-lg' : 'rounded-full px-12 py-4 text-base'} ${publicMode ? 'shadow-[0_20px_40px_rgba(2,109,50,0.12)] hover:shadow-[0_24px_48px_rgba(2,109,50,0.2)]' : 'hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)]'}`}
+          disabled={!canScan && !isScanning}
+          aria-busy={isScanning}
+          className={`group relative flex items-center justify-center gap-3 overflow-hidden bg-zinc-950 font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none ${compactPublicUploadCard ? 'w-full rounded-2xl px-8 py-5 text-lg' : 'rounded-full px-12 py-4 text-base'} ${isScanning ? 'animate-pulse cursor-wait shadow-[0_0_0_6px_rgba(16,185,129,0.14),0_24px_52px_rgba(2,109,50,0.28)] ring-2 ring-emerald-300/35 hover:translate-y-0 hover:bg-zinc-950' : publicMode ? 'shadow-[0_20px_40px_rgba(2,109,50,0.12)] hover:shadow-[0_24px_48px_rgba(2,109,50,0.2)]' : 'hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)]'}`}
         >
           {isScanning ? (
             <>
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.18)_35%,transparent_70%)] animate-ping opacity-60" />
+              <svg className="relative h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
               </svg>
-              Analysing…
+              <span className="relative inline-flex items-center gap-1">
+                Analysing
+                <span className="flex items-center gap-0.5">
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:-0.2s]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:-0.1s]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white" />
+                </span>
+              </span>
             </>
           ) : (
             <>
@@ -1418,20 +1856,49 @@ export default function ATSCheckerClient({
       {scanResult && (
         <div ref={resultsRef} className="scroll-mt-24 space-y-5">
           {optimiseResult && (
-            <div className="flex flex-wrap gap-2">
-              {(['results', 'optimised'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition-all ${activeTab === tab
-                      ? 'bg-zinc-950 text-white shadow-[0_12px_28px_rgba(17,24,39,0.14)]'
-                      : 'border border-black/8 bg-white/84 text-on-surface-variant hover:bg-white'
-                    }`}
-                >
-                  {tab === 'results' ? 'Analysis Results' : 'AI Optimised'}
-                </button>
-              ))}
-            </div>
+            <DashboardSurface variant="default" className="p-2">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(['results', 'optimised'] as const).map(tab => {
+                  const selected = activeTab === tab
+                  const score = tab === 'results' ? scanResult.score : (optimisedScore ?? scanResult.score)
+                  const scoreState = getScoreState(score)
+                  const tabScoreLabel = tab === 'optimised' && isMatchMode ? 'ATS Quality' : scoreRingLabel
+
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`group rounded-[1.2rem] border px-4 py-3 text-left transition-all ${selected
+                          ? 'border-zinc-950 bg-zinc-950 text-white shadow-[0_18px_38px_rgba(17,24,39,0.18)]'
+                          : 'border-black/8 bg-white/80 text-on-surface hover:-translate-y-0.5 hover:bg-white'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className={`flex h-10 w-10 items-center justify-center rounded-full ${selected ? 'bg-white/12 text-white' : 'bg-primary-container/35 text-primary'}`}>
+                            {tab === 'results' ? <FileText size={18} strokeWidth={1.8} /> : <Sparkles size={18} strokeWidth={1.8} />}
+                          </span>
+                          <div>
+                            <p className="text-sm font-black tracking-tight">
+                              {tab === 'results' ? 'Analysis Results' : 'AI Optimized'}
+                            </p>
+                            <p className={`mt-0.5 text-xs ${selected ? 'text-white/68' : 'text-on-surface-variant'}`}>
+                              {tab === 'results' ? 'Original resume scan' : 'Optimized resume scan'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-black tracking-tight">{score}</p>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${selected ? 'bg-white/12 text-white' : scoreState.toneClassName}`}>
+                            {tabScoreLabel}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </DashboardSurface>
           )}
 
           {activeTab === 'results' && (
@@ -1591,18 +2058,6 @@ export default function ATSCheckerClient({
                       </div>
                     ) : null}
 
-                    {scanResult.keywordAnalysis?.niceToHave?.length ? (
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">{niceToHaveLabel}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {scanResult.keywordAnalysis.niceToHave.map(keyword => (
-                            <span key={keyword} className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </DashboardSurface>
               </div>
@@ -1763,114 +2218,212 @@ export default function ATSCheckerClient({
           )}
 
           {activeTab === 'optimised' && optimiseResult && (
-            <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <div className="space-y-5">
-                <DashboardSurface variant="default" className="p-5 sm:p-6">
-                  <div className="space-y-6">
-                    <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Optimisation summary</p>
-                      <h3 className="mt-2 text-2xl font-black tracking-tight text-on-background">What improved.</h3>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-[1.2rem] bg-primary-container/30 p-4 text-center">
-                        <p className="text-3xl font-black tracking-tight text-on-primary-container">{optimiseResult.improvementsCount}</p>
-                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">Improvements made</p>
-                      </div>
-                      <div className="rounded-[1.2rem] bg-surface-container-low p-4 text-center">
-                        <p className="text-3xl font-black tracking-tight text-primary">{optimiseResult.keywordsAdded.length}</p>
-                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">Keywords added</p>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.2rem] bg-surface-container-low px-5 py-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">What changed</p>
-                      <p className="mt-2 text-sm leading-7 text-on-surface">{optimiseResult.changesSummary}</p>
-                    </div>
-                  </div>
-                </DashboardSurface>
-
-                {optimiseResult.keywordsAdded.length > 0 && (
-                  <DashboardSurface variant="subtle" className="p-5">
-                    <div className="space-y-4">
+            <div className="space-y-5">
+              <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+                <div className="space-y-5">
+                  <DashboardSurface variant="default" className="p-5 sm:p-6">
+                    <div className="space-y-6">
                       <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keywords added</p>
-                        <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">Included where the resume supported them.</h3>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Optimisation summary</p>
+                        <h3 className="mt-2 text-2xl font-black tracking-tight text-on-background">
+                          {isMatchMode ? 'Optimized ATS quality.' : 'Optimized ATS score.'}
+                        </h3>
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {optimiseResult.keywordsAdded.map(kw => (
-                          <span key={kw} className="rounded-md bg-primary-container/50 px-2.5 py-1 text-xs font-medium text-on-primary-container">
-                            {kw}
-                          </span>
-                        ))}
+
+                      {!isMatchMode ? (
+                        <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/70 p-4">
+                          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">Before</p>
+                              <p className="mt-1 text-4xl font-black tracking-tight text-on-background">{scanResult.score}</p>
+                            </div>
+                            <ArrowRight size={20} className="text-emerald-700" strokeWidth={2} />
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">After</p>
+                              <p className="mt-1 text-4xl font-black tracking-tight text-emerald-700">{optimisedScore ?? scanResult.score}</p>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center justify-between rounded-full bg-white/72 px-3 py-2">
+                            <span className="text-xs font-semibold text-on-surface-variant">ATS score change</span>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-black ${scoreGainToneClass(optimisedScoreGain)}`}>
+                              {formatScoreGain(optimisedScoreGain)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/70 p-4">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">Optimized ATS score</p>
+                          <p className="mt-1 text-5xl font-black tracking-tight text-emerald-700">{optimisedScore ?? scanResult.score}</p>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-[1.2rem] bg-primary-container/30 p-4 text-center">
+                          <p className="text-3xl font-black tracking-tight text-on-primary-container">{optimiseResult.improvementsCount}</p>
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">Improvements made</p>
+                        </div>
+                        <div className="rounded-[1.2rem] bg-surface-container-low p-4 text-center">
+                          <p className="text-3xl font-black tracking-tight text-primary">{optimiseResult.keywordsAdded.length}</p>
+                          <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-on-surface-variant">Keywords added</p>
+                        </div>
                       </div>
                     </div>
                   </DashboardSurface>
-                )}
-              </div>
 
-              <div className="space-y-5">
-                <DashboardSurface variant="subtle" className="overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-black/6 px-5 py-4">
-                    <div>
-                      <p className="text-sm font-semibold text-on-background">Optimised resume preview</p>
-                      <p className="text-xs text-on-surface-variant">Rendered in the same universal template with banner header and Rezoomed green accent.</p>
-                    </div>
-                    <span className="rounded-full bg-primary-container/35 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-primary-container">
-                      Page 1 · Banner · Green
-                    </span>
-                  </div>
-
-                  <div
-                    ref={previewViewportRef}
-                    className="overflow-hidden bg-[linear-gradient(180deg,#eef4ef_0%,#f7f8f5_100%)] px-2 py-3 sm:px-3 sm:py-4"
-                    style={{ height: previewFrameHeight }}
-                  >
-                    <div className="mx-auto overflow-hidden rounded-[1.6rem] border border-black/8 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.12)]" style={{ width: previewFrameWidth, height: Math.round(ATS_PREVIEW_PAGE_HEIGHT * previewScale) }}>
-                      <div
-                        className="origin-top-left"
-                        style={{
-                          width: `${ATS_PREVIEW_PAGE_WIDTH}px`,
-                          transform: `scale(${previewScale})`,
-                          pointerEvents: 'none',
-                        }}
-                      >
-                        <UniversalTemplate
-                          data={optimiseResult.resumeData}
-                          isEditing={false}
-                          config={ATS_PREVIEW_CONFIG}
-                          sectionOrder={ATS_PREVIEW_SECTION_ORDER}
-                          sidebarSectionOrder={[]}
-                        />
+                  {optimiseResult.keywordsAdded.length > 0 && (
+                    <DashboardSurface variant="subtle" className="p-5">
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keywords added</p>
+                          <h3 className="mt-2 text-xl font-black tracking-tight text-on-background">Included where the resume supported them.</h3>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {optimiseResult.keywordsAdded.map(kw => (
+                            <span key={kw} className="rounded-md bg-primary-container/50 px-2.5 py-1 text-xs font-medium text-on-primary-container">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </DashboardSurface>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => { void handleOpenOptimisedEditor() }}
-                    disabled={isOpeningOptimisedEditor}
-                    className="flex-1 py-3 bg-primary-container text-on-primary-container rounded-xl text-sm font-bold hover:brightness-95 transition-all disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    {isOpeningOptimisedEditor ? 'Opening editor…' : 'Open in editor'}
-                  </button>
-                  {!isMatchMode ? (
-                    <button
-                      onClick={() => setActiveTab('results')}
-                      className="px-5 py-3 bg-surface-container-low text-on-surface-variant rounded-xl text-sm font-semibold hover:bg-surface-container transition-colors"
-                    >
-                      Back to Analysis
-                    </button>
-                  ) : null}
+                    </DashboardSurface>
+                  )}
                 </div>
 
-                {openOptimisedError && (
-                  <div className="rounded-[1.2rem] bg-red-50 px-5 py-3 text-sm text-red-700">
-                    {openOptimisedError}
+                <div className="space-y-5">
+                  <DashboardSurface variant="subtle" className="overflow-hidden">
+                    <div className="flex items-center justify-between border-b border-black/6 px-5 py-4">
+                      <div>
+                        <p className="text-sm font-semibold text-on-background">Optimised resume preview</p>
+                        <p className="text-xs text-on-surface-variant">Rendered in the same universal template with banner header and Rezoomed green accent.</p>
+                      </div>
+                      <span className="rounded-full bg-primary-container/35 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-primary-container">
+                        Page 1 · Banner · Green
+                      </span>
+                    </div>
+
+                    <div
+                      ref={previewViewportRef}
+                      className="overflow-hidden bg-[linear-gradient(180deg,#eef4ef_0%,#f7f8f5_100%)] px-2 py-3 sm:px-3 sm:py-4"
+                      style={{ height: previewFrameHeight }}
+                    >
+                      <div className="mx-auto overflow-hidden rounded-[1.6rem] border border-black/8 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.12)]" style={{ width: previewFrameWidth, height: Math.round(ATS_PREVIEW_PAGE_HEIGHT * previewScale) }}>
+                        <div
+                          className="origin-top-left"
+                          style={{
+                            width: `${ATS_PREVIEW_PAGE_WIDTH}px`,
+                            transform: `scale(${previewScale})`,
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          <UniversalTemplate
+                            data={selectedOptimisedResumeData ?? optimiseResult.resumeData}
+                            isEditing={false}
+                            config={ATS_PREVIEW_CONFIG}
+                            sectionOrder={ATS_PREVIEW_SECTION_ORDER}
+                            sidebarSectionOrder={[]}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </DashboardSurface>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { void handleOpenOptimisedEditor() }}
+                      disabled={isOpeningOptimisedEditor}
+                      className="flex-1 py-3 bg-primary-container text-on-primary-container rounded-xl text-sm font-bold hover:brightness-95 transition-all disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      {isOpeningOptimisedEditor ? 'Opening editor…' : 'Open in editor'}
+                    </button>
+                    {!isMatchMode ? (
+                      <button
+                        onClick={() => { void handleDownloadOptimisedResume() }}
+                        disabled={isOpeningOptimisedEditor}
+                        className="px-6 py-3 bg-zinc-950 text-white rounded-xl text-sm font-bold hover:bg-zinc-900 transition-colors disabled:cursor-not-allowed disabled:opacity-55"
+                      >
+                        Download
+                      </button>
+                    ) : null}
                   </div>
-                )}
+
+                  {openOptimisedError && (
+                    <div className="rounded-[1.2rem] bg-red-50 px-5 py-3 text-sm text-red-700">
+                      {openOptimisedError}
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {optimisedChangeComparisons.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Changes made</p>
+                      <h3 className="mt-2 text-2xl font-black tracking-tight text-on-background">Old vs new.</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={applyAllOptimisedChanges}
+                        className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
+                      >
+                        Apply all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={revertAllOptimisedChanges}
+                        className="rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-bold text-on-surface-variant transition hover:bg-surface-container-low"
+                      >
+                        Revert all
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    {optimisedChangeComparisons.map(change => {
+                      const isApplied = appliedOptimisedChangeIdSet.has(change.id)
+
+                      return (
+                        <DashboardSurface key={change.id} variant="subtle" className={`p-5 transition-opacity ${isApplied ? '' : 'opacity-72'}`}>
+                          <div className="space-y-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex rounded-md bg-primary-container/45 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-on-primary-container">
+                                  {change.section}
+                                </span>
+                                <p className="text-sm font-bold tracking-tight text-on-background">{change.title}</p>
+                                <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${isApplied ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                                  {isApplied ? 'Applied' : 'Unapplied'}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => toggleOptimisedChange(change.id)}
+                                className={`rounded-full px-4 py-2 text-xs font-bold transition ${isApplied
+                                    ? 'border border-black/8 bg-white text-on-surface-variant hover:bg-surface-container-low'
+                                    : 'bg-zinc-950 text-white hover:bg-zinc-900'
+                                  }`}
+                              >
+                                {isApplied ? 'Revert' : 'Apply change'}
+                              </button>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <div className="rounded-[1rem] border border-black/6 bg-white px-4 py-3">
+                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Old</p>
+                                <p className="mt-2 text-sm leading-6 text-on-surface-variant">{change.before}</p>
+                              </div>
+                              <div className={`rounded-[1rem] border px-4 py-3 ${isApplied ? 'border-emerald-200 bg-emerald-50/72' : 'border-black/6 bg-white'}`}>
+                                <p className={`text-[10px] font-bold uppercase tracking-[0.16em] ${isApplied ? 'text-emerald-800' : 'text-on-surface-variant'}`}>New</p>
+                                <p className="mt-2 text-sm leading-6 text-on-surface">{change.after}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </DashboardSurface>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

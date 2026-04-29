@@ -1,5 +1,5 @@
 import { scoreResume, type ScorerResult } from '@/lib/ats-scorer'
-import { normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
+import { getResumeSkills, normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 
 export interface InsightSuggestionLike {
@@ -122,6 +122,7 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
 
   if (sectionHint === 'skills') {
     const nextSkills = afterText.split(',').map(skill => skill.trim()).filter(Boolean)
+    const currentSkills = getResumeSkills(updated)
     const nextSkillSections = buildUpdatedSkillSections(updated, nextSkills)
     const nextData = syncResumeData({
       ...updated,
@@ -129,8 +130,8 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
       skills: nextSkills,
     })
     const unchanged =
-      nextSkills.length === nextData.skills.length &&
-      nextSkills.every((skill, index) => skill === nextData.skills[index])
+      nextSkills.length === currentSkills.length &&
+      nextSkills.every((skill, index) => skill === currentSkills[index])
 
     if (unchanged) return data
 

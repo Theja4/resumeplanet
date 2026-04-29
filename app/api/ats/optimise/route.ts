@@ -1,47 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
 import { requirePro } from '@/lib/planEnforcement'
+import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import { parseResumeText } from '@/lib/resumeParser'
+import {
+  applyInsightSuggestionToResumeData,
+  hasBreakdownRegression,
+  hasUnresolvedPlaceholderText,
+  improvesIntendedCriterion,
+  startsWithWeakResumePhrase,
+} from '@/lib/ai-insights'
+import { getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import type { ATSResult, APIResponse, ResumeData } from '@/types'
 
-const OPTIMISE_SYSTEM = `You are a senior resume strategist optimizing for real shortlist odds, not cosmetic keyword stuffing.
+const PATCH_SYSTEM = `You are a senior resume strategist generating scorer-targeted resume patches.
 
-Rewrite the full resume into plain text that is stronger for both ATS parsing and recruiter skim-reading while remaining fully truthful.
+You do NOT rewrite the full resume. You return exact before/after patches for structured resume fields.
 
-NON-NEGOTIABLE RULES:
-- Never invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, or outcomes
-- Never add a job-description keyword unless the source resume already supports it
-- Never use placeholders, brackets, dummy numbers, TBD, or fill-in-the-blank language
-- Never inflate seniority or rewrite the candidate into a different role
-- Remove weak filler such as "responsible for", "worked on", "helped with", "various", "multiple", and "etc."
-- Keep every real role, employer, education entry, project, certification, and other substantive section from the source resume
-- Do not collapse multiple roles into one
-- Do not shorten the resume by dropping meaningful bullets, context, or supported skills
-
-REWRITE GOALS:
-- Keep the resume conventional and easy for ATS systems to parse
-- Make bullets stronger with clearer action, scope, tools, ownership, and outcomes where supported
-- Improve summary clarity and relevance without sounding generic
-- Weave supported keywords into experience context naturally
-- Prefer concrete non-numeric specificity over vague claims when exact metrics are unavailable
-
-OUTPUT RULES:
+Rules:
 - Return ONLY valid JSON
-- optimisedText must be complete, paste-ready plain text
-- keywordsAdded must list only keywords that truly appear in optimisedText
-- changesSummary must briefly describe the real improvements made, and may mention important keywords intentionally omitted because they were not supported by the source
-- Use explicit section headings like SUMMARY, SKILLS, EXPERIENCE, EDUCATION, PROJECTS, CERTIFICATIONS, LANGUAGES, VOLUNTEER, AWARDS, PUBLICATIONS, and REFERENCES whenever those sections exist`
+- beforeText must be an exact string from the provided resume context
+- afterText must be a complete replacement for beforeText
+- Never invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, outcomes, or unsupported skills
+- Never add placeholders, brackets, TBD, dummy numbers, or fill-in-the-blank language
+- Never inflate seniority or rewrite the candidate into another role
+- Prefer changes that satisfy the scoring rubric exactly: action verbs, clearer scope, supported outcomes, role-relevant summary, skills in experience context
+- You may return multiple patches for the same criterion when several bullets must change to cross a scoring threshold
+- Omit weak areas that cannot be truthfully improved from the provided context`
 
-const OPTIMISE_SCHEMA = `{
-  "optimisedText": "string (the full rewritten resume text, plain text format)",
-  "keywordsAdded": ["string (keywords that were added or emphasised)"],
-  "improvementsCount": number,
-  "changesSummary": "string (2-3 sentences summarising what was changed and why)"
+const PATCH_SCHEMA = `{
+  "patches": [
+    {
+      "criterionId": "summary | exp_verbs | exp_metrics | exp_depth | skills | keywords | education | structure | polish",
+      "type": "summary" | "experience_bullet" | "skills" | "education" | "project",
+      "title": "short user-facing title",
+      "beforeText": "exact source text to replace",
+      "afterText": "complete replacement text",
+      "sectionHint": "experience" | "summary" | "skills" | "education" | "projects",
+      "reasoning": "one sentence explaining the concrete improvement"
+    }
+  ]
 }`
+
+interface OptimisePatch {
+  criterionId: string
+  type: string
+  title: string
+  beforeText: string
+  afterText: string
+  sectionHint: 'experience' | 'summary' | 'skills' | 'education' | 'projects'
+  reasoning: string
+}
+
+interface PatchResponse {
+  patches: OptimisePatch[]
+}
+
+interface PatchRunResult {
+  resumeData: ResumeData
+  acceptedPatches: OptimisePatch[]
+  rejectedCount: number
+  score: number
+}
 
 interface OptimiseBody {
   resumeText: string
   jobDescription?: string
+  analysisMode?: 'ats' | 'match'
   atsResult: ATSResult
   scoreId?: string
   resumeData?: ResumeData
@@ -52,6 +77,8 @@ interface OptimiseResult {
   keywordsAdded: string[]
   improvementsCount: number
   changesSummary: string
+  optimisedScore: number
+  scoreGain: number
   resumeData: ResumeData
 }
 
@@ -81,80 +108,312 @@ function normalizeResumeData(data: Partial<ResumeData> | null | undefined): Resu
   }
 }
 
-function preferText(nextValue: string | undefined, fallbackValue: string | undefined) {
-  return nextValue?.trim() ? nextValue : (fallbackValue ?? '')
+function hasMeaningfulResumeData(data: ResumeData) {
+  return Boolean(
+    data.summary.trim() ||
+    data.currentRole.trim() ||
+    data.experience.length > 0 ||
+    getResumeSkills(data).length > 0 ||
+    data.education.length > 0 ||
+    data.projects.length > 0
+  )
 }
 
-function mergeStringList(nextValues: string[], fallbackValues: string[]) {
-  return nextValues.length > 0 ? nextValues : fallbackValues
+async function getSourceResumeData(resumeText: string, resumeData: ResumeData | undefined) {
+  const provided = normalizeResumeData(resumeData)
+  if (hasMeaningfulResumeData(provided)) return provided
+
+  try {
+    return normalizeResumeData(await parseResumeText(resumeText))
+  } catch (error) {
+    console.warn('Failed to parse source resume for AI Insights patches:', error instanceof Error ? error.message : error)
+    return provided
+  }
 }
 
-function shouldKeepOriginalBullets(nextBullets: string[], fallbackBullets: string[]) {
-  if (fallbackBullets.length === 0) return false
-  if (nextBullets.length === 0) return true
-  if (fallbackBullets.length >= 3 && nextBullets.length <= 1) return true
+function formatResumeContext(data: ResumeData) {
+  const parts: string[] = []
 
-  const nextTextLength = nextBullets.join(' ').trim().length
-  const fallbackTextLength = fallbackBullets.join(' ').trim().length
-  return fallbackTextLength > 220 && nextTextLength < fallbackTextLength * 0.45
+  parts.push(`Name: ${data.name || '(missing)'}`)
+  parts.push(`Current role: ${data.currentRole || '(missing)'}`)
+  parts.push(`Summary: ${data.summary || '(missing)'}`)
+  parts.push('')
+
+  if (data.experience.length > 0) {
+    parts.push('Experience:')
+    data.experience.forEach((item, itemIndex) => {
+      parts.push(`${itemIndex + 1}. ${item.title || '(missing title)'} at ${item.company || '(missing company)'} (${item.startDate || '?'} - ${item.endDate || '?'})`)
+      if (item.summary?.trim()) parts.push(`   Summary: ${item.summary}`)
+      item.bullets.forEach((bullet, bulletIndex) => {
+        parts.push(`   Bullet ${bulletIndex + 1}: ${bullet}`)
+      })
+    })
+    parts.push('')
+  }
+
+  const skills = getResumeSkills(data)
+  parts.push(`Skills: ${skills.join(', ') || '(none)'}`)
+  for (const section of normalizeSkillSections(data.skillSections, skills)) {
+    parts.push(`Skill section - ${section.title || 'Untitled'}: ${section.skills.join(', ')}`)
+  }
+  parts.push('')
+
+  if (data.projects.length > 0) {
+    parts.push('Projects:')
+    data.projects.forEach((project, index) => {
+      parts.push(`${index + 1}. ${project.name || '(missing project name)'}`)
+      if (project.description?.trim()) parts.push(`   Description: ${project.description}`)
+      project.bullets?.forEach((bullet, bulletIndex) => {
+        parts.push(`   Bullet ${bulletIndex + 1}: ${bullet}`)
+      })
+      if (project.technologies?.length) parts.push(`   Technologies: ${project.technologies.join(', ')}`)
+    })
+    parts.push('')
+  }
+
+  if (data.education.length > 0) {
+    parts.push('Education:')
+    data.education.forEach((item, index) => {
+      parts.push(`${index + 1}. ${item.degree || '(missing degree)'} ${item.field ? `in ${item.field}` : ''} at ${item.institution || '(missing institution)'} (${item.startDate || item.graduationDate || '?'} - ${item.endDate || item.graduationDate || '?'})`)
+    })
+  }
+
+  return parts.join('\n')
 }
 
-function mergeExperienceLikeItems(
-  nextItems: ResumeData['experience'],
-  fallbackItems: ResumeData['experience']
-): ResumeData['experience'] {
-  const itemCount = Math.max(nextItems.length, fallbackItems.length)
-
-  return Array.from({ length: itemCount }, (_, index) => {
-    const nextItem = nextItems[index]
-    const fallbackItem = fallbackItems[index]
-
-    if (!nextItem) return fallbackItem
-    if (!fallbackItem) return nextItem
-
-    const nextBullets = nextItem.bullets?.filter(Boolean) ?? []
-    const fallbackBullets = fallbackItem.bullets?.filter(Boolean) ?? []
-
-    return {
-      title: preferText(nextItem.title, fallbackItem.title),
-      company: preferText(nextItem.company, fallbackItem.company),
-      location: preferText(nextItem.location, fallbackItem.location),
-      startDate: preferText(nextItem.startDate, fallbackItem.startDate),
-      endDate: preferText(nextItem.endDate, fallbackItem.endDate),
-      summary: preferText(nextItem.summary, fallbackItem.summary),
-      bullets: shouldKeepOriginalBullets(nextBullets, fallbackBullets) ? fallbackBullets : nextBullets,
+function getActionableWeakAreas(weakAreas: WeakArea[], data: ResumeData) {
+  return weakAreas.filter(area => {
+    switch (area.criterionId) {
+      case 'summary':
+      case 'exp_depth':
+      case 'polish':
+        return true
+      case 'exp_verbs':
+      case 'exp_metrics':
+        return area.relevantText.some(text =>
+          data.experience.some(exp => exp.bullets.some(bullet => bullet.includes(text)))
+        )
+      case 'skills':
+        return getResumeSkills(data).length > 0
+      case 'keywords':
+        return getResumeSkills(data).length > 0 && data.experience.some(exp => exp.bullets.length > 0)
+      case 'education':
+        return data.education.length > 0
+      default:
+        return false
     }
-  }).filter(Boolean)
+  })
 }
 
-function mergeOptimisedResumeData(nextData: ResumeData, fallbackData: ResumeData): ResumeData {
-  const safeNext = normalizeResumeData(nextData)
-  const safeFallback = normalizeResumeData(fallbackData)
-  const parsedCurrentRole = safeNext.currentRole.trim()
-  const parsedLooksLikeFirstJob = parsedCurrentRole !== '' && parsedCurrentRole === safeNext.experience[0]?.title?.trim()
+function buildPatchPrompt({
+  currentData,
+  scorerResult,
+  atsResult,
+  jobDescription,
+  targetScore,
+  attempt,
+}: {
+  currentData: ResumeData
+  scorerResult: ScorerResult
+  atsResult: ATSResult
+  jobDescription?: string
+  targetScore: number
+  attempt: number
+}) {
+  const weakAreas = getActionableWeakAreas(scorerResult.weakAreas, currentData).slice(0, 8)
+  const roadmapActions = atsResult.roadmap?.fixableNow ?? []
+  const parts: string[] = [
+    `ATTEMPT: ${attempt}`,
+    `CURRENT ATS SCORE: ${scorerResult.score}/100`,
+    `TARGET SCORE: ${targetScore}/100`,
+    `IMPORTANT: The patches will be accepted only if our deterministic scorer does not regress. Generate concrete fixes that satisfy the rubric, not cosmetic rewrites.`,
+    '',
+  ]
+
+  if (jobDescription?.trim()) {
+    parts.push(`JOB DESCRIPTION CONTEXT:\n${jobDescription.trim()}\n`)
+  }
+
+  if (atsResult.missingKeywords?.length) {
+    parts.push(`MISSING / WEAK KEYWORDS: ${atsResult.missingKeywords.join(', ')}`)
+    parts.push('Only integrate these if the resume context already supports them.')
+    parts.push('')
+  }
+
+  if (roadmapActions.length > 0) {
+    parts.push('ROAD TO 90 FIXES:')
+    for (const action of roadmapActions.slice(0, 8)) {
+      const evidence = action.evidence.length ? ` Evidence: ${action.evidence.join('; ')}` : ''
+      parts.push(`- ${action.criterionId}: ${action.title} (${action.section}, +${action.estimatedGainMin}-${action.estimatedGainMax}) - ${action.reason}${evidence}`)
+    }
+    parts.push('')
+  }
+
+  parts.push('SCORER WEAK AREAS:')
+  for (const area of weakAreas) {
+    parts.push(`--- ${area.criterionId} (${area.currentScore}/${area.maxScore}, gap ${area.gap}) ---`)
+    parts.push(`Issue: ${area.description}`)
+    const detail = scorerResult.breakdown[area.criterionId]?.details
+    if (detail) parts.push(`Rubric detail: ${detail}`)
+    if (area.relevantText.length > 0) {
+      parts.push('Exact candidate text:')
+      area.relevantText.slice(0, 8).forEach(text => {
+        parts.push(`"${text}"`)
+      })
+    }
+    parts.push('')
+  }
+
+  parts.push('RESUME CONTEXT:')
+  parts.push(formatResumeContext(currentData))
+  parts.push('')
+  parts.push('Return JSON matching this schema:')
+  parts.push(PATCH_SCHEMA)
+
+  return parts.join('\n')
+}
+
+function isUsefulPatch(patch: OptimisePatch) {
+  const before = patch.beforeText?.trim()
+  const after = patch.afterText?.trim()
+  if (!before || !after || before === after) return false
+  if (hasUnresolvedPlaceholderText(after)) return false
+  if (startsWithWeakResumePhrase(after)) return false
+  if (after.length < Math.min(24, before.length)) return false
+  return true
+}
+
+async function generatePatches(prompt: string) {
+  const result = await callClaudeJSON<PatchResponse>({
+    model: CLAUDE_PREMIUM,
+    system: PATCH_SYSTEM,
+    prompt,
+    maxTokens: 5000,
+    timeoutMs: 120000,
+  })
+
+  return Array.isArray(result.patches) ? result.patches : []
+}
+
+async function runScoreGatedPatchLoop({
+  sourceData,
+  atsResult,
+  jobDescription,
+}: {
+  sourceData: ResumeData
+  atsResult: ATSResult
+  jobDescription?: string
+}): Promise<PatchRunResult> {
+  let currentData = syncResumeData(sourceData)
+  let currentScorer = scoreResume(currentData)
+  const originalScore = currentScorer.score
+  const targetScore = Math.max(
+    originalScore,
+    Math.min(100, atsResult.roadmap?.truthfulCeiling ?? atsResult.roadmap?.targetScore ?? 90)
+  )
+  const acceptedPatches: OptimisePatch[] = []
+  let rejectedCount = 0
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    if (currentScorer.score >= targetScore || currentScorer.score >= Math.max(originalScore + 1, targetScore - 3)) break
+
+    const prompt = buildPatchPrompt({
+      currentData,
+      scorerResult: currentScorer,
+      atsResult,
+      jobDescription,
+      targetScore,
+      attempt,
+    })
+
+    const patches = await generatePatches(prompt)
+    if (patches.length === 0) break
+
+    let acceptedThisPass = 0
+
+    for (const patch of patches.slice(0, 14)) {
+      if (!isUsefulPatch(patch)) {
+        rejectedCount += 1
+        continue
+      }
+
+      const beforeScorer = currentScorer
+      const nextData = applyInsightSuggestionToResumeData(currentData, patch)
+      if (nextData === currentData) {
+        rejectedCount += 1
+        continue
+      }
+
+      const nextScorer = scoreResume(nextData)
+      const hasRegression = hasBreakdownRegression(beforeScorer, nextScorer)
+      const hasTotalRegression = nextScorer.score < beforeScorer.score
+      const improvesTarget = improvesIntendedCriterion(beforeScorer, nextScorer, patch.criterionId)
+      const improvesTotal = nextScorer.score > beforeScorer.score
+
+      if (hasTotalRegression || hasRegression) {
+        rejectedCount += 1
+        continue
+      }
+
+      currentData = syncResumeData(nextData)
+      currentScorer = nextScorer
+      acceptedPatches.push({
+        ...patch,
+        reasoning: improvesTotal || improvesTarget
+          ? patch.reasoning
+          : `${patch.reasoning} Accepted as a non-regressing improvement; additional patches may be needed to cross the scorer threshold.`,
+      })
+      acceptedThisPass += 1
+    }
+
+    if (acceptedThisPass === 0) break
+  }
+
+  if (currentScorer.score < originalScore) {
+    return {
+      resumeData: sourceData,
+      acceptedPatches: [],
+      rejectedCount,
+      score: originalScore,
+    }
+  }
 
   return {
-    name: preferText(safeNext.name, safeFallback.name),
-    email: preferText(safeNext.email, safeFallback.email),
-    phone: preferText(safeNext.phone, safeFallback.phone),
-    location: preferText(safeNext.location, safeFallback.location),
-    linkedin: preferText(safeNext.linkedin, safeFallback.linkedin),
-    website: preferText(safeNext.website, safeFallback.website),
-    summary: preferText(safeNext.summary, safeFallback.summary),
-    currentRole: !parsedLooksLikeFirstJob ? preferText(safeNext.currentRole, safeFallback.currentRole) : safeFallback.currentRole,
-    experience: mergeExperienceLikeItems(safeNext.experience, safeFallback.experience),
-    education: safeNext.education.length > 0 ? safeNext.education : safeFallback.education,
-    skills: mergeStringList(safeNext.skills, safeFallback.skills),
-    certifications: safeNext.certifications.length > 0 ? safeNext.certifications : safeFallback.certifications,
-    projects: safeNext.projects.length > 0 ? safeNext.projects : safeFallback.projects,
-    languages: mergeStringList(safeNext.languages, safeFallback.languages),
-    volunteer: mergeExperienceLikeItems(safeNext.volunteer, safeFallback.volunteer),
-    interests: mergeStringList(safeNext.interests, safeFallback.interests),
-    awards: safeFallback.awards,
-    publications: safeFallback.publications,
-    references: safeFallback.references,
-    customSections: safeFallback.customSections,
+    resumeData: currentData,
+    acceptedPatches,
+    rejectedCount,
+    score: currentScorer.score,
   }
+}
+
+function getKeywordsAdded(sourceText: string, optimisedText: string, atsResult: ATSResult) {
+  const sourceLower = sourceText.toLowerCase()
+  const optimisedLower = optimisedText.toLowerCase()
+  const keywords = new Set<string>()
+
+  for (const keyword of atsResult.missingKeywords ?? []) {
+    const normalized = keyword.trim()
+    if (!normalized) continue
+    const lower = normalized.toLowerCase()
+    if (!sourceLower.includes(lower) && optimisedLower.includes(lower)) {
+      keywords.add(normalized)
+    }
+  }
+
+  return [...keywords]
+}
+
+function buildChangesSummary(run: PatchRunResult, originalScore: number) {
+  if (run.acceptedPatches.length === 0) {
+    return 'No scorer-safe AI patches were applied because the proposed changes did not improve the ATS rubric without risking factual accuracy.'
+  }
+
+  const criteria = [...new Set(run.acceptedPatches.map(patch => patch.criterionId))]
+    .slice(0, 4)
+    .join(', ')
+  const scoreDelta = run.score - originalScore
+
+  return `Applied ${run.acceptedPatches.length} scorer-validated change${run.acceptedPatches.length === 1 ? '' : 's'} targeting ${criteria}. The deterministic ATS score ${scoreDelta > 0 ? `increased by ${scoreDelta} point${scoreDelta === 1 ? '' : 's'}` : 'did not regress'} after validation.`
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -191,52 +450,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // ── Build prompt ───────────────────────────────────────────────────────────
-  const jobContext = jobDescription?.trim()
-    ? `Job Description:\n${jobDescription}\n\n`
-    : 'No specific job description — optimise for general ATS best practices.\n\n'
+  const sourceData = await getSourceResumeData(resumeText, resumeData)
+  const originalScore = scoreResume(sourceData).score
 
-  const missingKeywords = atsResult.missingKeywords?.length
-    ? `Missing Keywords to Add: ${atsResult.missingKeywords.join(', ')}\n`
-    : ''
-
-  const issues = atsResult.suggestions
-    ?.filter(s => s.severity === 'high')
-    .map(s => `- ${s.issue}: ${s.fix}`)
-    .join('\n') ?? ''
-
-  const issueContext = issues ? `\nHigh-Priority Issues to Fix:\n${issues}\n` : ''
-
-  const prompt = `${jobContext}Current ATS Score: ${atsResult.score}/100
-Target: produce a cleaner, more credible resume that improves screening quality without inventing anything.
-${missingKeywords}${issueContext}
-Resume Text:
-${resumeText}
-
-Rewrite this resume to:
-1. Preserve all facts, chronology, employers, titles, and supported skills
-2. Strengthen bullets with better verbs, clearer scope, and clearer outcomes where the source supports them
-3. Improve keyword alignment only where the resume already provides evidence
-4. Make the summary and section phrasing sharper, more specific, and easier to skim
-5. Keep the final result recruiter-ready and ATS-friendly in plain text
-
-If a missing keyword is not supported by the source resume, do not add it.
-
-Return a JSON object matching exactly this schema:
-${OPTIMISE_SCHEMA}
-
-Ensure improvementsCount is an integer.`
-
-  // ── Call Claude ────────────────────────────────────────────────────────────
-  let result: OptimiseResult
-
+  let patchRun: PatchRunResult
   try {
-    result = await callClaudeJSON<OptimiseResult>({
-      model: CLAUDE_PREMIUM,
-      system: OPTIMISE_SYSTEM,
-      prompt,
-      maxTokens: 8192,
-      timeoutMs: 120000,
+    patchRun = await runScoreGatedPatchLoop({
+      sourceData,
+      atsResult,
+      jobDescription,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -259,27 +481,34 @@ Ensure improvementsCount is an integer.`
     )
   }
 
+  const optimisedText = resumeDataToPlainText(patchRun.resumeData)
+  const optimisedScore = patchRun.score
+  const scoreGain = body.analysisMode === 'match' ? 0 : Math.max(0, optimisedScore - atsResult.score)
+  const keywordsAdded = getKeywordsAdded(resumeDataToPlainText(sourceData), optimisedText, atsResult)
+  const result: OptimiseResult = {
+    optimisedText,
+    keywordsAdded,
+    improvementsCount: patchRun.acceptedPatches.length,
+    changesSummary: buildChangesSummary(patchRun, originalScore),
+    optimisedScore,
+    scoreGain,
+    resumeData: patchRun.resumeData,
+  }
+
   // ── Update ats_scores row with optimised text ──────────────────────────────
   if (scoreId) {
     await supabase
       .from('ats_scores')
-      .update({ optimised_resume_text: result.optimisedText })
+      .update({ optimised_resume_text: optimisedText })
       .eq('id', scoreId)
       .eq('user_id', userId)
   }
-
-  const parsedResumeData = await parseResumeText(result.optimisedText)
-  const mergedResumeData = mergeOptimisedResumeData(
-    parsedResumeData,
-    normalizeResumeData(resumeData)
-  )
 
   return NextResponse.json<APIResponse<OptimiseResult>>(
     {
       success: true,
       data: {
         ...result,
-        resumeData: mergedResumeData,
       },
     },
     { status: 200 }

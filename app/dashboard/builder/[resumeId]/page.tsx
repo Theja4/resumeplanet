@@ -376,6 +376,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const headerParam = searchParams.get('header')
   const bulletParam = searchParams.get('bullet')
   const densityParam = searchParams.get('density')
+  const downloadParam = searchParams.get('download')
   const ignoreTemplateQueryOverrides = shouldIgnoreTemplateQueryOverrides(sourceParam)
 
   const { requirePro, blockedFeature, clearBlockedFeature } = useProGate()
@@ -408,6 +409,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const hasShownPageLimitAlertRef = useRef(false)
+  const hasTriggeredAutoPdfDownloadRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
   const analyticsTemplateId = useMemo(
@@ -1234,6 +1236,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         await document.fonts.ready
       }
 
+      if (isPaginationSettling) {
+        await new Promise(resolve => window.setTimeout(resolve, 220))
+      }
+
       await waitForNextPaint()
 
       await new Promise<void>((resolve) => {
@@ -1271,6 +1277,23 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       document.title = previousTitle
     }
   }
+
+  useEffect(() => {
+    if (downloadParam !== 'pdf') return
+    if (hasTriggeredAutoPdfDownloadRef.current) return
+    if (isLoading || !resumeData || !visibleData || isPaginationSettling || needsOverflowTrim) return
+
+    hasTriggeredAutoPdfDownloadRef.current = true
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('download')
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+
+    window.setTimeout(() => {
+      void handleDownloadPDF()
+    }, 350)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [downloadParam, isLoading, resumeData, visibleData, isPaginationSettling, needsOverflowTrim])
 
   async function handleDownloadDOCX() {
     builderAnalytics.trackDownload('clicked', 'docx')
@@ -1369,15 +1392,32 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             print-color-adjust: exact;
             color-adjust: exact;
           }
-          #builder-print-root > div {
+          #builder-print-root .builder-print-page {
             width: 210mm !important;
+            height: 297mm !important;
             min-height: 297mm !important;
             box-shadow: none !important;
-            page-break-inside: auto;
-          }
-          #builder-print-root section,
-          #builder-print-root .section-break {
+            overflow: hidden !important;
+            position: relative !important;
             page-break-inside: avoid;
+            break-inside: avoid;
+            page-break-after: always;
+            break-after: page;
+            background: white !important;
+          }
+          #builder-print-root .builder-print-page:last-child {
+            page-break-after: auto;
+            break-after: auto;
+          }
+          #builder-print-root .builder-print-page-clip {
+            position: relative !important;
+            overflow: hidden !important;
+            width: 100% !important;
+            z-index: 1 !important;
+          }
+          #builder-print-root .builder-print-page-content {
+            width: 794px !important;
+            transform-origin: top left !important;
           }
         }
         
@@ -1922,15 +1962,55 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               className="pointer-events-none fixed left-[-200vw] top-0 w-[794px]"
               aria-hidden
             >
-              <TemplateComponent
-                key={`print-portal-${previewVersion}`}
-                data={visibleData}
-                isEditing={false}
-                onFieldChange={() => {}}
-                sectionOrder={orderedSections}
-                sidebarSectionOrder={orderedSidebarSections}
-                config={templateConfig}
-              />
+              {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
+                <div
+                  key={`print-portal-${previewVersion}-${pageIndex}`}
+                  className="builder-print-page bg-white"
+                  style={{
+                    width: '794px',
+                    height: `${PAGE_H}px`,
+                  }}
+                >
+                  {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
+                    <div className="absolute inset-0 pointer-events-none z-0">
+                      <div
+                        className="absolute top-0 bottom-0"
+                        style={{
+                          width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
+                          backgroundColor: accentToSidebarFill(templateConfig.accentColor),
+                          ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div
+                    className="builder-print-page-clip"
+                    style={(() => {
+                      if (pageIndex === 0) {
+                        return { marginTop: 0, height: `${effectivePageBreakY}px` }
+                      }
+                      const topPad = PAGE_H - effectivePageBreakY
+                      return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING}px` }
+                    })()}
+                  >
+                    <div
+                      className="builder-print-page-content"
+                      style={{
+                        transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY}px)`,
+                      }}
+                    >
+                      <TemplateComponent
+                        data={visibleData}
+                        isEditing={false}
+                        onFieldChange={() => {}}
+                        sectionOrder={orderedSections}
+                        sidebarSectionOrder={orderedSidebarSections}
+                        config={templateConfig}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>,
             document.body
           )
