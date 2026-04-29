@@ -46,6 +46,29 @@ const GOOGLE_JOB_FAQS = [
   },
 ] as const
 
+const ATS_CHECKER_HOW_TO_STEPS = [
+  {
+    name: 'Upload or select a resume',
+    text: 'Start with the exact resume version you plan to send for the target role.',
+  },
+  {
+    name: 'Add the job description',
+    text: 'Paste the posting so the checker can compare real role requirements against your resume.',
+  },
+  {
+    name: 'Fix parsing and formatting first',
+    text: 'Resolve unreadable sections, complex layouts, weak headings, and file-readability issues before tuning keywords.',
+  },
+  {
+    name: 'Improve keywords and bullets',
+    text: 'Add truthful job-description language and strengthen vague bullets with tools, scope, and outcomes.',
+  },
+  {
+    name: 'Re-check before applying',
+    text: 'Run one final scan and read the resume as a recruiter would before submitting.',
+  },
+] as const
+
 function extractArticleSections(content: string) {
   return content
     .replace(/\r\n/g, '\n')
@@ -53,6 +76,79 @@ function extractArticleSections(content: string) {
     .map(line => line.trim())
     .filter(line => /^##\s+/.test(line))
     .map(line => line.replace(/^##\s+/, '').trim())
+}
+
+function cleanStructuredText(value: string) {
+  return value
+    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, ' ')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
+    .replace(/[*_~`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extractFaqItems(content: string) {
+  const lines = content.replace(/\r\n/g, '\n').split('\n')
+  const faqs: Array<{ question: string; answer: string }> = []
+  let index = 0
+
+  while (index < lines.length) {
+    const line = lines[index].trim()
+    const isFaqSection =
+      /^##\s+/i.test(line) &&
+      (line.toLowerCase().includes('frequently asked questions') || line.toLowerCase().startsWith('## faq'))
+
+    if (!isFaqSection) {
+      index += 1
+      continue
+    }
+
+    index += 1
+
+    while (index < lines.length) {
+      const currentLine = lines[index].trim()
+
+      if (/^##\s+/.test(currentLine)) {
+        break
+      }
+
+      if (!/^###\s+/.test(currentLine)) {
+        index += 1
+        continue
+      }
+
+      const question = cleanStructuredText(currentLine.replace(/^###\s+/, '').trim())
+      const answerLines: string[] = []
+      index += 1
+
+      while (index < lines.length) {
+        const answerLine = lines[index].trim()
+
+        if (/^##\s+/.test(answerLine) || /^###\s+/.test(answerLine)) {
+          break
+        }
+
+        if (answerLine) {
+          answerLines.push(answerLine)
+        }
+
+        index += 1
+      }
+
+      const answer = cleanStructuredText(answerLines.join(' '))
+
+      if (question && answer) {
+        faqs.push({ question, answer })
+      }
+    }
+
+    break
+  }
+
+  return faqs
 }
 
 export async function generateMetadata({
@@ -67,7 +163,7 @@ export async function generateMetadata({
   const image = post.cover_image_url || getBlogMediaFallback(post.slug)?.coverImage || `${siteUrl}/icon.png`
 
   return {
-    title: `${post.title} | Rezoomed`,
+    title: post.title,
     description: post.excerpt,
     keywords: buildBlogPostKeywords(post),
     authors: [{ name: post.author_name }],
@@ -158,7 +254,13 @@ export default async function BlogPostPage({
         ),
       }
     : undefined
-  const faqItems = post.slug === 'how-to-land-a-google-job' ? GOOGLE_JOB_FAQS : null
+  const extractedFaqItems = extractFaqItems(articleContent)
+  const faqItems =
+    extractedFaqItems.length > 0
+      ? extractedFaqItems
+      : post.slug === 'how-to-land-a-google-job'
+        ? GOOGLE_JOB_FAQS
+        : null
   const articleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -250,10 +352,25 @@ export default async function BlogPostPage({
             },
           ],
         }
+      : post.slug === 'ats-resume-checker-what-it-tests-and-why-it-matters'
+        ? {
+            '@context': 'https://schema.org',
+            '@type': 'HowTo',
+            name: 'How to use an ATS resume checker',
+            description: post.excerpt,
+            step: ATS_CHECKER_HOW_TO_STEPS.map(step => ({
+              '@type': 'HowToStep',
+              name: step.name,
+              text: step.text,
+            })),
+          }
       : null
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container">
+    <div
+      className="min-h-screen bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container"
+      style={{ overflowX: 'clip' }}
+    >
       <ReadingProgress />
       <PublicSiteHeader active="blog" />
       <script

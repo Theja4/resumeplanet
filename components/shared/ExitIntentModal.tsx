@@ -28,8 +28,11 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
   const lastPointerYRef = useRef<number | null>(null)
   const pendingTopExitRef = useRef(false)
   const onCloseRef = useRef(onClose)
-  onCloseRef.current = onClose
   const { openSubscriptionCheckout } = usePaddleCheckout()
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   const showModal = useCallback(() => {
     const key = `exit-intent-${promo.id}`
@@ -141,7 +144,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
       })
     }, 1000)
     return () => clearInterval(timer)
-  }, [isOpen, promo.exitIntentTimerSeconds])
+  }, [isOpen, promo.exitIntentTimerSeconds, timeLeft])
 
   function handleClose() {
     setIsOpen(false)
@@ -181,7 +184,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
       ? `${promo.discountValue}% off`
       : 'your discount'
   const proofPills = [
-    'Unlimited ATS scans',
+    'Advanced ATS analysis',
     'Tailor Mode rewrites',
     'AI cover letters',
   ]

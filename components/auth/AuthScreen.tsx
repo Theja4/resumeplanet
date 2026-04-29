@@ -210,8 +210,8 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       icon: Target,
     },
     {
-      title: 'Unlimited ATS scans',
-      description: 'Keep revising and rescoring until the document reads correctly.',
+      title: 'Advanced ATS analysis',
+      description: 'Go deeper than the free scan with AI guidance and optimisation tools.',
       icon: BarChart3,
     },
     {

@@ -20,8 +20,8 @@ export function canOptimiseResume(profile: Profile | null): boolean {
   return isPro(profile)
 }
 
-export function getRemainingFreeScans(profile: Profile | null): number {
-  if (isPro(profile)) return Infinity
+export function getRemainingFreeScans(profile: Profile | null): number | null {
+  if (isPro(profile) || FREE_PLAN.limits.atsScansPerDay === null) return null
   const resetAt = new Date(profile?.ats_scans_reset_at ?? 0)
   if (!Number.isNaN(resetAt.getTime())) {
     const elapsedMs = Date.now() - resetAt.getTime()

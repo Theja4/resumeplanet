@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { PRO_FEATURES } from '@/lib/proFeatures'
-import { FREE_PLAN } from '@/lib/pricing'
 
 interface FeatureSlide {
   id: string
@@ -36,11 +35,11 @@ const FEATURE_SLIDES = [
   },
   {
     id: 'ats',
-    badge: 'Unlimited ATS',
-    title: 'Run scan after scan until the score finally looks right.',
-    description: `Free plans stop at ${FREE_PLAN.limits.atsScansPerDay} ATS scans per day. Pro removes the ceiling and unlocks deeper AI analysis.`,
-    metricValue: 'Unlimited',
-    metricLabel: 'Daily scans',
+    badge: 'Advanced ATS',
+    title: 'Go beyond the free scan with deeper AI guidance.',
+    description: 'Free users can run unlimited basic ATS scans. Pro adds deeper AI analysis, resume optimisation, and role-specific improvement workflows.',
+    metricValue: 'Advanced',
+    metricLabel: 'AI analysis',
     icon: BarChart3,
   },
   {

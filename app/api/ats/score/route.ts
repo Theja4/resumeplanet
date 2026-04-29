@@ -3,9 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache, type AIRequestCacheFeature } from '@/lib/aiRequestCache'
 import { getRemainingFreeScans, isPro } from '@/lib/planUtils'
-import { FREE_PLAN } from '@/lib/pricing'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
-import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import { buildMatchScoreResult } from '@/lib/match-score'
 import { parseResumeText } from '@/lib/resumeParser'
@@ -22,13 +20,6 @@ type ATSScoreResponse = ATSResult & {
 }
 
 type CachedATSScoreResponse = Omit<ATSScoreResponse, 'scansRemaining'>
-
-interface ConsumedAtsScanState {
-  allowed: boolean
-  scansUsed: number
-  scansRemaining: number
-  resetAt: string
-}
 
 interface ScoreBody {
   resumeText?: string
@@ -67,30 +58,6 @@ const PHRASE_KEYWORDS = [
   'account management',
   'user research',
 ]
-
-async function consumeAuthenticatedFreeAtsScan(userId: string): Promise<ConsumedAtsScanState> {
-  const serviceSupabase = createServiceRoleClient()
-  const { data, error } = await serviceSupabase.rpc('consume_daily_ats_scan', {
-    p_user_id: userId,
-    p_limit: FREE_PLAN.limits.atsScansPerDay,
-  })
-
-  if (error) {
-    throw new Error(`FAILED_TO_CONSUME_ATS_SCAN: ${error.message}`)
-  }
-
-  const row = Array.isArray(data) ? data[0] : data
-
-  return {
-    allowed: Boolean(row?.allowed),
-    scansUsed: Number(row?.scans_used ?? 0),
-    scansRemaining: Math.max(0, Number(row?.scans_remaining ?? 0)),
-    resetAt:
-      typeof row?.reset_at === 'string'
-        ? row.reset_at
-        : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  }
-}
 
 function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
   return syncResumeData({
@@ -568,10 +535,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json<APIResponse<ATSScoreResponse>>(
         {
           success: true,
-          data: {
-            ...cached,
-            scansRemaining: pro ? null : getRemainingFreeScans(profile),
-          },
+            data: {
+              ...cached,
+              scansRemaining: getRemainingFreeScans(profile),
+            },
         },
         { status: 200 }
       )
@@ -585,28 +552,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         pro,
       })
     : buildATSResult(scoreResume(scoringData), scoringData, pro, jobDescription)
-
-  let consumedFreeScan: ConsumedAtsScanState | null = null
-  if (user && !pro && !isMatchMode) {
-    consumedFreeScan = await consumeAuthenticatedFreeAtsScan(user.id)
-
-    if (!consumedFreeScan.allowed) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'FREE_LIMIT_REACHED',
-          scansUsed: FREE_PLAN.limits.atsScansPerDay,
-          resetAt: consumedFreeScan.resetAt,
-        },
-        { status: 429 }
-      )
-    }
-
-    if (profile) {
-      profile.ats_scans_today = consumedFreeScan.scansUsed
-      profile.ats_scans_reset_at = consumedFreeScan.resetAt
-    }
-  }
 
   let savedScoreId = ''
   if (user) {
@@ -645,16 +590,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const scansRemaining = user
-    ? (
-        pro
-          ? null
-          : consumedFreeScan?.scansRemaining ?? getRemainingFreeScans(profile)
-      )
+    ? getRemainingFreeScans(profile)
     : null
   const responseData: ATSScoreResponse = {
     ...normalizedResult,
     pipeline,
-    scansRemaining: scansRemaining !== null ? Math.max(0, scansRemaining) : null,
+    scansRemaining,
     scoreId: savedScoreId,
     scanTier: pro ? 'advanced' : 'basic',
     resumeData: scoringData,

@@ -261,13 +261,13 @@ export const FREE_PLAN = {
   name: 'Free',
 
   limits: {
-    atsScansPerDay: 5,
+    atsScansPerDay: null as number | null,
     maxResumes: 3,
     maxTrackedJobs: 5,
   },
 
   features: [
-    '5 ATS scans per day',
+    'Unlimited ATS scans',
     'Up to 3 saved resumes',
     'Resume Builder with PDF export',
     'Basic ATS analysis',
@@ -277,7 +277,6 @@ export const FREE_PLAN = {
   lockedFeatures: [
     'Match Score against any job description',
     'AI-generated cover letters',
-    'Unlimited ATS scans',
     'Unlimited resumes',
     'AI - insights (Claude Opus)',
     'Tailor Mode rewrites',
@@ -355,7 +354,7 @@ export const PRO_PLAN = {
   ] satisfies PriceOption[],
 
   features: [
-    'Unlimited ATS scans',
+    'Advanced ATS analysis',
     'Match Score against any job description',
     'AI-generated cover letters',
     'AI - insights (Claude Opus)',

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
-import { FREE_PLAN } from '@/lib/pricing'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics } from '@/lib/analytics'
 import { ADS_ENABLED } from '@/lib/ads'
@@ -161,7 +160,7 @@ const resumeDataToText = resumeDataToPlainText
 const ERROR_MESSAGES: Record<string, string> = {
   RESUME_TOO_SHORT: 'Resume text is too short (minimum 100 characters).',
   JOB_DESCRIPTION_TOO_SHORT: 'Add a fuller job description with at least 20 words.',
-  FREE_LIMIT_REACHED: `You have used all ${FREE_PLAN.limits.atsScansPerDay} free scans for today. Upgrade to Pro for unlimited scans.`,
+  FREE_LIMIT_REACHED: 'Free scan limit reached. Upgrade to Pro for advanced analysis and optimisation.',
   CLAUDE_TIMEOUT: 'Analysis timed out. Please try again.',
   PARSE_FAILED: 'Failed to parse AI response. Please try again.',
   PRO_REQUIRED: 'Resume optimisation is a Pro feature. Upgrade to unlock it.',
@@ -786,7 +785,7 @@ export default function ATSCheckerClient({
   const router = useRouter()
   const supabase = createClient()
   const pro = isPro(profile)
-  const initialScansLeft = publicMode ? Number.POSITIVE_INFINITY : getRemainingFreeScans(profile)
+  const initialScansLeft = publicMode ? null : getRemainingFreeScans(profile)
   const searchParams = useSearchParams()
   const isMatchMode = mode === 'match'
   const isAnonymousAtsMode = publicMode && !isMatchMode
@@ -1082,7 +1081,7 @@ export default function ATSCheckerClient({
 
   const canScan = !isScanning && !isExtracting && (
     inputMode === 'upload' ? (uploadedFile?.text.trim().length ?? 0) >= 100 : !!selectedResumeId
-  ) && (!requiresJobDescription || jobWordCount >= 20) && (publicMode || pro || scansLeft > 0)
+  ) && (!requiresJobDescription || jobWordCount >= 20) && (publicMode || pro || scansLeft === null || scansLeft > 0)
 
   async function handleFileChange(file: File | null) {
     if (!file) return
@@ -1192,7 +1191,7 @@ export default function ATSCheckerClient({
         score: json.data.score,
       })
       setScannedResumeId(resumeId ?? null)
-      if (!pro && !publicMode) setScansLeft(json.data.scansRemaining ?? 0)
+      if (!pro && !publicMode) setScansLeft(json.data.scansRemaining)
       setActiveTab('results')
       if (!publicMode) {
         // The scan updates shared dashboard data, so refresh router state and warm fresh payloads.
@@ -1524,10 +1523,10 @@ export default function ATSCheckerClient({
 
   const scanActionBlock = (
     <>
-      {!pro && !publicMode && scansLeft === 0 && (
+      {!pro && !publicMode && scansLeft !== null && scansLeft === 0 && (
         <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
-          You have used all {FREE_PLAN.limits.atsScansPerDay} free scans today. Scans reset every 24 hours.{' '}
-          <Link href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</Link> for unlimited scans.
+          You have used all free scans today. Scans reset every 24 hours.{' '}
+          <Link href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</Link> for advanced analysis.
         </div>
       )}
 
@@ -1596,7 +1595,9 @@ export default function ATSCheckerClient({
 
       {!pro && !publicMode && (
         <p className="text-center text-xs text-on-surface-variant">
-          Free plan: {FREE_PLAN.limits.atsScansPerDay} {isMatchMode ? 'match' : 'ATS'} scans / day with basic analysis.{' '}
+          {isMatchMode
+            ? 'Match Score is a Pro feature. '
+            : 'Free plan: unlimited ATS scans with basic analysis. '}
           <Link href="/dashboard/pricing" className="text-primary font-semibold hover:underline">
             Upgrade for advanced AI analysis + resume optimisation.
           </Link>
@@ -1669,7 +1670,11 @@ export default function ATSCheckerClient({
               <div className="space-y-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">Free Plan</p>
                 <p className="text-lg font-black leading-tight text-on-background">
-                  {scansLeft} of {FREE_PLAN.limits.atsScansPerDay} scans remaining today.
+                  {isMatchMode
+                    ? 'Match scoring unlocks on Pro.'
+                    : scansLeft === null
+                      ? 'Unlimited basic ATS scans are active.'
+                      : `${scansLeft} scans remaining today.`}
                 </p>
                 <Link href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                   Upgrade for unlimited <ChevronRight size={12} />
