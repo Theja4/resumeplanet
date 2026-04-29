@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
+import { callClaudeJSONFallback, CLAUDE_PREMIUM, CLAUDE_STANDARD } from '@/lib/claude'
 import { requirePro } from '@/lib/planEnforcement'
 import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import { parseResumeText } from '@/lib/resumeParser'
@@ -284,12 +284,15 @@ function isUsefulPatch(patch: OptimisePatch) {
 }
 
 async function generatePatches(prompt: string) {
-  const result = await callClaudeJSON<PatchResponse>({
+  const result = await callClaudeJSONFallback<PatchResponse>({
     model: CLAUDE_PREMIUM,
+    fallbackModels: [CLAUDE_STANDARD],
     system: PATCH_SYSTEM,
     prompt,
-    maxTokens: 5000,
+    maxTokens: 4000,
     timeoutMs: 120000,
+    perModelTimeoutMs: 60000,
+    jsonRetryTimeoutMs: 20000,
   })
 
   return Array.isArray(result.patches) ? result.patches : []

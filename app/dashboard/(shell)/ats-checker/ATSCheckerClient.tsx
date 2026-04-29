@@ -1904,7 +1904,7 @@ export default function ATSCheckerClient({
           {activeTab === 'results' && (
             <div className={publicMode ? 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]' : 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]'}>
               <div className="space-y-5">
-                <DashboardSurface variant="default" className="p-5 sm:p-6">
+                <DashboardSurface variant="default" className="border-white !bg-white !bg-none p-5 shadow-[0_24px_60px_rgba(25,28,29,0.08)] sm:p-6">
                   <div className="space-y-6">
                     <div className="space-y-5">
                       <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">{resultsTitle}</h2>
@@ -2221,7 +2221,7 @@ export default function ATSCheckerClient({
             <div className="space-y-5">
               <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <div className="space-y-5">
-                  <DashboardSurface variant="default" className="p-5 sm:p-6">
+                  <DashboardSurface variant="default" className="border-white !bg-white !bg-none p-5 shadow-[0_24px_60px_rgba(25,28,29,0.08)] sm:p-6">
                     <div className="space-y-6">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Optimisation summary</p>
@@ -2256,6 +2256,23 @@ export default function ATSCheckerClient({
                           <p className="mt-1 text-5xl font-black tracking-tight text-emerald-700">{optimisedScore ?? scanResult.score}</p>
                         </div>
                       )}
+
+                      {!isMatchMode ? (
+                        <div className="space-y-2.5">
+                          {getReviewSections(scanResult).map(section => (
+                            <div
+                              key={`optimised-section-${section.key}`}
+                              className="flex items-center justify-between rounded-[1.1rem] bg-emerald-50 px-4 py-3 text-emerald-700"
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
+                                <span className="truncate text-sm font-semibold">{section.label}</span>
+                              </div>
+                              <span className="shrink-0 text-xs font-bold uppercase tracking-[0.16em]">Good</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-[1.2rem] bg-primary-container/30 p-4 text-center">

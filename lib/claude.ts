@@ -441,6 +441,74 @@ export async function callClaudeJSON<T>(options: {
   }
 }
 
+export async function callClaudeJSONFallback<T>(options: {
+  model: string
+  system: string
+  prompt: string
+  maxTokens?: number
+  timeoutMs?: number
+  fallbackModels?: string[]
+  perModelTimeoutMs?: number
+  jsonRetryTimeoutMs?: number
+}): Promise<T> {
+  const models = Array.from(new Set([
+    options.model,
+    ...(options.fallbackModels ?? FALLBACK_CHAIN),
+  ].filter(Boolean)))
+  const totalTimeoutMs = options.timeoutMs ?? 120000
+  const perModelTimeoutMs = options.perModelTimeoutMs ?? Math.max(30000, Math.floor(totalTimeoutMs / Math.max(1, Math.min(models.length, 2))))
+  const jsonRetryTimeoutMs = options.jsonRetryTimeoutMs ?? Math.min(30000, perModelTimeoutMs)
+  const failures: Array<{ model: string; reason: string }> = []
+
+  for (const model of models) {
+    try {
+      const raw = await callClaude({
+        ...options,
+        model,
+        timeoutMs: perModelTimeoutMs,
+      })
+
+      try {
+        return parseJSON<T>(raw)
+      } catch {
+        try {
+          const retryRaw = await callClaude({
+            ...options,
+            model,
+            prompt: `${options.prompt}\n\nReturn only valid JSON. No markdown, no explanation.`,
+            timeoutMs: jsonRetryTimeoutMs,
+          })
+          return parseJSON<T>(retryRaw)
+        } catch (retryError) {
+          failures.push({
+            model,
+            reason: retryError instanceof Error ? retryError.message : String(retryError),
+          })
+          continue
+        }
+      }
+    } catch (error) {
+      failures.push({
+        model,
+        reason: error instanceof Error ? error.message : String(error),
+      })
+      continue
+    }
+  }
+
+  console.error('OpenRouter JSON fallback chain failed:', failures)
+
+  if (failures.length > 0 && failures.every(failure => failure.reason === 'CLAUDE_TIMEOUT')) {
+    throw new Error('CLAUDE_TIMEOUT')
+  }
+
+  if (failures.length > 0 && failures.every(failure => failure.reason === 'CLAUDE_JSON_PARSE_FAILED' || failure.reason === 'JSON_PARSE_FAILED')) {
+    throw new Error('CLAUDE_JSON_PARSE_FAILED')
+  }
+
+  throw new Error('OPENROUTER_FALLBACK_FAILED')
+}
+
 /** Calls the primary model with extended timeout. Falls back to Qwen if needed. */
 export async function callClaudeJSONRace<T>(options: {
   model: string
