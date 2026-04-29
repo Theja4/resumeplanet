@@ -64,15 +64,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const profile = profileData as Profile | null
   const pro = isPro(profile)
 
-  // For free users, we just use the pre-computed afterText from insights
   if (!pro) {
-    return NextResponse.json<APIResponse<ApplyFixResponse>>(
-      { success: true, data: { newText: afterText } },
-      { status: 200 }
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PRO_REQUIRED' },
+      { status: 403 }
     )
   }
 
-  // For Pro users, refine the fix with the full resume context
+  // Refine the fix with the full resume context
   const prompt = `Resume Context:\n${resumeContext}\n\nImprove this specific text:\nBEFORE: "${beforeText}"\nSUGGESTED: "${afterText}"\n\nSection: ${sectionHint}\n\nRefine the suggested text and return ONLY JSON with a "newText" key. Keep it realistic and impactful.`
 
   let result: ApplyFixResponse

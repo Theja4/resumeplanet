@@ -337,6 +337,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const profile = profileData as Profile | null
   const pro = isPro(profile)
+
+  if (!pro) {
+    return NextResponse.json<APIResponse<never>>(
+      { success: false, error: 'PRO_REQUIRED' },
+      { status: 403 }
+    )
+  }
+
   const signature = getResumeSignature(resumeText)
 
   // Check cache
@@ -391,7 +399,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         SUGGESTION_MODELS,
         SUGGESTION_SYSTEM,
         userPrompt,
-        pro ? 3000 : 1500
+        3000
       )
 
       suggestions = (llmResult.suggestions ?? [])
