@@ -154,6 +154,11 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
     pageNumber: number
   }> = []
 
+  const bulletOnlyText = (text: string) => /^[•●◦▪▫‣∙·]$/.test(text.trim())
+
+  const getClusterText = (cluster: TextItem[]) =>
+    cluster.map(item => item.text).join('').trim()
+
   function pushClusterLine(cluster: TextItem[]) {
     if (cluster.length === 0) return
 
@@ -239,7 +244,21 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
         clusters.push(currentCluster)
       }
 
-      for (const cluster of clusters) {
+      const mergedClusters: TextItem[][] = []
+      for (let index = 0; index < clusters.length; index += 1) {
+        const cluster = clusters[index]
+        const nextCluster = clusters[index + 1]
+
+        if (nextCluster && bulletOnlyText(getClusterText(cluster))) {
+          mergedClusters.push([...cluster, ...nextCluster])
+          index += 1
+          continue
+        }
+
+        mergedClusters.push(cluster)
+      }
+
+      for (const cluster of mergedClusters) {
         pushClusterLine(cluster)
       }
     }

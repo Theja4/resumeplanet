@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
+import { extractDocxText } from '@/lib/docxTextExtractor'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
@@ -63,9 +64,7 @@ export async function POST(request: NextRequest) {
       pageCount = pages.length || 1
       extractedText = pagesToLines(pages).map(line => line.text).join('\n')
     } else {
-      const mammoth = await import('mammoth')
-      const result = await mammoth.extractRawText({ buffer })
-      extractedText = result.value
+      extractedText = await extractDocxText(buffer)
     }
   } catch (err) {
     console.error('Text extraction error:', err)

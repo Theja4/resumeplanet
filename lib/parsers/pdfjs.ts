@@ -2,6 +2,7 @@ import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
 import { ParseError } from './types'
 import { extractPDFItems } from '@/lib/pdfExtractor'
+import { extractDocxText } from '@/lib/docxTextExtractor'
 import { parseResumeFromPages, parseResumeText } from '@/lib/resumeParser'
 
 const pdfjsParser: ResumeParser = {
@@ -17,9 +18,8 @@ const pdfjsParser: ResumeParser = {
     }
 
     if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      const mammoth = await import('mammoth')
-      const result = await mammoth.extractRawText({ buffer })
-      return parseResumeText(result.value)
+      const text = await extractDocxText(buffer)
+      return parseResumeText(text)
     }
 
     // Plain text fallback

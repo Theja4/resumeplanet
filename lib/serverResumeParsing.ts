@@ -11,6 +11,7 @@ import {
 import pdfjsParser from '@/lib/parsers/pdfjs'
 import claudeParser from '@/lib/parsers/claude'
 import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
+import { extractDocxText } from '@/lib/docxTextExtractor'
 
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const PDF_MIME_TYPE = 'application/pdf'
@@ -59,9 +60,8 @@ async function extractSourceTextLength(buffer: Buffer, fileType: string) {
     }
 
     if (fileType === DOCX_MIME_TYPE) {
-      const mammoth = await import('mammoth')
-      const result = await mammoth.extractRawText({ buffer })
-      return result.value.trim().length
+      const text = await extractDocxText(buffer)
+      return text.length
     }
   } catch (error) {
     console.warn('Failed to extract source text length for resume parsing:', error)

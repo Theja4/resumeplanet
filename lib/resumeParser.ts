@@ -299,6 +299,58 @@ function looksLikeNarrativeLine(line: string): boolean {
   return false
 }
 
+const EXPERIENCE_BULLET_START_RE =
+  /^(achieved|analysed|analyzed|architected|automated|built|championed|collaborated|coordinated|created|delivered|designed|developed|drove|enabled|executed|implemented|improved|increased|launched|led|maintained|managed|migrated|operated|optimised|optimized|owned|partnered|reduced|resolved|shipped|supported|streamlined|validated|worked|responsible)\b/i
+
+function isLikelyUnmarkedBulletStart(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  if (isLikelyDateLine(trimmed) || detectSection(trimmed) || looksLikeCustomHeadingText(trimmed)) return false
+  if (isLikelyExperienceHeader(trimmed) || isContactLikeLine(trimmed)) return false
+
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  if (words.length < 4) return false
+
+  return EXPERIENCE_BULLET_START_RE.test(trimmed) || /^(?:\d+|[0-9]+%|\$)/.test(trimmed)
+}
+
+function isLikelyPostDateMetadataLine(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return true
+  if (isLikelyDateLine(trimmed) || detectSection(trimmed) || isContactLikeLine(trimmed)) return true
+  if (looksLikeNarrativeLine(trimmed)) return false
+
+  const words = trimmed.split(/\s+/).filter(Boolean)
+  return trimmed.length <= 80 && words.length <= 4
+}
+
+function inferBulletsFromUnmarkedExperienceLines(lines: string[]): string[] {
+  const inferred: string[] = []
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) continue
+
+    const words = line.split(/\s+/).filter(Boolean)
+    if (inferred.length === 0) {
+      if (isLikelyPostDateMetadataLine(line)) continue
+      if (words.length >= 4 && !isLikelyDateLine(line) && !detectSection(line)) {
+        inferred.push(line)
+      }
+      continue
+    }
+
+    if (isLikelyUnmarkedBulletStart(line)) {
+      inferred.push(line)
+    } else {
+      const previous = inferred[inferred.length - 1] ?? ''
+      inferred[inferred.length - 1] = `${previous} ${line}`.replace(/\s+/g, ' ').trim()
+    }
+  }
+
+  return inferred
+}
+
 function looksLikeRoleFragment(line: string): boolean {
   const trimmed = line.trim()
   if (!trimmed) return false
@@ -547,6 +599,10 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
           location = parsedCompany.location
         }
       }
+    }
+
+    if (bullets.length === 0 && afterDateNonBullets.length > 0) {
+      bullets.push(...inferBulletsFromUnmarkedExperienceLines(afterDateNonBullets))
     }
 
     if (title || bullets.length > 0) {

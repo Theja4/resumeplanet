@@ -2,6 +2,7 @@ import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
 import { callClaudeJSON } from '@/lib/claude'
 import { extractPDFText } from '@/lib/pdfExtractor'
+import { extractDocxText } from '@/lib/docxTextExtractor'
 import { syncResumeData } from '@/lib/resume-data'
 import { normalizeText, chunkText, postProcessResume } from './utils'
 
@@ -230,9 +231,7 @@ const claudeParser: ResumeParser = {
       if (fileType === 'application/pdf') {
         rawText = await extractPDFText(buffer)
       } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        const mammoth = await import('mammoth')
-        const result = await mammoth.extractRawText({ buffer })
-        rawText = result.value
+        rawText = await extractDocxText(buffer)
       } else {
         rawText = buffer.toString('utf-8')
       }

@@ -342,6 +342,7 @@ export function assessResumeParseConfidence(
   if (sourceTextLength >= 300) {
     const parsedTextLength = estimateResumeDataTextLength(data)
     const coverageRatio = parsedTextLength / sourceTextLength
+    const missingChars = Math.max(0, sourceTextLength - parsedTextLength)
 
     if (coverageRatio < 0.2) {
       score -= 28
@@ -350,7 +351,11 @@ export function assessResumeParseConfidence(
     } else if (coverageRatio < 0.3) {
       score -= 18
       issues.push('low extraction coverage')
-      score = Math.min(score, 70)
+      score = Math.min(score, missingChars >= 500 ? 58 : 70)
+    } else if (sourceTextLength >= 900 && missingChars >= 500 && coverageRatio < 0.55) {
+      score -= 18
+      issues.push('parsed text materially shorter than source')
+      score = Math.min(score, 58)
     } else if (coverageRatio < 0.4) {
       score -= 8
       issues.push('partial extraction coverage')
@@ -382,9 +387,12 @@ export function shouldAttemptRepair(candidate: ResumeParseCandidate | null): boo
     issue === 'experience entries missing title or company' ||
     issue === 'project names look like description text' ||
     issue === 'missing experience section' ||
+    issue === 'experience bullets missing' ||
+    issue === 'some experience bullets missing' ||
     issue === 'very few sections populated' ||
     issue === 'very low extraction coverage' ||
-    issue === 'low extraction coverage'
+    issue === 'low extraction coverage' ||
+    issue === 'parsed text materially shorter than source'
   )
 }
 
