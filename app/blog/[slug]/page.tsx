@@ -3,17 +3,18 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Clock } from 'lucide-react'
-import BlogPostAnalyticsClient from '@/components/blog/BlogPostAnalyticsClient'
-import BlogFloatingRail from '@/components/blog/BlogFloatingRail'
-import BlogRelatedPostLink from '@/components/blog/BlogRelatedPostLink'
-import BlogResumeShowcase from '@/components/blog/BlogResumeShowcase'
-import BlogShareButtons from '@/components/blog/BlogShareButtons'
-import BlogTableOfContents from '@/components/blog/BlogTableOfContents'
-import BlogTrackedAppLink from '@/components/blog/BlogTrackedAppLink'
-import MarkdownContent from '@/components/blog/MarkdownContent'
-import ReadingProgress from '@/components/blog/ReadingProgress'
+import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import MarkdownContent from '@/components/blog/MarkdownContent'
+import ReadingProgress from '@/components/blog/ReadingProgress'
+import BlogFloatingRail from '@/components/blog/BlogFloatingRail'
+import BlogTableOfContents from '@/components/blog/BlogTableOfContents'
+import BlogShareButtons from '@/components/blog/BlogShareButtons'
+import BlogRelatedPostLink from '@/components/blog/BlogRelatedPostLink'
+import BlogTrackedAppLink from '@/components/blog/BlogTrackedAppLink'
+import BlogPostAnalyticsClient from '@/components/blog/BlogPostAnalyticsClient'
+import BlogResumeShowcase from '@/components/blog/BlogResumeShowcase'
 import {
   estimateReadTime,
   formatBlogDate,
@@ -21,73 +22,76 @@ import {
   getPublishedBlogPostBySlug,
   getPublishedBlogPosts,
 } from '@/lib/blog'
+import { getCompanyJobGuideBySlug } from '@/lib/blog/company-job-guides'
 import { getBlogResumeExampleForSlug } from '@/lib/blog/resume-examples'
 import { buildBlogPostKeywords } from '@/lib/blog/seo'
 import { getSiteUrl } from '@/lib/site'
-import { createClient } from '@/lib/supabase/server'
-
-export const dynamic = 'force-dynamic'
 
 const GOOGLE_JOB_FAQS = [
   {
     question: 'Can I apply to more than one Google job at the same time?',
     answer:
-      'Yes. Google Careers Help says candidates can apply to up to three jobs within a rolling 30-day window, so each application should be a strong fit.',
+      'Yes, but Google Careers Help says you can apply to up to three jobs within a rolling 30-day window. Use those slots carefully.',
+  },
+  {
+    question: 'Should I use the same resume for every Google application?',
+    answer:
+      'No. Google roles can look similar on the surface and still require very different evidence. Tailor for the exact function, level, and team context.',
   },
   {
     question: 'Does Google require a cover letter?',
     answer:
-      "No. Google's Careers Help says education, work history, and cover letter are optional, which means the resume has to carry most of the positioning work.",
+      'No. Google\'s Careers Help says education, work history, and cover letter are optional. That makes the resume even more important.',
   },
   {
-    question: 'Can I edit my Google application after submission?',
+    question: 'Can I edit my Google application after I submit it?',
     answer:
-      'No. Google says candidates can make changes before submission, including loading a different resume, but cannot edit the application after it is submitted.',
+      'No. Google says you can change an application before submission, including swapping the resume, but not after you submit.',
   },
-] as const
+]
 
 const ATS_CHECKER_HOW_TO_STEPS = [
   {
-    name: 'Upload or select a resume',
-    text: 'Start with the exact resume version you plan to send for the target role.',
+    name: 'Fix parsing first',
+    text: 'Ensure your name, contact info, and role dates are readable by a standard parser.',
   },
   {
-    name: 'Add the job description',
-    text: 'Paste the posting so the checker can compare real role requirements against your resume.',
+    name: 'Simplify formatting',
+    text: 'Remove complex tables, graphics, and text boxes that scramble ATS extraction.',
   },
   {
-    name: 'Fix parsing and formatting first',
-    text: 'Resolve unreadable sections, complex layouts, weak headings, and file-readability issues before tuning keywords.',
+    name: 'Align truthful keywords',
+    text: 'Match the job description language only where it mirrors your real experience.',
   },
   {
-    name: 'Improve keywords and bullets',
-    text: 'Add truthful job-description language and strengthen vague bullets with tools, scope, and outcomes.',
+    name: 'Add evidence to bullets',
+    text: 'Replace duties with measurable outcomes, tools, and scope.',
   },
-  {
-    name: 'Re-check before applying',
-    text: 'Run one final scan and read the resume as a recruiter would before submitting.',
-  },
-] as const
+]
 
-function extractArticleSections(content: string) {
-  return content
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => /^##\s+/.test(line))
-    .map(line => line.replace(/^##\s+/, '').trim())
+function cleanStructuredText(text: string) {
+  return text.replace(/[#*`_]/g, '').trim()
 }
 
-function cleanStructuredText(value: string) {
-  return value
-    .replace(/!\[[^\]]*\]\(([^)]+)\)/g, ' ')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
-    .replace(/^\s{0,3}>\s?/gm, '')
-    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '')
-    .replace(/[*_~`]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
+function extractArticleSections(content: string) {
+  const lines = content.replace(/\r\n/g, '\n').split('\n')
+  const sections: Array<{ id: string; title: string }> = []
+
+  lines.forEach(line => {
+    if (/^##\s+/.test(line)) {
+      const title = line.replace(/^##\s+/, '').trim()
+      sections.push({
+        id: title
+          .toLowerCase()
+          .replace(/['’]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, ''),
+        title,
+      })
+    }
+  })
+
+  return sections
 }
 
 function extractFaqItems(content: string) {
@@ -209,6 +213,54 @@ function entryStyle(delay = 0): CSSProperties {
   }
 }
 
+function CompanyGuideImage({
+  alt,
+  src,
+}: {
+  alt: string
+  src: string
+}) {
+  return (
+    <figure className="relative mx-auto my-2 w-full max-w-3xl overflow-hidden rounded-[1.8rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(241,247,243,0.94))] p-2 shadow-[0_20px_60px_rgba(18,24,21,0.08)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_30%)]" />
+      <div className="relative overflow-hidden rounded-[1.2rem] border border-black/5 bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt={alt} className="mx-auto h-auto w-full object-contain" loading="lazy" />
+      </div>
+    </figure>
+  )
+}
+
+function CompanyMascotImage({
+  companyName,
+  slug,
+}: {
+  companyName: string
+  slug: string
+}) {
+  return (
+    <CompanyGuideImage
+      src={`/blog/${slug}-mascot.svg`}
+      alt={`Rezoomed mascot filling out a ${companyName} application`}
+    />
+  )
+}
+
+function CompanyInlineImage({
+  companyName,
+  slug,
+}: {
+  companyName: string
+  slug: string
+}) {
+  return (
+    <CompanyGuideImage
+      src={`/blog/${slug}-inline.svg`}
+      alt={`${companyName} job application guide illustration`}
+    />
+  )
+}
+
 export default async function BlogPostPage({
   params,
 }: {
@@ -243,15 +295,38 @@ export default async function BlogPostPage({
   const articleSections = extractArticleSections(articleContent).slice(0, 6)
   const hasArticleToc = articleSections.length > 0
   const resumeExample = getBlogResumeExampleForSlug(post.slug)
-  const customBlocks = resumeExample
+  const companyJobGuide = getCompanyJobGuideBySlug(post.slug)
+  const resumeShowcase = resumeExample ? (
+    <BlogResumeShowcase
+      slug={post.slug}
+      exampleId={resumeExample.id}
+      isAuthenticated={Boolean(user)}
+    />
+  ) : null
+  const mascotImage = companyJobGuide ? (
+    <CompanyMascotImage companyName={companyJobGuide.companyName} slug={post.slug} />
+  ) : null
+  const companyInlineImage = companyJobGuide ? (
+    <CompanyInlineImage companyName={companyJobGuide.companyName} slug={post.slug} />
+  ) : null
+  const customBlocks = resumeShowcase || mascotImage || companyInlineImage
     ? {
-        'google-resume-example': (
-          <BlogResumeShowcase
-            slug={post.slug}
-            exampleId={resumeExample.id}
-            isAuthenticated={Boolean(user)}
-          />
-        ),
+        ...(resumeShowcase
+          ? {
+              'google-resume-example': resumeShowcase,
+              'company-resume-example': resumeShowcase,
+            }
+          : {}),
+        ...(mascotImage
+          ? {
+              'company-mascot-image': mascotImage,
+            }
+          : {}),
+        ...(companyInlineImage
+          ? {
+              'company-inline-image': companyInlineImage,
+            }
+          : {}),
       }
     : undefined
   const extractedFaqItems = extractFaqItems(articleContent)
@@ -352,6 +427,35 @@ export default async function BlogPostPage({
             },
           ],
         }
+      : companyJobGuide
+        ? {
+            '@context': 'https://schema.org',
+            '@type': 'HowTo',
+            name: `How to get a job at ${companyJobGuide.companyName}`,
+            description: post.excerpt,
+            step: [
+              {
+                '@type': 'HowToStep',
+                name: `Choose one ${companyJobGuide.companyName} role lane`,
+                text: companyJobGuide.strategyNote,
+              },
+              {
+                '@type': 'HowToStep',
+                name: `Tailor your ${companyJobGuide.companyName} resume`,
+                text: `Lead with the signals ${companyJobGuide.companyName} recruiters need to see: ${companyJobGuide.resumeSignals.join(', ')}.`,
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'Use the resume example as a structure guide',
+                text: 'Study the example resume for positioning, evidence density, measurable bullets, and ATS-safe formatting before customizing your own version.',
+              },
+              {
+                '@type': 'HowToStep',
+                name: 'Prepare proof for interviews',
+                text: `Build a story bank around the same proof points your resume uses, including ${companyJobGuide.interviewPrepItems.slice(0, 3).join(', ')}.`,
+              },
+            ],
+          }
       : post.slug === 'ats-resume-checker-what-it-tests-and-why-it-matters'
         ? {
             '@context': 'https://schema.org',
@@ -508,7 +612,6 @@ export default async function BlogPostPage({
         </div>
       </div>
 
-      {/* ── Body ──────────────────────────────────────────────────────────────── */}
       <main className="mx-auto max-w-[108rem] px-4 pb-28 sm:px-6 lg:px-8 xl:px-8 2xl:px-10">
         <div
           className={[
@@ -521,12 +624,11 @@ export default async function BlogPostPage({
           {hasArticleToc ? (
             <aside className="hidden xl:block">
               <BlogFloatingRail topOffset={124} bottomOffset={32}>
-                <BlogTableOfContents articleSections={articleSections} />
+                <BlogTableOfContents articleSections={articleSections.map(s => s.title)} />
               </BlogFloatingRail>
             </aside>
           ) : null}
 
-          {/* Article */}
           <div className={`min-w-0 space-y-10 -mt-6 ${hasArticleToc ? 'xl:col-start-2' : ''}`}>
             <div className="blog-load-in blog-glare-surface blog-glare-light relative overflow-hidden rounded-[2.3rem] border border-white/80 bg-[linear-gradient(160deg,rgba(255,255,255,0.98),rgba(243,247,244,0.95))] p-6 shadow-[0_28px_90px_rgba(18,24,21,0.08)] sm:p-8 lg:p-10" style={entryStyle(0.08)}>
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.18),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.06),transparent_30%)]" />
@@ -549,7 +651,6 @@ export default async function BlogPostPage({
               </article>
             </div>
 
-            {/* Bottom CTA */}
             <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[2rem] bg-[#030f07] p-8 sm:p-10" style={entryStyle(0.18)}>
               <div className="relative z-10">
                 <p className="mb-3 text-[11px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">
@@ -580,7 +681,6 @@ export default async function BlogPostPage({
               </div>
             </div>
 
-            {/* Related posts */}
             {relatedPosts.length > 0 && (
               <div className="space-y-6 pt-4">
                 <div>
@@ -609,7 +709,6 @@ export default async function BlogPostPage({
             )}
           </div>
 
-          {/* Right rail */}
           <aside className={`hidden xl:block ${hasArticleToc ? 'xl:col-start-3' : ''}`}>
             <BlogFloatingRail topOffset={124} bottomOffset={32} contentClassName="space-y-6">
               <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[1.75rem] bg-gradient-to-br from-[#026d32] to-[#013d1c] p-6 shadow-[0_16px_48px_rgba(2,109,50,0.25)]" style={entryStyle(0.18)}>

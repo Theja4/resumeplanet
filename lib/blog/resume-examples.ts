@@ -1,6 +1,7 @@
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { BuilderVisibility, ResumeData, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY } from '@/types'
+import { COMPANY_JOB_GUIDES } from '@/lib/blog/company-job-guides'
 
 export interface BlogResumeExample {
   id: string
@@ -178,6 +179,70 @@ const GOOGLE_TEAM_LEADER_TEMPLATE = sanitizeUniversalConfig({
   density: 'compressed',
 })
 
+function buildCompanyExample(guide: any): BlogResumeExample {
+  const config = guide.resumeExample
+  return {
+    id: config.id,
+    blogSlug: guide.slug,
+    title: config.title,
+    sourceLabel: config.sourceLabel,
+    sourceUrl: config.sourceUrl,
+    sourceNote: config.sourceNote,
+    analysisPoints: config.analysisPoints,
+    resumeData: {
+      name: config.candidateName,
+      email: config.email,
+      phone: config.phone,
+      location: config.location,
+      currentRole: config.currentRole,
+      summary: config.summary,
+      experience: config.experience,
+      education: [config.education],
+      skills: config.skillSections.flatMap((s: any) => s.skills),
+      skillSections: config.skillSections,
+      certifications: [],
+      projects: [],
+      languages: [],
+      volunteer: [],
+      interests: [],
+      awards: [],
+      publications: [],
+      references: [],
+      customSections: [],
+    },
+    templateConfig: sanitizeUniversalConfig({
+      accentColor: config.accentColor,
+      headerStyle: 'classic',
+      bulletStyle: 'plain',
+      skillsStyle: 'inline',
+      sectionHeadingStyle: 'rule',
+      contactStyle: 'inline',
+      dateLayout: 'right',
+      nameSize: 'large',
+      density: 'compressed',
+    }),
+    visibility: {
+      ...DEFAULT_VISIBILITY,
+      sections: {
+        ...DEFAULT_VISIBILITY.sections,
+        contact: true,
+        summary: true,
+        experience: true,
+        education: true,
+        skills: true,
+      },
+      items: {
+        ...DEFAULT_VISIBILITY.items,
+        experience: config.experience.map(() => true),
+        education: [true],
+      },
+      sectionOrder: ['summary', 'experience', 'education'],
+      sidebarSectionOrder: ['skills'],
+      density: 'compressed',
+    },
+  }
+}
+
 const BLOG_RESUME_EXAMPLES: BlogResumeExample[] = [
   {
     id: 'google-team-leader',
@@ -197,6 +262,7 @@ const BLOG_RESUME_EXAMPLES: BlogResumeExample[] = [
     templateConfig: GOOGLE_TEAM_LEADER_TEMPLATE,
     visibility: GOOGLE_TEAM_LEADER_VISIBILITY,
   },
+  ...COMPANY_JOB_GUIDES.map(buildCompanyExample),
 ]
 
 export function getBlogResumeExampleById(id: string | null | undefined) {

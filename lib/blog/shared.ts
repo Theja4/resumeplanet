@@ -82,9 +82,13 @@ export function getBlogMediaFallback(slug: string) {
 
   if (GENERATED_BLOG_MEDIA_SLUGS.has(slug)) {
     const ext = slug.startsWith('how-to-land-a-job-at-') ? 'svg' : 'jpg'
+    const inlineImages = slug.startsWith('how-to-land-a-job-at-')
+      ? [`/blog/${slug}-mascot.svg`]
+      : [`/blog/${slug}-inline.${ext}`]
+
     return {
       coverImage: `/blog/${slug}-hero.${ext}`,
-      inlineImages: [`/blog/${slug}-inline.${ext}`],
+      inlineImages,
     }
   }
 

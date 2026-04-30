@@ -717,7 +717,7 @@ No. Google roles can look similar on the surface and still require very differen
 
 ### Does Google require a cover letter?
 
-No. Google's Careers Help says education, work history, and cover letter are optional. That makes the resume even more important.
+No. Google\'s Careers Help says education, work history, and cover letter are optional. That makes the resume even more important.
 
 ### Can I edit my Google application after I submit it?
 
@@ -932,6 +932,60 @@ function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
   ]
 }
 
+import {
+  COMPANY_JOB_GUIDES,
+  getCompanyJobGuideBySlug,
+} from '@/lib/blog/company-job-guides'
+
+function buildCompanyJobGuideContent(guide: any) {
+  return `
+# ${guide.title}
+
+${guide.opening}
+
+## Application Strategy
+
+!!! ${guide.companyName} Strategy
+${guide.strategyNote}
+
+### Recommended role lanes
+${guide.lanes.map((lane: string) => `- ${lane}`).join('\n')}
+
+### Key resume signals
+${guide.resumeSignals.map((signal: string) => `- ${signal}`).join('\n')}
+
+## Resume Example
+
+Study this example for positioning, evidence density, and ATS-safe structure.
+
+[[company-resume-example]]
+
+## Better vs Worse Evidence
+
+| Before | After |
+| --- | --- |
+${guide.beforeAfterRows.map((row: [string, string]) => `| ${row[0]} | ${row[1]} |`).join('\n')}
+
+## Application Checklist
+
+!!! ${guide.companyName} Checklist
+${guide.checklistItems.map((item: string) => `- ${item}`).join('\n')}
+
+## Proof that matters
+${guide.proofItems.map((item: string) => `- ${item}`).join('\n')}
+
+## Interview Preparation
+${guide.interviewPrepItems.map((item: string) => `- ${item}`).join('\n')}
+
+## Frequently asked questions
+
+${guide.faqItems.map((item: any) => `### ${item.question}\n\n${item.answer}`).join('\n\n')}
+
+## Official Sources
+${guide.sourceLinks.map((link: any) => `- [${link.label}](${link.href})`).join('\n')}
+  `.trim()
+}
+
 function appendRelatedToolLinks(post: BlogPost): string {
   const content = post.content.trim()
 
@@ -945,6 +999,20 @@ function appendRelatedToolLinks(post: BlogPost): string {
 }
 
 export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
+  const guide = getCompanyJobGuideBySlug(post.slug)
+  if (guide) {
+    const nextPost = {
+      ...post,
+      title: guide.title,
+      excerpt: guide.excerpt,
+      content: buildCompanyJobGuideContent(guide),
+    }
+    return {
+      ...nextPost,
+      content: appendRelatedToolLinks(nextPost),
+    }
+  }
+
   const override = BLOG_OVERRIDES[post.slug]
   const nextPost = override
     ? {

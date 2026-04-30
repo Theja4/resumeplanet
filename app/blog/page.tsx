@@ -57,6 +57,35 @@ function entryStyle(delay = 0): CSSProperties {
 
 export default async function BlogPage() {
   const posts = await getPublishedBlogPosts()
+
+  // Manual swap to make ATS Resume Checker the featured post as requested
+  const featuredIndex = posts.findIndex(p => p.slug === 'best-ai-resume-builder-for-job-seekers')
+  const atsIndex = posts.findIndex(p => p.slug === 'ats-resume-checker-what-it-tests-and-why-it-matters')
+
+  if (featuredIndex !== -1 && atsIndex !== -1) {
+    const temp = posts[featuredIndex]
+    posts[featuredIndex] = posts[atsIndex]
+    posts[atsIndex] = temp
+  }
+
+  // Swap Resume Builder vs Template & Resume Metadata Checklist with Google & Anthropic guides
+  const builderVsTemplateIndex = posts.findIndex(p => p.slug === 'resume-builder-vs-template-which-is-better')
+  const metadataChecklistIndex = posts.findIndex(p => p.slug === 'resume-metadata-checklist-before-you-apply')
+  const googleIndex = posts.findIndex(p => p.slug === 'how-to-land-a-google-job')
+  const anthropicIndex = posts.findIndex(p => p.slug === 'how-to-land-a-job-at-anthropic')
+
+  if (builderVsTemplateIndex !== -1 && googleIndex !== -1) {
+    const temp = posts[builderVsTemplateIndex]
+    posts[builderVsTemplateIndex] = posts[googleIndex]
+    posts[googleIndex] = temp
+  }
+
+  if (metadataChecklistIndex !== -1 && anthropicIndex !== -1) {
+    const temp = posts[metadataChecklistIndex]
+    posts[metadataChecklistIndex] = posts[anthropicIndex]
+    posts[anthropicIndex] = temp
+  }
+
   const [featured, ...rest] = posts
   const spotlightPosts = rest.slice(0, 2)
   const gridPosts = rest.slice(2)
@@ -152,7 +181,7 @@ export default async function BlogPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3FFB3]">Coverage</p>
-                      <p className="mt-1 text-lg font-black text-white">{posts.length} published articles</p>
+                      <p className="mt-1 text-lg font-black text-white">Full playbook</p>
                     </div>
                   </div>
                   <p className="mt-4 text-sm leading-7 text-white/58">
