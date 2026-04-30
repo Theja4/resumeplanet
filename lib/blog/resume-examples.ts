@@ -194,6 +194,8 @@ function buildCompanyExample(guide: any): BlogResumeExample {
       email: config.email,
       phone: config.phone,
       location: config.location,
+      linkedin: '',
+      website: '',
       currentRole: config.currentRole,
       summary: config.summary,
       experience: config.experience,
