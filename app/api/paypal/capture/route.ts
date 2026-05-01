@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .update({
           plan: 'pro',
-          subscription_status: 'active',
+          subscription_status: 'paid',
           subscription_interval: subscriptionInterval,
           paypal_subscription_id: subscription.id,
         })
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
       .from('profiles')
       .update({
         plan: 'pro',
-        subscription_status: 'active',
+        subscription_status: 'paid',
         subscription_interval: subscriptionInterval,
       })
       .eq('id', userId)

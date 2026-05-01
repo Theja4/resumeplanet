@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { PRO_PLAN } from '@/lib/pricing'
 import {
-  createPayPalProSubscription,
+  createPayPalProOrder,
   getPayPalApprovalUrl,
   getPayPalConfigurationError,
-  getPayPalSubscriptionPlanId,
 } from '@/lib/paypal'
 import { getSiteUrl } from '@/lib/site'
 
@@ -59,44 +58,32 @@ export async function POST(request: NextRequest) {
   const siteUrl = getSiteUrl()
   const returnUrl = `${siteUrl}/api/paypal/capture`
   const cancelUrl = `${siteUrl}/dashboard/pricing?paypal_cancelled=true`
-  const subscriptionInterval = selectedPriceOption.id === 'annual' ? 'annual' : 'monthly'
-  const subscriptionPlanId = getPayPalSubscriptionPlanId(subscriptionInterval)
 
-  if (!subscriptionPlanId) {
-    return err(
-      `PayPal ${subscriptionInterval} subscription plan is not configured. Add ${subscriptionInterval === 'annual' ? 'PAYPAL_PRO_PLAN_ANNUAL' : 'PAYPAL_PRO_PLAN_MONTHLY'} in Vercel.`,
-      500
-    )
-  }
+  try {
+    const order = await createPayPalProOrder({
+      userId: user.id,
+      userEmail: profile.email,
+      priceOption: selectedPriceOption,
+      returnUrl,
+      cancelUrl,
+    })
+    const approvalUrl = getPayPalApprovalUrl(order)
 
-  if (subscriptionPlanId) {
-    try {
-      const subscription = await createPayPalProSubscription({
-        userId: user.id,
-        userEmail: profile.email,
-        priceOption: selectedPriceOption,
-        planId: subscriptionPlanId,
-        returnUrl,
-        cancelUrl,
-      })
-      const approvalUrl = getPayPalApprovalUrl(subscription)
-
-      if (!approvalUrl) {
-        return err('PayPal did not return a subscription approval URL', 500)
-      }
-
-      return ok({
-        provider: 'paypal',
-        mode: 'subscription',
-        subscriptionId: subscription.id,
-        approvalUrl,
-        priceId: selectedPriceOption.id,
-        currency: selectedPriceOption.display.currency,
-        amount: selectedPriceOption.display.displayPrice,
-      })
-    } catch (error) {
-      console.error('PayPal subscription checkout failed:', error)
-      return err('PayPal subscription checkout failed. Check PayPal credentials and plan IDs.', 502)
+    if (!approvalUrl) {
+      return err('PayPal did not return an approval URL', 500)
     }
+
+    return ok({
+      provider: 'paypal',
+      mode: 'order',
+      orderId: order.id,
+      approvalUrl,
+      priceId: selectedPriceOption.id,
+      currency: selectedPriceOption.display.currency,
+      amount: selectedPriceOption.display.displayPrice,
+    })
+  } catch (error) {
+    console.error('PayPal order checkout failed:', error)
+    return err('PayPal checkout failed. Check PayPal credentials.', 502)
   }
 }
