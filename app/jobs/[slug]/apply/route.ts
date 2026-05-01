@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { getJobBySlug } from '@/lib/jobs'
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -11,9 +12,14 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> }
 ) {
+  const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+  if (!JOB_BOARD_ENABLED) {
+    return NextResponse.redirect(new URL('/', appOrigin))
+  }
+
   const { slug } = await params
   const job = await getJobBySlug(slug)
-  const appOrigin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
   if (!job) {
     return NextResponse.redirect(new URL('/jobs', appOrigin))

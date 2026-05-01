@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, FileText, BarChart3, BriefcaseBusiness, type LucideIcon } from 'lucide-react'
+import { LayoutGrid, FileText, BarChart3, PlusCircle, type LucideIcon } from 'lucide-react'
 
 const TABS: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
   { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
   { href: '/dashboard/ats-checker', label: 'ATS', Icon: BarChart3 },
-  { href: '/dashboard/job-board', label: 'Jobs', Icon: BriefcaseBusiness },
+  { href: '/dashboard/builder/new', label: 'Create', Icon: PlusCircle },
 ]
 
 export default function BottomNav() {

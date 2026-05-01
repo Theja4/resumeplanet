@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -14,6 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 
 const launchItems = [
   { label: 'Curated role feed', Icon: Search, tone: 'bg-emerald-600 text-white' },
@@ -52,6 +54,10 @@ const readiness = [
 ]
 
 export default function DashboardJobBoardPage() {
+  if (!JOB_BOARD_ENABLED) {
+    notFound()
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
       <DashboardSurface variant="default" className="p-0">

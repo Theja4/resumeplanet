@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
-  FileText, Wand2, BriefcaseBusiness, Shield,
+  FileText, Wand2, Shield,
   Sparkles, FileUser, Check, Users, Star, BarChart3, Target,
 } from 'lucide-react'
 
@@ -399,7 +399,7 @@ function TailorMock() {
 // 4-col desktop grid — 3 rows, same vertical footprint as the old 3-col/6-card layout
 // Row 1: ATS(2) + Match(1) + Builder(1) = 4
 // Row 2: Metadata(1) + Tailor(2) + Cover(1) = 4
-// Row 3: Job Tracker(2) + Expert Writing(2) = 4
+// Row 3: Export polish(2) + Expert Writing(2) = 4
 const BENTO = [
   {
     Icon: BarChart3, label: 'ATS Checker',
@@ -450,8 +450,8 @@ const BENTO = [
     size: 'lg:col-span-1',
   },
   {
-    Icon: BriefcaseBusiness, label: 'Job Tracker',
-    desc: 'Every application tracked — status, contacts, follow-ups.',
+    Icon: Sparkles, label: 'Export Polish',
+    desc: 'Final checks for formatting, metadata, and sharing-ready resume files.',
     gradient: 'from-teal-500/10 to-cyan-500/5',
     iconBg: 'bg-gradient-to-br from-teal-500 to-cyan-500',
     glow: 'hover:shadow-[0_24px_64px_rgba(20,184,166,0.22)]',

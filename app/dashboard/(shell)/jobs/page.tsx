@@ -1,6 +1,8 @@
+import { notFound } from 'next/navigation'
 import TrackedJobsClient from '@/components/jobs/TrackedJobsClient'
 import type { Job, TrackedJob } from '@/types'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 
 type TrackedJobRow = Omit<TrackedJob, 'job'> & {
   job: Job | Job[] | null
@@ -11,6 +13,10 @@ export default async function DashboardJobsPage({
 }: {
   searchParams: Promise<{ status?: string }>
 }) {
+  if (!JOB_BOARD_ENABLED) {
+    notFound()
+  }
+
   const { supabase, userId, profile } = await getAuthenticatedUserContext()
 
   const trackedJobsWithOverridesResult = await supabase

@@ -271,7 +271,7 @@ export const FREE_PLAN = {
     'Up to 3 saved resumes',
     'Resume Builder with PDF export',
     'Basic ATS analysis',
-    'Job board beta + track up to 5 jobs',
+    'PDF metadata enhancer',
   ],
 
   lockedFeatures: [
@@ -281,7 +281,7 @@ export const FREE_PLAN = {
     'AI - insights (Claude Opus)',
     'Tailor Mode rewrites',
     'Editable DOCX exports',
-    'Track up to 3,000 jobs',
+    'Priority resume workspace',
     'Ad-free workspace',
   ],
 }
@@ -361,7 +361,7 @@ export const PRO_PLAN = {
     'Tailor Mode rewrites',
     'Unlimited saved resumes',
     'PDF + editable DOCX exports',
-    'Track up to 3,000 jobs',
+    'Priority resume workspace',
     'Ad-free workspace',
   ],
 

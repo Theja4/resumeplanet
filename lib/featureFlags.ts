@@ -1,2 +1,5 @@
 export const HUMAN_WRITTEN_SERVICE_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_HUMAN_WRITTEN_SERVICE === 'true'
+
+export const JOB_BOARD_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_JOB_BOARD === 'true'

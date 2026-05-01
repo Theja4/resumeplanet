@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { requireAuth } from '@/lib/planEnforcement'
 import { updateTrackedJobForUser } from '@/lib/jobs/tracker'
 import { formatSalaryInput, parseTrackerDateInput, trackerDateToTimestamp } from '@/lib/jobs/shared'
@@ -17,6 +18,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ trackedJobId: string }> }
 ) {
+  if (!JOB_BOARD_ENABLED) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+  }
+
   const auth = await requireAuth()
 
   if (auth instanceof NextResponse) {
@@ -187,6 +192,10 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ trackedJobId: string }> }
 ) {
+  if (!JOB_BOARD_ENABLED) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+  }
+
   const auth = await requireAuth()
 
   if (auth instanceof NextResponse) {

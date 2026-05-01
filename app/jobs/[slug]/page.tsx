@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, MapPin } from 'lucide-react'
 import JobTrackerButton from '@/components/jobs/JobTrackerButton'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { getJobBySlug } from '@/lib/jobs'
 import { formatJobDate, formatJobSource } from '@/lib/jobs/shared'
 import { createClient } from '@/lib/supabase/server'
@@ -17,6 +18,16 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
+  if (!JOB_BOARD_ENABLED) {
+    return {
+      title: 'Not Found | Rezoomed',
+      robots: {
+        index: false,
+        follow: false,
+      },
+    }
+  }
+
   const { slug } = await params
   const job = await getJobBySlug(slug)
 
@@ -44,6 +55,10 @@ export default async function JobDetailPage({
 }: {
   params: Promise<{ slug: string }>
 }) {
+  if (!JOB_BOARD_ENABLED) {
+    notFound()
+  }
+
   const { slug } = await params
   const job = await getJobBySlug(slug)
 

@@ -12,6 +12,7 @@ import GoogleAnalyticsProvider from '@/components/providers/GoogleAnalyticsProvi
 import AffiliateReferralTracker from '@/components/providers/AffiliateReferralTracker'
 import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
 import CookieConsentBanner from '@/components/shared/CookieConsentBanner'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import {
   COOKIE_CONSENT_COOKIE,
   detectRequestCountry,
@@ -120,7 +121,7 @@ export default async function RootLayout({
             <PaddleProvider>
               {bannerPromo && <PromoBanner promo={bannerPromo} />}
               {children}
-              <PendingJobApplyPrompt />
+              {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
             </PaddleProvider>
           </GoogleAnalyticsProvider>
         </PostHogProvider>

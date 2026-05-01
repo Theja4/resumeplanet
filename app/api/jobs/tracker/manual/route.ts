@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { requireAuth } from '@/lib/planEnforcement'
 import { upsertTrackedJobForUser } from '@/lib/jobs/tracker'
 import {
@@ -21,6 +22,10 @@ const ALLOWED_MANUAL_CREATE_STATUSES = new Set<TrackedJobStatus>([
 ])
 
 export async function POST(request: NextRequest) {
+  if (!JOB_BOARD_ENABLED) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+  }
+
   const auth = await requireAuth()
 
   if (auth instanceof NextResponse) {

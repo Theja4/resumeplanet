@@ -1,36 +1,19 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import JobsBoardDirectory from '@/components/jobs/JobsBoardDirectory'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { getPublicJobs } from '@/lib/jobs'
 import { getSiteUrl } from '@/lib/site'
 import type { JobSourceProvider } from '@/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'Remote Jobs & Resume-Matched Roles | Rezoomed',
-  description:
-    'Browse public job openings and find roles you can target with a stronger ATS-optimized resume and job-match workflow.',
-  keywords: [
-    'remote jobs',
-    'job board',
-    'resume matched jobs',
-    'job search tools',
-    'resume optimization for jobs',
-  ],
-  alternates: {
-    canonical: '/jobs',
-  },
-  openGraph: {
-    type: 'website',
-    title: 'Remote Jobs & Resume-Matched Roles | Rezoomed',
-    description: 'Browse public job openings and find roles you can target with a stronger ATS-optimized resume and job-match workflow.',
-    url: '/jobs',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Remote Jobs & Resume-Matched Roles | Rezoomed',
-    description: 'Browse public job openings and find roles you can target with a stronger ATS-optimized resume and job-match workflow.',
+  title: 'Not Found | Rezoomed',
+  robots: {
+    index: false,
+    follow: false,
   },
 }
 
@@ -43,6 +26,10 @@ export default async function JobsPage({
     remote?: 'remote' | 'hybrid' | 'on_site' | 'all'
   }>
 }) {
+  if (!JOB_BOARD_ENABLED) {
+    notFound()
+  }
+
   const params = await searchParams
   const jobs = await getPublicJobs({
     q: params.q,

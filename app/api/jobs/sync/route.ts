@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import { getJobsSyncSecret } from '@/lib/jobs/config'
 import { syncConfiguredJobSources } from '@/lib/jobs/sync'
 
@@ -26,6 +27,10 @@ function isAuthorized(request: NextRequest) {
 }
 
 async function handleSync(request: NextRequest) {
+  if (!JOB_BOARD_ENABLED) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+  }
+
   if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }

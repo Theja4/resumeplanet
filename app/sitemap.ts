@@ -8,7 +8,6 @@ type SitemapChangeFrequency = NonNullable<MetadataRoute.Sitemap[number]['changeF
 const PUBLIC_ROUTES = [
   '/',
   '/blog',
-  '/jobs',
   '/ats-checker',
   '/match-score',
   '/metadata-enhancer',
@@ -25,12 +24,12 @@ const PUBLIC_ROUTES = [
 function getRoutePriority(route: string) {
   if (route === '/') return 1.0
   if (['/resume-builder', '/ats-checker', '/resume-tailoring', '/match-score'].includes(route)) return 0.9
-  if (['/cover-letter-generator', '/metadata-enhancer', '/jobs', '/pricing', '/blog'].includes(route)) return 0.8
+  if (['/cover-letter-generator', '/metadata-enhancer', '/pricing', '/blog'].includes(route)) return 0.8
   return 0.5
 }
 
 function getRouteChangeFrequency(route: string): SitemapChangeFrequency {
-  if (route === '/' || route === '/jobs') return 'daily'
+  if (route === '/') return 'daily'
   return 'weekly'
 }
 

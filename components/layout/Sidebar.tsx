@@ -11,8 +11,6 @@ import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
 import type { Profile } from '@/types'
 import {
   LayoutGrid,
-  Search,
-  BriefcaseBusiness,
   BarChart3,
   FileText,
   FilePenLine,
@@ -41,8 +39,6 @@ const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem
     title: 'Workspace',
     items: [
       { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
-      { href: '/dashboard/job-board', label: 'Job Board', Icon: Search, badge: 'Soon' },
-      { href: '/dashboard/jobs', label: 'Job Tracker', Icon: BriefcaseBusiness },
     ],
   },
   {

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { startTransition, useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { BriefcaseBusiness, ClipboardCheck, Upload } from 'lucide-react'
+import { ClipboardCheck, FilePenLine, Upload } from 'lucide-react'
 import AdBanner from '@/components/shared/AdBanner'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { ADS_ENABLED } from '@/lib/ads'
@@ -281,12 +281,12 @@ export default function DashboardHomeClient({
           />
 
           <ActionCard
-            href="/dashboard/jobs"
-            title="Open Job Tracker"
-            description="Move saved applications through your pipeline and keep every role tied back to your resume workflow."
+            href="/dashboard/metadata-enhancer"
+            title="Clean PDF Metadata"
+            description="Remove hidden document metadata and keep exports polished before sharing."
             icon={
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container/50 text-primary transition-transform group-hover:scale-110 sm:mb-6 sm:h-12 sm:w-12">
-                <BriefcaseBusiness size={22} strokeWidth={1.75} />
+                <FilePenLine size={22} strokeWidth={1.75} />
               </div>
             }
           />
