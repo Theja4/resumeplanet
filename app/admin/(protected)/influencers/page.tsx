@@ -3,6 +3,8 @@ import { DashboardPageIntro, DashboardSurface } from '@/components/layout/Dashbo
 import { formatUsdCurrency, normalizeAffiliateCode } from '@/lib/affiliate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+export const dynamic = 'force-dynamic'
+
 type AffiliateRow = {
   id: string
   name: string

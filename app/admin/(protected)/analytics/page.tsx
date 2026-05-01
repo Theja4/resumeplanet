@@ -2,6 +2,8 @@ import { AlertCircle, BrainCircuit, FileStack, Sparkles, Wand2 } from 'lucide-re
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
+export const dynamic = 'force-dynamic'
+
 type ParseSource = 'marker' | 'fast' | 'client' | 'repair'
 
 type ResumeParseRow = {
