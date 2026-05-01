@@ -86,7 +86,7 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_EUR ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_EUR', 4.49),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_EUR', 2.99),
       },
     },
   },
@@ -110,7 +110,7 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_GBP ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_GBP', 3.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_GBP', 2.99),
       },
     },
   },
@@ -158,7 +158,7 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_AUD ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_AUD', 6.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_AUD', 3.49),
       },
     },
   },
@@ -182,7 +182,7 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_CAD ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_CAD', 6.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_CAD', 3.49),
       },
     },
   },
