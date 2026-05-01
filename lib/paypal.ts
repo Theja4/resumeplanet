@@ -8,6 +8,10 @@ interface PayPalAccessTokenResponse {
   expires_in?: number
 }
 
+interface PayPalVerifyWebhookSignatureResponse {
+  verification_status?: 'SUCCESS' | 'FAILURE'
+}
+
 export interface PayPalOrderResponse {
   id: string
   status?: string
@@ -207,6 +211,60 @@ export async function getPayPalSubscription(subscriptionId: string) {
   }
 
   return body
+}
+
+export async function verifyPayPalWebhookSignature(params: {
+  transmissionId: string | null
+  transmissionTime: string | null
+  certUrl: string | null
+  authAlgo: string | null
+  transmissionSig: string | null
+  webhookEvent: unknown
+}) {
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID
+  if (!webhookId) {
+    throw new Error('PAYPAL_WEBHOOK_ID is not set.')
+  }
+
+  const {
+    transmissionId,
+    transmissionTime,
+    certUrl,
+    authAlgo,
+    transmissionSig,
+    webhookEvent,
+  } = params
+
+  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) {
+    return false
+  }
+
+  const accessToken = await getPayPalAccessToken()
+  const response = await fetch(`${getPayPalBaseUrl()}/v1/notifications/verify-webhook-signature`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      auth_algo: authAlgo,
+      cert_url: certUrl,
+      transmission_id: transmissionId,
+      transmission_sig: transmissionSig,
+      transmission_time: transmissionTime,
+      webhook_id: webhookId,
+      webhook_event: webhookEvent,
+    }),
+    cache: 'no-store',
+  })
+
+  const body = await response.json().catch(() => null) as PayPalVerifyWebhookSignatureResponse | null
+
+  if (!response.ok) {
+    throw new Error(`PayPal webhook verification failed with ${response.status}`)
+  }
+
+  return body?.verification_status === 'SUCCESS'
 }
 
 export async function createPayPalProOrder(params: {

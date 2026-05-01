@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
           plan: 'pro',
           subscription_status: 'active',
           subscription_interval: subscriptionInterval,
+          paypal_subscription_id: subscription.id,
         })
         .eq('id', userId)
 

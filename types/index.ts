@@ -8,6 +8,8 @@ export interface Profile {
   plan: 'free' | 'pro'
   paddle_customer_id: string | null
   paddle_subscription_id: string | null
+  paypal_customer_id: string | null
+  paypal_subscription_id: string | null
   subscription_status: string | null
   subscription_interval: 'monthly' | 'annual' | null
   affiliate_source_code: string | null
