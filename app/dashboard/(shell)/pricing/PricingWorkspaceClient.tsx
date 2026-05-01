@@ -13,6 +13,7 @@ import {
   type PromoConfig,
 } from '@/lib/pricing'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
+import { isPayPalCheckoutPreferred } from '@/hooks/usePaddleCheckout'
 import {
   clearPricingCheckoutIntent,
   readPricingCheckoutIntent,
@@ -75,7 +76,7 @@ export default function PricingWorkspaceClient({
     const tryResumeCheckout = async () => {
       if (cancelled) return
 
-      if (!getPaddle() && attempts < 20) {
+      if (!isPayPalCheckoutPreferred() && !getPaddle() && attempts < 20) {
         attempts += 1
         window.setTimeout(() => {
           void tryResumeCheckout()

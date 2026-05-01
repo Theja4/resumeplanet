@@ -304,7 +304,7 @@ export const PRO_PLAN = {
       interval: 'month' as BillingInterval,
       intervalCount: 1,
       display: {
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_USD', 12),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_USD', 9.99),
         actualPrice: undefined,
         currency: 'USD',
         currencySymbol: '$',
@@ -313,7 +313,7 @@ export const PRO_PLAN = {
       badge: undefined,
       isDefault: true,
       isHidden: false,
-      perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_USD', 12),
+      perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_USD', 9.99),
       savingsNote: undefined,
     },
     {

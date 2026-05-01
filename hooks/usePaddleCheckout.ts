@@ -11,6 +11,11 @@ import {
 import { getPaddleConfigurationError } from '@/lib/paddleConfig'
 import { HUMAN_WRITTEN_ORDER, PRO_PLAN } from '@/lib/pricing'
 
+export function isPayPalCheckoutPreferred() {
+  return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER !== 'paddle'
+    || process.env.NEXT_PUBLIC_PAYPAL_CHECKOUT_ENABLED === 'true'
+}
+
 function getClientPaddleUnavailableMessage() {
   return (
     getPaddleConfigurationError({
@@ -103,6 +108,42 @@ export function usePaddleCheckout() {
     try {
       const attribution = readAnalyticsAttribution()
       const distinctId = readPostHogDistinctIdFromCookie()
+      const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
+      const checkoutPrice = selectedPrice.display.displayPrice
+
+      if (isPayPalCheckoutPreferred()) {
+        const res = await fetch('/api/paypal/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            priceId: selectedPrice.id,
+            distinctId,
+            promotionId: params.promotionId,
+            promotionCode: params.promotionCode,
+            blogReferrerSlug: attribution?.ref === 'blog' ? attribution.slug : undefined,
+            blogReferrerCta: attribution?.ref === 'blog' ? attribution.cta : undefined,
+          }),
+        })
+        const json = await res.json().catch(() => null)
+        if (!json) throw new Error('Checkout failed. Please try again in a moment.')
+        if (!json.success) throw new Error(json.error ?? 'Checkout failed')
+
+        Analytics.checkoutStarted({
+          product: 'pro_subscription',
+          price: checkoutPrice,
+          discountCode: params.promotionCode,
+        })
+        setCheckoutContext({
+          product: 'pro_subscription',
+          price: checkoutPrice,
+          discountCode: params.promotionCode,
+          step: 'paypal_redirect',
+        })
+
+        window.location.href = json.data.approvalUrl
+        params.onSuccess?.()
+        return
+      }
 
       const res = await fetch('/api/paddle/checkout', {
         method: 'POST',
@@ -117,16 +158,14 @@ export function usePaddleCheckout() {
           blogReferrerCta: attribution?.ref === 'blog' ? attribution.cta : undefined,
         }),
       })
-      const json = await res.json()
+      const json = await res.json().catch(() => null)
+      if (!json) throw new Error('Checkout failed. Please try again in a moment.')
       if (!json.success) throw new Error(json.error ?? 'Checkout failed')
 
       const { priceId, customerId, customerEmail, discountId, discountCode, customData } = json.data
 
       const paddle = getPaddle()
       if (!paddle) throw new Error(getClientPaddleUnavailableMessage())
-
-      const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
-      const checkoutPrice = selectedPrice.display.displayPrice
 
       Analytics.checkoutStarted({
         product: 'pro_subscription',
