@@ -115,30 +115,6 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     },
   },
   {
-    id: 'INR',
-    countries: new Set(['IN']),
-    currency: 'INR',
-    currencySymbol: '₹',
-    prices: {
-      monthly: {
-        paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_INR ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_INR', 799),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_INR', 799),
-      },
-      annual: {
-        paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_INR ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_INR', 6999),
-        actualPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_ACTUAL_INR', 9588),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_INR', 583.25),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_INR ?? 'Save ₹2,589 vs monthly',
-      },
-      weekly: {
-        paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_INR ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_INR', 349),
-      },
-    },
-  },
-  {
     id: 'AUD',
     countries: new Set(['AU']),
     currency: 'AUD',
