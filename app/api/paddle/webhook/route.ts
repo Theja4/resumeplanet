@@ -536,9 +536,11 @@ async function handleSubscriptionActivated(subscription: PaddleSubscription, sup
 }
 
 async function handleSubscriptionUpdated(subscription: PaddleSubscription, supabase: ServiceClient) {
-  const isActive = ['active', 'trialing'].includes(subscription.status)
+  // A subscription is considered "Pro" as long as it isn't explicitly canceled or deleted.
+  // 'past_due' users should keep access while Paddle retries the payment.
+  const isPro = ['active', 'trialing', 'past_due'].includes(subscription.status)
   const priceId = subscription.items?.[0]?.price?.id ?? null
-  const subscriptionInterval = isActive ? resolveInterval(priceId) : null
+  const subscriptionInterval = isPro ? resolveInterval(priceId) : null
 
   await updateProfileBySubscriptionReference(
     supabase,
@@ -546,7 +548,7 @@ async function handleSubscriptionUpdated(subscription: PaddleSubscription, supab
     subscription.customData?.userId,
     {
       subscription_status: subscription.status,
-      plan: isActive ? 'pro' : 'free',
+      plan: isPro ? 'pro' : 'free',
       paddle_customer_id: subscription.customerId ?? null,
       paddle_subscription_id: subscription.id,
       subscription_interval: subscriptionInterval,
