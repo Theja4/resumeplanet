@@ -96,7 +96,7 @@ async function getPayPalAccessToken() {
 }
 
 export function getPayPalApprovalUrl(order: PayPalOrderResponse) {
-  return order.links?.find(link => link.rel === 'approve')?.href ?? null
+  return order.links?.find(link => link.rel === 'approve' || link.rel === 'payer-action')?.href ?? null
 }
 
 const PAYPAL_SUBSCRIPTION_PLAN_ENV_KEYS = [
@@ -319,7 +319,7 @@ export async function createPayPalProOrder(params: {
   const body = await response.json().catch(() => null) as PayPalOrderResponse | null
 
   if (!response.ok || !body?.id) {
-    throw new Error(`PayPal order creation failed with ${response.status}`)
+    throw new Error(`PayPal order creation failed with ${response.status}: ${JSON.stringify(body)}`)
   }
 
   return body

@@ -70,6 +70,11 @@ export async function POST(request: NextRequest) {
     const approvalUrl = getPayPalApprovalUrl(order)
 
     if (!approvalUrl) {
+      console.error('PayPal order missing buyer approval URL:', {
+        orderId: order.id,
+        status: order.status,
+        links: order.links?.map(link => ({ rel: link.rel, method: link.method })),
+      })
       return err('PayPal did not return an approval URL', 500)
     }
 
