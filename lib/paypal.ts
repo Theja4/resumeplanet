@@ -12,6 +12,33 @@ interface PayPalVerifyWebhookSignatureResponse {
   verification_status?: 'SUCCESS' | 'FAILURE'
 }
 
+const PAYPAL_SUPPORTED_ORDER_CURRENCIES = new Set([
+  'AUD',
+  'BRL',
+  'CAD',
+  'CNY',
+  'CZK',
+  'DKK',
+  'EUR',
+  'HKD',
+  'HUF',
+  'ILS',
+  'JPY',
+  'MYR',
+  'MXN',
+  'TWD',
+  'NZD',
+  'NOK',
+  'PHP',
+  'PLN',
+  'GBP',
+  'SGD',
+  'SEK',
+  'CHF',
+  'THB',
+  'USD',
+])
+
 export interface PayPalOrderResponse {
   id: string
   status?: string
@@ -97,6 +124,10 @@ async function getPayPalAccessToken() {
 
 export function getPayPalApprovalUrl(order: PayPalOrderResponse) {
   return order.links?.find(link => link.rel === 'approve' || link.rel === 'payer-action')?.href ?? null
+}
+
+export function isPayPalOrderCurrencySupported(currency: string) {
+  return PAYPAL_SUPPORTED_ORDER_CURRENCIES.has(currency.trim().toUpperCase())
 }
 
 const PAYPAL_SUBSCRIPTION_PLAN_ENV_KEYS = [
@@ -277,6 +308,11 @@ export async function createPayPalProOrder(params: {
   const accessToken = await getPayPalAccessToken()
   const amount = params.priceOption.display.displayPrice.toFixed(2)
   const intervalLabel = params.priceOption.id === 'annual' ? 'Annual' : 'Monthly'
+  const currency = params.priceOption.display.currency.trim().toUpperCase()
+
+  if (!isPayPalOrderCurrencySupported(currency)) {
+    throw new Error(`PayPal does not support ${currency} checkout for this account flow.`)
+  }
 
   const response = await fetch(`${getPayPalBaseUrl()}/v2/checkout/orders`, {
     method: 'POST',
@@ -293,7 +329,7 @@ export async function createPayPalProOrder(params: {
           custom_id: params.userId,
           description: `Rezoomed Pro ${intervalLabel}`,
           amount: {
-            currency_code: params.priceOption.display.currency,
+            currency_code: currency,
             value: amount,
           },
         },

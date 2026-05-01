@@ -128,15 +128,20 @@ export function usePaddleCheckout() {
         if (!json) throw new Error('Checkout failed. Please try again in a moment.')
         if (!json.success) throw new Error(json.error ?? 'Checkout failed')
 
+        const checkoutAmount =
+          typeof json.data?.amount === 'number' ? json.data.amount : checkoutPrice
+        const checkoutDiscountCode =
+          typeof json.data?.discountCode === 'string' ? json.data.discountCode : params.promotionCode
+
         Analytics.checkoutStarted({
           product: 'pro_subscription',
-          price: checkoutPrice,
-          discountCode: params.promotionCode,
+          price: checkoutAmount,
+          discountCode: checkoutDiscountCode,
         })
         setCheckoutContext({
           product: 'pro_subscription',
-          price: checkoutPrice,
-          discountCode: params.promotionCode,
+          price: checkoutAmount,
+          discountCode: checkoutDiscountCode,
           step: 'paypal_redirect',
         })
 

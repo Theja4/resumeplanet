@@ -186,6 +186,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [website, setWebsite] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -373,6 +374,33 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
     setIsPasswordLoading(true)
 
     try {
+      // 1. Honeypot check (Bots fill this, humans don't)
+      if (website) {
+        console.warn('[auth] Honeypot triggered')
+        // Silently "succeed" for bots to avoid them trying other methods
+        setSuccessNotice('Check your email for a confirmation link.')
+        return
+      }
+
+      // 2. Strict Email Validation (Prevent bounces from typos and bots)
+      if (showEmailField) {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+        if (!emailRegex.test(email.trim())) {
+          setLocalError('Please enter a valid email address.')
+          return
+        }
+
+        // Catch common typos/bot patterns
+        const parts = email.split('@')
+        if (parts.length === 2) {
+          const domain = parts[1].toLowerCase()
+          if (domain === 'gmal.com' || domain === 'yaho.com' || domain === 'hotmal.com') {
+            setLocalError(`Did you mean ${domain.replace('.com', 'l.com')}? Please check your email for typos.`)
+            return
+          }
+        }
+      }
+
       const supabase = createClient()
 
       if (isForgot) {
@@ -630,6 +658,18 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
               {(!isReset || recoveryStatus === 'ready') && (
                 <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4">
+                  {/* Honeypot field - hidden from users */}
+                  <div className="absolute left-[-9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+                    <input
+                      type="text"
+                      name="website"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      value={website}
+                      onChange={event => setWebsite(event.target.value)}
+                    />
+                  </div>
+
                   {isRegister ? (
                     <div className="group relative rounded-[1.25rem] bg-white/78 px-4 pb-4 pt-3 shadow-[0_12px_30px_rgba(25,28,29,0.04)] ring-1 ring-black/5 transition-all duration-300 focus-within:-translate-y-0.5 focus-within:ring-primary/20">
                       <label htmlFor="fullName" className="text-[11px] font-bold uppercase tracking-[0.22em] text-on-surface-variant/70">
