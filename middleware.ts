@@ -8,7 +8,7 @@ const publicRoutes = [
   '/api/auth/callback',
 ]
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Bypass auth for public routes
