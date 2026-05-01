@@ -8,7 +8,7 @@ export default async function ResumesPage() {
   const [resumesResult] = await Promise.all([
     supabase
       .from('resumes')
-      .select('*')
+      .select('id, user_id, title, ats_score, created_at, updated_at')
       .eq('user_id', userId)
       .order('created_at', { ascending: false }),
   ])
