@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: SITE_NAME,
     description: DEFAULT_SEO_DESCRIPTION,
     images: [getAbsoluteUrl(DEFAULT_OG_IMAGE.url)],

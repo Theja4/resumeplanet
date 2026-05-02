@@ -19,7 +19,15 @@ import { getLiveVisibleProPriceOptions } from '@/lib/paddle-pricing'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { detectRequestCountry } from '@/lib/cookie-consent'
 import { getSiteUrl } from '@/lib/site'
+import { DEFAULT_OG_IMAGE, getAbsoluteUrl } from '@/lib/seo'
 import PricingWorkspaceClient from '@/app/dashboard/(shell)/pricing/PricingWorkspaceClient'
+
+const pricingPreviewImage = {
+  url: getAbsoluteUrl(DEFAULT_OG_IMAGE.url),
+  width: DEFAULT_OG_IMAGE.width,
+  height: DEFAULT_OG_IMAGE.height,
+  alt: DEFAULT_OG_IMAGE.alt,
+}
 
 export const metadata: Metadata = {
   title: 'Resume Builder Pricing | Rezoomed',
@@ -40,11 +48,13 @@ export const metadata: Metadata = {
     title: 'Resume Builder Pricing | Rezoomed',
     description: 'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
     url: '/pricing',
+    images: [pricingPreviewImage],
   },
   twitter: {
-    card: 'summary_large_image',
+    card: 'summary',
     title: 'Resume Builder Pricing | Rezoomed',
     description: 'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
+    images: [pricingPreviewImage.url],
   },
 }
 
