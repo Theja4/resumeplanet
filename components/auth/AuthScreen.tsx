@@ -8,6 +8,7 @@ import {
   BarChart3,
   LayoutTemplate,
   Lock,
+  MailCheck,
   ShieldCheck,
   Target,
   type LucideIcon,
@@ -96,6 +97,25 @@ function AuthHighlight({
         <div>
           <p className="text-sm font-bold text-on-surface">{title}</p>
           <p className="mt-1 text-sm leading-6 text-on-surface-variant">{description}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SuccessNoticeCard({ message, compact = false }: { message: string; compact?: boolean }) {
+  return (
+    <div
+      role="status"
+      className={`rounded-[1.35rem] border border-emerald-200 bg-emerald-50 px-4 text-emerald-950 shadow-[0_18px_42px_rgba(5,150,105,0.14)] ring-1 ring-emerald-100 ${compact ? 'py-4' : 'py-5'}`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white shadow-[0_12px_28px_rgba(5,150,105,0.24)]">
+          <MailCheck size={20} strokeWidth={2.4} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-base font-black tracking-tight text-emerald-950">Supabase sent a confirmation link to your email</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-emerald-800">{message}</p>
         </div>
       </div>
     </div>
@@ -378,7 +398,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       if (website) {
         console.warn('[auth] Honeypot triggered')
         // Silently "succeed" for bots to avoid them trying other methods
-        setSuccessNotice('Check your email for a confirmation link.')
+        setSuccessNotice('Check your inbox for the confirmation link to finish creating your account.')
         return
       }
 
@@ -414,7 +434,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
-        setSuccessNotice(`Check ${email} for a password reset link.`)
+        setSuccessNotice(`Check ${email} for the password reset link.`)
         return
       }
 
@@ -490,7 +510,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
-        setSuccessNotice(`Check ${email} for a confirmation link to finish creating your account.`)
+        setSuccessNotice(`Check ${email} for the confirmation link to finish creating your account.`)
         setPassword('')
         setConfirmPassword('')
         return
@@ -615,8 +635,8 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
               ) : null}
 
               {successNotice ? (
-                <div className="mt-5 rounded-[1.25rem] bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-[0_12px_30px_rgba(5,150,105,0.08)]">
-                  {successNotice}
+                <div className="mt-5">
+                  <SuccessNoticeCard message={successNotice} compact />
                 </div>
               ) : null}
 
@@ -774,6 +794,10 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                       className="transition-transform duration-300 group-hover:translate-x-0.5"
                     />
                   </button>
+
+                  {successNotice ? (
+                    <SuccessNoticeCard message={successNotice} />
+                  ) : null}
                 </form>
               )}
 

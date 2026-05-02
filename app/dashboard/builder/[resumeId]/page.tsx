@@ -37,6 +37,7 @@ import type { BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
+import { generateResumePdfBlob } from '@/lib/generatedResumePdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
@@ -509,6 +510,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [resumeHeight, setResumeHeight] = useState(0)
   const [contentHeight, setContentHeight] = useState(0)
   const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
+  const [highlightedSectionPageIndex, setHighlightedSectionPageIndex] = useState(0)
   const [isPaginationSettling, setIsPaginationSettling] = useState(false)
   const [previewVersion, setPreviewVersion] = useState(0)
   const [needsOverflowTrim, setNeedsOverflowTrim] = useState(searchParams.get('trimOverflow') === '1')
@@ -555,9 +557,25 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
     }
 
+    const nextPageBreakY = safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT)
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
-    setPageBreakY(safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT))
-  }, [])
+    setPageBreakY(nextPageBreakY)
+
+    if (!previewHighlightedSectionId) {
+      setHighlightedSectionPageIndex(0)
+      return
+    }
+
+    const escapedSectionId = previewHighlightedSectionId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    const highlightedSection = container.querySelector(`[data-resume-section-frame="${escapedSectionId}"]`)
+    if (!(highlightedSection instanceof HTMLElement)) {
+      setHighlightedSectionPageIndex(0)
+      return
+    }
+
+    const highlightedTop = highlightedSection.getBoundingClientRect().top - containerTop
+    setHighlightedSectionPageIndex(highlightedTop >= nextPageBreakY ? 1 : 0)
+  }, [previewHighlightedSectionId])
 
   // Measure resume height after render
   useEffect(() => {
@@ -1231,48 +1249,23 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
     if (!visibleData) return
 
-    flushSync(() => {
-      setIsDownloadOpen(false)
-    })
-
     const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
-    const previousTitle = document.title
-    let timeoutId: number | null = null
 
     try {
-      document.title = filename
-
-      if (document.fonts?.ready) {
-        await document.fonts.ready
-      }
-
-      if (isPaginationSettling) {
-        await new Promise(resolve => window.setTimeout(resolve, 220))
-      }
-
-      await waitForNextPaint()
-
-      await new Promise<void>((resolve) => {
-        let resolved = false
-
-        const cleanup = () => {
-          if (resolved) return
-          resolved = true
-          window.removeEventListener('afterprint', handleAfterPrint)
-          if (timeoutId !== null) {
-            window.clearTimeout(timeoutId)
-          }
-          resolve()
-        }
-
-        const handleAfterPrint = () => {
-          cleanup()
-        }
-
-        window.addEventListener('afterprint', handleAfterPrint)
-        timeoutId = window.setTimeout(cleanup, 60_000)
-        window.print()
+      const blob = await generateResumePdfBlob({
+        data: visibleData,
+        config: templateConfig,
+        sectionOrder: orderedSections,
+        sidebarSectionOrder: orderedSidebarSections,
       })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 
       builderAnalytics.trackDownload('completed', 'pdf')
     } catch (error) {
@@ -1283,8 +1276,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         error instanceof Error ? error.message : 'PDF export failed'
       )
       window.alert('Print to PDF failed. Please try again.')
-    } finally {
-      document.title = previousTitle
     }
   }
 
@@ -1739,6 +1730,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               sidebarSectionOrder={orderedSidebarSections}
               config={templateConfig}
               onNavigateToField={handleNavigateToField}
+              showEditingBadge={false}
             />
             </div>
 
@@ -1804,8 +1796,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                         if (pageIndex === 0) {
                           return { marginTop: 0, height: `${effectivePageBreakY + highlightPad}px`, paddingBottom: `${highlightPad}px` }
                         }
-                        const topPad = PAGE_H - effectivePageBreakY
-                        return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING + highlightPad}px`, paddingBottom: `${highlightPad}px` }
+                        return { marginTop: 0, height: `${CONTENT_H + highlightPad}px`, paddingBottom: `${highlightPad}px` }
                       })()}
                     >
                       <div
@@ -1826,6 +1817,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                           sidebarSectionOrder={orderedSidebarSections}
                           config={templateConfig}
                           onNavigateToField={handleNavigateToField}
+                          showEditingBadge={pageIndex === highlightedSectionPageIndex}
                         />
                       </div>
                     </div>
@@ -1999,8 +1991,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       if (pageIndex === 0) {
                         return { marginTop: 0, height: `${effectivePageBreakY}px` }
                       }
-                      const topPad = PAGE_H - effectivePageBreakY
-                      return { marginTop: topPad, height: `${PAGE_H - topPad - PAGE_BOTTOM_PADDING}px` }
+                      return { marginTop: 0, height: `${CONTENT_H}px` }
                     })()}
                   >
                     <div

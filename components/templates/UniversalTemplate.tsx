@@ -10,6 +10,7 @@ import { DEFAULT_VISIBILITY } from '@/types'
 interface UniversalTemplateProps extends TemplateProps {
   config: UniversalConfig
   onNavigateToField?: (path: string) => void
+  showEditingBadge?: boolean
 }
 
 function hasText(value: string | null | undefined) {
@@ -86,6 +87,7 @@ export default function UniversalTemplate({
   sidebarSectionOrder,
   config,
   onNavigateToField,
+  showEditingBadge = true,
 }: UniversalTemplateProps) {
   const safeConfig = sanitizeUniversalConfig(config)
   const {
@@ -147,6 +149,7 @@ export default function UniversalTemplate({
         isActive={highlightedSectionId === sectionId}
         isSidebarContext={isSidebarContext}
         isDarkSurface={isDarkSurface}
+        showEditingBadge={showEditingBadge}
       >
         {content}
       </SectionFocusFrame>
@@ -1288,12 +1291,14 @@ function SectionFocusFrame({
   isActive,
   isSidebarContext,
   isDarkSurface,
+  showEditingBadge,
 }: {
   sectionId: string
   children: React.ReactNode
   isActive: boolean
   isSidebarContext?: boolean
   isDarkSurface?: boolean
+  showEditingBadge: boolean
 }) {
   if (!isActive) {
     return <div data-resume-section-frame={sectionId} data-resume-page-break>{children}</div>
@@ -1310,11 +1315,13 @@ function SectionFocusFrame({
         aria-hidden="true"
         className={`pointer-events-none absolute ${insetClassName} rounded-[22px] border transition-all duration-150 ${surfaceClassName}`}
       />
-      <div className="pointer-events-none absolute -top-2 right-0 z-10">
-        <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
-          Editing
-        </span>
-      </div>
+      {showEditingBadge && (
+        <div className="pointer-events-none absolute -top-2 right-0 z-10">
+          <span className="rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
+            Editing
+          </span>
+        </div>
+      )}
       <div className="relative z-[1]">{children}</div>
     </div>
   )
