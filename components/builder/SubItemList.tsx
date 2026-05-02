@@ -68,6 +68,20 @@ function makeEmptyItem(sectionId: ComplexSectionId): ComplexSectionItem {
   return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
 }
 
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function getItemPathPrefix(sectionId: ComplexSectionId) {
+  return sectionId.startsWith('custom_') ? `${sectionId}.items` : sectionId
+}
+
+function getItemIndexFromFocusPath(sectionId: ComplexSectionId, focusPath: string) {
+  const pathPrefix = getItemPathPrefix(sectionId)
+  const match = focusPath.match(new RegExp(`^${escapeRegex(pathPrefix)}\\.(\\d+)`))
+  return match ? Number(match[1]) : null
+}
+
 // Sortable wrapper for a single sub-item card
 function SortableItemCard({
   id, label, sublabel, isVisible, isDeleting,
@@ -143,12 +157,13 @@ export default function SubItemList({
   const items = getItems(resumeData, sectionId)
   const itemIds = items.map((_, i) => `${sectionId}-${i}`)
   const itemVisibility = visibility.items[sectionId] || []
+  const effectiveEditingIndex = editingIndex !== null && editingIndex < items.length ? editingIndex : null
 
   useEffect(() => {
     if (!focusPath || !focusPath.startsWith(`${sectionId}.`)) return
-    const match = focusPath.match(/^[^.]+\.(\d+)/)
-    if (!match) return
-    const timeout = window.setTimeout(() => setEditingIndex(Number(match[1])), 0)
+    const index = getItemIndexFromFocusPath(sectionId, focusPath)
+    if (index === null) return
+    const timeout = window.setTimeout(() => setEditingIndex(index), 0)
     return () => window.clearTimeout(timeout)
   }, [focusPath, sectionId])
 
@@ -213,7 +228,7 @@ export default function SubItemList({
     onItemAdd?.(sectionId)
     // Set editing to the new item
     setEditingIndex(items.length)
-    onItemEditorOpen?.(sectionId, `${sectionId}.${items.length}`)
+    onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${items.length}`)
   }
 
   function confirmDelete(index: number) {
@@ -237,7 +252,7 @@ export default function SubItemList({
 
   // ── LIST VIEW ────────────────────────────────────────────────────────────────
 
-  if (editingIndex === null) {
+  if (effectiveEditingIndex === null) {
     return (
       <div className="pb-3">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -256,7 +271,7 @@ export default function SubItemList({
                 onCancelDelete={() => setDeletingIndex(null)}
                 onEdit={() => {
                   setEditingIndex(i)
-                  onItemEditorOpen?.(sectionId, `${sectionId}.${i}`)
+                  onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${i}`)
                 }}
               />
             ))}
@@ -275,7 +290,7 @@ export default function SubItemList({
 
   // ── EDIT VIEW ────────────────────────────────────────────────────────────────
 
-  const item = items[editingIndex]
+  const item = items[effectiveEditingIndex]
 
   return (
     <div>
@@ -284,25 +299,25 @@ export default function SubItemList({
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              const nextIndex = editingIndex > 0 ? editingIndex - 1 : editingIndex
+              const nextIndex = effectiveEditingIndex > 0 ? effectiveEditingIndex - 1 : effectiveEditingIndex
               setEditingIndex(nextIndex)
-              onItemEditorOpen?.(sectionId, `${sectionId}.${nextIndex}`)
+              onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
-            disabled={editingIndex === 0}
+            disabled={effectiveEditingIndex === 0}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronLeft size={16} className="text-gray-500" />
           </button>
           <span className="text-xs text-gray-500 font-medium">
-            {editingIndex + 1} / {items.length}
+            {effectiveEditingIndex + 1} / {items.length}
           </span>
           <button
             onClick={() => {
-              const nextIndex = editingIndex < items.length - 1 ? editingIndex + 1 : editingIndex
+              const nextIndex = effectiveEditingIndex < items.length - 1 ? effectiveEditingIndex + 1 : effectiveEditingIndex
               setEditingIndex(nextIndex)
-              onItemEditorOpen?.(sectionId, `${sectionId}.${nextIndex}`)
+              onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
-            disabled={editingIndex === items.length - 1}
+            disabled={effectiveEditingIndex === items.length - 1}
             className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <ChevronRight size={16} className="text-gray-500" />
@@ -329,29 +344,29 @@ export default function SubItemList({
         {(sectionId === 'experience' || sectionId.startsWith('custom_')) && (
           <ExperienceItemEditor
             item={item as ExperienceItem}
-            pathPrefix={`${sectionId}.${editingIndex}`}
-            onChange={updated => updateItem(editingIndex, updated)}
+            pathPrefix={`${getItemPathPrefix(sectionId)}.${effectiveEditingIndex}`}
+            onChange={updated => updateItem(effectiveEditingIndex, updated)}
           />
         )}
         {sectionId === 'education' && (
           <EducationItemEditor
             item={item as EducationItem}
-            pathPrefix={`${sectionId}.${editingIndex}`}
-            onChange={updated => updateItem(editingIndex, updated)}
+            pathPrefix={`${sectionId}.${effectiveEditingIndex}`}
+            onChange={updated => updateItem(effectiveEditingIndex, updated)}
           />
         )}
         {sectionId === 'projects' && (
           <ProjectItemEditor
             item={item as ProjectItem}
-            pathPrefix={`${sectionId}.${editingIndex}`}
-            onChange={updated => updateItem(editingIndex, updated)}
+            pathPrefix={`${sectionId}.${effectiveEditingIndex}`}
+            onChange={updated => updateItem(effectiveEditingIndex, updated)}
           />
         )}
         {sectionId === 'certifications' && (
           <CertificationItemEditor
             item={item as CertificationItem}
-            pathPrefix={`${sectionId}.${editingIndex}`}
-            onChange={updated => updateItem(editingIndex, updated)}
+            pathPrefix={`${sectionId}.${effectiveEditingIndex}`}
+            onChange={updated => updateItem(effectiveEditingIndex, updated)}
           />
         )}
       </div>

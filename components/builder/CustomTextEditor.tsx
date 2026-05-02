@@ -1,14 +1,21 @@
 'use client'
 
+import { useRef } from 'react'
 import type { ResumeData } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   sectionId: string
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function CustomTextEditor({ sectionId, data, onChange }: EditorProps) {
+export default function CustomTextEditor({ sectionId, data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
+
   const customSection = data.customSections?.find(c => c.id === sectionId)
   if (!customSection) return null
 
@@ -25,8 +32,9 @@ export default function CustomTextEditor({ sectionId, data, onChange }: EditorPr
   }
 
   return (
-    <div className="p-4">
+    <div ref={rootRef} className="p-4">
       <textarea
+        data-field-path={`${sectionId}.text`}
         value={textValue}
         onChange={(e) => handleChange(e.target.value)}
         rows={4}

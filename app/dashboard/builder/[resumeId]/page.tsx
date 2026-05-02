@@ -61,14 +61,6 @@ function normalizeResumeTitle(title: string) {
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
 }
 
-function waitForNextPaint() {
-  return new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => resolve())
-    })
-  })
-}
-
 type ViewTransitionCapableDocument = Document & {
   startViewTransition?: (update: () => void) => unknown
 }
@@ -114,12 +106,51 @@ function getRenderableSectionIds(visibility: BuilderVisibility) {
   )
 }
 
+function appendMissingDefaultSectionIds(
+  savedPrimary: string[] | undefined,
+  savedSidebar: string[] | undefined
+) {
+  const primary: string[] = []
+  const sidebar: string[] = []
+  const seen = new Set<string>()
+
+  const appendUnique = (target: string[], sectionIds: string[]) => {
+    for (const sectionId of sectionIds) {
+      if (sectionId === 'contact' || seen.has(sectionId)) continue
+      target.push(sectionId)
+      seen.add(sectionId)
+    }
+  }
+
+  appendUnique(primary, savedPrimary ?? DEFAULT_VISIBILITY.sectionOrder)
+  appendUnique(sidebar, savedSidebar ?? DEFAULT_VISIBILITY.sidebarSectionOrder ?? [])
+
+  for (const sectionId of DEFAULT_VISIBILITY.sectionOrder) {
+    if (seen.has(sectionId)) continue
+    primary.push(sectionId)
+    seen.add(sectionId)
+  }
+
+  for (const sectionId of DEFAULT_VISIBILITY.sidebarSectionOrder ?? []) {
+    if (seen.has(sectionId)) continue
+    sidebar.push(sectionId)
+    seen.add(sectionId)
+  }
+
+  return { primary, sidebar }
+}
+
 function mergeBuilderVisibilityWithDefaults(
   savedVis: Partial<BuilderVisibility> | null | undefined
 ): BuilderVisibility {
   if (!savedVis || Object.keys(savedVis).length === 0) {
     return structuredClone(DEFAULT_VISIBILITY)
   }
+
+  const { primary, sidebar } = appendMissingDefaultSectionIds(
+    savedVis.sectionOrder,
+    savedVis.sidebarSectionOrder
+  )
 
   return {
     ...DEFAULT_VISIBILITY,
@@ -129,8 +160,8 @@ function mergeBuilderVisibilityWithDefaults(
       ...DEFAULT_VISIBILITY.items,
       ...(savedVis.items ?? {}),
     },
-    sectionOrder: savedVis.sectionOrder ?? DEFAULT_VISIBILITY.sectionOrder,
-    sidebarSectionOrder: savedVis.sidebarSectionOrder ?? DEFAULT_VISIBILITY.sidebarSectionOrder,
+    sectionOrder: primary,
+    sidebarSectionOrder: sidebar,
     density: savedVis.density ?? DEFAULT_VISIBILITY.density,
   }
 }
@@ -538,11 +569,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     let safe = 0
     let fallbackSafe = 0
     let contentBottom = 0
+    let firstCrossingTop = 0
     for (const el of Array.from(elements)) {
       const rect = el.getBoundingClientRect()
+      const top = rect.top - containerTop
       const bottom = rect.bottom - containerTop
       if (bottom > contentBottom) {
         contentBottom = bottom
+      }
+      if (
+        firstCrossingTop === 0 &&
+        !el.hasAttribute('data-resume-section-frame') &&
+        top > 0 &&
+        top < CONTENT_LIMIT &&
+        bottom > CONTENT_LIMIT
+      ) {
+        firstCrossingTop = top
       }
       if (bottom <= CONTENT_LIMIT && bottom > fallbackSafe) {
         fallbackSafe = bottom
@@ -557,7 +599,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
     }
 
-    const nextPageBreakY = safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT)
+    const safeBreakY = safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT)
+    const nextPageBreakY = firstCrossingTop > 0
+      ? Math.min(safeBreakY, firstCrossingTop)
+      : safeBreakY
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
     setPageBreakY(nextPageBreakY)
 
@@ -779,10 +824,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   async function forceSave() {
     if (!resumeData || !hasUnsavedChanges || isSaving) return
-    if (isOverPageLimit) {
-      window.alert('Saving is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
-      return
-    }
 
     // Define what constitutes a truly 'empty' resume to avoid ghost records on new drafts.
     // If it's a new draft, we only save if the user has actually done something.
@@ -1048,21 +1089,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   const handleUndo = useCallback(() => {
     if (!resumeData) return
-    const entry = history.undo()
+    const entry = history.undo(resumeData, visibility)
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
     builderAnalytics.trackUndoRedo('undo')
-  }, [builderAnalytics, history, resumeData])
+  }, [builderAnalytics, history, resumeData, visibility])
 
   const handleRedo = useCallback(() => {
     if (!resumeData) return
-    const entry = history.redo()
+    const entry = history.redo(resumeData, visibility)
     if (!entry) return
     setResumeData(entry.data)
     setVisibility(entry.visibility)
     builderAnalytics.trackUndoRedo('redo')
-  }, [builderAnalytics, history, resumeData])
+  }, [builderAnalytics, history, resumeData, visibility])
 
   function getSectionIdForFieldPath(path: string): string | null {
     if (!path) return null

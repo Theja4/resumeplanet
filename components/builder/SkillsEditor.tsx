@@ -166,6 +166,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   const skipNextEditCommitRef = useRef(false)
   const [pendingFocusIndex, setPendingFocusIndex] = useState<number | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ sectionIndex: number; skillIndex: number } | null>(null)
+  const [draftSection, setDraftSection] = useState<SkillSection | null>(null)
 
   const sections: SkillSection[] = data.skillSections?.length
     ? data.skillSections.map(section => ({
@@ -174,6 +175,11 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
         skills: normalizeEditorSkillList(section.skills ?? []),
       }))
     : [{ title: 'Core Skills', tag: '', skills: normalizeEditorSkillList(data.skills ?? []) }]
+  const displayedSections = draftSection ? [...sections, draftSection] : sections
+
+  function isDraftSectionIndex(index: number) {
+    return draftSection !== null && index === sections.length
+  }
 
   function commit(nextSections: SkillSection[]) {
     onChange(syncResumeData({
@@ -183,7 +189,23 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     }))
   }
 
+  function persistedSectionsBeforeDraft() {
+    if (data.skillSections?.length) return sections
+
+    // When no real skill sections exist yet, `sections` is only the editor's
+    // "Core Skills" fallback. Do not save that empty UI fallback into exports.
+    return sections.filter(section =>
+      section.tag?.trim() ||
+      section.skills.some(skill => skill.trim())
+    )
+  }
+
   function updateSection(index: number, updated: SkillSection) {
+    if (isDraftSectionIndex(index)) {
+      setDraftSection(updated)
+      return
+    }
+
     const next = [...sections]
     next[index] = updated
     commit(next)
@@ -191,10 +213,20 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
 
   function addSection() {
     setPendingFocusIndex(sections.length)
-    commit([...sections, { ...EMPTY_SECTION }])
+    setDraftSection(current => current ?? { ...EMPTY_SECTION })
   }
 
   function removeSection(index: number) {
+    if (isDraftSectionIndex(index)) {
+      setDraftSection(null)
+      setInputs(prev => {
+        const next = { ...prev }
+        delete next[index]
+        return next
+      })
+      return
+    }
+
     commit(sections.filter((_, i) => i !== index))
   }
 
@@ -205,22 +237,33 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
       return
     }
 
-    const current = sections[sectionIndex]
+    const current = displayedSections[sectionIndex]
+    if (!current) return
+
     const existing = new Set(current.skills.map(item => item.toLowerCase()))
     const nextSkills = [
       ...current.skills,
       ...incomingSkills.filter(skill => !existing.has(skill.toLowerCase())),
     ]
 
-    updateSection(sectionIndex, {
+    const nextSection = {
       ...current,
       skills: nextSkills,
-    })
+    }
+
+    if (isDraftSectionIndex(sectionIndex)) {
+      setDraftSection(null)
+      commit([...persistedSectionsBeforeDraft(), nextSection])
+    } else {
+      updateSection(sectionIndex, nextSection)
+    }
     setInputs(prev => ({ ...prev, [sectionIndex]: '' }))
   }
 
   function removeSkill(sectionIndex: number, skillIndex: number) {
-    const current = sections[sectionIndex]
+    const current = displayedSections[sectionIndex]
+    if (!current) return
+
     updateSection(sectionIndex, {
       ...current,
       skills: current.skills.filter((_, i) => i !== skillIndex),
@@ -252,7 +295,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     if (!editingSkill) return
 
     const { sectionIndex, skillIndex } = editingSkill
-    const current = sections[sectionIndex]
+    const current = displayedSections[sectionIndex]
     if (!current) {
       cancelEditingSkill()
       return
@@ -281,7 +324,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   }
 
   function handleSkillDragStart(sectionIndex: number, event: DragStartEvent) {
-    const idx = skillIds(sectionIndex, sections[sectionIndex]?.skills ?? []).indexOf(String(event.active.id))
+    const idx = skillIds(sectionIndex, displayedSections[sectionIndex]?.skills ?? []).indexOf(String(event.active.id))
     if (idx !== -1) setActiveDrag({ sectionIndex, skillIndex: idx })
   }
 
@@ -290,7 +333,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const current = sections[sectionIndex]
+    const current = displayedSections[sectionIndex]
     if (!current) return
 
     const oldIndex = skillIds(sectionIndex, current.skills).indexOf(String(active.id))
@@ -314,12 +357,12 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
       const frame = window.requestAnimationFrame(() => setPendingFocusIndex(null))
       return () => window.cancelAnimationFrame(frame)
     }
-  }, [pendingFocusIndex, sections.length])
+  }, [pendingFocusIndex, displayedSections.length])
 
   return (
     <div ref={rootRef} className="space-y-4 p-4">
-      {sections.map((section, sectionIndex) => (
-        <div key={sectionIndex} className="rounded-xl border border-gray-200 bg-white p-4">
+      {displayedSections.map((section, sectionIndex) => (
+        <div key={isDraftSectionIndex(sectionIndex) ? 'draft-skill-section' : sectionIndex} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-start gap-3">
             <div className="flex-1 space-y-3">
               <div>
@@ -392,7 +435,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
               />
             </div>
 
-            {sections.length > 1 && (
+            {displayedSections.length > 1 && (
               <button
                 onClick={() => removeSection(sectionIndex)}
                 className="rounded-full p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"

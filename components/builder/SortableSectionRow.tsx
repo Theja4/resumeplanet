@@ -204,9 +204,25 @@ export default function SortableSectionRow({
           />
         )
       } else if (customConfig?.type === 'tags') {
-        return <CustomTagsEditor sectionId={sectionId} data={resumeData} onChange={onDataChange} />
+        return (
+          <CustomTagsEditor
+            sectionId={sectionId}
+            data={resumeData}
+            onChange={onDataChange}
+            focusPath={focusPath}
+            onFocusHandled={onFocusHandled}
+          />
+        )
       } else {
-        return <CustomTextEditor sectionId={sectionId} data={resumeData} onChange={onDataChange} />
+        return (
+          <CustomTextEditor
+            sectionId={sectionId}
+            data={resumeData}
+            onChange={onDataChange}
+            focusPath={focusPath}
+            onFocusHandled={onFocusHandled}
+          />
+        )
       }
     }
 

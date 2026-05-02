@@ -27,19 +27,31 @@ export function useUndoHistory() {
     [],
   )
 
-  const undo = useCallback((): { data: ResumeData; visibility: BuilderVisibility } | null => {
+  const undo = useCallback((
+    currentData: ResumeData,
+    currentVisibility: BuilderVisibility,
+  ): { data: ResumeData; visibility: BuilderVisibility } | null => {
     if (undoRef.current.length === 0) return null
     const entry = undoRef.current.pop()!
-    redoRef.current.push({ data: structuredClone(entry.data), visibility: structuredClone(entry.visibility) })
+    redoRef.current.push({
+      data: structuredClone(currentData),
+      visibility: structuredClone(currentVisibility),
+    })
     setUndoCount(undoRef.current.length)
     setRedoCount(redoRef.current.length)
     return entry
   }, [])
 
-  const redo = useCallback((): { data: ResumeData; visibility: BuilderVisibility } | null => {
+  const redo = useCallback((
+    currentData: ResumeData,
+    currentVisibility: BuilderVisibility,
+  ): { data: ResumeData; visibility: BuilderVisibility } | null => {
     if (redoRef.current.length === 0) return null
     const entry = redoRef.current.pop()!
-    undoRef.current.push({ data: structuredClone(entry.data), visibility: structuredClone(entry.visibility) })
+    undoRef.current.push({
+      data: structuredClone(currentData),
+      visibility: structuredClone(currentVisibility),
+    })
     setUndoCount(undoRef.current.length)
     setRedoCount(redoRef.current.length)
     return entry

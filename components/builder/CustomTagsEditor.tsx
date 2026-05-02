@@ -1,17 +1,22 @@
 'use client'
 
-import { useState, KeyboardEvent } from 'react'
+import { useRef, useState, KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
 import type { ResumeData } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   sectionId: string
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
-export default function CustomTagsEditor({ sectionId, data, onChange }: EditorProps) {
+export default function CustomTagsEditor({ sectionId, data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const [input, setInput] = useState('')
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
 
   const customSection = data.customSections?.find(c => c.id === sectionId)
   if (!customSection) return null
@@ -49,7 +54,7 @@ export default function CustomTagsEditor({ sectionId, data, onChange }: EditorPr
   }
 
   return (
-    <div className="p-4">
+    <div ref={rootRef} className="p-4">
       <div className="flex flex-wrap gap-1.5 mb-2">
         {tags.map((skill, i) => (
           <span
@@ -68,6 +73,7 @@ export default function CustomTagsEditor({ sectionId, data, onChange }: EditorPr
         ))}
       </div>
       <input
+        data-field-path={focusPath?.startsWith(`${sectionId}.tags`) ? focusPath : `${sectionId}.tags`}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
