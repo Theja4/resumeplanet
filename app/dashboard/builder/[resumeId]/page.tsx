@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback, useLayoutEffect } from 'react'
-import { createPortal, flushSync } from 'react-dom'
+import { flushSync } from 'react-dom'
 import { FONT_OPTIONS, sanitizeUniversalConfig } from '@/lib/templateOptions'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -37,7 +37,6 @@ import type { BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
-import { generateResumePdfBlob } from '@/lib/generatedResumePdf'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
@@ -541,7 +540,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [resumeHeight, setResumeHeight] = useState(0)
   const [contentHeight, setContentHeight] = useState(0)
   const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
-  const [highlightedSectionPageIndex, setHighlightedSectionPageIndex] = useState(0)
   const [isPaginationSettling, setIsPaginationSettling] = useState(false)
   const [previewVersion, setPreviewVersion] = useState(0)
   const [needsOverflowTrim, setNeedsOverflowTrim] = useState(searchParams.get('trimOverflow') === '1')
@@ -564,6 +562,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const elements = container.querySelectorAll(
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
+    const sectionHeadings = container.querySelectorAll('h2')
 
     let contentBottom = 0
     for (const el of Array.from(elements)) {
@@ -574,24 +573,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
     }
 
+    let nextPageBreakY = CONTENT_LIMIT
+    for (const el of Array.from(sectionHeadings)) {
+      const rect = el.getBoundingClientRect()
+      const top = rect.top - containerTop
+      if (top > CONTENT_LIMIT - 120 && top < CONTENT_LIMIT) {
+        nextPageBreakY = Math.max(0, top - 1)
+        break
+      }
+    }
+
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
-    setPageBreakY(CONTENT_LIMIT)
-
-    if (!previewHighlightedSectionId) {
-      setHighlightedSectionPageIndex(0)
-      return
-    }
-
-    const escapedSectionId = previewHighlightedSectionId.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-    const highlightedSection = container.querySelector(`[data-resume-section-frame="${escapedSectionId}"]`)
-    if (!(highlightedSection instanceof HTMLElement)) {
-      setHighlightedSectionPageIndex(0)
-      return
-    }
-
-    const highlightedTop = highlightedSection.getBoundingClientRect().top - containerTop
-    setHighlightedSectionPageIndex(Math.max(0, Math.floor(highlightedTop / CONTENT_LIMIT)))
-  }, [previewHighlightedSectionId])
+    setPageBreakY(nextPageBreakY)
+  }, [])
 
   // Measure resume height after render
   useEffect(() => {
@@ -649,7 +643,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   const PAGE_H = 1123 // A4 at 96 DPI
   const PAGE_GAP = 48 // Gap between pages
-  const PAGE_BOTTOM_PADDING = 50 // Safe zone at bottom of each page
+  const PAGE_BOTTOM_PADDING = 24 // Safe zone at bottom of each page
   const CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING // 1073px — max usable content height per page
 
   // When layout density/visibility changes, optimistically collapse to one page
@@ -1252,12 +1246,26 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
 
     try {
-      const blob = await generateResumePdfBlob({
-        data: visibleData,
-        config: templateConfig,
-        sectionOrder: orderedSections,
-        sidebarSectionOrder: orderedSidebarSections,
+      const response = await fetch('/api/resume/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: visibleData,
+          config: templateConfig,
+          sectionOrder: orderedSections,
+          sidebarSectionOrder: orderedSidebarSections,
+          filename,
+        }),
       })
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null)
+        throw new Error(errorPayload?.error ?? 'PDF export failed')
+      }
+
+      const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -1268,6 +1276,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 
       builderAnalytics.trackDownload('completed', 'pdf')
+      setIsDownloadOpen(false)
     } catch (error) {
       console.error('PDF export failed.', error)
       builderAnalytics.trackDownload(
@@ -1347,77 +1356,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   return (
     <>
       <style>{`
-        @media print {
-          @page { size: A4; margin: 0; }
-          html, body {
-            width: 210mm;
-            min-height: 297mm;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-            background: white !important;
-          }
-          body > *:not(#builder-print-root) {
-            display: none !important;
-          }
-          #builder-print-root,
-          #builder-print-root * {
-            visibility: visible !important;
-          }
-          #builder-print-root {
-            display: block !important;
-            position: static !important;
-            left: auto !important;
-            top: auto !important;
-            z-index: auto !important;
-            width: 210mm !important;
-            min-height: 297mm !important;
-            height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-            transform: none !important;
-            background: white;
-            opacity: 1 !important;
-            pointer-events: none !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            color-adjust: exact;
-          }
-          #builder-print-root * {
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-            color-adjust: exact;
-          }
-          #builder-print-root .builder-print-page {
-            width: 210mm !important;
-            height: 297mm !important;
-            min-height: 297mm !important;
-            box-shadow: none !important;
-            overflow: hidden !important;
-            position: relative !important;
-            page-break-inside: avoid;
-            break-inside: avoid;
-            page-break-after: always;
-            break-after: page;
-            background: white !important;
-          }
-          #builder-print-root .builder-print-page:last-child {
-            page-break-after: auto;
-            break-after: auto;
-          }
-          #builder-print-root .builder-print-page-clip {
-            position: relative !important;
-            overflow: hidden !important;
-            width: 100% !important;
-            z-index: 1 !important;
-          }
-          #builder-print-root .builder-print-page-content {
-            width: 794px !important;
-            transform-origin: top left !important;
-          }
-        }
-        
         .glass-nav {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(20px);
@@ -1727,7 +1665,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               data={visibleData ?? resumeData}
               isEditing={false}
               showEmptyStateGuidance
-              highlightedSectionId={previewHighlightedSectionId}
+              highlightedSectionId={null}
               onFieldChange={() => {}}
               sectionOrder={orderedSections}
               sidebarSectionOrder={orderedSidebarSections}
@@ -1790,14 +1728,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     <div
                       className="relative overflow-hidden w-full z-10"
                       style={(() => {
-                        // When a section is highlighted, the editing frame uses negative
-                        // insets (-12px). Add padding to the clip height so the frame
-                        // isn't clipped when the highlighted section is near the bottom.
-                        const highlightPad = previewHighlightedSectionId ? 16 : 0
                         if (pageIndex === 0) {
-                          return { marginTop: 0, height: `${effectivePageBreakY + highlightPad}px`, paddingBottom: `${highlightPad}px` }
+                          return { marginTop: 0, height: `${effectivePageBreakY}px` }
                         }
-                        return { marginTop: 0, height: `${CONTENT_H + highlightPad}px`, paddingBottom: `${highlightPad}px` }
+                        return { marginTop: 0, height: `${CONTENT_H}px` }
                       })()}
                     >
                       <div
@@ -1812,13 +1746,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                           data={visibleData ?? resumeData}
                           isEditing={false}
                           showEmptyStateGuidance
-                          highlightedSectionId={previewHighlightedSectionId}
+                          highlightedSectionId={null}
                           onFieldChange={() => {}}
                           sectionOrder={orderedSections}
                           sidebarSectionOrder={orderedSidebarSections}
                           config={templateConfig}
                           onNavigateToField={handleNavigateToField}
-                          showEditingBadge={pageIndex === highlightedSectionPageIndex}
+                          showEditingBadge={false}
                         />
                       </div>
                     </div>
@@ -1948,65 +1882,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         onClose={() => setIsTemplateModalOpen(false)}
         resumeData={visibleData ?? resumeData}
       />
-      {typeof document !== 'undefined' && visibleData
-        ? createPortal(
-            <div
-              id="builder-print-root"
-              className="pointer-events-none fixed left-[-200vw] top-0 w-[794px]"
-              aria-hidden
-            >
-              {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
-                <div
-                  key={`print-portal-${previewVersion}-${pageIndex}`}
-                  className="builder-print-page bg-white"
-                  style={{
-                    width: '794px',
-                    height: `${PAGE_H}px`,
-                  }}
-                >
-                  {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
-                    <div className="absolute inset-0 pointer-events-none z-0">
-                      <div
-                        className="absolute top-0 bottom-0"
-                        style={{
-                          width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
-                          backgroundColor: accentToSidebarFill(templateConfig.accentColor),
-                          ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div
-                    className="builder-print-page-clip"
-                    style={(() => {
-                      if (pageIndex === 0) {
-                        return { marginTop: 0, height: `${effectivePageBreakY}px` }
-                      }
-                      return { marginTop: 0, height: `${CONTENT_H}px` }
-                    })()}
-                  >
-                    <div
-                      className="builder-print-page-content"
-                      style={{
-                        transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY + (pageIndex - 1) * CONTENT_H}px)`,
-                      }}
-                    >
-                      <TemplateComponent
-                        data={visibleData}
-                        isEditing={false}
-                        onFieldChange={() => {}}
-                        sectionOrder={orderedSections}
-                        sidebarSectionOrder={orderedSidebarSections}
-                        config={templateConfig}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>,
-            document.body
-          )
-        : null}
       <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
     </>
   )
