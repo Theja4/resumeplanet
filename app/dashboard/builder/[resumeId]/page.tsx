@@ -592,7 +592,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
     const breakCandidates = container.querySelectorAll<HTMLElement>(
-      '[data-resume-section-frame], [data-resume-page-break], [data-resume-section-heading], h2'
+      '[data-resume-page-break], [data-resume-section-heading], h2'
     )
 
     let contentBottom = 0
@@ -1895,7 +1895,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                         className="relative overflow-hidden w-full z-10"
                         style={{
                           height: `${pageContentHeight}px`,
-                          paddingTop: `${pageTopPadding}px`,
+                          marginTop: `${pageTopPadding}px`,
                         }}
                       >
                         <div
