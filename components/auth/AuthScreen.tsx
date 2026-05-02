@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowRight,
   BarChart3,
+  Eye,
+  EyeOff,
   LayoutTemplate,
   Lock,
   MailCheck,
@@ -39,6 +41,16 @@ type AuthCopy = {
 const ERROR_MESSAGES: Record<string, string> = {
   access_denied: 'Authentication was cancelled.',
   server_error: 'Something went wrong. Please try again.',
+}
+
+const EMAIL_DOMAIN_SUGGESTIONS: Record<string, string> = {
+  'gmal.com': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gnail.com': 'gmail.com',
+  'yaho.com': 'yahoo.com',
+  'hotmal.com': 'hotmail.com',
+  'hotnail.com': 'hotmail.com',
+  'outlok.com': 'outlook.com',
 }
 
 function sanitizeAuthNextPath(value: string | null) {
@@ -221,6 +233,10 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
   const authErrorMessage =
     localError || (errorCode ? ERROR_MESSAGES[errorCode] ?? errorDescription ?? errorCode : null)
   const nextPath = sanitizeAuthNextPath(searchParams.get('next'))
+  const switchHrefWithNext =
+    nextPath && (copy.switchHref === '/auth/login' || copy.switchHref === '/auth/register')
+      ? `${copy.switchHref}?next=${encodeURIComponent(nextPath)}`
+      : copy.switchHref
 
   const getAuthOrigin = () => window.location.origin || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -394,6 +410,8 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
     setIsPasswordLoading(true)
 
     try {
+      const normalizedEmail = email.trim()
+
       // 1. Honeypot check (Bots fill this, humans don't)
       if (website) {
         console.warn('[auth] Honeypot triggered')
@@ -405,17 +423,18 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
       // 2. Strict Email Validation (Prevent bounces from typos and bots)
       if (showEmailField) {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
-        if (!emailRegex.test(email.trim())) {
+        if (!emailRegex.test(normalizedEmail)) {
           setLocalError('Please enter a valid email address.')
           return
         }
 
         // Catch common typos/bot patterns
-        const parts = email.split('@')
+        const parts = normalizedEmail.split('@')
         if (parts.length === 2) {
           const domain = parts[1].toLowerCase()
-          if (domain === 'gmal.com' || domain === 'yaho.com' || domain === 'hotmal.com') {
-            setLocalError(`Did you mean ${domain.replace('.com', 'l.com')}? Please check your email for typos.`)
+          const suggestion = EMAIL_DOMAIN_SUGGESTIONS[domain]
+          if (suggestion) {
+            setLocalError(`Did you mean ${parts[0]}@${suggestion}? Please check your email for typos.`)
             return
           }
         }
@@ -425,7 +444,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
       if (isForgot) {
         const origin = getAuthOrigin()
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
           redirectTo: `${origin}/auth/reset-password`,
         })
 
@@ -434,7 +453,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
-        setSuccessNotice(`Check ${email} for the password reset link.`)
+        setSuccessNotice(`Check ${normalizedEmail} for the password reset link.`)
         return
       }
 
@@ -478,7 +497,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
         const origin = getAuthOrigin()
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             emailRedirectTo: `${origin}/auth/callback${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ''}`,
@@ -510,14 +529,14 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
           return
         }
 
-        setSuccessNotice(`Check ${email} for the confirmation link to finish creating your account.`)
+        setSuccessNotice(`Check ${normalizedEmail} for the confirmation link to finish creating your account.`)
         setPassword('')
         setConfirmPassword('')
         return
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       })
 
@@ -607,12 +626,12 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
             </div>
           </section>
 
-          <aside className="rounded-[1.5rem] bg-white/88 p-5 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center lg:overflow-y-auto">
+          <aside className="rounded-[1.5rem] bg-white/88 p-5 shadow-[0_24px_70px_rgba(25,28,29,0.08)] backdrop-blur-2xl sm:rounded-[1.8rem] sm:p-7 lg:flex lg:h-full lg:flex-col lg:justify-center lg:overflow-y-auto lg:[@media(max-height:820px)]:justify-start">
             <div className="flex items-center lg:hidden">
               <BrandLockup />
             </div>
 
-            <div className="mt-6 flex h-full flex-col lg:mx-auto lg:mt-0 lg:w-full lg:max-w-[360px] lg:justify-center">
+            <div className="mt-6 flex h-full flex-col lg:mx-auto lg:mt-0 lg:w-full lg:max-w-[360px] lg:justify-center lg:[@media(max-height:820px)]:h-auto lg:[@media(max-height:820px)]:min-h-full lg:[@media(max-height:820px)]:justify-start">
               {copy.badge && (
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-primary-container/55 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
@@ -628,6 +647,12 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                 </h2>
               )}
 
+              {copy.cardDescription ? (
+                <p className={`${copy.cardTitle ? 'mt-3' : 'mt-1'} text-sm leading-6 text-on-surface-variant`}>
+                  {copy.cardDescription}
+                </p>
+              ) : null}
+
               {authErrorMessage ? (
                 <div className="mt-5 rounded-[1.25rem] bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-[0_12px_30px_rgba(185,28,28,0.08)]">
                   {authErrorMessage}
@@ -641,7 +666,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
               ) : null}
 
               {showGoogleAuth ? (
-                <div className="mt-5">
+                <div className="mt-5 lg:[@media(max-height:820px)]:sticky lg:[@media(max-height:820px)]:top-0 lg:[@media(max-height:820px)]:z-20 lg:[@media(max-height:820px)]:-mx-1 lg:[@media(max-height:820px)]:rounded-b-[1.25rem] lg:[@media(max-height:820px)]:bg-white/95 lg:[@media(max-height:820px)]:px-1 lg:[@media(max-height:820px)]:pb-3 lg:[@media(max-height:820px)]:pt-1 lg:[@media(max-height:820px)]:shadow-[0_18px_34px_rgba(25,28,29,0.08)] lg:[@media(max-height:820px)]:backdrop-blur-xl">
                   <button
                     type="button"
                     onClick={handleGoogleAuth}
@@ -677,7 +702,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
               ) : null}
 
               {(!isReset || recoveryStatus === 'ready') && (
-                <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4">
+                <form onSubmit={handlePasswordSubmit} className="mt-4 space-y-4 lg:[@media(max-height:820px)]:space-y-3">
                   {/* Honeypot field - hidden from users */}
                   <div className="absolute left-[-9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
                     <input
@@ -735,9 +760,14 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                         <button
                           type="button"
                           onClick={() => setShowPassword(value => !value)}
-                          className="text-xs font-bold text-primary transition-colors hover:text-on-primary-container"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary-container/55 hover:text-on-primary-container"
                         >
-                          {showPassword ? 'Hide' : 'Show'}
+                          {showPassword ? (
+                            <EyeOff size={16} strokeWidth={2.4} aria-hidden="true" />
+                          ) : (
+                            <Eye size={16} strokeWidth={2.4} aria-hidden="true" />
+                          )}
                         </button>
                       </div>
                       <input
@@ -795,9 +825,6 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
                     />
                   </button>
 
-                  {successNotice ? (
-                    <SuccessNoticeCard message={successNotice} />
-                  ) : null}
                 </form>
               )}
 
@@ -812,7 +839,7 @@ export default function AuthScreen({ mode }: { mode: AuthMode }) {
 
                     <button
                       type="button"
-                      onClick={() => router.push(copy.switchHref)}
+                      onClick={() => router.push(switchHrefWithNext)}
                       className="group inline-flex w-full cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-full bg-zinc-950 px-5 py-3 text-sm font-black uppercase tracking-[0.16em] text-white shadow-[0_14px_30px_rgba(24,24,27,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900 hover:shadow-[0_18px_34px_rgba(24,24,27,0.24),0_0_0_6px_rgba(163,255,179,0.18)] sm:w-auto sm:shrink-0"
                     >
                       {copy.switchLabel}

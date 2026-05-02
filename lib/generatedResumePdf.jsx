@@ -9,7 +9,6 @@ function sanitizePdfText(value) {
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2013\u2014]/g, '-')
-    .replace(/\u2022/g, '-')
     .replace(/\u00A0/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -50,11 +49,15 @@ function buildOrderedSectionIds(sectionOrder, sidebarSectionOrder) {
 }
 
 function getContactLine(data, timeless = false) {
+  return getContactItems(data, timeless).join('  |  ')
+}
+
+function getContactItems(data, timeless = false) {
   const values = timeless
     ? [data.phone, data.email, data.linkedin, data.website, data.location]
     : [data.email, data.phone, data.location, data.linkedin, data.website]
 
-  return values.filter(Boolean).join('  |  ')
+  return values.filter(Boolean)
 }
 
 function getCustomSection(data, id) {
@@ -111,7 +114,7 @@ function createLayoutTokens(config) {
       itemGap: 0.2,
       paragraphGap: 0.6,
       bulletGap: 0,
-      headingAfter: 1.1,
+      headingAfter: 3.9,
       titleAfter: 0.1,
       companyAfter: 0.7,
       detailAfter: 0.8,
@@ -129,7 +132,7 @@ function createLayoutTokens(config) {
     itemGap: compressed ? 1.1 : 1.6,
     paragraphGap: compressed ? 0.8 : 1,
     bulletGap: compressed ? 0.3 : 0.6,
-    headingAfter: config?.sectionHeadingStyle === 'minimal' ? (compressed ? 0.9 : 1.2) : (compressed ? 2 : 2.4),
+    headingAfter: config?.sectionHeadingStyle === 'minimal' ? (compressed ? 0.9 : 1.2) : (compressed ? 3.1 : 3.7),
     titleAfter: compressed ? 0.5 : 0.7,
     companyAfter: compressed ? 0.8 : 1.1,
     detailAfter: compressed ? 1.2 : 1.8,
@@ -205,6 +208,7 @@ function createPdfWriter(doc, accent, fontName, config) {
       before = 0,
       after = tokens.sectionGap,
       lineMultiplier = 1.25,
+      align = 'left',
     } = options
 
     if (!text) return
@@ -220,7 +224,7 @@ function createPdfWriter(doc, accent, fontName, config) {
 
     for (const line of lines) {
       ensureSpace(step)
-      doc.text(line, x, y)
+      doc.text(line, x, y, { align })
       y += step
     }
 
@@ -285,14 +289,23 @@ function createPdfWriter(doc, accent, fontName, config) {
   }
 
   function writeBulletList(items, indent = 4.5, fontSize = tokens.bodyFontSize) {
+    const bulletMarker = isLatexStyle
+      ? '•'
+      : config?.bulletStyle === 'dash'
+        ? '-'
+        : config?.bulletStyle === 'square'
+          ? '▪'
+          : '•'
+
     for (const item of items || []) {
       const text = String(item || '').trim()
       if (!text) continue
       ensureSpace(lineHeight(fontSize, 1.3))
       const markerX = isLatexStyle ? marginX + 8 : marginX
       const textX = markerX + indent
+      setTextStyle({ fontSize, fontStyle: 'normal', color: isLatexStyle ? [0, 0, 0] : accent })
+      doc.text(bulletMarker, markerX, y)
       setTextStyle({ fontSize, fontStyle: 'normal', color: isLatexStyle ? [0, 0, 0] : [55, 65, 81] })
-      doc.text(isLatexStyle ? '•' : '-', markerX, y)
       const wrapped = doc.splitTextToSize(text, pageWidth - marginX - textX)
       for (let index = 0; index < wrapped.length; index += 1) {
         ensureSpace(lineHeight(fontSize, 1.3))
@@ -306,7 +319,18 @@ function createPdfWriter(doc, accent, fontName, config) {
   function writeHeader(data, config) {
     const banner = config?.headerStyle === 'banner'
     const timeless = config?.headerStyle === 'timeless'
-    const contact = getContactLine(data, timeless)
+    const centered = timeless || config?.headerStyle === 'centered'
+    const classic = config?.headerStyle === 'classic'
+    const compact = config?.headerStyle === 'compact'
+    const stackedContact = config?.contactStyle === 'stacked'
+    const contactItems = getContactItems(data, timeless)
+    const contact = contactItems.join('  |  ')
+    const centerX = pageWidth / 2
+    const nameSize = config?.nameSize === 'hero'
+      ? (timeless ? 29 : 26)
+      : config?.nameSize === 'large'
+        ? (timeless ? 27 : 24)
+        : (timeless ? 25 : 22)
 
     if (banner) {
       const bannerHeight = 30
@@ -337,15 +361,17 @@ function createPdfWriter(doc, accent, fontName, config) {
     }
 
     if (timeless) {
-      const centerX = pageWidth / 2
-      setTextStyle({ fontSize: 25, fontStyle: 'bold', color: [0, 0, 0] })
+      setTextStyle({ fontSize: nameSize, fontStyle: 'bold', color: [0, 0, 0] })
       doc.text(data.name || 'Your Name', centerX, y, { align: 'center' })
-      y += lineHeight(25, 1.02)
+      y += lineHeight(nameSize, 1.02)
 
       if (contact) {
         setTextStyle({ fontSize: 10, fontStyle: 'normal', color: [0, 0, 0] })
-        doc.text(contact, centerX, y, { align: 'center' })
-        y += lineHeight(10, 1.25)
+        const contactLines = doc.splitTextToSize(contact, contentWidth)
+        for (const line of contactLines) {
+          doc.text(line, centerX, y, { align: 'center' })
+          y += lineHeight(10, 1.25)
+        }
       }
 
       y += 2
@@ -353,7 +379,10 @@ function createPdfWriter(doc, accent, fontName, config) {
     }
 
     writeWrappedText(data.name || 'Your Name', {
-      fontSize: 22,
+      x: centered ? centerX : marginX,
+      maxWidth: contentWidth,
+      align: centered ? 'center' : 'left',
+      fontSize: nameSize,
       fontStyle: 'bold',
       color: [17, 24, 39],
       after: 1.2,
@@ -362,19 +391,43 @@ function createPdfWriter(doc, accent, fontName, config) {
 
     if (data.currentRole) {
       writeWrappedText(data.currentRole, {
-        fontSize: 11,
+        x: centered ? centerX : marginX,
+        maxWidth: contentWidth,
+        align: centered ? 'center' : 'left',
+        fontSize: config?.nameSize === 'hero' ? 12 : 11,
         fontStyle: 'bold',
         color: accent,
-        after: tokens.paragraphGap,
+        after: compact ? 0.6 : tokens.paragraphGap,
       })
     }
 
+    if (classic) {
+      drawDivider(stackedContact ? 3.4 : 3.2)
+    }
+
     if (contact) {
-      writeWrappedText(contact, {
-        fontSize: tokens.metaFontSize,
-        color: [107, 114, 128],
-        after: 2.5,
-      })
+      if (stackedContact) {
+        for (const item of contactItems) {
+          writeWrappedText(item, {
+            x: centered ? centerX : marginX,
+            maxWidth: contentWidth,
+            align: centered ? 'center' : 'left',
+            fontSize: tokens.metaFontSize,
+            color: [107, 114, 128],
+            after: 0.4,
+          })
+        }
+        y += compact ? 1.2 : 2
+      } else {
+        writeWrappedText(contact, {
+          x: centered ? centerX : marginX,
+          maxWidth: contentWidth,
+          align: centered ? 'center' : 'left',
+          fontSize: tokens.metaFontSize,
+          color: [107, 114, 128],
+          after: compact ? 1.8 : 2.5,
+        })
+      }
     } else {
       y += 2
     }
@@ -388,6 +441,7 @@ function createPdfWriter(doc, accent, fontName, config) {
     isLatexStyle,
     sectionHeadingStyle: config?.sectionHeadingStyle ?? 'rule',
     skillsStyle: config?.skillsStyle ?? 'inline',
+    bulletStyle: config?.bulletStyle ?? 'plain',
     dateLayout: config?.dateLayout ?? 'right',
     getY: () => y,
     setY: value => {
@@ -462,6 +516,7 @@ function renderExperienceItems(writer, items) {
         lineMultiplier: 1.12,
       })
     }
+    const afterRoleY = writer.getY()
 
     if (showRightDate) {
       writer.setY(startY)
@@ -469,7 +524,7 @@ function renderExperienceItems(writer, items) {
         fontSize: writer.tokens.metaFontSize,
         color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
       })
-      writer.setY(Math.max(writer.getY(), startY + 4.8))
+      writer.setY(Math.max(afterRoleY, startY + 4.8))
     }
 
     if (companyLine || locationLine) {
@@ -482,6 +537,7 @@ function renderExperienceItems(writer, items) {
         maxWidth: leftMaxWidth,
         after: writer.tokens.companyAfter,
       })
+      const afterCompanyY = writer.getY()
       if (locationLine) {
         writer.setY(companyStartY)
         writer.writeRightAlignedText(locationLine, writer.pageWidth - writer.marginX, {
@@ -489,7 +545,7 @@ function renderExperienceItems(writer, items) {
           fontStyle: 'italic',
           color: [0, 0, 0],
         })
-        writer.setY(Math.max(writer.getY(), companyStartY + 4.8))
+        writer.setY(Math.max(afterCompanyY, companyStartY + 4.8))
       }
     }
 
@@ -538,6 +594,7 @@ function renderEducationSection(writer, items) {
         maxWidth: writer.pageWidth - writer.marginX - itemX,
         after: writer.tokens.titleAfter,
       })
+      const afterInstitutionY = writer.getY()
 
       const detail = `${degreeLine}${item.gpa ? `${degreeLine ? ', ' : ''}GPA: ${item.gpa}` : ''}`
       const detailStartY = writer.getY()
@@ -552,6 +609,7 @@ function renderEducationSection(writer, items) {
           after: writer.tokens.companyAfter,
         })
       }
+      const afterDetailY = writer.getY()
 
       if (educationDate) {
         writer.setY(detailStartY)
@@ -560,7 +618,7 @@ function renderEducationSection(writer, items) {
           fontStyle: 'italic',
           color: [0, 0, 0],
         })
-        writer.setY(Math.max(writer.getY(), detailStartY + 4.8))
+        writer.setY(Math.max(afterDetailY, afterInstitutionY, detailStartY + 4.8))
       }
 
       writer.setY(writer.getY() + writer.tokens.itemGap)
@@ -601,6 +659,7 @@ function renderEducationSection(writer, items) {
       maxWidth: leftMaxWidth,
       after: writer.tokens.titleAfter,
     })
+    const afterInstitutionY = writer.getY()
 
     if (showRightDate) {
       writer.setY(startY)
@@ -608,7 +667,7 @@ function renderEducationSection(writer, items) {
         fontSize: writer.tokens.metaFontSize,
         color: [107, 114, 128],
       })
-      writer.setY(Math.max(writer.getY(), startY + 4.8))
+      writer.setY(Math.max(afterInstitutionY, startY + 4.8))
     }
 
     if (!showRightDate && educationDate) {

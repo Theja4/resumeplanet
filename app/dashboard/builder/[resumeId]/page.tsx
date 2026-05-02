@@ -440,7 +440,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const resumeRef = useRef<HTMLDivElement>(null)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
-  const hasShownPageLimitAlertRef = useRef(false)
+
   const hasTriggeredAutoPdfDownloadRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
@@ -564,47 +564,18 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const elements = container.querySelectorAll(
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
-    const pageBreakCandidates = container.querySelectorAll('[data-resume-page-break]')
 
-    let safe = 0
-    let fallbackSafe = 0
     let contentBottom = 0
-    let firstCrossingTop = 0
     for (const el of Array.from(elements)) {
       const rect = el.getBoundingClientRect()
-      const top = rect.top - containerTop
       const bottom = rect.bottom - containerTop
       if (bottom > contentBottom) {
         contentBottom = bottom
       }
-      if (
-        firstCrossingTop === 0 &&
-        !el.hasAttribute('data-resume-section-frame') &&
-        top > 0 &&
-        top < CONTENT_LIMIT &&
-        bottom > CONTENT_LIMIT
-      ) {
-        firstCrossingTop = top
-      }
-      if (bottom <= CONTENT_LIMIT && bottom > fallbackSafe) {
-        fallbackSafe = bottom
-      }
     }
 
-    for (const el of Array.from(pageBreakCandidates)) {
-      const rect = el.getBoundingClientRect()
-      const bottom = rect.bottom - containerTop
-      if (bottom <= CONTENT_LIMIT && bottom > safe) {
-        safe = bottom
-      }
-    }
-
-    const safeBreakY = safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT)
-    const nextPageBreakY = firstCrossingTop > 0
-      ? Math.min(safeBreakY, firstCrossingTop)
-      : safeBreakY
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
-    setPageBreakY(nextPageBreakY)
+    setPageBreakY(CONTENT_LIMIT)
 
     if (!previewHighlightedSectionId) {
       setHighlightedSectionPageIndex(0)
@@ -619,7 +590,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
 
     const highlightedTop = highlightedSection.getBoundingClientRect().top - containerTop
-    setHighlightedSectionPageIndex(highlightedTop >= nextPageBreakY ? 1 : 0)
+    setHighlightedSectionPageIndex(Math.max(0, Math.floor(highlightedTop / CONTENT_LIMIT)))
   }, [previewHighlightedSectionId])
 
   // Measure resume height after render
@@ -697,7 +668,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [visibility, templateConfig, CONTENT_H])
 
   const effectivePageBreakY = pageBreakY > 0 ? pageBreakY : CONTENT_H
-  const MAX_PAGES = 2
+  const MAX_PAGES = 5
+  const RECOMMENDED_PAGES = 2
   const effectiveContentHeight = contentHeight > 0 ? contentHeight : resumeHeight
   const secondPageHasContent = !isPaginationSettling && effectiveContentHeight > effectivePageBreakY + 12
   const pageCount = isPaginationSettling
@@ -705,16 +677,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     : Math.max(1, Math.ceil(effectiveContentHeight / CONTENT_H))
   const renderedPageCount = Math.min(secondPageHasContent ? pageCount : 1, MAX_PAGES)
   const isOverPageLimit = pageCount > MAX_PAGES
-
-  useEffect(() => {
-    if (isOverPageLimit && !hasShownPageLimitAlertRef.current) {
-      hasShownPageLimitAlertRef.current = true
-      window.alert('Your resume is over 2 pages. Keep it to 1-2 pages for best results. Please trim content before continuing.')
-    }
-    if (!isOverPageLimit) {
-      hasShownPageLimitAlertRef.current = false
-    }
-  }, [isOverPageLimit])
+  const isOverRecommendedPages = pageCount > RECOMMENDED_PAGES
 
   // ── Load resume on mount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -1284,10 +1247,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   async function handleDownloadPDF() {
     builderAnalytics.trackDownload('clicked', 'pdf')
-    if (isOverPageLimit) {
-      window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
-      return
-    }
     if (!visibleData) return
 
     const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
@@ -1340,10 +1299,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   async function handleDownloadDOCX() {
     builderAnalytics.trackDownload('clicked', 'docx')
     if (!requirePro('docx_download') || !resumeData || !visibleData) return
-    if (isOverPageLimit) {
-      window.alert('Download is blocked because your resume exceeds 2 pages. Please shorten content to continue.')
-      return
-    }
     try {
       await generateDOCX(
         visibleData,
@@ -1633,8 +1588,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </div>
         </header>
 
+        {/* Page-count warning banner */}
+        {isOverRecommendedPages && (
+          <div className="fixed top-[57px] left-0 right-0 z-40 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-semibold px-4 py-1.5 text-center">
+            Your resume is {pageCount} pages. For best results, keep it to 1-2 pages.
+          </div>
+        )}
+
         {/* ── Main Workspace ── */}
-        <main className="flex h-screen pt-16">
+        <main className={`flex h-screen ${isOverRecommendedPages ? 'pt-[88px]' : 'pt-16'}`}>
           
           {/* Left Sidebar: EDITOR SECTIONS */}
           <aside style={{ width: isLeftCollapsed ? 48 : leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 flex flex-col shrink-0 relative transition-[width] duration-300">
@@ -1802,9 +1764,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       top: pageIndex * (PAGE_H + PAGE_GAP),
                       width: '794px',
                       height: `${PAGE_H}px`,
-                      boxShadow: isOverPageLimit && pageIndex === MAX_PAGES - 1
-                        ? '0 0 0 2px #fca5a5, 0 4px 24px rgba(0,0,0,0.18)'
-                        : '0 4px 24px rgba(0,0,0,0.18)',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
                     }}
                   >
                     {/* Full-page template shell so page styling continues to page bottom */}
@@ -1843,7 +1803,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       <div
                         style={{
                           width: '794px',
-                          transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY}px)`,
+                          transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY + (pageIndex - 1) * CONTENT_H}px)`,
                           transformOrigin: 'top left',
                         }}
                       >
@@ -1863,11 +1823,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       </div>
                     </div>
 
-                    {isOverPageLimit && pageIndex === MAX_PAGES - 1 && (
-                      <div className="absolute bottom-0 left-0 right-0 z-30 bg-red-50 border-t border-red-200 text-red-700 text-[11px] font-bold px-4 py-2">
-                        Resume content beyond 2 pages is hidden. Keep your resume to 1-2 pages max.
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -1894,11 +1849,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               </div>
             </div>
 
-            {isOverPageLimit && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-xs font-semibold">
-                Your resume is currently {pageCount} pages. Resumes over 2 pages are blocked. Trim content to continue.
-              </div>
-            )}
           </section>
 
           {/* Right Handle */}
@@ -2038,7 +1988,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     <div
                       className="builder-print-page-content"
                       style={{
-                        transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY}px)`,
+                        transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY + (pageIndex - 1) * CONTENT_H}px)`,
                       }}
                     >
                       <TemplateComponent
