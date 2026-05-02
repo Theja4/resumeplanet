@@ -10,7 +10,7 @@ const policySections = [
     points: [
       `Customers may request a refund within ${REFUND_WINDOW_DAYS} days of the transaction date.`,
       `Requests received after ${REFUND_WINDOW_DAYS} days are not eligible for a refund.`,
-      'Approved refunds are returned to the original payment method through Paddle.',
+      'Approved refunds are returned to the original payment method through Polar.',
     ],
   },
   {
@@ -18,7 +18,7 @@ const policySections = [
     points: [
       `The ${REFUND_WINDOW_DAYS}-day refund window applies to subscription charges and paid software purchases sold on rezoomed.com.`,
       'Canceling a subscription prevents future renewals but does not by itself issue a refund for prior charges.',
-      'Billing and refund processing are handled by Paddle as merchant of record.',
+      'Billing and refund processing are handled by Polar.',
     ],
   },
 ]

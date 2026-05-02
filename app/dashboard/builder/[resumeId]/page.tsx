@@ -57,8 +57,9 @@ interface StoredBlogResumeExampleRecord {
 
 const PAGE_H = 1123 // A4 at 96 DPI
 const PAGE_GAP = 48
-const PAGE_BOTTOM_PADDING = 24
+const PAGE_BOTTOM_PADDING = 38
 const CONTINUATION_PAGE_TOP_PADDING = 38 // 10mm continuation-page inset
+const PAGE_BREAK_LOOKBACK = 180
 const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
 const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
@@ -402,6 +403,8 @@ interface BuilderInnerProps {
   profile: Profile
 }
 
+type ActiveDownloadFormat = 'pdf' | 'docx' | null
+
 function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -432,6 +435,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
+  const [activeDownloadFormat, setActiveDownloadFormat] = useState<ActiveDownloadFormat>(null)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [jobDescription, setJobDescription] = useState('')
   const [tailorAnalysis, setTailorAnalysis] = useState<TailorAnalysis | null>(null)
   const [tailorIntensity, setTailorIntensity] = useState<TailorIntensity>('balanced')
@@ -551,6 +556,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
   }, [isDownloadOpen])
 
+  useEffect(() => {
+    if (!downloadError) return
+
+    const id = window.setTimeout(() => {
+      setDownloadError(null)
+    }, 7000)
+
+    return () => window.clearTimeout(id)
+  }, [downloadError])
+
   const [resumeHeight, setResumeHeight] = useState(0)
   const [contentHeight, setContentHeight] = useState(0)
   const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
@@ -576,7 +591,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const elements = container.querySelectorAll(
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
-    const sectionHeadings = container.querySelectorAll('h2')
+    const breakCandidates = container.querySelectorAll<HTMLElement>(
+      '[data-resume-section-frame], [data-resume-page-break], [data-resume-section-heading], h2'
+    )
 
     let contentBottom = 0
     for (const el of Array.from(elements)) {
@@ -588,10 +605,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
 
     let nextPageBreakY = CONTENT_LIMIT
-    for (const el of Array.from(sectionHeadings)) {
+    for (const el of Array.from(breakCandidates)) {
       const rect = el.getBoundingClientRect()
       const top = rect.top - containerTop
-      if (top > CONTENT_LIMIT - 120 && top < CONTENT_LIMIT) {
+      const bottom = rect.bottom - containerTop
+      if (
+        bottom > CONTENT_LIMIT &&
+        top > CONTENT_LIMIT - PAGE_BREAK_LOOKBACK &&
+        top < CONTENT_LIMIT
+      ) {
         nextPageBreakY = Math.max(0, top - 1)
         break
       }
@@ -1281,13 +1303,52 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return `#${six}15`
   }
 
+  async function getPdfResponseErrorMessage(response: Response) {
+    const errorPayload = await response.json().catch(() => null)
+
+    if (response.status === 401) {
+      return 'Your session expired. Refresh the page and sign in again.'
+    }
+
+    if (response.status >= 500) {
+      return 'The PDF export service failed. Please try again in a moment.'
+    }
+
+    return errorPayload?.error ?? 'PDF export failed. Please try again.'
+  }
+
+  function getPdfDownloadErrorMessage(error: unknown) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      return 'Network connection lost. Reconnect and try again.'
+    }
+
+    if (error instanceof TypeError) {
+      return 'Network error during PDF export. Check your connection and try again.'
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message
+    }
+
+    return 'PDF export failed. Please try again.'
+  }
+
   async function handleDownloadPDF() {
+    if (activeDownloadFormat) return
+
+    setIsDownloadOpen(false)
+    setDownloadError(null)
     builderAnalytics.trackDownload('clicked', 'pdf')
-    if (!visibleData) return
+
+    if (!visibleData) {
+      setDownloadError('Resume is still loading. Try again in a moment.')
+      return
+    }
 
     const filename = `${normalizeResumeTitle(resumeTitle) || 'resume'}.pdf`
 
     try {
+      setActiveDownloadFormat('pdf')
       const response = await fetch('/api/resume/pdf', {
         method: 'POST',
         headers: {
@@ -1303,8 +1364,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       })
 
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null)
-        throw new Error(errorPayload?.error ?? 'PDF export failed')
+        throw new Error(await getPdfResponseErrorMessage(response))
       }
 
       const blob = await response.blob()
@@ -1318,15 +1378,17 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 
       builderAnalytics.trackDownload('completed', 'pdf')
-      setIsDownloadOpen(false)
     } catch (error) {
       console.error('PDF export failed.', error)
+      const message = getPdfDownloadErrorMessage(error)
       builderAnalytics.trackDownload(
         'failed',
         'pdf',
-        error instanceof Error ? error.message : 'PDF export failed'
+        message
       )
-      window.alert('Print to PDF failed. Please try again.')
+      setDownloadError(message)
+    } finally {
+      setActiveDownloadFormat(null)
     }
   }
 
@@ -1348,9 +1410,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [downloadParam, isLoading, resumeData, visibleData, isPaginationSettling, needsOverflowTrim])
 
   async function handleDownloadDOCX() {
+    if (activeDownloadFormat) return
+
+    setIsDownloadOpen(false)
+    setDownloadError(null)
     builderAnalytics.trackDownload('clicked', 'docx')
     if (!requirePro('docx_download') || !resumeData || !visibleData) return
     try {
+      setActiveDownloadFormat('docx')
       await generateDOCX(
         visibleData,
         `${normalizeResumeTitle(resumeTitle) || 'resume'}.docx`,
@@ -1359,14 +1426,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         orderedSidebarSections,
       )
       builderAnalytics.trackDownload('completed', 'docx')
-      setIsDownloadOpen(false)
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'DOCX export failed. Please try again.'
       builderAnalytics.trackDownload(
         'failed',
         'docx',
-        error instanceof Error ? error.message : 'DOCX export failed'
+        message
       )
-      throw error
+      setDownloadError(message)
+    } finally {
+      setActiveDownloadFormat(null)
     }
   }
 
@@ -1386,6 +1455,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }
 
   const TemplateComponent = UniversalTemplate
+  const isDownloadBusy = activeDownloadFormat !== null
+  const downloadButtonLabel =
+    activeDownloadFormat === 'pdf'
+      ? 'Preparing'
+      : activeDownloadFormat === 'docx'
+        ? 'Exporting'
+        : 'Download'
 
   if (isLoading || !resumeData) {
     return (
@@ -1541,27 +1617,44 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
             <div ref={downloadMenuRef} className="relative">
               <button
-                onClick={() => setIsDownloadOpen(!isDownloadOpen)}
-                className="w-28 py-2 text-sm font-bold bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm"
+                onClick={() => {
+                  if (isDownloadBusy) return
+                  setDownloadError(null)
+                  setIsDownloadOpen(!isDownloadOpen)
+                }}
+                disabled={isDownloadBusy}
+                aria-busy={isDownloadBusy}
+                className="w-28 py-2 text-sm font-bold bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm disabled:cursor-wait disabled:opacity-85"
               >
-                <span>Download</span>
-                <ChevronDown size={14} />
+                {isDownloadBusy ? <Loader2 size={14} className="animate-spin" /> : null}
+                <span>{downloadButtonLabel}</span>
+                {!isDownloadBusy ? <ChevronDown size={14} /> : null}
               </button>
               {isDownloadOpen && (
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-lg border border-gray-100 shadow-lg py-1 w-36 z-[100]">
                   <button
-                    onClick={handleDownloadPDF}
+                    onClick={() => void handleDownloadPDF()}
+                    disabled={isDownloadBusy}
                     className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 transition-colors"
                   >
-                    Print / Save PDF
+                    Download as PDF
                   </button>
                   <button
-                    onClick={handleDownloadDOCX}
+                    onClick={() => void handleDownloadDOCX()}
+                    disabled={isDownloadBusy}
                     className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-between"
                   >
                     DOCX
                     {!isPro && <span className="text-[10px] text-amber-500 font-bold">PRO</span>}
                   </button>
+                </div>
+              )}
+              {downloadError && !isDownloadOpen && (
+                <div
+                  role="status"
+                  className="absolute right-0 top-full mt-2 w-72 rounded-lg border border-red-100 bg-white px-3 py-2 text-xs font-medium leading-snug text-red-600 shadow-lg z-[100]"
+                >
+                  {downloadError}
                 </div>
               )}
             </div>

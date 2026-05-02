@@ -1181,6 +1181,7 @@ function SectionHeading({
   if (styleVariant === 'latex-rule') {
     return (
       <h2
+        data-resume-section-heading
         className="mt-3 mb-1 border-b border-black pb-[1px] text-[18px] font-normal leading-none text-black"
         style={{ fontVariantCaps: 'small-caps' }}
       >
@@ -1191,7 +1192,7 @@ function SectionHeading({
 
   if (styleVariant === 'minimal') {
     return (
-      <h2 className={`text-[13px] font-semibold text-gray-900 ${spacingClassName}`}>
+      <h2 data-resume-section-heading className={`text-[13px] font-semibold text-gray-900 ${spacingClassName}`}>
         {title}
       </h2>
     )
@@ -1199,7 +1200,7 @@ function SectionHeading({
 
   if (styleVariant === 'label') {
     return (
-      <div className={`flex items-center gap-3 ${spacingClassName}`}>
+      <div data-resume-section-heading className={`flex items-center gap-3 ${spacingClassName}`}>
         <span style={{ color: accent }} className="text-[10px] font-bold uppercase tracking-[0.22em]">
           {title}
         </span>
@@ -1209,7 +1210,7 @@ function SectionHeading({
   }
 
   return (
-    <h2 style={{ color: accent }} className={`text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 ${spacingClassName}`}>
+    <h2 data-resume-section-heading style={{ color: accent }} className={`text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 ${spacingClassName}`}>
       {title}
     </h2>
   )
