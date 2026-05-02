@@ -143,6 +143,7 @@ export default function UniversalTemplate({
 
     return (
       <SectionFocusFrame
+        sectionId={sectionId}
         isActive={highlightedSectionId === sectionId}
         isSidebarContext={isSidebarContext}
         isDarkSurface={isDarkSurface}
@@ -515,7 +516,7 @@ export default function UniversalTemplate({
           const educationDate = getEducationDateLabel(edu)
 
           return (
-            <div key={i} className="pl-[14px] text-black">
+            <div key={i} data-resume-page-break className="pl-[14px] text-black">
               <div className="flex items-start justify-between gap-4">
                 <EditableText
                   value={edu.institution}
@@ -800,7 +801,7 @@ export default function UniversalTemplate({
             <div className={isCompressed ? 'space-y-1.5' : 'space-y-3'}>
               {data.education.map((edu, i) =>
                 hasEducationItemContent(edu) ? (
-                  <div key={i} className={dateLayout === 'right' ? 'flex justify-between items-start gap-4' : ''}>
+                  <div key={i} data-resume-page-break className={dateLayout === 'right' ? 'flex justify-between items-start gap-4' : ''}>
                     <div className="min-w-0 flex-1">
                       <EditableText
                         value={edu.institution}
@@ -1282,18 +1283,20 @@ function GhostHintList({
 }
 
 function SectionFocusFrame({
+  sectionId,
   children,
   isActive,
   isSidebarContext,
   isDarkSurface,
 }: {
+  sectionId: string
   children: React.ReactNode
   isActive: boolean
   isSidebarContext?: boolean
   isDarkSurface?: boolean
 }) {
   if (!isActive) {
-    return <>{children}</>
+    return <div data-resume-section-frame={sectionId} data-resume-page-break>{children}</div>
   }
 
   const insetClassName = isSidebarContext ? '-inset-x-3 -inset-y-2.5' : '-inset-x-4 -inset-y-3'
@@ -1302,7 +1305,7 @@ function SectionFocusFrame({
     : 'border-emerald-300/80 bg-emerald-50/70 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_16px_36px_rgba(16,185,129,0.12)]'
 
   return (
-    <div className="relative">
+    <div className="relative" data-resume-section-frame={sectionId} data-resume-page-break>
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute ${insetClassName} rounded-[22px] border transition-all duration-150 ${surfaceClassName}`}
@@ -1394,7 +1397,7 @@ function ExperienceItem({
     const bulletPath = exp.bullets && exp.bullets.length > 0 ? 'bullets' : 'highlights'
 
     return (
-      <div className="pl-[14px] text-black">
+      <div data-resume-page-break className="pl-[14px] text-black">
         <div className="flex items-start justify-between gap-4">
           <EditableText
             value={exp.title || exp.name}
@@ -1459,7 +1462,7 @@ function ExperienceItem({
   }
 
   return (
-    <div>
+    <div data-resume-page-break>
       <div className={`items-start ${showRightDate ? 'flex justify-between gap-4' : ''}`}>
         <div className="min-w-0 flex-1">
           <EditableText value={exp.title || exp.name} path={`${pathPrefix}.${ei}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm font-semibold text-gray-900 break-words" />

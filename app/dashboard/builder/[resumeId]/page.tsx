@@ -529,10 +529,12 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const CONTENT_LIMIT = 1123 - 50 // PAGE_H - PAGE_BOTTOM_PADDING
     const containerTop = container.getBoundingClientRect().top
     const elements = container.querySelectorAll(
-      '[data-resume-path], li, p, h1, h2, h3, h4'
+      '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
+    const pageBreakCandidates = container.querySelectorAll('[data-resume-page-break]')
 
     let safe = 0
+    let fallbackSafe = 0
     let contentBottom = 0
     for (const el of Array.from(elements)) {
       const rect = el.getBoundingClientRect()
@@ -540,13 +542,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       if (bottom > contentBottom) {
         contentBottom = bottom
       }
+      if (bottom <= CONTENT_LIMIT && bottom > fallbackSafe) {
+        fallbackSafe = bottom
+      }
+    }
+
+    for (const el of Array.from(pageBreakCandidates)) {
+      const rect = el.getBoundingClientRect()
+      const bottom = rect.bottom - containerTop
       if (bottom <= CONTENT_LIMIT && bottom > safe) {
         safe = bottom
       }
     }
 
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
-    setPageBreakY(safe > 0 ? safe : CONTENT_LIMIT)
+    setPageBreakY(safe > 0 ? safe : (fallbackSafe > 0 ? fallbackSafe : CONTENT_LIMIT))
   }, [])
 
   // Measure resume height after render
