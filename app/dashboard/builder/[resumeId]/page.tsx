@@ -55,6 +55,14 @@ interface StoredBlogResumeExampleRecord {
   builder_visibility: Partial<BuilderVisibility> | null
 }
 
+const PAGE_H = 1123 // A4 at 96 DPI
+const PAGE_GAP = 48
+const PAGE_BOTTOM_PADDING = 24
+const CONTINUATION_PAGE_TOP_PADDING = 38 // 10mm continuation-page inset
+const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
+const CONTINUATION_PAGE_CONTENT_H =
+  PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
+
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
   return trimmed.replace(/\.pdf\s*$/i, '').trim()
@@ -471,6 +479,12 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     activeSection: expandedSection,
   })
   const previewHighlightedSectionId = isEditorFocused ? expandedSection : null
+  const [previewFocusFrame, setPreviewFocusFrame] = useState<{
+    top: number
+    left: number
+    width: number
+    height: number
+  } | null>(null)
   const previousTemplateIdRef = useRef<string | null>(null)
 
   const applyUrlTemplateOverrides = useCallback((baseConfig: Partial<UniversalConfig> | null | undefined) => {
@@ -557,7 +571,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const container = resumeRef.current
     if (!container) return
 
-    const CONTENT_LIMIT = 1123 - 50 // PAGE_H - PAGE_BOTTOM_PADDING
+    const CONTENT_LIMIT = FIRST_PAGE_CONTENT_H
     const containerTop = container.getBoundingClientRect().top
     const elements = container.querySelectorAll(
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
@@ -586,6 +600,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
     setPageBreakY(nextPageBreakY)
   }, [])
+
+  const recomputePreviewFocusFrame = useCallback(() => {
+    const container = resumeRef.current
+
+    if (!container || !previewHighlightedSectionId) {
+      setPreviewFocusFrame(null)
+      return
+    }
+
+    const frame = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-resume-section-frame]')
+    ).find(element => element.dataset.resumeSectionFrame === previewHighlightedSectionId)
+
+    if (!frame) {
+      setPreviewFocusFrame(null)
+      return
+    }
+
+    const containerRect = container.getBoundingClientRect()
+    const frameRect = frame.getBoundingClientRect()
+
+    setPreviewFocusFrame({
+      top: frameRect.top - containerRect.top,
+      left: frameRect.left - containerRect.left,
+      width: frameRect.width,
+      height: frameRect.height,
+    })
+  }, [previewHighlightedSectionId])
 
   // Measure resume height after render
   useEffect(() => {
@@ -621,6 +663,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       frame2 = window.requestAnimationFrame(() => {
         recomputeResumeHeight()
         recomputePageBreak()
+        recomputePreviewFocusFrame()
       })
     })
 
@@ -628,30 +671,26 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.cancelAnimationFrame(frame1)
       window.cancelAnimationFrame(frame2)
     }
-  }, [recomputeResumeHeight, recomputePageBreak, resumeData, visibility, templateConfig])
+  }, [recomputeResumeHeight, recomputePageBreak, recomputePreviewFocusFrame, resumeData, visibility, templateConfig])
 
   useEffect(() => {
     if (resumeHeight === 0) return
     const id = window.requestAnimationFrame(() => {
       recomputePageBreak()
+      recomputePreviewFocusFrame()
     })
     return () => window.cancelAnimationFrame(id)
-  }, [resumeHeight, recomputePageBreak])
+  }, [resumeHeight, recomputePageBreak, recomputePreviewFocusFrame])
 
   const ZOOM_STEP = 0.05
   const effectiveScale = Math.min(1.5, Math.max(0.3, 1.0 + zoomDelta))
-
-  const PAGE_H = 1123 // A4 at 96 DPI
-  const PAGE_GAP = 48 // Gap between pages
-  const PAGE_BOTTOM_PADDING = 24 // Safe zone at bottom of each page
-  const CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING // 1073px — max usable content height per page
 
   // When layout density/visibility changes, optimistically collapse to one page
   // until the hidden print wrapper finishes remeasuring.
   useEffect(() => {
     setIsPaginationSettling(true)
-    setContentHeight(CONTENT_H)
-    setPageBreakY(CONTENT_H)
+    setContentHeight(FIRST_PAGE_CONTENT_H)
+    setPageBreakY(FIRST_PAGE_CONTENT_H)
     setPreviewVersion(version => version + 1)
 
     const id = window.setTimeout(() => {
@@ -659,16 +698,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }, 180)
 
     return () => window.clearTimeout(id)
-  }, [visibility, templateConfig, CONTENT_H])
+  }, [visibility, templateConfig])
 
-  const effectivePageBreakY = pageBreakY > 0 ? pageBreakY : CONTENT_H
+  const effectivePageBreakY = pageBreakY > 0 ? pageBreakY : FIRST_PAGE_CONTENT_H
   const MAX_PAGES = 5
   const RECOMMENDED_PAGES = 2
   const effectiveContentHeight = contentHeight > 0 ? contentHeight : resumeHeight
-  const secondPageHasContent = !isPaginationSettling && effectiveContentHeight > effectivePageBreakY + 12
+  const remainingContentHeight = Math.max(0, effectiveContentHeight - effectivePageBreakY)
+  const secondPageHasContent = !isPaginationSettling && remainingContentHeight > 12
   const pageCount = isPaginationSettling
     ? 1
-    : Math.max(1, Math.ceil(effectiveContentHeight / CONTENT_H))
+    : 1 + (remainingContentHeight > 0
+      ? Math.ceil(remainingContentHeight / CONTINUATION_PAGE_CONTENT_H)
+      : 0)
   const renderedPageCount = Math.min(secondPageHasContent ? pageCount : 1, MAX_PAGES)
   const isOverPageLimit = pageCount > MAX_PAGES
   const isOverRecommendedPages = pageCount > RECOMMENDED_PAGES
@@ -1693,72 +1735,119 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   transformOrigin: 'top left',
                 }}
               >
-                {Array.from({ length: renderedPageCount }, (_, pageIndex) => (
-                  <div
-                    key={`page-${pageIndex}`}
-                    data-resume-preview-page="true"
-                    className="absolute left-0 bg-white"
-                    style={{
-                      top: pageIndex * (PAGE_H + PAGE_GAP),
-                      width: '794px',
-                      height: `${PAGE_H}px`,
-                      boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-                    }}
-                  >
-                    {/* Full-page template shell so page styling continues to page bottom */}
-                    {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
-                      <div
-                        className="absolute inset-0 pointer-events-none z-0"
-                      >
-                        <div
-                          className="absolute top-0 bottom-0"
-                          style={{
-                            width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
-                            backgroundColor: accentToSidebarFill(templateConfig.accentColor),
-                            ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
-                          }}
-                        />
-                      </div>
-                    )}
+                {Array.from({ length: renderedPageCount }, (_, pageIndex) => {
+                  const pageTopPadding = pageIndex === 0 ? 0 : CONTINUATION_PAGE_TOP_PADDING
+                  const pageContentHeight =
+                    pageIndex === 0 ? effectivePageBreakY : CONTINUATION_PAGE_CONTENT_H
+                  const pageContentStartY =
+                    pageIndex === 0
+                      ? 0
+                      : effectivePageBreakY + (pageIndex - 1) * CONTINUATION_PAGE_CONTENT_H
+                  const pageContentEndY = pageContentStartY + pageContentHeight
+                  const hasFocusFrame =
+                    Boolean(previewFocusFrame) &&
+                    previewFocusFrame!.top + previewFocusFrame!.height > pageContentStartY &&
+                    previewFocusFrame!.top < pageContentEndY
+                  const focusInsetX = 16
+                  const focusInsetY = 12
+                  const focusLeft = previewFocusFrame
+                    ? Math.max(12, previewFocusFrame.left - focusInsetX)
+                    : 0
+                  const focusWidth = previewFocusFrame
+                    ? Math.min(794 - focusLeft - 12, previewFocusFrame.width + focusInsetX * 2)
+                    : 0
+                  const focusRawTop = previewFocusFrame
+                    ? pageTopPadding + previewFocusFrame.top - pageContentStartY - focusInsetY
+                    : 0
+                  const focusRawBottom = previewFocusFrame
+                    ? pageTopPadding + previewFocusFrame.top + previewFocusFrame.height - pageContentStartY + focusInsetY
+                    : 0
+                  const focusTop = Math.max(pageTopPadding + 6, focusRawTop)
+                  const focusBottom = Math.min(PAGE_H - PAGE_BOTTOM_PADDING + 2, focusRawBottom)
+                  const focusHeight = Math.max(34, focusBottom - focusTop)
 
-                    <div data-pdf-ignore="true" className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
-                      Page {pageIndex + 1}
-                    </div>
-
+                  return (
                     <div
-                      className="relative overflow-hidden w-full z-10"
-                      style={(() => {
-                        if (pageIndex === 0) {
-                          return { marginTop: 0, height: `${effectivePageBreakY}px` }
-                        }
-                        return { marginTop: 0, height: `${CONTENT_H}px` }
-                      })()}
+                      key={`page-${pageIndex}`}
+                      data-resume-preview-page="true"
+                      className="absolute left-0 bg-white"
+                      style={{
+                        top: pageIndex * (PAGE_H + PAGE_GAP),
+                        width: '794px',
+                        height: `${PAGE_H}px`,
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                      }}
                     >
+                      {/* Full-page template shell so page styling continues to page bottom */}
+                      {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
+                        <div
+                          className="absolute inset-0 pointer-events-none z-0"
+                        >
+                          <div
+                            className="absolute top-0 bottom-0"
+                            style={{
+                              width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
+                              backgroundColor: accentToSidebarFill(templateConfig.accentColor),
+                              ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      <div data-pdf-ignore="true" className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
+                        Page {pageIndex + 1}
+                      </div>
+
                       <div
+                        className="relative overflow-hidden w-full z-10"
                         style={{
-                          width: '794px',
-                          transform: `translateY(-${pageIndex === 0 ? 0 : effectivePageBreakY + (pageIndex - 1) * CONTENT_H}px)`,
-                          transformOrigin: 'top left',
+                          height: `${pageContentHeight}px`,
+                          paddingTop: `${pageTopPadding}px`,
                         }}
                       >
-                        <TemplateComponent
-                          key={`preview-${previewVersion}-${pageIndex}`}
-                          data={visibleData ?? resumeData}
-                          isEditing={false}
-                          showEmptyStateGuidance
-                          highlightedSectionId={null}
-                          onFieldChange={() => {}}
-                          sectionOrder={orderedSections}
-                          sidebarSectionOrder={orderedSidebarSections}
-                          config={templateConfig}
-                          onNavigateToField={handleNavigateToField}
-                          showEditingBadge={false}
-                        />
+                        <div
+                          style={{
+                            width: '794px',
+                            transform: `translateY(-${pageContentStartY}px)`,
+                            transformOrigin: 'top left',
+                          }}
+                        >
+                          <TemplateComponent
+                            key={`preview-${previewVersion}-${pageIndex}`}
+                            data={visibleData ?? resumeData}
+                            isEditing={false}
+                            showEmptyStateGuidance
+                            highlightedSectionId={null}
+                            onFieldChange={() => {}}
+                            sectionOrder={orderedSections}
+                            sidebarSectionOrder={orderedSidebarSections}
+                            config={templateConfig}
+                            onNavigateToField={handleNavigateToField}
+                            showEditingBadge={false}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                  </div>
-                ))}
+                      {hasFocusFrame && (
+                        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+                          <div
+                            className="absolute rounded-[22px] border border-emerald-300/80 bg-emerald-50/60 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_16px_36px_rgba(16,185,129,0.12)]"
+                            style={{
+                              left: `${focusLeft}px`,
+                              top: `${focusTop}px`,
+                              width: `${focusWidth}px`,
+                              height: `${focusHeight}px`,
+                            }}
+                          >
+                            <span className="absolute right-3 top-2 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
+                              Editing
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 

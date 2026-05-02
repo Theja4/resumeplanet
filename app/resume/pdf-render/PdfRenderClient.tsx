@@ -68,6 +68,10 @@ export default function PdfRenderClient() {
       <style jsx global>{`
         @page {
           size: A4;
+          margin: 10mm 0 0 0;
+        }
+
+        @page:first {
           margin: 0;
         }
 
@@ -93,9 +97,7 @@ export default function PdfRenderClient() {
         }
 
         .resume-pdf-render-layer {
-          position: absolute;
-          left: 0;
-          top: 0;
+          position: relative;
           z-index: 2147483647;
           width: 794px;
           min-height: 1123px;
