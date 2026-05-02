@@ -39,6 +39,15 @@ const EU_COUNTRIES = new Set([
   'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
 ])
 
+const POLAR_SUPPORTED_REGIONAL_CURRENCIES = new Set([
+  'AED',
+  'AUD',
+  'CAD',
+  'EUR',
+  'GBP',
+  'INR',
+])
+
 const PAYPAL_SUPPORTED_REGIONAL_CURRENCIES = new Set([
   'AUD',
   'CAD',
@@ -46,13 +55,22 @@ const PAYPAL_SUPPORTED_REGIONAL_CURRENCIES = new Set([
   'GBP',
 ])
 
-function isPayPalPricingPreferred() {
-  return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER !== 'paddle'
+function isRegionalProviderCurrencySupported(currency: string) {
+  const provider = process.env.NEXT_PUBLIC_PAYMENT_PROVIDER
+
+  if (provider === 'polar' || process.env.NEXT_PUBLIC_POLAR_CHECKOUT_ENABLED === 'true') {
+    return POLAR_SUPPORTED_REGIONAL_CURRENCIES.has(currency)
+  }
+
+  const paypalPreferred =
+    (provider ? provider === 'paypal' : provider !== 'paddle')
     || process.env.NEXT_PUBLIC_PAYPAL_CHECKOUT_ENABLED === 'true'
+
+  return paypalPreferred && PAYPAL_SUPPORTED_REGIONAL_CURRENCIES.has(currency)
 }
 
 type RegionalPricingConfig = {
-  id: 'EUR' | 'GBP' | 'INR' | 'AUD' | 'CAD'
+  id: 'EUR' | 'GBP' | 'INR' | 'AUD' | 'CAD' | 'AED'
   countries: Set<string>
   currency: string
   currencySymbol: string
@@ -74,15 +92,15 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     prices: {
       monthly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_EUR ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_EUR', 9.99),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_EUR', 9.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_EUR', 19.99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_EUR', 19.99),
       },
       annual: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_EUR ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_EUR', 99.99),
         actualPrice: undefined,
         perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_EUR', 8.33),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_EUR ?? 'Save €19.89 vs monthly',
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_EUR ?? 'Save €139.89 vs monthly',
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_EUR ?? '',
@@ -98,15 +116,15 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     prices: {
       monthly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_GBP ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_GBP', 9.99),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_GBP', 9.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_GBP', 19.99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_GBP', 19.99),
       },
       annual: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_GBP ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_GBP', 99.99),
         actualPrice: undefined,
         perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_GBP', 8.33),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_GBP ?? 'Save £19.89 vs monthly',
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_GBP ?? 'Save £139.89 vs monthly',
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_GBP ?? '',
@@ -122,15 +140,15 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     prices: {
       monthly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_AUD ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_AUD', 9.99),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_AUD', 9.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_AUD', 19.99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_AUD', 19.99),
       },
       annual: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_AUD ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_AUD', 99.99),
         actualPrice: undefined,
         perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_AUD', 8.33),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_AUD ?? 'Save A$19.89 vs monthly',
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_AUD ?? 'Save A$139.89 vs monthly',
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_AUD ?? '',
@@ -146,19 +164,67 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     prices: {
       monthly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_CAD ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_CAD', 9.99),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_CAD', 9.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_CAD', 19.99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_CAD', 19.99),
       },
       annual: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_CAD ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_CAD', 99.99),
         actualPrice: undefined,
         perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_CAD', 8.33),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_CAD ?? 'Save CA$19.89 vs monthly',
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_CAD ?? 'Save CA$139.89 vs monthly',
       },
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_CAD ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_CAD', 3.49),
+      },
+    },
+  },
+  {
+    id: 'INR',
+    countries: new Set(['IN']),
+    currency: 'INR',
+    currencySymbol: '₹',
+    prices: {
+      monthly: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_INR ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_INR', 999),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_INR', 999),
+      },
+      annual: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_INR ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_INR', 4999),
+        actualPrice: undefined,
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_INR', 416.58),
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_INR ?? 'Save ₹6989 vs monthly',
+      },
+      weekly: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_INR ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_INR', 249),
+      },
+    },
+  },
+  {
+    id: 'AED',
+    countries: new Set(['AE']),
+    currency: 'AED',
+    currencySymbol: 'AED ',
+    prices: {
+      monthly: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_MONTHLY_AED ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_AED', 39.99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_AED', 39.99),
+      },
+      annual: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_ANNUAL_AED ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_AED', 399.99),
+        actualPrice: undefined,
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_AED', 33.33),
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_AED ?? 'Save AED 79.89 vs monthly',
+      },
+      weekly: {
+        paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_AED ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_AED', 9.99),
       },
     },
   },
@@ -292,7 +358,7 @@ export const PRO_PLAN = {
       interval: 'month' as BillingInterval,
       intervalCount: 1,
       display: {
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_USD', 9.99),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_USD', 19.99),
         actualPrice: undefined,
         currency: 'USD',
         currencySymbol: '$',
@@ -301,7 +367,7 @@ export const PRO_PLAN = {
       badge: undefined,
       isDefault: true,
       isHidden: false,
-      perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_USD', 9.99),
+      perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_USD', 19.99),
       savingsNote: undefined,
     },
     {
@@ -316,11 +382,11 @@ export const PRO_PLAN = {
         currencySymbol: '$',
       },
       label: 'Annual',
-      badge: 'Save 17%',
+      badge: 'Save 58%',
       isDefault: false,
       isHidden: false,
       perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_USD', 8.33),
-      savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_USD ?? 'Save $19.89 vs monthly',
+      savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_USD ?? 'Save $139.89 vs monthly',
     },
     {
       id: 'weekly',
@@ -383,10 +449,7 @@ function applyRegionalOverride(option: PriceOption, countryCode: string | null |
     return option
   }
 
-  const allowPayPalRegionalPrice =
-    isPayPalPricingPreferred() && PAYPAL_SUPPORTED_REGIONAL_CURRENCIES.has(region.currency)
-
-  if (!regionalPrice.paddlePriceId && !allowPayPalRegionalPrice) {
+  if (!regionalPrice.paddlePriceId && !isRegionalProviderCurrencySupported(region.currency)) {
     return option
   }
 

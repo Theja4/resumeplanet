@@ -31,6 +31,7 @@ export interface Affiliate {
   email: string
   discount_code: string
   paddle_discount_id?: string | null
+  polar_discount_id?: string | null
   discount_percent: number
   commission_percent: number
   paypal_email: string | null

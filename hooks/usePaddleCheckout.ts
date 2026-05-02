@@ -11,8 +11,18 @@ import {
 import { getPaddleConfigurationError } from '@/lib/paddleConfig'
 import { HUMAN_WRITTEN_ORDER, PRO_PLAN } from '@/lib/pricing'
 
+function getPaymentProvider() {
+  return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER
+}
+
+export function isPolarCheckoutPreferred() {
+  return getPaymentProvider() === 'polar'
+    || process.env.NEXT_PUBLIC_POLAR_CHECKOUT_ENABLED === 'true'
+}
+
 export function isPayPalCheckoutPreferred() {
-  return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER !== 'paddle'
+  const provider = getPaymentProvider()
+  return (provider ? provider === 'paypal' : provider !== 'paddle')
     || process.env.NEXT_PUBLIC_PAYPAL_CHECKOUT_ENABLED === 'true'
 }
 
@@ -111,8 +121,9 @@ export function usePaddleCheckout() {
       const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
       const checkoutPrice = selectedPrice.display.displayPrice
 
-      if (isPayPalCheckoutPreferred()) {
-        const res = await fetch('/api/paypal/checkout', {
+      if (isPolarCheckoutPreferred() || isPayPalCheckoutPreferred()) {
+        const provider = isPolarCheckoutPreferred() ? 'polar' : 'paypal'
+        const res = await fetch(`/api/${provider}/checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -132,6 +143,12 @@ export function usePaddleCheckout() {
           typeof json.data?.amount === 'number' ? json.data.amount : checkoutPrice
         const checkoutDiscountCode =
           typeof json.data?.discountCode === 'string' ? json.data.discountCode : params.promotionCode
+        const redirectUrl =
+          provider === 'polar' ? json.data?.checkoutUrl : json.data?.approvalUrl
+
+        if (typeof redirectUrl !== 'string' || !redirectUrl) {
+          throw new Error('Checkout did not return a redirect URL')
+        }
 
         Analytics.checkoutStarted({
           product: 'pro_subscription',
@@ -142,10 +159,10 @@ export function usePaddleCheckout() {
           product: 'pro_subscription',
           price: checkoutAmount,
           discountCode: checkoutDiscountCode,
-          step: 'paypal_redirect',
+          step: `${provider}_redirect`,
         })
 
-        window.location.href = json.data.approvalUrl
+        window.location.href = redirectUrl
         params.onSuccess?.()
         return
       }

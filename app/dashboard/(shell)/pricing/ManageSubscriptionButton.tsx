@@ -15,7 +15,11 @@ export default function ManageSubscriptionButton({ label = 'Manage Subscription'
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/paddle/portal', { method: 'POST' })
+      const endpoint =
+        process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar'
+          ? '/api/polar/portal'
+          : '/api/paddle/portal'
+      const res = await fetch(endpoint, { method: 'POST' })
       const json = await res.json()
       const url = json.data?.portalUrl
       if (url) {

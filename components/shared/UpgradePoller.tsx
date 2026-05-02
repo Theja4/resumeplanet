@@ -10,6 +10,12 @@ interface Props {
 
 const MAX_ATTEMPTS = 15
 
+function getSyncEndpoint() {
+  return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar'
+    ? '/api/polar/sync-subscription'
+    : '/api/paddle/sync-subscription'
+}
+
 export default function UpgradePoller({ upgraded, isPro }: Props) {
   const router = useRouter()
   const attempts = useRef(0)
@@ -40,7 +46,7 @@ export default function UpgradePoller({ upgraded, isPro }: Props) {
       }
 
       try {
-        const res = await fetch('/api/paddle/sync-subscription', { method: 'POST' })
+        const res = await fetch(getSyncEndpoint(), { method: 'POST' })
         const json = await res.json()
         if (json.isPro) {
           if (intervalRef.current) clearInterval(intervalRef.current)

@@ -11,6 +11,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: '₹',
   AUD: 'A$',
   CAD: 'CA$',
+  AED: 'AED ',
 }
 
 function roundPriceAmount(value: number) {
@@ -103,6 +104,10 @@ async function getLivePriceOption(option: PriceOption): Promise<PriceOption> {
 
 export async function getLiveVisibleProPriceOptions(countryCode: string | null | undefined) {
   const fallbackOptions = getProPlanForCountry(countryCode).visiblePrices.map(normalizeBasePriceOption)
+
+  if (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER !== 'paddle') {
+    return withComputedAnnualSavings(fallbackOptions)
+  }
 
   if (getPaddleConfigurationError()) {
     return withComputedAnnualSavings(fallbackOptions)

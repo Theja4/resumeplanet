@@ -17,6 +17,19 @@ export default function CancelSubscriptionButton({ className }: Props) {
     setLoading(true)
     setError(null)
     try {
+      if (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar') {
+        const res = await fetch('/api/polar/portal', { method: 'POST' })
+        const json = await res.json()
+        const url = json.data?.portalUrl
+        if (url) {
+          window.location.href = url
+          return
+        }
+        setError(json.error ?? 'Failed to open billing portal. Please try again.')
+        setLoading(false)
+        return
+      }
+
       const res = await fetch('/api/paddle/subscription/cancel', { method: 'POST' })
       const json = await res.json()
       

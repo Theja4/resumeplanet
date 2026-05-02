@@ -43,6 +43,7 @@ function parseAffiliateRow(row: Record<string, unknown>): Affiliate {
     email: String(row.email),
     discount_code: String(row.discount_code),
     paddle_discount_id: row.paddle_discount_id ? String(row.paddle_discount_id) : null,
+    polar_discount_id: row.polar_discount_id ? String(row.polar_discount_id) : null,
     discount_percent: toCurrencyAmount(row.discount_percent as string | number),
     commission_percent: toCurrencyAmount(row.commission_percent as string | number),
     paypal_email: row.paypal_email ? String(row.paypal_email) : null,
