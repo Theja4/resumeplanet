@@ -176,7 +176,7 @@ export default function UniversalTemplate({
       return (
         <div className="mt-0.5 text-[13px] leading-[1.25] text-black">
           {normalizedSections.map((section, sectionIndex) => (
-            <div key={sectionIndex}>
+            <div key={sectionIndex} data-resume-page-break>
               {section.title && (
                 <>
                   <EditableText
@@ -227,7 +227,7 @@ export default function UniversalTemplate({
       return (
         <div className={`${isSidebarContext ? 'mt-1 space-y-2' : 'mt-1.5 space-y-2'}`}>
           {normalizedSections.map((section, sectionIndex) => (
-            <div key={sectionIndex}>
+            <div key={sectionIndex} data-resume-page-break>
               {section.title && (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <EditableText
@@ -236,7 +236,7 @@ export default function UniversalTemplate({
                     isEditing={isEditing}
                     onFieldChange={onFieldChange}
                     onNavigateToField={onNavigateToField}
-                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-semibold uppercase tracking-[0.14em] text-gray-500`}
+                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`}
                   />
                   {section.tag ? (
                     <span
@@ -253,6 +253,7 @@ export default function UniversalTemplate({
                       ({section.tag})
                     </span>
                   ) : null}
+                  <span className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} text-gray-600`}>:</span>
                 </div>
               )}
               <div className="mt-1 space-y-1">
@@ -281,7 +282,7 @@ export default function UniversalTemplate({
     return (
       <div className="mt-1 space-y-1.5">
         {normalizedSections.map((section, sectionIndex) => (
-          <div key={sectionIndex}>
+          <div key={sectionIndex} data-resume-page-break>
             {section.title && (
               <>
                 <EditableText
@@ -290,11 +291,11 @@ export default function UniversalTemplate({
                   isEditing={isEditing}
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
-                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-semibold uppercase tracking-[0.14em] text-gray-500`}
+                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`}
                 />
                 {section.tag ? (
                   <span
-                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
+                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
                     onClick={
                       !isEditing && onNavigateToField
                         ? (event) => {
@@ -307,6 +308,7 @@ export default function UniversalTemplate({
                     ({section.tag})
                   </span>
                 ) : null}
+                <span className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 text-gray-600`}>: </span>
               </>
             )}
             {section.skills.map((skill, skillIndex) => (

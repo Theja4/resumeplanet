@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, KeyboardEvent, useRef, useEffect } from 'react'
-import { GripVertical, Plus, X } from 'lucide-react'
+import { GripVertical, Plus, X, ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import {
   closestCenter,
   DndContext,
@@ -19,7 +19,9 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { ResumeData, SkillSection } from '@/types'
 import { flattenSkillSections, normalizeSkillSections, syncResumeData } from '@/lib/resume-data'
 import { useFocusFieldPath } from './useFocusFieldPath'
@@ -63,7 +65,6 @@ function SortableSkillChip({
 }: SortableSkillChipProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style: React.CSSProperties = {
-    // Use translate only (no scale) to prevent chips from stretching/compressing in flex-wrap
     transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
     transition,
     opacity: isDragging ? 0.3 : 1,
@@ -152,12 +153,87 @@ function SkillOverlayChip({ skill }: { skill: string }) {
   )
 }
 
+// ── Sortable section card (collapsed view for multi-section mode) ──────────
+
+function SortableSectionCard({
+  id,
+  title,
+  skillCount,
+  isExpanded,
+  isDeleting,
+  onToggleExpand,
+  onDelete,
+  onConfirmDelete,
+  onCancelDelete,
+}: {
+  id: string
+  title: string
+  skillCount: number
+  isExpanded: boolean
+  isDeleting: boolean
+  onToggleExpand: () => void
+  onDelete: () => void
+  onConfirmDelete: () => void
+  onCancelDelete: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+
+  return (
+    <div ref={setNodeRef} style={style} className="bg-white rounded-xl border border-gray-200 shadow-sm">
+      {isDeleting ? (
+        <div className="px-4 py-3 flex items-center gap-3">
+          <span className="flex-1 text-sm text-gray-700">Delete this section?</span>
+          <button onClick={onCancelDelete} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={onConfirmDelete} className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">Delete</button>
+        </div>
+      ) : (
+        <div className="flex items-center px-4 py-3 gap-2">
+          <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 shrink-0" tabIndex={-1}>
+            <GripVertical size={16} />
+          </button>
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggleExpand}>
+            <div className="text-sm font-medium text-gray-800 truncate">{title || 'Untitled Section'}</div>
+            <div className="text-xs text-gray-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={onDelete} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors">
+              <Trash2 size={15} className="text-gray-500 hover:text-red-500" />
+            </button>
+            <button onClick={onToggleExpand} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
+              {isExpanded ? <ChevronUp size={15} className="text-gray-500" /> : <ChevronDown size={15} className="text-gray-500" />}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Section overlay for drag ──────────────────────────────────────────────
+
+function SectionOverlayCard({ title, skillCount }: { title: string; skillCount: number }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3 flex items-center gap-2 cursor-grabbing">
+      <GripVertical size={16} className="text-gray-400" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-gray-800 truncate">{title || 'Untitled Section'}</div>
+        <div className="text-xs text-gray-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
+      </div>
+    </div>
+  )
+}
+
 export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const titleRefs = useRef<Record<number, HTMLInputElement | null>>({})
   useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
-  const sensors = useSensors(
+  const chipSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+  const sectionSensors = useSensors(
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
   const [inputs, setInputs] = useState<Record<number, string>>({})
@@ -167,6 +243,9 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   const [pendingFocusIndex, setPendingFocusIndex] = useState<number | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ sectionIndex: number; skillIndex: number } | null>(null)
   const [draftSection, setDraftSection] = useState<SkillSection | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
+  const [activeSectionDrag, setActiveSectionDrag] = useState<number | null>(null)
 
   const sections: SkillSection[] = data.skillSections?.length
     ? data.skillSections.map(section => ({
@@ -176,6 +255,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
       }))
     : [{ title: 'Core Skills', tag: '', skills: normalizeEditorSkillList(data.skills ?? []) }]
   const displayedSections = draftSection ? [...sections, draftSection] : sections
+  const isMultiSection = displayedSections.length > 1
 
   function isDraftSectionIndex(index: number) {
     return draftSection !== null && index === sections.length
@@ -192,8 +272,6 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   function persistedSectionsBeforeDraft() {
     if (data.skillSections?.length) return sections
 
-    // When no real skill sections exist yet, `sections` is only the editor's
-    // "Core Skills" fallback. Do not save that empty UI fallback into exports.
     return sections.filter(section =>
       section.tag?.trim() ||
       section.skills.some(skill => skill.trim())
@@ -212,8 +290,10 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   }
 
   function addSection() {
-    setPendingFocusIndex(sections.length)
+    const newIndex = sections.length
+    setPendingFocusIndex(newIndex)
     setDraftSection(current => current ?? { ...EMPTY_SECTION })
+    setExpandedIndex(newIndex)
   }
 
   function removeSection(index: number) {
@@ -224,10 +304,15 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
         delete next[index]
         return next
       })
+      setDeletingIndex(null)
+      if (expandedIndex === index) setExpandedIndex(null)
       return
     }
 
     commit(sections.filter((_, i) => i !== index))
+    setDeletingIndex(null)
+    if (expandedIndex === index) setExpandedIndex(null)
+    else if (expandedIndex !== null && expandedIndex > index) setExpandedIndex(expandedIndex - 1)
   }
 
   function addSkill(sectionIndex: number, raw: string) {
@@ -347,6 +432,31 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     })
   }
 
+  function handleSectionDragStart(event: DragStartEvent) {
+    const idx = sectionIds.indexOf(String(event.active.id))
+    if (idx !== -1) setActiveSectionDrag(idx)
+  }
+
+  function handleSectionDragEnd(event: DragEndEvent) {
+    setActiveSectionDrag(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = sectionIds.indexOf(String(active.id))
+    const newIndex = sectionIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove([...sections], oldIndex, newIndex)
+    commit(reordered)
+
+    // Update expanded index to follow the moved section
+    if (expandedIndex === oldIndex) setExpandedIndex(newIndex)
+    else if (expandedIndex !== null) {
+      if (oldIndex < expandedIndex && newIndex >= expandedIndex) setExpandedIndex(expandedIndex - 1)
+      else if (oldIndex > expandedIndex && newIndex <= expandedIndex) setExpandedIndex(expandedIndex + 1)
+    }
+  }
+
   useEffect(() => {
     if (pendingFocusIndex === null) return
 
@@ -359,98 +469,151 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     }
   }, [pendingFocusIndex, displayedSections.length])
 
-  return (
-    <div ref={rootRef} className="space-y-4 p-4">
-      {displayedSections.map((section, sectionIndex) => (
-        <div key={isDraftSectionIndex(sectionIndex) ? 'draft-skill-section' : sectionIndex} className="rounded-xl border border-gray-200 bg-white p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-500">Section Title (Optional)</label>
-                <input
-                  ref={node => {
-                    titleRefs.current[sectionIndex] = node
-                  }}
-                  data-field-path={`skillSections.${sectionIndex}.title`}
-                  value={section.title}
-                  onChange={(e) => updateSection(sectionIndex, { ...section, title: e.target.value })}
-                  placeholder="Product, Tools, Collaboration..."
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+  const sectionIds = displayedSections.map((_, i) => `section-${i}`)
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragStart={(event) => handleSkillDragStart(sectionIndex, event)}
-                onDragEnd={(event) => handleSkillDragEnd(sectionIndex, event)}
-                onDragCancel={() => setActiveDrag(null)}
-              >
-                <SortableContext items={skillIds(sectionIndex, section.skills)} strategy={rectSortingStrategy}>
-                  <div className="flex flex-wrap gap-1.5">
-                    {section.skills.map((skill, skillIndex) => {
-                      const isEditing =
-                        editingSkill?.sectionIndex === sectionIndex &&
-                        editingSkill.skillIndex === skillIndex
-
-                      return (
-                        <SortableSkillChip
-                          key={skillId(sectionIndex, skillIndex)}
-                          id={skillId(sectionIndex, skillIndex)}
-                          skill={skill}
-                          isEditing={isEditing}
-                          draftValue={draftSkill}
-                          onDraftChange={setDraftSkill}
-                          onStartEdit={() => startEditingSkill(sectionIndex, skillIndex, skill)}
-                          onCommitEdit={commitEditingSkill}
-                          onCancelEdit={cancelEditingSkill}
-                          onRemove={() => removeSkill(sectionIndex, skillIndex)}
-                        />
-                      )
-                    })}
-                  </div>
-                </SortableContext>
-                <DragOverlay dropAnimation={null}>
-                  {activeDrag?.sectionIndex === sectionIndex && activeDrag.skillIndex < section.skills.length ? (
-                    <SkillOverlayChip skill={section.skills[activeDrag.skillIndex]} />
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-
-              <input
-                data-field-path={focusPath?.startsWith(`skillSections.${sectionIndex}.skills`) ? focusPath : `skillSections.${sectionIndex}.skills`}
-                value={inputs[sectionIndex] ?? ''}
-                onChange={(e) => setInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
-                onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault()
-                    addSkill(sectionIndex, (inputs[sectionIndex] ?? '').replace(/,$/, ''))
-                  }
-                }}
-                onBlur={() => {
-                  if (inputs[sectionIndex]?.trim()) addSkill(sectionIndex, inputs[sectionIndex])
-                }}
-                placeholder="Type a skill, press Enter or comma to add"
-                className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {displayedSections.length > 1 && (
-              <button
-                onClick={() => removeSection(sectionIndex)}
-                className="rounded-full p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                aria-label="Remove section"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+  function renderSectionEditor(section: SkillSection, sectionIndex: number) {
+    return (
+      <div className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-500">Section Title (Optional)</label>
+          <input
+            ref={node => {
+              titleRefs.current[sectionIndex] = node
+            }}
+            data-field-path={`skillSections.${sectionIndex}.title`}
+            value={section.title}
+            onChange={(e) => updateSection(sectionIndex, { ...section, title: e.target.value })}
+            placeholder="Product, Tools, Collaboration..."
+            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
         </div>
-      ))}
+
+        <DndContext
+          sensors={chipSensors}
+          collisionDetection={closestCenter}
+          onDragStart={(event) => handleSkillDragStart(sectionIndex, event)}
+          onDragEnd={(event) => handleSkillDragEnd(sectionIndex, event)}
+          onDragCancel={() => setActiveDrag(null)}
+        >
+          <SortableContext items={skillIds(sectionIndex, section.skills)} strategy={rectSortingStrategy}>
+            <div className="flex flex-wrap gap-1.5">
+              {section.skills.map((skill, skillIndex) => {
+                const isEditing =
+                  editingSkill?.sectionIndex === sectionIndex &&
+                  editingSkill.skillIndex === skillIndex
+
+                return (
+                  <SortableSkillChip
+                    key={skillId(sectionIndex, skillIndex)}
+                    id={skillId(sectionIndex, skillIndex)}
+                    skill={skill}
+                    isEditing={isEditing}
+                    draftValue={draftSkill}
+                    onDraftChange={setDraftSkill}
+                    onStartEdit={() => startEditingSkill(sectionIndex, skillIndex, skill)}
+                    onCommitEdit={commitEditingSkill}
+                    onCancelEdit={cancelEditingSkill}
+                    onRemove={() => removeSkill(sectionIndex, skillIndex)}
+                  />
+                )
+              })}
+            </div>
+          </SortableContext>
+          <DragOverlay dropAnimation={null}>
+            {activeDrag?.sectionIndex === sectionIndex && activeDrag.skillIndex < section.skills.length ? (
+              <SkillOverlayChip skill={section.skills[activeDrag.skillIndex]} />
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+
+        <input
+          data-field-path={focusPath?.startsWith(`skillSections.${sectionIndex}.skills`) ? focusPath : `skillSections.${sectionIndex}.skills`}
+          value={inputs[sectionIndex] ?? ''}
+          onChange={(e) => setInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter' || e.key === ',') {
+              e.preventDefault()
+              addSkill(sectionIndex, (inputs[sectionIndex] ?? '').replace(/,$/, ''))
+            }
+          }}
+          onBlur={() => {
+            if (inputs[sectionIndex]?.trim()) addSkill(sectionIndex, inputs[sectionIndex])
+          }}
+          placeholder="Type a skill, press Enter or comma to add"
+          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+      </div>
+    )
+  }
+
+  // ── SINGLE SECTION MODE ──────────────────────────────────────────────────────
+  if (!isMultiSection) {
+    return (
+      <div ref={rootRef} className="space-y-4 p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          {renderSectionEditor(displayedSections[0], 0)}
+        </div>
+
+        <button
+          onClick={addSection}
+          className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+        >
+          <Plus size={14} /> Add skill section
+        </button>
+      </div>
+    )
+  }
+
+  // ── MULTI-SECTION MODE (SubItemList-like) ────────────────────────────────────
+  return (
+    <div ref={rootRef} className="space-y-2 p-4">
+      <DndContext
+        sensors={sectionSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleSectionDragStart}
+        onDragEnd={handleSectionDragEnd}
+        onDragCancel={() => setActiveSectionDrag(null)}
+      >
+        <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+          {displayedSections.map((section, sectionIndex) => {
+            const isExpanded = expandedIndex === sectionIndex
+            const isDraft = isDraftSectionIndex(sectionIndex)
+
+            return (
+              <div key={isDraft ? 'draft-skill-section' : sectionIndex}>
+                <SortableSectionCard
+                  id={sectionIds[sectionIndex]}
+                  title={section.title}
+                  skillCount={section.skills.length}
+                  isExpanded={isExpanded}
+                  isDeleting={deletingIndex === sectionIndex}
+                  onToggleExpand={() => setExpandedIndex(isExpanded ? null : sectionIndex)}
+                  onDelete={() => setDeletingIndex(sectionIndex)}
+                  onConfirmDelete={() => removeSection(sectionIndex)}
+                  onCancelDelete={() => setDeletingIndex(null)}
+                />
+                {isExpanded && deletingIndex !== sectionIndex && (
+                  <div className="rounded-b-xl border border-t-0 border-gray-200 bg-gray-50 p-4 -mt-1">
+                    {renderSectionEditor(section, sectionIndex)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </SortableContext>
+        <DragOverlay dropAnimation={null}>
+          {activeSectionDrag !== null && activeSectionDrag < displayedSections.length ? (
+            <SectionOverlayCard
+              title={displayedSections[activeSectionDrag].title}
+              skillCount={displayedSections[activeSectionDrag].skills.length}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <button
         onClick={addSection}
-        className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+        className="w-full border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center gap-1.5"
       >
         <Plus size={14} /> Add skill section
       </button>

@@ -113,17 +113,10 @@ function extractSkills(resumeSkills: Resume['skills']): string[] {
 }
 
 function extractSkillSections(resumeSkills: Resume['skills']): SkillSection[] {
-  const descriptionLines = (resumeSkills.descriptions || [])
-    .map(line => line.replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-
+  const descriptionLines = normalizeSkillDescriptionLines(resumeSkills.descriptions || [])
   const sections: SkillSection[] = []
-  let index = 0
 
-  while (index < descriptionLines.length) {
-    const line = descriptionLines[index]!
-    const nextLine = descriptionLines[index + 1] ?? ''
-
+  for (const line of descriptionLines) {
     const inlineMatch = line.match(/^([A-Za-z][A-Za-z &/+()-]{1,40}?):\s+(.+)$/)
     if (inlineMatch) {
       const skills = splitSkillInput(inlineMatch[2]).map(skill => skill.trim()).filter(Boolean)
@@ -134,48 +127,103 @@ function extractSkillSections(resumeSkills: Resume['skills']): SkillSection[] {
           skills,
         })
       }
+    }
+  }
+
+  return dedupeSkillSections(sections)
+}
+
+/**
+ * Check if the current in-progress label+value looks like it was cut off
+ * mid-list by a PDF line break. If so, the next "label-like" word is
+ * actually a continuation (e.g. "feasibility" → next line "studies").
+ */
+function isPreviousValueIncomplete(
+  current: { label: string; value: string } | null
+): boolean {
+  if (!current) return false
+  const val = current.value.replace(/\s+/g, ' ').trim()
+  if (!val) return false
+  // Value ends with a comma → clearly continues on the next line
+  if (val.endsWith(',')) return true
+  // Value is a comma-separated list and doesn't end with punctuation that
+  // would signal completion — the next word is likely a continuation
+  if (val.includes(',') && !/[.;]$/.test(val)) return true
+  return false
+}
+
+function normalizeSkillDescriptionLines(lines: string[]) {
+  const rows: Array<{ label: string; value: string }> = []
+  let current: { label: string; value: string } | null = null
+
+  function commitCurrent() {
+    if (!current) return
+    const label = current.label.trim()
+    const value = current.value.replace(/\s+/g, ' ').trim()
+    if (label && value) rows.push({ label, value })
+    current = null
+  }
+
+  function appendContinuation(value: string) {
+    const continuation = value.replace(/\s+/g, ' ').trim()
+    if (!continuation || !current) return
+    current.value = `${current.value} ${continuation}`.replace(/\s+/g, ' ').trim()
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index] ?? ''
+    const line = rawLine.replace(/\s+/g, ' ').trim()
+    if (!line) continue
+    const nextLine = (lines[index + 1] ?? '').replace(/\s+/g, ' ').trim()
+
+    const inlineMatch = line.match(/^([A-Za-z][A-Za-z &/+()-]{1,40}?):\s*(.*)$/)
+    if (inlineMatch) {
+      commitCurrent()
+      current = {
+        label: inlineMatch[1].trim(),
+        value: inlineMatch[2]?.trim() ?? '',
+      }
+      continue
+    }
+
+    if (
+      isLikelySkillLabelFragment(line) &&
+      nextLine &&
+      !nextLine.match(/^([A-Za-z][A-Za-z &/+()-]{1,40}?):\s*(.*)$/) &&
+      !findEmbeddedSkillLabel(nextLine) &&
+      // Don't treat as a new label if the previous value looks like an
+      // incomplete comma-separated list (e.g. "feasibility" wrapping to
+      // "studies" on the next line, or "intelligent process" wrapping to
+      // "automation"). This prevents PDF line-wrap artifacts from creating
+      // false skill categories.
+      !isPreviousValueIncomplete(current)
+    ) {
+      commitCurrent()
+      current = {
+        label: line.replace(/:$/, '').trim(),
+        value: nextLine,
+      }
       index += 1
       continue
     }
 
-    const mergedLabel =
-      isLikelySkillLabelFragment(line) && isLikelySkillLabelFragment(nextLine)
-        ? `${line.replace(/:$/, '').trim()} ${nextLine.replace(/:$/, '').trim()}`.trim()
-        : ''
-
-    if (mergedLabel && descriptionLines[index + 2]) {
-      const skills = splitSkillInput(descriptionLines[index + 2]!)
-        .map(skill => skill.trim())
-        .filter(Boolean)
-
-      if (skills.length > 0) {
-        sections.push({
-          title: mergedLabel,
-          tag: '',
-          skills,
-        })
-        index += 3
-        continue
+    const embeddedMatch = findEmbeddedSkillLabel(line)
+    if (embeddedMatch) {
+      appendContinuation(line.slice(0, embeddedMatch.index))
+      commitCurrent()
+      current = {
+        label: embeddedMatch.label,
+        value: line.slice(embeddedMatch.index + embeddedMatch.raw.length).trim(),
       }
+      continue
     }
 
-    if (isLikelySkillLabelFragment(line) && nextLine) {
-      const skills = splitSkillInput(nextLine).map(skill => skill.trim()).filter(Boolean)
-      if (skills.length > 0) {
-        sections.push({
-          title: line.replace(/:$/, '').trim(),
-          tag: '',
-          skills,
-        })
-        index += 2
-        continue
-      }
-    }
-
-    index += 1
+    appendContinuation(line)
   }
 
-  return dedupeSkillSections(sections)
+  commitCurrent()
+
+  return rows.map(row => `${row.label}: ${row.value}`)
 }
 
 function isLikelySkillLabelFragment(value: string) {
@@ -190,6 +238,29 @@ function isLikelySkillLabelFragment(value: string) {
   if (words.length === 0 || words.length > 4) return false
 
   return /^[A-Za-z][A-Za-z &/+()-]*:?$/.test(compact)
+}
+
+function findEmbeddedSkillLabel(line: string) {
+  const matches = Array.from(line.matchAll(/\b([A-Z][A-Za-z &/+()-]{1,40}?):\s*/g))
+
+  for (const match of matches) {
+    if (match.index == null || match.index === 0) continue
+
+    const prefix = line.slice(0, match.index).trim()
+    if (!prefix || prefix.includes(',')) continue
+    if (prefix.split(/\s+/).length > 4) continue
+
+    const label = match[1]?.trim()
+    if (!label || label.split(/\s+/).length > 4) continue
+
+    return {
+      index: match.index,
+      raw: match[0],
+      label,
+    }
+  }
+
+  return null
 }
 
 function dedupeSkillSections(sections: SkillSection[]) {

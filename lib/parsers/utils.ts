@@ -1,6 +1,32 @@
 // lib/parsers/utils.ts
 
 /**
+ * Comprehensive list of bullet-point characters found in resumes across
+ * platforms (Canva, Zety, Resume.io, Novoresume, LinkedIn, Google Docs, etc.).
+ *
+ * Two forms are exported:
+ *  - BULLET_CHARS: array of individual characters (for open-resume's split logic)
+ *  - BULLET_CHAR_CLASS: regex character class string (for pattern matching)
+ */
+export const BULLET_CHARS = [
+  // Circles (from open-resume's original list)
+  '⋅', '∙', '🞄', '•', '⦁', '⚫', '●', '⬤', '⚬', '○',
+  // Triangles / arrows
+  '▸', '▹', '›', '▶', '►', '➤', '➜', '➔', '➢', '⊳',
+  // Squares / diamonds
+  '◆', '◇', '■', '□', '▪', '▫', '◼', '◻',
+  // Stars / checks / misc
+  '✦', '✧', '★', '✓', '✔', '☑',
+  // Typographic bullets
+  '⁃', '‣',
+  // Common ASCII stand-ins
+  '-', '*',
+]
+
+/** Regex character class matching any known bullet character (plus common ASCII). */
+export const BULLET_RE = /^[\s]*[⋅∙🞄•⦁⚫●⬤⚬○▸▹›▶►➤➜➔➢⊳◆◇■□▪▫◼◻✦✧★✓✔☑⁃‣\-\*]\s*/
+
+/**
  * Normalize raw text extracted from a PDF/DOCX.
  * - Collapse multiple newlines into a single newline.
  * - Trim leading/trailing whitespace.
@@ -19,17 +45,23 @@ export function normalizeText(raw: string): string {
 
 /** Detect bullet lines based on common prefixes */
 export function isBulletLine(line: string): boolean {
-  return /^[•\-\*▸▹›\s]+/.test(line)
+  return BULLET_RE.test(line)
 }
 
 /** Detect heading lines (common patterns for section titles) */
 export function isHeadingLine(line: string): boolean {
-  // Heuristic: line is all caps or ends with a colon, or matches known headings
   const trimmed = line.trim()
   if (!trimmed) return false
   const allCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 2
   const endsColon = trimmed.endsWith(':')
-  const known = /^(experience|education|skills|projects|certifications|languages|volunteer|interests|awards|publications|references|summary|profile|objective)$/i.test(trimmed)
+  // Strip decorations (numbering, dashes, equals, colons) before matching
+  const stripped = trimmed
+    .replace(/^(?:\d+[.)]\s*|[IVXLC]+[.)]\s*)/i, '')
+    .replace(/^[-=_~|*]+\s*/, '')
+    .replace(/\s*[-=_~|*]+$/, '')
+    .replace(/:$/, '')
+    .trim()
+  const known = /^(experience|work experience|professional experience|education|skills|technical skills|core skills|key skills|projects|certifications|certificates|languages|volunteer|volunteer experience|interests|awards|publications|references|summary|professional summary|profile|objective|competencies|core competencies|areas of expertise|achievements|accomplishments|hobbies)$/i.test(stripped)
   return allCaps || endsColon || known
 }
 
@@ -106,11 +138,72 @@ function normalizeBulletsArray(item: LooseRecord): LooseRecord {
   const bullets = item.bullets
   if (Array.isArray(bullets)) return item
   if (typeof bullets === 'string' && bullets.length > 0) {
-    item.bullets = bullets.split('\n').map((s: string) => s.replace(/^[•\-\*▸▹›\s]+ /, '').trim()).filter(Boolean)
+    item.bullets = bullets.split('\n').map((s: string) => s.replace(BULLET_RE, '').trim()).filter(Boolean)
   } else {
     item.bullets = []
   }
   return item
+}
+
+/**
+ * Detect whether a bullet looks like a skill list rather than a work description.
+ * Skill-like bullets are short, comma-separated, and lack action verbs or dates.
+ */
+const ACTION_VERB_RE = /^(led|managed|developed|created|built|designed|implemented|delivered|maintained|coordinated|analyzed|improved|increased|decreased|reduced|established|launched|negotiated|organized|oversaw|supervised|trained|achieved|conducted|directed|executed|generated|initiated|monitored|optimized|performed|planned|prepared|produced|provided|resolved|reviewed|spearheaded|streamlined|supported|utilized)\b/i
+const DATE_RE = /\b(?:19|20)\d{2}\b|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i
+const LABELED_SKILL_RE = /^[A-Za-z][A-Za-z &/+()-]{0,30}:\s+.+/
+
+function isSkillLikeBullet(bullet: string): boolean {
+  const trimmed = bullet.trim()
+  if (!trimmed || trimmed.length > 200) return false
+
+  // Labeled skill line like "Languages: Python, Java, Go"
+  if (LABELED_SKILL_RE.test(trimmed)) return true
+
+  // Must have commas (comma-separated list of items)
+  const commaCount = (trimmed.match(/,/g) || []).length
+  if (commaCount < 2) return false
+
+  // Must not start with an action verb (real experience bullets do)
+  if (ACTION_VERB_RE.test(trimmed)) return false
+
+  // Must not contain dates
+  if (DATE_RE.test(trimmed)) return false
+
+  // Items between commas should be short (skill names, not sentences)
+  const parts = trimmed.split(',').map(p => p.trim()).filter(Boolean)
+  const avgPartLength = parts.reduce((sum, p) => sum + p.split(/\s+/).length, 0) / parts.length
+  if (avgPartLength > 4) return false
+
+  return true
+}
+
+/**
+ * When skills are empty after parsing, scan experience bullets for entries that
+ * look like misplaced skill lists. Extract them into a skills array.
+ * Does NOT remove them from experience — that's too destructive.
+ */
+function rescueSkillsFromExperience(experience: LooseRecord[]): string[] {
+  const rescued: string[] = []
+  for (const exp of experience) {
+    const bullets = Array.isArray(exp.bullets) ? exp.bullets : []
+    for (const bullet of bullets) {
+      if (typeof bullet !== 'string') continue
+      if (!isSkillLikeBullet(bullet)) continue
+
+      // If it's a labeled line like "Tools: X, Y, Z", extract just the values
+      const labelMatch = bullet.match(/^[A-Za-z][A-Za-z &/+()-]{0,30}:\s+(.+)$/)
+      const skillText = labelMatch ? labelMatch[1] : bullet
+
+      const parts = skillText.split(',').map(p => p.trim()).filter(Boolean)
+      for (const part of parts) {
+        if (part && !rescued.includes(part)) {
+          rescued.push(part)
+        }
+      }
+    }
+  }
+  return rescued
 }
 
 /**
@@ -186,6 +279,18 @@ export function postProcessResume(data: object): LooseRecord {
       .filter(Boolean)
   } else {
     mutableData.skills = []
+  }
+
+  // Fallback: if skills are empty, scan experience bullets for skill-like entries
+  // that were likely misclassified (short comma-separated lists without action verbs or dates)
+  if (
+    (mutableData.skills as string[]).length === 0 &&
+    experience.length > 0
+  ) {
+    const rescued = rescueSkillsFromExperience(experience)
+    if (rescued.length > 0) {
+      mutableData.skills = rescued
+    }
   }
 
   if (Array.isArray(mutableData.skillSections)) {

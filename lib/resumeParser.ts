@@ -1,6 +1,7 @@
 import type { ResumeData, ExperienceItem } from '@/types'
 import { normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import { pagesToLines, type ExtractedPage } from './pdfExtractor'
+import { BULLET_RE } from '@/lib/parsers/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,11 @@ function normalizeHeading(text: string): string {
     .replace(/[()]/g, ' ')
     .replace(/&/g, ' and ')
     .replace(/[\/]+/g, ' ')
+    // Strip leading numbering: "1.", "1)", "I.", "II.", etc.
+    .replace(/^(?:\d+[.)]\s*|[IVXLC]+[.)]\s*)/i, '')
+    // Strip surrounding decorative chars: dashes, equals, underscores, tildes
+    .replace(/^[-=_~|]+\s*/, '')
+    .replace(/\s*[-=_~|]+$/, '')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase()
@@ -181,6 +187,16 @@ function detectSection(line: string): SectionName | null {
     for (const [name, aliases] of Object.entries(SECTION_ALIASES) as Array<[SectionName, string[]]>) {
       if (aliases.includes(stripped)) return name
     }
+    // Handle combined headings like "education and certifications" — match
+    // the first recognized part so content goes to the right section
+    if (stripped.includes(' and ')) {
+      const parts = stripped.split(' and ').map(p => p.trim())
+      for (const part of parts) {
+        for (const [name, aliases] of Object.entries(SECTION_ALIASES) as Array<[SectionName, string[]]>) {
+          if (aliases.includes(part)) return name
+        }
+      }
+    }
   }
   return null
 }
@@ -251,7 +267,7 @@ function extractDateRange(text: string): { start: string; end: string } {
   return { start: yearMatch?.[0] ?? '', end: '' }
 }
 
-const isBulletLine = (l: string) => /^\s*[•\-*›▸▹]/.test(l) || /^\s{4,}/.test(l)
+const isBulletLine = (l: string) => BULLET_RE.test(l) || /^\s{4,}/.test(l)
 
 function isContactLikeLine(text: string): boolean {
   return EMAIL_RE.test(text) || PHONE_RE.test(text) || URL_RE.test(text) || LINKEDIN_RE.test(text) || LOCATION_RE.test(text)
@@ -732,6 +748,35 @@ function parseSkillSections(lines: string[]) {
     const nextLine = lines[index + 1]?.trim() ?? ''
     const thirdLine = lines[index + 2]?.trim() ?? ''
 
+    // Check if this line is a continuation of the previous skill section's
+    // values (PDF line-wrap artifact). e.g. "automation" is the tail end of
+    // "intelligent process automation" from the previous line, not a label.
+    const prevSection = sections[sections.length - 1]
+    const prevEndsIncomplete = prevSection &&
+      prevSection.skills.length > 0 &&
+      !prevSection.skills[prevSection.skills.length - 1].endsWith('.')
+
+    if (prevEndsIncomplete && isLikelySkillLabelFragment(line)) {
+      // If this "label" + next line would form a labeled pair, but the
+      // previous section looks like it was cut off, this word is more likely
+      // a continuation. Append it to the previous section's last skill or
+      // as a new skill entry.
+      if (line.includes(',')) {
+        prevSection.skills.push(...splitSkillInput(line).filter(Boolean))
+      } else {
+        // Single word continuation — append to the last skill of the
+        // previous section (e.g. "feasibility" + "studies")
+        const lastSkill = prevSection.skills[prevSection.skills.length - 1]
+        if (lastSkill && !lastSkill.includes(',')) {
+          prevSection.skills[prevSection.skills.length - 1] = `${lastSkill} ${line}`
+        } else {
+          prevSection.skills.push(line)
+        }
+      }
+      index += 1
+      continue
+    }
+
     const mergedLabel =
       isLikelySkillLabelFragment(line) && isLikelySkillLabelFragment(nextLine)
         ? `${line.replace(/:$/, '').trim()} ${nextLine.replace(/:$/, '').trim()}`.trim()
@@ -753,6 +798,15 @@ function parseSkillSections(lines: string[]) {
         index += 2
         continue
       }
+    }
+
+    // Catch-all: if this line contains commas and there's a previous section,
+    // it's likely a continuation of the previous section's skills that wrapped
+    // to a new line in the PDF (e.g. "studies, functional documentation, SDLC, Agile, Scrum")
+    if (prevSection && line.includes(',')) {
+      prevSection.skills.push(...splitSkillInput(line).filter(Boolean))
+      index += 1
+      continue
     }
 
     index += 1
