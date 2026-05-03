@@ -9,10 +9,15 @@ import {
   setCheckoutContext,
 } from '@/lib/analytics'
 import { getPaddleConfigurationError } from '@/lib/paddleConfig'
+import { PolarEmbedCheckout } from '@/lib/polarEmbedCheckout'
 import { HUMAN_WRITTEN_ORDER, PRO_PLAN } from '@/lib/pricing'
 
 function getPaymentProvider() {
   return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER
+}
+
+function shouldUsePolarRedirectCheckout() {
+  return process.env.NEXT_PUBLIC_POLAR_CHECKOUT_MODE === 'redirect'
 }
 
 export function isPolarCheckoutPreferred() {
@@ -159,8 +164,35 @@ export function usePaddleCheckout() {
           product: 'pro_subscription',
           price: checkoutAmount,
           discountCode: checkoutDiscountCode,
-          step: `${provider}_redirect`,
+          step:
+            provider === 'polar' && !shouldUsePolarRedirectCheckout()
+              ? 'polar_inline'
+              : `${provider}_redirect`,
         })
+
+        if (provider === 'polar' && !shouldUsePolarRedirectCheckout()) {
+          const checkout = await PolarEmbedCheckout.create(redirectUrl, { theme: 'light' })
+          let checkoutCompleted = false
+
+          checkout.addEventListener('success', () => {
+            checkoutCompleted = true
+            clearCheckoutContext()
+          })
+          checkout.addEventListener('close', () => {
+            if (checkoutCompleted) return
+
+            const checkoutContext = {
+              product: 'pro_subscription',
+              step: 'polar_inline_closed',
+            }
+
+            Analytics.checkoutAbandoned(checkoutContext)
+            clearCheckoutContext()
+          })
+
+          params.onSuccess?.()
+          return
+        }
 
         window.location.href = redirectUrl
         params.onSuccess?.()

@@ -804,7 +804,28 @@ function parseSkillSections(lines: string[]) {
     // it's likely a continuation of the previous section's skills that wrapped
     // to a new line in the PDF (e.g. "studies, functional documentation, SDLC, Agile, Scrum")
     if (prevSection && line.includes(',')) {
-      prevSection.skills.push(...splitSkillInput(line).filter(Boolean))
+      const newSkills = splitSkillInput(line).filter(Boolean)
+      // If the first item is a short lowercase word/phrase, it's likely the
+      // tail of the previous section's last skill split by a PDF line break.
+      // e.g. prev last skill = "feasibility", first item = "studies"
+      //   → merge into "feasibility studies"
+      if (
+        newSkills.length > 0 &&
+        prevSection.skills.length > 0
+      ) {
+        const firstItem = newSkills[0].trim()
+        const startsLowercase = /^[a-z]/.test(firstItem)
+        const isShort = firstItem.split(/\s+/).length <= 2
+        if (startsLowercase && isShort) {
+          const lastIdx = prevSection.skills.length - 1
+          prevSection.skills[lastIdx] = `${prevSection.skills[lastIdx]} ${firstItem}`
+          prevSection.skills.push(...newSkills.slice(1))
+        } else {
+          prevSection.skills.push(...newSkills)
+        }
+      } else {
+        prevSection.skills.push(...newSkills)
+      }
       index += 1
       continue
     }

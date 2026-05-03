@@ -23,7 +23,7 @@ export default async function CVGeneratorPage() {
         bullets={[
           'Use your resume plus a target job description to draft a tailored letter.',
           'Download the result as PDF or DOCX after generation.',
-          'Upgrade instantly through Paddle without leaving the dashboard.',
+          'Compare Pro plans on the pricing page before upgrading.',
         ]}
         analyticsLocation="route-gate:cover-letter"
       />

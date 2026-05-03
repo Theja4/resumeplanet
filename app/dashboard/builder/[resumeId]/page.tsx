@@ -59,10 +59,11 @@ const PAGE_H = 1123 // A4 at 96 DPI
 const PAGE_GAP = 48
 const PAGE_BOTTOM_PADDING = 38
 const CONTINUATION_PAGE_TOP_PADDING = 38 // 10mm continuation-page inset
-const PAGE_BREAK_LOOKBACK = 60
 const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
 const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
+const MIN_PREVIEW_SLICE_HEIGHT = 120
+const PAGE_BREAK_LOOKBACK = 96
 
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
@@ -404,6 +405,14 @@ interface BuilderInnerProps {
 }
 
 type ActiveDownloadFormat = 'pdf' | 'docx' | null
+type PreviewPageSlice = {
+  startY: number
+  height: number
+}
+type PreviewBreakCandidate = {
+  top: number
+  bottom: number
+}
 
 function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const pathname = usePathname()
@@ -567,8 +576,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [downloadError])
 
   const [resumeHeight, setResumeHeight] = useState(0)
-  const [contentHeight, setContentHeight] = useState(0)
-  const [pageBreakY, setPageBreakY] = useState(0) // actual safe break point measured from DOM
+  const [pageSlices, setPageSlices] = useState<PreviewPageSlice[]>([
+    { startY: 0, height: FIRST_PAGE_CONTENT_H },
+  ])
   const [isPaginationSettling, setIsPaginationSettling] = useState(false)
   const [previewVersion, setPreviewVersion] = useState(0)
   const [needsOverflowTrim, setNeedsOverflowTrim] = useState(searchParams.get('trimOverflow') === '1')
@@ -586,12 +596,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     const container = resumeRef.current
     if (!container) return
 
-    const CONTENT_LIMIT = FIRST_PAGE_CONTENT_H
     const containerTop = container.getBoundingClientRect().top
     const elements = container.querySelectorAll(
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
     )
-    const breakCandidates = container.querySelectorAll<HTMLElement>(
+    const lineCandidateElements = container.querySelectorAll<HTMLElement>(
+      '[data-resume-path], li, p, h1, h2, h3, h4'
+    )
+    const blockCandidateElements = container.querySelectorAll<HTMLElement>(
       '[data-resume-page-break], [data-resume-section-heading], h2'
     )
 
@@ -604,23 +616,73 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
     }
 
-    let nextPageBreakY = CONTENT_LIMIT
-    for (const el of Array.from(breakCandidates)) {
-      const rect = el.getBoundingClientRect()
-      const top = rect.top - containerTop
-      const bottom = rect.bottom - containerTop
-      if (
-        bottom > CONTENT_LIMIT &&
-        top > CONTENT_LIMIT - PAGE_BREAK_LOOKBACK &&
-        top < CONTENT_LIMIT
-      ) {
-        nextPageBreakY = Math.max(0, top - 1)
+    const resolvedContentBottom = contentBottom > 0 ? contentBottom : container.scrollHeight
+    const lineBreakCandidates = Array.from(lineCandidateElements)
+      .flatMap((el) => {
+        return Array.from(el.getClientRects()).map((rect) => ({
+          top: Math.max(0, rect.top - containerTop),
+          bottom: Math.max(0, rect.bottom - containerTop),
+        }))
+      })
+      .filter(candidate => candidate.bottom - candidate.top > 2)
+      .sort((a, b) => a.top - b.top)
+
+    const blockBreakCandidates = Array.from(blockCandidateElements)
+      .filter(el => !el.dataset.resumeSectionFrame)
+      .map((el) => {
+        const rect = el.getBoundingClientRect()
+        return {
+          top: Math.max(0, rect.top - containerTop),
+          bottom: Math.max(0, rect.bottom - containerTop),
+        }
+      })
+      .filter(candidate => candidate.bottom - candidate.top > 2)
+      .sort((a, b) => a.top - b.top)
+
+    const nextPageSlices: PreviewPageSlice[] = []
+    let pageStartY = 0
+
+    while (pageStartY < resolvedContentBottom - 1 && nextPageSlices.length < 20) {
+      const isFirstPage = nextPageSlices.length === 0
+      const pageCapacity = isFirstPage ? FIRST_PAGE_CONTENT_H : CONTINUATION_PAGE_CONTENT_H
+      const pageLimitY = pageStartY + pageCapacity
+
+      if (resolvedContentBottom <= pageLimitY + 1) {
+        nextPageSlices.push({
+          startY: pageStartY,
+          height: Math.max(1, resolvedContentBottom - pageStartY),
+        })
         break
       }
+
+      const crossingLineCandidate = lineBreakCandidates.find(candidate =>
+        candidate.bottom > pageLimitY &&
+        candidate.top > pageStartY + MIN_PREVIEW_SLICE_HEIGHT &&
+        candidate.top < pageLimitY
+      )
+      const crossingBlockCandidate = blockBreakCandidates.find(candidate =>
+        candidate.bottom > pageLimitY &&
+        candidate.top > Math.max(pageStartY + MIN_PREVIEW_SLICE_HEIGHT, pageLimitY - PAGE_BREAK_LOOKBACK) &&
+        candidate.top < pageLimitY
+      )
+      const crossingCandidate: PreviewBreakCandidate | undefined =
+        crossingLineCandidate ?? crossingBlockCandidate
+      const safeBreakY = crossingCandidate
+        ? Math.max(pageStartY + 1, Math.floor(crossingCandidate.top) - 1)
+        : pageLimitY
+      const nextBreakY =
+        safeBreakY - pageStartY >= MIN_PREVIEW_SLICE_HEIGHT
+          ? safeBreakY
+          : pageLimitY
+
+      nextPageSlices.push({
+        startY: pageStartY,
+        height: Math.max(1, nextBreakY - pageStartY),
+      })
+      pageStartY = nextBreakY
     }
 
-    setContentHeight(contentBottom > 0 ? contentBottom : container.scrollHeight)
-    setPageBreakY(nextPageBreakY)
+    setPageSlices(nextPageSlices.length > 0 ? nextPageSlices : [{ startY: 0, height: FIRST_PAGE_CONTENT_H }])
   }, [])
 
   const recomputePreviewFocusFrame = useCallback(() => {
@@ -711,8 +773,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   // until the hidden print wrapper finishes remeasuring.
   useEffect(() => {
     setIsPaginationSettling(true)
-    setContentHeight(FIRST_PAGE_CONTENT_H)
-    setPageBreakY(FIRST_PAGE_CONTENT_H)
+    setPageSlices([{ startY: 0, height: FIRST_PAGE_CONTENT_H }])
     setPreviewVersion(version => version + 1)
 
     const id = window.setTimeout(() => {
@@ -722,18 +783,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return () => window.clearTimeout(id)
   }, [visibility, templateConfig])
 
-  const effectivePageBreakY = pageBreakY > 0 ? pageBreakY : FIRST_PAGE_CONTENT_H
   const MAX_PAGES = 5
   const RECOMMENDED_PAGES = 2
-  const effectiveContentHeight = contentHeight > 0 ? contentHeight : resumeHeight
-  const remainingContentHeight = Math.max(0, effectiveContentHeight - effectivePageBreakY)
-  const secondPageHasContent = !isPaginationSettling && remainingContentHeight > 12
-  const pageCount = isPaginationSettling
-    ? 1
-    : 1 + (remainingContentHeight > 0
-      ? Math.ceil(remainingContentHeight / CONTINUATION_PAGE_CONTENT_H)
-      : 0)
-  const renderedPageCount = Math.min(secondPageHasContent ? pageCount : 1, MAX_PAGES)
+  const pageCount = isPaginationSettling ? 1 : pageSlices.length
+  const renderedPageSlices = isPaginationSettling
+    ? [{ startY: 0, height: FIRST_PAGE_CONTENT_H }]
+    : pageSlices.slice(0, MAX_PAGES)
+  const renderedPageCount = renderedPageSlices.length
   const isOverPageLimit = pageCount > MAX_PAGES
   const isOverRecommendedPages = pageCount > RECOMMENDED_PAGES
 
@@ -1828,14 +1884,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   transformOrigin: 'top left',
                 }}
               >
-                {Array.from({ length: renderedPageCount }, (_, pageIndex) => {
+                {renderedPageSlices.map((pageSlice, pageIndex) => {
                   const pageTopPadding = pageIndex === 0 ? 0 : CONTINUATION_PAGE_TOP_PADDING
-                  const pageContentHeight =
-                    pageIndex === 0 ? effectivePageBreakY : CONTINUATION_PAGE_CONTENT_H
-                  const pageContentStartY =
-                    pageIndex === 0
-                      ? 0
-                      : effectivePageBreakY + (pageIndex - 1) * CONTINUATION_PAGE_CONTENT_H
+                  const pageContentHeight = pageSlice.height
+                  const pageContentStartY = pageSlice.startY
                   const pageContentEndY = pageContentStartY + pageContentHeight
                   const hasFocusFrame =
                     Boolean(previewFocusFrame) &&

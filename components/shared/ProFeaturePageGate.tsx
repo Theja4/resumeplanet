@@ -2,7 +2,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, CreditCard, ListChecks, Lock, Target } from 'lucide-react'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
-import UpgradeButton from './UpgradeButton'
 
 interface ProFeaturePageGateProps {
   feature: string
@@ -96,6 +95,7 @@ export default function ProFeaturePageGate({
   analyticsLocation,
 }: ProFeaturePageGateProps) {
   const visual = FEATURE_VISUALS[feature] ?? DEFAULT_VISUAL
+  const pricingHref = `/dashboard/pricing?source=${encodeURIComponent(analyticsLocation)}`
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -133,12 +133,12 @@ export default function ProFeaturePageGate({
             <div className="space-y-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="sm:min-w-56">
-                  <UpgradeButton
-                    label={visual.ctaTitle}
-                    analyticsLocation={analyticsLocation}
-                    analyticsVariant="route-gate"
-                    className="!rounded-full !bg-zinc-950 !px-6 !py-3.5 !text-sm !font-black !uppercase !tracking-[0.14em] !text-white !shadow-[0_18px_38px_rgba(15,23,42,0.18)] hover:!-translate-y-0.5 hover:!bg-zinc-900"
-                  />
+                  <Link
+                    href={pricingHref}
+                    className="flex w-full items-center justify-center rounded-full bg-zinc-950 px-6 py-3.5 text-sm font-black uppercase tracking-[0.14em] text-white shadow-[0_18px_38px_rgba(15,23,42,0.18)] transition-all hover:-translate-y-0.5 hover:bg-zinc-900"
+                  >
+                    {visual.ctaTitle}
+                  </Link>
                 </div>
               </div>
               <p className="text-sm leading-6 text-on-surface-variant">

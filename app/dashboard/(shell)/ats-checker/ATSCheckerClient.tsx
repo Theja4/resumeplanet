@@ -1481,11 +1481,22 @@ export default function ATSCheckerClient({
       appliedOptimisedChangeIdSet
     )
   }, [appliedOptimisedChangeIdSet, optimisedChangeComparisons, optimiseResult, scanResult])
-  const optimisedScore = scanResult && selectedOptimisedResumeData
+  const optimisedAtsScore = scanResult && selectedOptimisedResumeData
     ? scoreResume(selectedOptimisedResumeData).score
     : null
+  // In match mode, the original scanResult.score is a match score (LLM-evaluated)
+  // while the optimised score is an ATS quality score (deterministic). Comparing
+  // them is misleading. Use the original ATS score as baseline for a fair comparison.
+  const originalAtsScore = scanResult
+    ? scoreResume(scanResult.resumeData).score
+    : null
+  const optimisedScore = isMatchMode
+    ? optimisedAtsScore
+    : optimisedAtsScore
   const optimisedScoreGain = scanResult && optimisedScore !== null
-    ? optimisedScore - scanResult.score
+    ? isMatchMode
+      ? (originalAtsScore !== null ? optimisedScore - originalAtsScore : 0)
+      : optimisedScore - scanResult.score
     : 0
 
   useEffect(() => {
@@ -1865,9 +1876,16 @@ export default function ATSCheckerClient({
               <div className="grid gap-2 sm:grid-cols-2">
                 {(['results', 'optimised'] as const).map(tab => {
                   const selected = activeTab === tab
-                  const score = tab === 'results' ? scanResult.score : (optimisedScore ?? scanResult.score)
+                  // In match mode, the results tab shows the match score (LLM-evaluated)
+                  // while the optimised tab shows ATS quality (deterministic scorer).
+                  // To avoid comparing apples to oranges, both tabs use their own label.
+                  const score = tab === 'results'
+                    ? scanResult.score
+                    : (optimisedScore ?? scanResult.score)
                   const scoreState = getScoreState(score)
-                  const tabScoreLabel = tab === 'optimised' && isMatchMode ? 'ATS Quality' : scoreRingLabel
+                  const tabScoreLabel = tab === 'optimised' && isMatchMode
+                    ? 'ATS Quality'
+                    : scoreRingLabel
 
                   return (
                     <button
@@ -2257,8 +2275,23 @@ export default function ATSCheckerClient({
                         </div>
                       ) : (
                         <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/70 p-4">
-                          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">Optimized ATS score</p>
-                          <p className="mt-1 text-5xl font-black tracking-tight text-emerald-700">{optimisedScore ?? scanResult.score}</p>
+                          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">Before</p>
+                              <p className="mt-1 text-4xl font-black tracking-tight text-on-background">{originalAtsScore ?? '—'}</p>
+                            </div>
+                            <ArrowRight size={20} className="text-emerald-700" strokeWidth={2} />
+                            <div className="text-right">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800/70">After</p>
+                              <p className="mt-1 text-4xl font-black tracking-tight text-emerald-700">{optimisedScore ?? scanResult.score}</p>
+                            </div>
+                          </div>
+                          <div className="mt-4 flex items-center justify-between rounded-full bg-white/72 px-3 py-2">
+                            <span className="text-xs font-semibold text-on-surface-variant">ATS quality change</span>
+                            <span className={`rounded-full px-2.5 py-1 text-xs font-black ${scoreGainToneClass(optimisedScoreGain)}`}>
+                              {formatScoreGain(optimisedScoreGain)}
+                            </span>
+                          </div>
                         </div>
                       )}
 

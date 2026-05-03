@@ -29,7 +29,7 @@ export default async function MatchScorePage() {
         bullets={[
           'Measure resume-to-role fit instead of generic ATS hygiene.',
           'See which requirements have strong, partial, or missing evidence.',
-          'Upgrade instantly through Paddle without leaving the dashboard.',
+          'Compare Pro plans on the pricing page before upgrading.',
         ]}
         analyticsLocation="route-gate:match-score"
       />

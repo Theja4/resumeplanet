@@ -54,7 +54,7 @@ export default async function BuilderIndexPage({
         bullets={[
           'Open the resume builder directly in the Tailor tab.',
           'Get section-by-section rewrite suggestions tied to the target role.',
-          'Upgrade instantly through Paddle without leaving the dashboard.',
+          'Compare Pro plans on the pricing page before upgrading.',
         ]}
         analyticsLocation="route-gate:tailor-mode"
       />

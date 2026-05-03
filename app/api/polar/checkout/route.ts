@@ -21,6 +21,16 @@ function err(message: string, status = 400) {
   return NextResponse.json({ success: false, error: message }, { status })
 }
 
+function getPolarEmbedOrigin(request: NextRequest, fallbackSiteUrl: string) {
+  const requestOrigin = request.headers.get('origin')
+
+  try {
+    return new URL(requestOrigin || fallbackSiteUrl).origin
+  } catch {
+    return new URL(fallbackSiteUrl).origin
+  }
+}
+
 async function resolvePolarDiscountId(body: Record<string, unknown>) {
   const promotionCode =
     typeof body.promotionCode === 'string' ? body.promotionCode.trim().toUpperCase() : ''
@@ -91,6 +101,7 @@ export async function POST(request: NextRequest) {
 
   const discountId = await resolvePolarDiscountId(body)
   const siteUrl = getSiteUrl()
+  const embedOrigin = getPolarEmbedOrigin(request, siteUrl)
 
   try {
     const checkout = await createPolarCheckout({
@@ -102,6 +113,7 @@ export async function POST(request: NextRequest) {
       discountId,
       successUrl: `${siteUrl}/dashboard/pricing?upgraded=true&provider=polar&checkout_id={CHECKOUT_ID}`,
       returnUrl: `${siteUrl}/dashboard/pricing?polar_cancelled=true`,
+      embedOrigin,
     })
 
     if (!checkout.url) {

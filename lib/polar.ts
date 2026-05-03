@@ -101,6 +101,7 @@ export async function createPolarCheckout(params: {
   discountId?: string
   successUrl: string
   returnUrl: string
+  embedOrigin?: string
 }) {
   const interval = params.priceOption.id === 'annual' ? 'annual' : 'monthly'
   const currency = params.priceOption.display.currency.trim().toLowerCase()
@@ -118,6 +119,7 @@ export async function createPolarCheckout(params: {
       allow_trial: false,
       success_url: params.successUrl,
       return_url: params.returnUrl,
+      embed_origin: params.embedOrigin,
       metadata: {
         user_id: params.userId,
         plan: 'pro',
