@@ -4,14 +4,23 @@ import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
 import MobileAppBar from '@/components/layout/MobileAppBar'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { profile: typedProfile } = await getAuthenticatedUserContext()
+  const { userId, profile: typedProfile } = await getAuthenticatedUserContext()
   const proUser = typedProfile.plan === 'pro'
+
+  const serviceSupabase = createServiceRoleClient()
+  const { data: affiliateRecord } = await serviceSupabase
+    .from('affiliates')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const isAffiliate = Boolean(affiliateRecord?.id)
 
   return (
     <PlanProvider isPro={proUser} profile={typedProfile}>
@@ -22,7 +31,7 @@ export default async function DashboardLayout({
         <div className="dashboard-shell-aurora dashboard-shell-aurora-three pointer-events-none absolute bottom-16 left-1/3 h-64 w-64 rounded-full bg-[#eff8f1]" />
 
         {/* Desktop sidebar */}
-        <Sidebar profile={typedProfile} />
+        <Sidebar profile={typedProfile} isAffiliate={isAffiliate} />
 
         {/* Main content — offset by sidebar width on md+ */}
         <div className="relative flex min-h-screen flex-col md:ml-[18.5rem]">

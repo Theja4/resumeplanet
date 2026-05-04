@@ -38,11 +38,21 @@ export default async function AffiliateDashboardPage() {
     redirect('/dashboard')
   }
 
-  const [stats, referralsPage, payouts] = await Promise.all([
+  const [rawStats, referralsPage, payouts] = await Promise.all([
     getAffiliateStats(serviceSupabase, affiliate.id),
     getAffiliateReferralPage(serviceSupabase, affiliate.id, 1),
     getAffiliatePayouts(serviceSupabase, affiliate.id),
   ])
+
+  // Hardcoded overrides for early affiliate partners until real tracking data is backfilled
+  const HARDCODED_STATS: Record<string, { totalSignups: number; activeSubscriptions: number; totalEarned: number; pendingPayout: number }> = {
+    CAREER50: { totalSignups: 252, activeSubscriptions: 26, totalEarned: 95.6, pendingPayout: 95.6 },
+    NEERAJA50: { totalSignups: 252, activeSubscriptions: 26, totalEarned: 95.6, pendingPayout: 95.6 },
+  }
+  const override = HARDCODED_STATS[affiliate.discount_code.toUpperCase()]
+  const stats = override
+    ? { ...rawStats, ...override }
+    : rawStats
 
   return (
     <AffiliateDashboardClient

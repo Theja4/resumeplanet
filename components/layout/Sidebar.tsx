@@ -23,6 +23,7 @@ import {
   LogOut,
   ChevronDown,
   Wand2,
+  Handshake,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -34,57 +35,62 @@ type NavItem = {
   builderMode?: 'tailor'
 }
 
-const NAV_SECTIONS: Array<{ title: string; collapsible?: boolean; items: NavItem[] }> = [
-  {
-    title: 'Workspace',
-    items: [
-      { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
-    ],
-  },
-  {
-    title: 'Resume Tools',
-    collapsible: true,
-    items: [
-      { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
-      { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
-      { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
-      {
-        href: '/dashboard/builder?mode=tailor',
-        label: 'Tailor Mode',
-        Icon: Wand2,
-        badge: 'Pro',
-        builderMode: 'tailor',
-      },
-      {
-        href: '/dashboard/match-score',
-        label: 'Match Score',
-        Icon: Target,
-        badge: 'Pro',
-      },
-      {
-        href: '/dashboard/cv-generator',
-        label: 'Cover Letter',
-        Icon: FileUser,
-        badge: 'Pro',
-      },
-      {
-        href: '/dashboard/metadata-enhancer',
-        label: 'Metadata Enhancer',
-        Icon: FilePenLine,
-        badge: 'Pro',
-      },
-      ...(HUMAN_WRITTEN_SERVICE_ENABLED
-        ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound }]
-        : []),
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
-    ],
-  },
-]
+function buildNavSections(showAffiliate: boolean): Array<{ title: string; collapsible?: boolean; items: NavItem[] }> {
+  return [
+    {
+      title: 'Workspace',
+      items: [
+        { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
+      ],
+    },
+    {
+      title: 'Resume Tools',
+      collapsible: true,
+      items: [
+        { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
+        { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
+        { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
+        {
+          href: '/dashboard/builder?mode=tailor',
+          label: 'Tailor Mode',
+          Icon: Wand2,
+          badge: 'Pro',
+          builderMode: 'tailor',
+        },
+        {
+          href: '/dashboard/match-score',
+          label: 'Match Score',
+          Icon: Target,
+          badge: 'Pro',
+        },
+        {
+          href: '/dashboard/cv-generator',
+          label: 'Cover Letter',
+          Icon: FileUser,
+          badge: 'Pro',
+        },
+        {
+          href: '/dashboard/metadata-enhancer',
+          label: 'Metadata Enhancer',
+          Icon: FilePenLine,
+          badge: 'Pro',
+        },
+        ...(HUMAN_WRITTEN_SERVICE_ENABLED
+          ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: UserRound }]
+          : []),
+      ],
+    },
+    {
+      title: 'Account',
+      items: [
+        { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
+        ...(showAffiliate
+          ? [{ href: '/affiliate/dashboard', label: 'Affiliate', Icon: Handshake }]
+          : []),
+      ],
+    },
+  ]
+}
 
 function getInitials(name: string | null, email: string): string {
   if (name) {
@@ -117,11 +123,13 @@ function getAvatarColor(name: string | null, email: string): string {
 
 interface SidebarProps {
   profile: Profile
+  isAffiliate?: boolean
 }
 
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const navSections = buildNavSections(Boolean(isAffiliate))
 
   function isActive(item: NavItem) {
     if (item.builderMode === 'tailor') {
@@ -170,7 +178,7 @@ export default function Sidebar({ profile }: SidebarProps) {
 
       {/* Nav */}
       <nav className="relative flex flex-grow flex-col gap-5 overflow-y-auto">
-        {NAV_SECTIONS.map(section => {
+        {navSections.map(section => {
           const isCollapsed = section.collapsible
             ? isSectionCollapsed(section.title, section.items)
             : false

@@ -307,8 +307,8 @@ export default function AffiliateDashboardClient({
               onClick={() => copyValue(affiliate.discount_code, 'code')}
               className="inline-flex items-center gap-2 rounded-full bg-zinc-950 px-6 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-zinc-900"
             >
+              {affiliate.discount_code}
               {copiedKey === 'code' ? <Check size={15} /> : <Copy size={15} />}
-              Copy code
             </button>
             <button
               type="button"
