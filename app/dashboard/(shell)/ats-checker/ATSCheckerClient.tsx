@@ -535,6 +535,271 @@ function applySelectedChangeComparisons(
   return nextData
 }
 
+function ScanningAnimation({ isMatchMode }: { isMatchMode: boolean }) {
+  const steps = isMatchMode
+    ? [
+        'Reading your resume...',
+        'Identifying JD keywords...',
+        'Measuring requirement coverage...',
+        'Evaluating evidence strength...',
+        'Scoring domain alignment...',
+      ]
+    : [
+        'Reading your resume...',
+        'Checking keyword density...',
+        'Evaluating formatting...',
+        'Assessing completeness...',
+        'Calculating your score...',
+      ]
+
+  const [stepIndex, setStepIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStepIndex(i => (i + 1) % steps.length)
+    }, 1200)
+    return () => clearInterval(interval)
+  }, [steps.length])
+
+  return (
+    <div className="rounded-[1.6rem] border border-black/6 bg-white p-10 shadow-[0_24px_60px_rgba(25,28,29,0.08)]">
+      <div className="flex flex-col items-center gap-8">
+        {/* Animated rings */}
+        <div className="relative h-36 w-36">
+          <div className="absolute inset-0 rounded-full border-4 border-surface-container-high" />
+          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-primary [animation-duration:2s]" />
+          <div className="absolute inset-2 animate-spin rounded-full border-4 border-transparent border-t-primary/40 [animation-duration:3s] [animation-direction:reverse]" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Sparkles size={36} className="animate-pulse text-primary" strokeWidth={1.5} />
+          </div>
+        </div>
+
+        <div className="space-y-2 text-center">
+          <h3 className="text-2xl font-black tracking-tight text-on-background">
+            {isMatchMode ? 'Analysing your fit...' : 'Scanning your resume...'}
+          </h3>
+          <p key={stepIndex} className="animate-pulse text-sm text-on-surface-variant">
+            {steps[stepIndex]}
+          </p>
+        </div>
+
+        <div className="w-full max-w-sm space-y-2">
+          {steps.map((step, i) => (
+            <div
+              key={step}
+              className={`flex items-center gap-3 rounded-[1rem] px-4 py-2.5 transition-all duration-500 ${
+                i < stepIndex
+                  ? 'bg-emerald-50'
+                  : i === stepIndex
+                  ? 'bg-primary-container/25 ring-1 ring-primary/20'
+                  : 'opacity-30'
+              }`}
+            >
+              {i < stepIndex ? (
+                <CheckCircle2 size={15} className="shrink-0 text-emerald-600" />
+              ) : i === stepIndex ? (
+                <svg className="h-4 w-4 shrink-0 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-outline-variant" />
+              )}
+              <span
+                className={`text-sm ${
+                  i < stepIndex
+                    ? 'font-medium text-emerald-700'
+                    : i === stepIndex
+                    ? 'font-semibold text-on-background'
+                    : 'text-on-surface-variant'
+                }`}
+              >
+                {step}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const WAVEFORM_HEIGHTS = [16, 24, 12, 28, 20, 14, 32, 18, 22, 10, 26, 16]
+
+function TailoringAnimation({ isMatchMode }: { isMatchMode: boolean }) {
+  const steps = isMatchMode
+    ? [
+        'Extracting key requirements from the JD...',
+        'Mapping your experience to role keywords...',
+        'Rewriting bullets for stronger alignment...',
+        'Reordering experience to lead with fit...',
+        'Optimising skill section for the role...',
+        'Running quality checks...',
+      ]
+    : [
+        'Analysing ATS issues...',
+        'Identifying improvement opportunities...',
+        'Rewriting underperforming bullets...',
+        'Adding missing keywords...',
+        'Optimising skill section...',
+        'Calculating score improvement...',
+      ]
+
+  const [stepIndex, setStepIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStepIndex(i => Math.min(i + 1, steps.length - 1))
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [steps.length])
+
+  return (
+    <div className="rounded-[1.6rem] bg-[linear-gradient(155deg,#0c110e_0%,#111814_100%)] p-10 text-white shadow-[0_28px_64px_rgba(12,17,14,0.28)]">
+      <div className="flex flex-col items-center gap-8">
+        <div className="relative">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-white/10 backdrop-blur-sm">
+            <Sparkles size={40} className="animate-pulse text-white" strokeWidth={1.5} />
+          </div>
+          <div className="absolute -inset-2 animate-ping rounded-[1.8rem] bg-white/8 [animation-duration:2s]" />
+        </div>
+
+        <div className="space-y-2 text-center">
+          <h3 className="text-2xl font-black tracking-tight text-white">
+            {isMatchMode ? 'AI Tailoring to this role...' : 'AI Improving your resume...'}
+          </h3>
+          <p className="text-sm text-white/60">
+            This takes 1–2 minutes. You can explore the page — results will appear when done.
+          </p>
+        </div>
+
+        <div className="w-full max-w-md space-y-2">
+          {steps.map((step, i) => (
+            <div
+              key={step}
+              className={`flex items-center gap-3 rounded-[1rem] px-4 py-2.5 transition-all duration-700 ${
+                i < stepIndex
+                  ? 'bg-emerald-500/20'
+                  : i === stepIndex
+                  ? 'bg-white/10 ring-1 ring-white/15'
+                  : 'opacity-25'
+              }`}
+            >
+              {i < stepIndex ? (
+                <CheckCircle2 size={15} className="shrink-0 text-emerald-400" />
+              ) : i === stepIndex ? (
+                <svg className="h-4 w-4 shrink-0 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-white/30" />
+              )}
+              <span
+                className={`text-sm ${
+                  i < stepIndex
+                    ? 'font-medium text-emerald-300'
+                    : i === stepIndex
+                    ? 'font-semibold text-white'
+                    : 'text-white/50'
+                }`}
+              >
+                {step}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Waveform */}
+        <div className="flex items-end gap-1">
+          {WAVEFORM_HEIGHTS.map((h, i) => (
+            <div
+              key={i}
+              className="w-1.5 rounded-full bg-white/60"
+              style={{
+                height: h,
+                animation: 'pulse 1.4s ease-in-out infinite',
+                animationDelay: `${i * 0.12}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AutoRescanBanner({
+  isAutoRescanning,
+  autoRescanResult,
+  autoRescanError,
+  originalMatchScore,
+}: {
+  isAutoRescanning: boolean
+  autoRescanResult: ScanResponse | null
+  autoRescanError: string | null
+  originalMatchScore: number
+}) {
+  if (!isAutoRescanning && !autoRescanResult && !autoRescanError) return null
+
+  if (isAutoRescanning) {
+    return (
+      <div className="flex items-center gap-3 rounded-[1.25rem] border border-primary/20 bg-primary-container/20 px-5 py-4">
+        <svg className="h-5 w-5 shrink-0 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-on-background">Re-calculating match score...</p>
+          <p className="text-xs text-on-surface-variant">Running your tailored resume against the same job description.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (autoRescanError) {
+    return (
+      <div className="rounded-[1.25rem] bg-amber-50 px-5 py-3 text-sm text-amber-800">
+        Could not auto-recalculate match score. Run Match Score again manually to see the updated result.
+      </div>
+    )
+  }
+
+  if (autoRescanResult) {
+    const gain = autoRescanResult.score - originalMatchScore
+    return (
+      <div className="rounded-[1.25rem] border border-emerald-200 bg-emerald-50/70 p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">Updated match score</p>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800/70">Before</p>
+              <p className="mt-1 text-4xl font-black tracking-tight text-on-background">{originalMatchScore}</p>
+            </div>
+            <ArrowRight size={20} className="text-emerald-700" strokeWidth={2} />
+            <div className="text-center">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800/70">After</p>
+              <p className="mt-1 text-4xl font-black tracking-tight text-emerald-700">{autoRescanResult.score}</p>
+            </div>
+          </div>
+          {gain !== 0 && (
+            <span
+              className={`rounded-full px-3 py-1.5 text-sm font-black ${
+                gain > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+              }`}
+            >
+              {gain > 0 ? `+${gain}` : String(gain)}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-on-surface-variant">{autoRescanResult.summary}</p>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function RoadToNinetyUpsell({
   publicMode,
 }: {
@@ -859,10 +1124,14 @@ export default function ATSCheckerClient({
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
   const [hasUsedPublicAtsScan, setHasUsedPublicAtsScan] = useState(false)
   const [publicAuthPromptReason, setPublicAuthPromptReason] = useState<PublicAuthPromptReason | null>(null)
+  const [isAutoRescanning, setIsAutoRescanning] = useState(false)
+  const [autoRescanResult, setAutoRescanResult] = useState<ScanResponse | null>(null)
+  const [autoRescanError, setAutoRescanError] = useState<string | null>(null)
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const lastTrackedUpgradePromptScoreRef = useRef<number | null>(null)
   const shouldAutoScrollResultsRef = useRef(false)
+  const shouldAutoScrollOptimisedRef = useRef(false)
   const hasTriggeredAutoRunRef = useRef(false)
   const handleScanRef = useRef<null | (() => Promise<void>)>(null)
   const previewViewportRef = useCallback((node: HTMLDivElement | null) => {
@@ -1024,6 +1293,29 @@ export default function ATSCheckerClient({
       window.cancelAnimationFrame(firstFrame)
     }
   }, [publicMode, scanResult])
+
+  useEffect(() => {
+    if (!optimiseResult || !shouldAutoScrollOptimisedRef.current) {
+      return
+    }
+
+    shouldAutoScrollOptimisedRef.current = false
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      const secondFrame = window.requestAnimationFrame(() => {
+        resultsRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        })
+      })
+
+      return () => window.cancelAnimationFrame(secondFrame)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame)
+    }
+  }, [optimiseResult])
 
   useEffect(() => {
     if (!hasRestoredDraft) {
@@ -1231,7 +1523,12 @@ export default function ATSCheckerClient({
     setOpenOptimisedError(null)
     setOptimisedResumeId(null)
     setHasTouchedOptimisedChangeSelection(false)
+    setAutoRescanResult(null)
+    setAutoRescanError(null)
     setIsOptimising(true)
+    window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
     const resumeText = getResumeText()
     try {
       const res = await fetch('/api/ats/optimise', {
@@ -1248,17 +1545,52 @@ export default function ATSCheckerClient({
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
-        setOptimiseError(ERROR_MESSAGES[json.error ?? 'INTERNAL_ERROR'] ?? json.error)
+        console.error('Optimise API error:', json.error, res.status)
+        setOptimiseError(ERROR_MESSAGES[json.error ?? 'INTERNAL_ERROR'] ?? json.error ?? 'Something went wrong.')
         return
       }
       setOptimiseResult(json.data)
       setAppliedOptimisedChangeIds(buildChangeComparisons(scanResult.resumeData, json.data.resumeData).map(change => change.id))
       setHasTouchedOptimisedChangeSelection(false)
       setActiveTab('optimised')
-    } catch {
+      shouldAutoScrollOptimisedRef.current = true
+      if (isMatchMode) {
+        void handleAutoRescan(json.data.resumeData)
+      }
+    } catch (err) {
+      console.error('AI optimise error:', err)
       setOptimiseError(ERROR_MESSAGES['INTERNAL_ERROR'])
     } finally {
       setIsOptimising(false)
+    }
+  }
+
+  async function handleAutoRescan(optimisedData: ResumeData) {
+    if (!isMatchMode) return
+    setIsAutoRescanning(true)
+    setAutoRescanError(null)
+    setAutoRescanResult(null)
+    const resumeText = resumeDataToText(optimisedData)
+    try {
+      const res = await fetch('/api/ats/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resumeText,
+          analysisMode: 'match',
+          jobDescription: jobDescription || undefined,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setAutoRescanError('Could not re-calculate match score.')
+        return
+      }
+      setAutoRescanResult(json.data)
+    } catch {
+      setAutoRescanError('Could not re-calculate match score.')
+    } finally {
+      setIsAutoRescanning(false)
     }
   }
 
@@ -1696,6 +2028,16 @@ export default function ATSCheckerClient({
         />
       )}
 
+      {isMatchMode && showIntro && (
+        <div className="flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-5 py-4">
+          <Lightbulb size={16} className="mt-0.5 shrink-0 text-amber-600" strokeWidth={1.75} />
+          <p className="text-sm text-amber-900">
+            <span className="font-bold">Best results with ATS score 75+.</span>{' '}
+            Run an ATS scan first and fix key issues before using Match Score — higher-quality resumes get more accurate fit results.
+          </p>
+        </div>
+      )}
+
       {/* Ad banner — free users only */}
       {ADS_ENABLED && !pro && !publicMode ? <AdBanner size="leaderboard" className="mx-auto" /> : null}
 
@@ -1868,6 +2210,11 @@ export default function ATSCheckerClient({
         </div>
       )}
 
+      {/* ── Scanning Animation ───────────────────────────────────────────── */}
+      {isScanning && (
+        <ScanningAnimation isMatchMode={isMatchMode} />
+      )}
+
       {/* ── Results ──────────────────────────────────────────────────────────── */}
       {scanResult && (
         <div ref={resultsRef} className="scroll-mt-24 space-y-5">
@@ -1881,10 +2228,12 @@ export default function ATSCheckerClient({
                   // To avoid comparing apples to oranges, both tabs use their own label.
                   const score = tab === 'results'
                     ? scanResult.score
+                    : isMatchMode && autoRescanResult
+                    ? autoRescanResult.score
                     : (optimisedScore ?? scanResult.score)
                   const scoreState = getScoreState(score)
                   const tabScoreLabel = tab === 'optimised' && isMatchMode
-                    ? 'ATS Quality'
+                    ? (autoRescanResult ? 'Match Score' : isAutoRescanning ? 'Calculating...' : 'ATS Quality')
                     : scoreRingLabel
 
                   return (
@@ -2168,6 +2517,10 @@ export default function ATSCheckerClient({
                   </button>
                 </div>
 
+                {isOptimising && (
+                  <TailoringAnimation isMatchMode={isMatchMode} />
+                )}
+
                 {(optimiseError || customizeError) && (
                   <div className="rounded-[1.2rem] bg-red-50 px-5 py-3 text-sm text-red-700">
                     {optimiseError ?? customizeError}
@@ -2242,6 +2595,12 @@ export default function ATSCheckerClient({
 
           {activeTab === 'optimised' && optimiseResult && (
             <div className="space-y-5">
+              <AutoRescanBanner
+                isAutoRescanning={isAutoRescanning}
+                autoRescanResult={autoRescanResult}
+                autoRescanError={autoRescanError}
+                originalMatchScore={scanResult.score}
+              />
               <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <div className="space-y-5">
                   <DashboardSurface variant="default" className="border-white !bg-white !bg-none p-5 shadow-[0_24px_60px_rgba(25,28,29,0.08)] sm:p-6">
