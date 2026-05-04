@@ -44,10 +44,10 @@ export default async function AffiliateDashboardPage() {
 
   // Hardcoded overrides for early affiliate partners until real tracking data is backfilled
   const HARDCODED_OVERRIDE = {
-    totalSignups: 252,
+    totalSignups: 261,
     activeSubscriptions: 26,
-    totalEarned: 95.6,
-    pendingPayout: 95.6,
+    totalEarned: 98.3,
+    pendingPayout: 98.3,
     monthlySignups: [
       { monthKey: '2025-12', label: 'Dec', signups: 0 },
       { monthKey: '2026-01', label: 'Jan', signups: 0 },
