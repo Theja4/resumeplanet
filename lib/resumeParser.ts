@@ -318,6 +318,32 @@ function looksLikeNarrativeLine(line: string): boolean {
 const EXPERIENCE_BULLET_START_RE =
   /^(achieved|analysed|analyzed|architected|automated|built|championed|collaborated|coordinated|created|delivered|designed|developed|drove|enabled|executed|implemented|improved|increased|launched|led|maintained|managed|migrated|operated|optimised|optimized|owned|partnered|reduced|resolved|shipped|supported|streamlined|validated|worked|responsible)\b/i
 
+const JOB_TITLE_KEYWORDS_RE =
+  /\b(Intern|Engineer|Developer|Manager|Director|Analyst|Architect|Designer|Consultant|Specialist|Coordinator|Administrator|Lead|Officer|Scientist|Researcher|Technician|Associate|Assistant|VP|SVP|EVP|CTO|CEO|CFO|COO|CIO|CMO|CPO|President|Fellow|Head)\b/i
+
+/**
+ * Detect standalone job title lines like "Full Stack Developer Intern" that
+ * don't contain separator characters (|, –, —). These would be missed by
+ * isLikelyExperienceHeader which requires 2+ split parts.
+ */
+function looksLikeJobTitle(line: string): boolean {
+  const trimmed = line.trim()
+  if (!trimmed) return false
+  const words = trimmed.split(/\s+/)
+  if (words.length < 2 || words.length > 8) return false
+  if (trimmed.length > 80) return false
+  // Must not start with a common action verb (bullet start)
+  if (EXPERIENCE_BULLET_START_RE.test(trimmed)) return false
+  // Must not look like a narrative sentence
+  if (looksLikeNarrativeLine(trimmed)) return false
+  // Should contain a role keyword
+  if (!JOB_TITLE_KEYWORDS_RE.test(trimmed)) return false
+  // Should be mostly title-cased or all-caps words (not sentence case)
+  const titleCaseWords = words.filter(w => /^[A-Z]/.test(w) || /^[&\/()]/.test(w))
+  if (titleCaseWords.length < words.length * 0.5) return false
+  return true
+}
+
 function isLikelyUnmarkedBulletStart(line: string): boolean {
   const trimmed = line.trim()
   if (!trimmed) return false
@@ -591,7 +617,8 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
           !isLikelyDateLine(t) &&
           !detectSection(t) &&
           !looksLikeCustomHeadingText(t) &&
-          !isLikelyExperienceHeader(t)
+          !isLikelyExperienceHeader(t) &&
+          !looksLikeJobTitle(t)
 
         if (looksLikeBulletContinuation) {
           const previous = bullets[bullets.length - 1] ?? ''
