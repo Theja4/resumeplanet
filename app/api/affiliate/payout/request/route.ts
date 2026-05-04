@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       success: true,
       payout,
       pendingPayout: 0,
-      message: `Request received! Your payout of ${formatUsdCurrency(payout.amount)} will be processed to your PayPal account within 3 working days.`,
+      message: `Request received! Your payout of ${formatUsdCurrency(payout.amount)} will be processed to your PayPal account within 30 days.`,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Could not create payout request'

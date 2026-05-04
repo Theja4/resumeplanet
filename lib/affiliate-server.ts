@@ -281,6 +281,42 @@ export async function getAffiliatePayouts(
   return (data ?? []).map(row => parsePayoutRow(row as Record<string, unknown>))
 }
 
+export async function getAllPayouts(supabase: ServiceRoleClient) {
+  const { data, error } = await supabase
+    .from('payouts')
+    .select('*, affiliates(discount_code, name, email)')
+    .order('requested_at', { ascending: false })
+
+  if (error) {
+    throw new Error(`Failed to load all payouts: ${error.message}`)
+  }
+
+  return (data ?? []).map(row => ({
+    ...parsePayoutRow(row as Record<string, unknown>),
+    affiliate_discount_code: String((row as Record<string, unknown> & { affiliates?: Record<string, unknown> }).affiliates?.discount_code ?? ''),
+    affiliate_name: String((row as Record<string, unknown> & { affiliates?: Record<string, unknown> }).affiliates?.name ?? ''),
+    affiliate_email: String((row as Record<string, unknown> & { affiliates?: Record<string, unknown> }).affiliates?.email ?? ''),
+  }))
+}
+
+export async function updatePayoutStatus(
+  supabase: ServiceRoleClient,
+  payoutId: string,
+  status: 'paid' | 'rejected'
+) {
+  const { error } = await supabase
+    .from('payouts')
+    .update({
+      status,
+      ...(status === 'paid' ? { paid_at: new Date().toISOString() } : {}),
+    })
+    .eq('id', payoutId)
+
+  if (error) {
+    throw new Error(`Failed to update payout status: ${error.message}`)
+  }
+}
+
 export async function getAffiliateCommissions(
   supabase: ServiceRoleClient,
   affiliateId: string

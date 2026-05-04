@@ -3,7 +3,6 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
   getAffiliateById,
   getAffiliatePayouts,
-  getAffiliateReferralPage,
   getAffiliateStats,
 } from '@/lib/affiliate-server'
 import AffiliateDashboardClient from './AffiliateDashboardClient'
@@ -38,27 +37,35 @@ export default async function AffiliateDashboardPage() {
     redirect('/dashboard')
   }
 
-  const [rawStats, referralsPage, payouts] = await Promise.all([
+  const [rawStats, payouts] = await Promise.all([
     getAffiliateStats(serviceSupabase, affiliate.id),
-    getAffiliateReferralPage(serviceSupabase, affiliate.id, 1),
     getAffiliatePayouts(serviceSupabase, affiliate.id),
   ])
 
   // Hardcoded overrides for early affiliate partners until real tracking data is backfilled
-  const HARDCODED_STATS: Record<string, { totalSignups: number; activeSubscriptions: number; totalEarned: number; pendingPayout: number }> = {
-    CAREER50: { totalSignups: 252, activeSubscriptions: 26, totalEarned: 95.6, pendingPayout: 95.6 },
-    NEERAJA50: { totalSignups: 252, activeSubscriptions: 26, totalEarned: 95.6, pendingPayout: 95.6 },
+  const HARDCODED_OVERRIDE = {
+    totalSignups: 252,
+    activeSubscriptions: 26,
+    totalEarned: 95.6,
+    pendingPayout: 95.6,
+    monthlySignups: [
+      { monthKey: '2025-12', label: 'Dec', signups: 0 },
+      { monthKey: '2026-01', label: 'Jan', signups: 0 },
+      { monthKey: '2026-02', label: 'Feb', signups: 0 },
+      { monthKey: '2026-03', label: 'Mar', signups: 0 },
+      { monthKey: '2026-04', label: 'Apr', signups: 183 },
+      { monthKey: '2026-05', label: 'May', signups: 69 },
+    ],
   }
-  const override = HARDCODED_STATS[affiliate.discount_code.toUpperCase()]
-  const stats = override
-    ? { ...rawStats, ...override }
+  const HARDCODED_CODES = new Set(['CAREER50', 'NEERAJA50'])
+  const stats = HARDCODED_CODES.has(affiliate.discount_code.toUpperCase())
+    ? { ...rawStats, ...HARDCODED_OVERRIDE }
     : rawStats
 
   return (
     <AffiliateDashboardClient
       initialAffiliate={affiliate}
       initialStats={stats}
-      initialReferralPage={referralsPage}
       initialPayouts={payouts}
       appUrl={process.env.NEXT_PUBLIC_APP_URL}
     />

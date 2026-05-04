@@ -4,8 +4,6 @@ import { useMemo, useState } from 'react'
 import {
   BarChart3,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   DollarSign,
   Info,
@@ -32,8 +30,6 @@ import type {
   Affiliate,
   AffiliateDashboardStats,
   AffiliatePayout,
-  AffiliateReferral,
-  AffiliateReferralPage,
 } from '@/types'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -44,20 +40,6 @@ function formatDate(value: string) {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function ReferralStatusBadge({ status }: { status: AffiliateReferral['status'] }) {
-  const styles: Record<AffiliateReferral['status'], string> = {
-    active: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    trialing: 'border-amber-200 bg-amber-50 text-amber-700',
-    churned: 'border-rose-200 bg-rose-50 text-rose-700',
-  }
-
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.14em] ${styles[status]}`}>
-      {status}
-    </span>
-  )
 }
 
 function PayoutStatusBadge({ status }: { status: AffiliatePayout['status'] }) {
@@ -153,22 +135,17 @@ function CopyBlock({
 export default function AffiliateDashboardClient({
   initialAffiliate,
   initialStats,
-  initialReferralPage,
   initialPayouts,
   appUrl,
 }: {
   initialAffiliate: Affiliate
   initialStats: AffiliateDashboardStats
-  initialReferralPage: AffiliateReferralPage
   initialPayouts: AffiliatePayout[]
   appUrl?: string
 }) {
   const [affiliate, setAffiliate] = useState(initialAffiliate)
   const [stats, setStats] = useState(initialStats)
-  const [referralPage, setReferralPage] = useState(initialReferralPage)
   const [payouts, setPayouts] = useState(initialPayouts)
-  const [loadingPage, setLoadingPage] = useState(false)
-  const [referralsError, setReferralsError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<'code' | 'link' | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [isPayoutDialogOpen, setIsPayoutDialogOpen] = useState(false)
@@ -199,38 +176,6 @@ export default function AffiliateDashboardClient({
       }, 1800)
     } catch {
       setCopiedKey(null)
-    }
-  }
-
-  async function loadReferralPage(page: number) {
-    if (page < 1 || page > referralPage.totalPages || page === referralPage.page) {
-      return
-    }
-
-    setLoadingPage(true)
-    setReferralsError(null)
-
-    try {
-      const response = await fetch(`/api/affiliate/referrals?page=${page}`)
-      const payload = (await response.json().catch(() => null)) as
-        | (AffiliateReferralPage & { success?: boolean; error?: string })
-        | null
-
-      if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error ?? 'Could not load referrals')
-      }
-
-      setReferralPage({
-        page: payload.page,
-        pageSize: payload.pageSize,
-        totalCount: payload.totalCount,
-        totalPages: payload.totalPages,
-        referrals: payload.referrals,
-      })
-    } catch (error) {
-      setReferralsError(error instanceof Error ? error.message : 'Could not load referrals')
-    } finally {
-      setLoadingPage(false)
     }
   }
 
@@ -456,118 +401,8 @@ export default function AffiliateDashboardClient({
         </DashboardSurface>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
-        <DashboardSurface variant="default" className="overflow-hidden">
-          <div className="border-b border-black/5 px-5 py-5 sm:px-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65">
-                  Recent Referrals
-                </p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">
-                  Latest subscriptions
-                </h2>
-              </div>
-              <p className="text-sm text-on-surface-variant">
-                Page {referralPage.page} of {referralPage.totalPages}
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-black/5 bg-white/70">
-                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                    Email
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                    Date
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                    Plan
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                    Status
-                  </th>
-                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                    MRR
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {referralPage.referrals.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-5 py-12 text-center text-sm text-on-surface-variant sm:px-6">
-                      No referrals recorded yet.
-                    </td>
-                  </tr>
-                ) : (
-                  referralPage.referrals.map(referral => (
-                    <tr key={referral.id} className="border-b border-black/5 last:border-b-0">
-                      <td className="px-5 py-4 font-semibold text-on-background sm:px-6">
-                        {maskEmailAddress(referral.referred_user_email)}
-                      </td>
-                      <td className="px-5 py-4 text-on-surface-variant sm:px-6">
-                        {formatDate(referral.created_at)}
-                      </td>
-                      <td className="px-5 py-4 text-on-background sm:px-6">
-                        {referral.plan_name}
-                      </td>
-                      <td className="px-5 py-4 sm:px-6">
-                        <ReferralStatusBadge status={referral.status} />
-                      </td>
-                      <td className="px-5 py-4 font-semibold text-on-background sm:px-6">
-                        {formatUsdCurrency(referral.mrr)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="flex flex-col gap-3 border-t border-black/5 bg-white/70 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-            <div className="text-sm text-on-surface-variant">
-              {referralPage.totalCount} total referral{referralPage.totalCount === 1 ? '' : 's'}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => loadReferralPage(referralPage.page - 1)}
-                disabled={loadingPage || referralPage.page <= 1}
-                className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-sm font-semibold text-on-surface transition-all hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ChevronLeft size={14} />
-                Prev
-              </button>
-              <button
-                type="button"
-                onClick={() => loadReferralPage(referralPage.page + 1)}
-                disabled={loadingPage || referralPage.page >= referralPage.totalPages}
-                className="inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-sm font-semibold text-on-surface transition-all hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Next
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-
-          {loadingPage ? (
-            <div className="border-t border-black/5 px-5 py-3 text-sm text-on-surface-variant sm:px-6">
-              Loading referrals…
-            </div>
-          ) : null}
-
-          {referralsError ? (
-            <div className="border-t border-black/5 px-5 py-3 text-sm text-rose-600 sm:px-6">
-              {referralsError}
-            </div>
-          ) : null}
-        </DashboardSurface>
-
-        <div className="space-y-6">
-          <DashboardSurface variant="default" className="p-5 sm:p-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <DashboardSurface variant="default" className="p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65">
@@ -608,70 +443,69 @@ export default function AffiliateDashboardClient({
                 <p className="text-sm text-amber-700">Minimum payout is $10.00</p>
               ) : (
                 <p className="text-sm text-on-surface-variant">
-                  Requests are processed to PayPal within 3 working days.
+                  Requests are processed to PayPal within 30 days.
                 </p>
               )}
             </div>
           </DashboardSurface>
 
-          <DashboardSurface variant="default" className="overflow-hidden">
-            <div className="border-b border-black/5 px-5 py-5 sm:px-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65">
-                Payout History
-              </p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">
-                Requested payouts
-              </h2>
-            </div>
+        <DashboardSurface variant="default" className="overflow-hidden">
+          <div className="border-b border-black/5 px-5 py-5 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65">
+              Payout History
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">
+              Requested payouts
+            </h2>
+          </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-black/5 bg-white/70">
-                    <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                      Amount
-                    </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                      PayPal
-                    </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                      Date Requested
-                    </th>
-                    <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
-                      Status
-                    </th>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-black/5 bg-white/70">
+                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
+                    Amount
+                  </th>
+                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
+                    PayPal
+                  </th>
+                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
+                    Date Requested
+                  </th>
+                  <th className="px-5 py-3 text-left text-[11px] font-black uppercase tracking-[0.16em] text-on-surface-variant/65 sm:px-6">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-12 text-center text-sm text-on-surface-variant sm:px-6">
+                      No payout requests yet.
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {payouts.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-5 py-12 text-center text-sm text-on-surface-variant sm:px-6">
-                        No payout requests yet.
+                ) : (
+                  payouts.map(payout => (
+                    <tr key={payout.id} className="border-b border-black/5 last:border-b-0">
+                      <td className="px-5 py-4 font-semibold text-on-background sm:px-6">
+                        {formatUsdCurrency(payout.amount)}
+                      </td>
+                      <td className="px-5 py-4 text-on-surface-variant sm:px-6">
+                        {maskEmailAddress(payout.paypal_email)}
+                      </td>
+                      <td className="px-5 py-4 text-on-surface-variant sm:px-6">
+                        {formatDate(payout.requested_at)}
+                      </td>
+                      <td className="px-5 py-4 sm:px-6">
+                        <PayoutStatusBadge status={payout.status} />
                       </td>
                     </tr>
-                  ) : (
-                    payouts.map(payout => (
-                      <tr key={payout.id} className="border-b border-black/5 last:border-b-0">
-                        <td className="px-5 py-4 font-semibold text-on-background sm:px-6">
-                          {formatUsdCurrency(payout.amount)}
-                        </td>
-                        <td className="px-5 py-4 text-on-surface-variant sm:px-6">
-                          {maskEmailAddress(payout.paypal_email)}
-                        </td>
-                        <td className="px-5 py-4 text-on-surface-variant sm:px-6">
-                          {formatDate(payout.requested_at)}
-                        </td>
-                        <td className="px-5 py-4 sm:px-6">
-                          <PayoutStatusBadge status={payout.status} />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </DashboardSurface>
-        </div>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </DashboardSurface>
       </div>
 
       <Dialog open={isPayoutDialogOpen} onOpenChange={setIsPayoutDialogOpen}>

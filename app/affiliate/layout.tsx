@@ -4,6 +4,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
 import MobileAppBar from '@/components/layout/MobileAppBar'
 import { getOptionalAuthenticatedUserContext } from '@/lib/authenticated-user'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export default async function AffiliateLayout({
   children,
@@ -16,8 +17,16 @@ export default async function AffiliateLayout({
     redirect('/auth/login?next=%2Faffiliate%2Fdashboard')
   }
 
-  const { profile: typedProfile } = context
+  const { userId, profile: typedProfile } = context
   const proUser = typedProfile.plan === 'pro'
+
+  const serviceSupabase = createServiceRoleClient()
+  const { data: affiliateRecord } = await serviceSupabase
+    .from('affiliates')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const isAffiliate = Boolean(affiliateRecord?.id)
 
   return (
     <PlanProvider isPro={proUser} profile={typedProfile}>
@@ -27,7 +36,7 @@ export default async function AffiliateLayout({
         <div className="dashboard-shell-aurora dashboard-shell-aurora-two pointer-events-none absolute right-[8%] top-40 h-80 w-80 rounded-full bg-[#d8efe0]" />
         <div className="dashboard-shell-aurora dashboard-shell-aurora-three pointer-events-none absolute bottom-16 left-1/3 h-64 w-64 rounded-full bg-[#eff8f1]" />
 
-        <Sidebar profile={typedProfile} />
+        <Sidebar profile={typedProfile} isAffiliate={isAffiliate} />
 
         <div className="relative flex min-h-screen flex-col md:ml-[18.5rem]">
           <MobileAppBar initials={(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()} />
