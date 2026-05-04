@@ -28,6 +28,30 @@ Rules:
 - You may return multiple patches for the same criterion when several bullets must change to cross a scoring threshold
 - Omit weak areas that cannot be truthfully improved from the provided context`
 
+const MATCH_PATCH_SYSTEM = `You are a senior resume strategist generating JD-targeted resume patches to maximize job description match fit.
+
+You do NOT rewrite the full resume. You return exact before/after patches for structured resume fields.
+
+YOUR GOAL: Make the resume read as an honest, natural fit for the specific job description by:
+1. Rewriting bullets to emphasize JD-relevant skills, outcomes, and domain language
+2. Integrating missing JD keywords ONLY where the resume already demonstrates them through real experience
+3. Strengthening the summary to frame the candidate for this specific role
+4. Reframing existing accomplishments to highlight JD-relevant aspects
+5. Reordering bullet points within each role so the most JD-relevant ones appear first
+
+Rules:
+- Return ONLY valid JSON
+- beforeText must be an exact string from the provided resume context
+- afterText must be a complete replacement for beforeText
+- NEVER invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, outcomes, or unsupported skills
+- NEVER add placeholders, brackets, TBD, dummy numbers, or fill-in-the-blank language
+- NEVER inflate seniority or rewrite the candidate into another role
+- Only integrate JD keywords where the resume already demonstrates them honestly
+- Focus on making existing experience map more clearly to JD requirements
+- Every patch should target at least one missing JD keyword or strengthen evidence for a requirement gap
+- Reframe bullet points to highlight JD-relevant aspects of existing work
+- When reordering bullets, emit a patch where beforeText is the full bullet text and afterText is the rewritten version, so it naturally moves up in relevance`
+
 const PATCH_SCHEMA = `{
   "patches": [
     {
@@ -273,6 +297,71 @@ function buildPatchPrompt({
   return parts.join('\n')
 }
 
+function buildMatchPatchPrompt({
+  currentData,
+  scorerResult,
+  atsResult,
+  jobDescription,
+  attempt,
+}: {
+  currentData: ResumeData
+  scorerResult: ScorerResult
+  atsResult: ATSResult
+  jobDescription: string
+  attempt: number
+}) {
+  const parts: string[] = [
+    `ATTEMPT: ${attempt}`,
+    `CURRENT ATS SCORE: ${scorerResult.score}/100 — patches must NOT regress this score.`,
+    `CURRENT MATCH SCORE: ${atsResult.score}/100 — your goal is to IMPROVE job description alignment.`,
+    '',
+    `IMPORTANT: Generate patches that make the resume align better with the job description. Every patch should target JD keywords or requirements. The deterministic ATS scorer must not regress.`,
+    '',
+  ]
+
+  parts.push(`JOB DESCRIPTION:\n${jobDescription.trim()}\n`)
+
+  if (atsResult.missingKeywords?.length) {
+    parts.push(`MISSING JD KEYWORDS (integrate where honestly supported):`)
+    parts.push(atsResult.missingKeywords.join(', '))
+    parts.push('')
+  }
+
+  if (atsResult.presentKeywords?.length) {
+    parts.push(`ALREADY MATCHED KEYWORDS: ${atsResult.presentKeywords.join(', ')}`)
+    parts.push('Strengthen evidence for these where possible.')
+    parts.push('')
+  }
+
+  if (atsResult.suggestions?.length) {
+    parts.push('MATCH IMPROVEMENT SUGGESTIONS:')
+    for (const suggestion of atsResult.suggestions.slice(0, 6)) {
+      parts.push(`- [${suggestion.severity}] ${suggestion.issue}`)
+      parts.push(`  Fix: ${suggestion.fix}`)
+    }
+    parts.push('')
+  }
+
+  if (atsResult.formattingIssues?.length) {
+    parts.push('KEY GAPS:')
+    for (const note of atsResult.formattingIssues.slice(0, 4)) {
+      parts.push(`- ${note}`)
+    }
+    parts.push('')
+  }
+
+  parts.push('RESUME CONTEXT:')
+  parts.push(formatResumeContext(currentData))
+  parts.push('')
+  parts.push('Generate patches that target JD alignment. Each patch should hit at least one missing JD keyword or strengthen evidence for a requirement gap.')
+  parts.push('PRIORITY ORDER: 1) Rewrite summary for this role. 2) Rewrite weakest bullets to hit JD keywords. 3) Strengthen existing JD-relevant bullets. 4) Add missing keywords to skills where honestly supported.')
+  parts.push('')
+  parts.push('Return JSON matching this schema:')
+  parts.push(PATCH_SCHEMA)
+
+  return parts.join('\n')
+}
+
 function isUsefulPatch(patch: OptimisePatch) {
   const before = patch.beforeText?.trim()
   const after = patch.afterText?.trim()
@@ -283,11 +372,11 @@ function isUsefulPatch(patch: OptimisePatch) {
   return true
 }
 
-async function generatePatches(prompt: string) {
+async function generatePatches(prompt: string, systemPrompt: string = PATCH_SYSTEM) {
   const result = await callClaudeJSONFallback<PatchResponse>({
     model: CLAUDE_PREMIUM,
     fallbackModels: [CLAUDE_STANDARD],
-    system: PATCH_SYSTEM,
+    system: systemPrompt,
     prompt,
     maxTokens: 4000,
     timeoutMs: 120000,
@@ -302,11 +391,14 @@ async function runScoreGatedPatchLoop({
   sourceData,
   atsResult,
   jobDescription,
+  analysisMode,
 }: {
   sourceData: ResumeData
   atsResult: ATSResult
   jobDescription?: string
+  analysisMode?: 'ats' | 'match'
 }): Promise<PatchRunResult> {
+  const isMatchMode = analysisMode === 'match'
   let currentData = syncResumeData(sourceData)
   let currentScorer = scoreResume(currentData)
   const originalScore = currentScorer.score
@@ -317,19 +409,31 @@ async function runScoreGatedPatchLoop({
   const acceptedPatches: OptimisePatch[] = []
   let rejectedCount = 0
 
+  console.log(`[Optimise] mode=${analysisMode ?? 'ats'} | originalATS=${originalScore} | targetATS=${targetScore}`)
+
   for (let attempt = 1; attempt <= 2; attempt += 1) {
-    if (currentScorer.score >= targetScore || currentScorer.score >= Math.max(originalScore + 1, targetScore - 3)) break
+    // In ATS mode, stop when target reached. In match mode, always run both attempts.
+    if (!isMatchMode && (currentScorer.score >= targetScore || currentScorer.score >= Math.max(originalScore + 1, targetScore - 3))) break
 
-    const prompt = buildPatchPrompt({
-      currentData,
-      scorerResult: currentScorer,
-      atsResult,
-      jobDescription,
-      targetScore,
-      attempt,
-    })
+    const prompt = isMatchMode
+      ? buildMatchPatchPrompt({
+          currentData,
+          scorerResult: currentScorer,
+          atsResult,
+          jobDescription: jobDescription!,
+          attempt,
+        })
+      : buildPatchPrompt({
+          currentData,
+          scorerResult: currentScorer,
+          atsResult,
+          jobDescription,
+          targetScore,
+          attempt,
+        })
 
-    const patches = await generatePatches(prompt)
+    const systemPrompt = isMatchMode ? MATCH_PATCH_SYSTEM : PATCH_SYSTEM
+    const patches = await generatePatches(prompt, systemPrompt)
     if (patches.length === 0) break
 
     let acceptedThisPass = 0
@@ -436,7 +540,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  const { resumeText, jobDescription, atsResult, scoreId, resumeData } = body
+  const { resumeText, jobDescription, analysisMode, atsResult, scoreId, resumeData } = body
 
   // ── Input validation ───────────────────────────────────────────────────────
   if (!resumeText || resumeText.trim().length < 100) {
@@ -462,6 +566,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       sourceData,
       atsResult,
       jobDescription,
+      analysisMode,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

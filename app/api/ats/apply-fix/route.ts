@@ -81,7 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       model: (() => {
         const m = process.env.ANTHROPIC_MODEL_PREMIUM
         if (!m) console.warn('ANTHROPIC_MODEL_PREMIUM is not set — falling back to default model')
-        return m || 'deepseek/deepseek-v3.2'
+        return m || 'deepseek/deepseek-v4-flash'
       })(),
       system: APPLY_SYSTEM,
       prompt,

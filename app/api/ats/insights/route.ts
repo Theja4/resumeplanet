@@ -16,7 +16,7 @@ import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 
 const INSIGHTS_CACHE_VERSION = 4
 const SUGGESTION_MODELS = [
-  'deepseek/deepseek-v3.2',
+  'deepseek/deepseek-v4-flash',
   'google/gemini-2.5-flash',
 ]
 

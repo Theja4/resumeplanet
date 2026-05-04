@@ -1,8 +1,6 @@
-import { callClaudeJSON } from '@/lib/claude'
+import { callClaudeJSONFallback, CLAUDE_PREMIUM } from '@/lib/claude'
 import { getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 import type { ATSResult, ATSSuggestion, ResumeData } from '@/types'
-
-const MATCH_SCORE_MODEL = 'deepseek/deepseek-v3.2'
 
 const MATCH_SCORE_SYSTEM = `You are Rezoomed Match Score Engine, a conservative evaluator of how well a real resume fits a specific job description.
 
@@ -595,12 +593,15 @@ Remember:
 - Suggestions must stay truthful and practical.`
 
   try {
-    const raw = await callClaudeJSON<MatchScoreLLMResponse>({
-      model: MATCH_SCORE_MODEL,
+    console.log(`[MatchScore] Running LLM match evaluation with model=${CLAUDE_PREMIUM}`)
+    const raw = await callClaudeJSONFallback<MatchScoreLLMResponse>({
+      model: CLAUDE_PREMIUM,
       system: MATCH_SCORE_SYSTEM,
       prompt,
       maxTokens: 7000,
       timeoutMs: 120000,
+      perModelTimeoutMs: 60000,
+      jsonRetryTimeoutMs: 20000,
     })
 
     const requirements = (raw.requirementAssessments ?? [])

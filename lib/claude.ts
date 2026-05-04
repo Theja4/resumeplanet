@@ -1,12 +1,13 @@
 // lib/claude.ts - Refactored for OpenRouter support
-export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
-export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v4-flash'
+export const DEEPSEEK_V4_FLASH = 'deepseek/deepseek-v4-flash'
+export const GEMINI_25_FLASH = 'google/gemini-2.5-flash'
+export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || DEEPSEEK_V4_FLASH
+export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || DEEPSEEK_V4_FLASH
 
 // ── Rezoomed LLM Pipeline v3 ────────────────────────────────────────────────
 const FALLBACK_CHAIN = [
-  'deepseek/deepseek-v4-flash',    // fast, low cost — primary
-  'google/gemini-2.5-flash',       // $0.30/$2.50 — safe fallback
-  'meta-llama/llama-3.3-70b',      // free tier available, last resort
+  DEEPSEEK_V4_FLASH,
+  GEMINI_25_FLASH,
 ]
 
 export type AnalyzePipeline = 'free_ats' | 'pro_ats' | 'pro_jd_tailor'
@@ -358,7 +359,7 @@ export async function callClaude(options: {
   }
 
   try {
-    console.log(`[OpenRouter] Sending request to ${OPENROUTER_URL}/chat/completions`)
+    console.log(`[LLM] model=${model} | url=${OPENROUTER_URL}/chat/completions`)
     const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -423,22 +424,7 @@ export async function callClaudeJSON<T>(options: {
   maxTokens?: number
   timeoutMs?: number
 }): Promise<T> {
-  const raw = await callClaude(options)
-
-  try {
-    return parseJSON<T>(raw)
-  } catch {
-    // Retry once with an explicit JSON instruction
-    const retryRaw = await callClaude({
-      ...options,
-      prompt: options.prompt + '\n\nReturn only valid JSON. No markdown, no explanation.',
-    })
-    try {
-      return parseJSON<T>(retryRaw)
-    } catch {
-      throw new Error('CLAUDE_JSON_PARSE_FAILED')
-    }
-  }
+  return callClaudeJSONFallback<T>(options)
 }
 
 export async function callClaudeJSONFallback<T>(options: {
@@ -452,6 +438,7 @@ export async function callClaudeJSONFallback<T>(options: {
   jsonRetryTimeoutMs?: number
 }): Promise<T> {
   const models = Array.from(new Set([
+    DEEPSEEK_V4_FLASH,
     options.model,
     ...(options.fallbackModels ?? FALLBACK_CHAIN),
   ].filter(Boolean)))
@@ -509,7 +496,7 @@ export async function callClaudeJSONFallback<T>(options: {
   throw new Error('OPENROUTER_FALLBACK_FAILED')
 }
 
-/** Calls the primary model with extended timeout. Falls back to Qwen if needed. */
+/** Calls DeepSeek first with extended timeout, then Gemini if needed. */
 export async function callClaudeJSONRace<T>(options: {
   model: string
   system: string
@@ -517,10 +504,10 @@ export async function callClaudeJSONRace<T>(options: {
   maxTokens?: number
   timeoutMs?: number
 }): Promise<T> {
-  // Just call the primary model directly with longer timeout
-  return callClaudeJSON<T>({
+  return callClaudeJSONFallback<T>({
     ...options,
     model: options.model ?? CLAUDE_STANDARD,
+    fallbackModels: [GEMINI_25_FLASH],
     timeoutMs: options.timeoutMs ?? 300000,
   })
 }

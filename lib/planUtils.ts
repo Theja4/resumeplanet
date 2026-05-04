@@ -1,8 +1,8 @@
 import type { Profile } from '@/types'
 import { FREE_PLAN, PRO_PLAN } from '@/lib/pricing'
 
-const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
-const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
+const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'deepseek/deepseek-v4-flash'
+const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v4-flash'
 
 export function isPro(profile: Profile | null): boolean {
   return profile?.plan === 'pro'

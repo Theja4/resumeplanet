@@ -6,7 +6,7 @@ import { extractDocxText } from '@/lib/docxTextExtractor'
 import { syncResumeData } from '@/lib/resume-data'
 import { normalizeText, chunkText, postProcessResume } from './utils'
 
-const DEEPSEEK_RESUME_PARSER_MODEL = 'deepseek/deepseek-v3.2'
+const DEEPSEEK_RESUME_PARSER_MODEL = 'deepseek/deepseek-v4-flash'
 type ResumeArrayField =
   | 'experience'
   | 'education'

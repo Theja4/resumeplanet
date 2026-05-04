@@ -20,7 +20,7 @@ If DeepSeek faces a broader US commercial ban, swap one string:
 
 ```javascript
 // Today
-const MODEL = "deepseek/deepseek-v3.2";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 // If regulatory change hits — one line swap, zero code changes
 const MODEL = "google/gemini-2.5-flash";        // 2x more expensive on output, still cheap
@@ -344,11 +344,11 @@ Tailor this resume to the job description.
 
 ```javascript
 // Single model for all pipelines — swap this one line if regulations change
-const MODEL = "deepseek/deepseek-v3.2";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 // Fallback chain: if primary is down or gets banned, try next
 const FALLBACK_CHAIN = [
-  "deepseek/deepseek-v3.2",       // $0.26/$0.38 — best value
+  "deepseek/deepseek-v4-flash",   // fast, low cost — best value
   "google/gemini-2.5-flash",       // $0.30/$2.50 — safe fallback
   "meta-llama/llama-3.3-70b",      // free tier available
 ];

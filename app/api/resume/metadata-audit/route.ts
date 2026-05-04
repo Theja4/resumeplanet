@@ -28,8 +28,8 @@ export interface MetadataAuditResult {
 }
 
 const METADATA_AUDIT_MODELS = [
+  'deepseek/deepseek-v4-flash',
   'google/gemini-2.5-flash',
-  'deepseek/deepseek-v3.2',
 ] as const
 
 // ── LLM System Prompt ─────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ async function callMetadataAuditWithFallback(
         system,
         prompt,
         maxTokens: 1000,
-        timeoutMs: model === 'deepseek/deepseek-v3.2' ? 120000 : 45000,
+        timeoutMs: model === 'deepseek/deepseek-v4-flash' ? 120000 : 45000,
       })
     } catch (error) {
       failures.push({

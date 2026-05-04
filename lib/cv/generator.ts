@@ -10,9 +10,12 @@ import type { ResumeData, TailorIntensity } from '@/types'
 
 const CV_ANALYSIS_CHAIN = [
   {
-    model: process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2',
+    model: 'deepseek/deepseek-v4-flash',
     timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000,
   },
+  ...(process.env.ANTHROPIC_MODEL_PREMIUM && process.env.ANTHROPIC_MODEL_PREMIUM !== 'deepseek/deepseek-v4-flash'
+    ? [{ model: process.env.ANTHROPIC_MODEL_PREMIUM, timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000 }]
+    : []),
   {
     model: 'google/gemini-2.5-flash',
     timeoutMs: Number(process.env.CV_FALLBACK_TIMEOUT_MS) || 120000,

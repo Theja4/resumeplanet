@@ -1129,6 +1129,8 @@ export default function ATSCheckerClient({
   const [autoRescanError, setAutoRescanError] = useState<string | null>(null)
 
   const resultsRef = useRef<HTMLDivElement>(null)
+  const scanningAnimationRef = useRef<HTMLDivElement>(null)
+  const tailoringAnimationRef = useRef<HTMLDivElement>(null)
   const lastTrackedUpgradePromptScoreRef = useRef<number | null>(null)
   const shouldAutoScrollResultsRef = useRef(false)
   const shouldAutoScrollOptimisedRef = useRef(false)
@@ -1293,6 +1295,22 @@ export default function ATSCheckerClient({
       window.cancelAnimationFrame(firstFrame)
     }
   }, [publicMode, scanResult])
+
+  useEffect(() => {
+    if (!isScanning) return
+    const frame = window.requestAnimationFrame(() => {
+      scanningAnimationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [isScanning])
+
+  useEffect(() => {
+    if (!isOptimising) return
+    const frame = window.requestAnimationFrame(() => {
+      tailoringAnimationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [isOptimising])
 
   useEffect(() => {
     if (!optimiseResult || !shouldAutoScrollOptimisedRef.current) {
@@ -1526,9 +1544,6 @@ export default function ATSCheckerClient({
     setAutoRescanResult(null)
     setAutoRescanError(null)
     setIsOptimising(true)
-    window.requestAnimationFrame(() => {
-      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
     const resumeText = getResumeText()
     try {
       const res = await fetch('/api/ats/optimise', {
@@ -1579,6 +1594,7 @@ export default function ATSCheckerClient({
           resumeText,
           analysisMode: 'match',
           jobDescription: jobDescription || undefined,
+          parsedResumeData: optimisedData,
         }),
       })
       const json = await res.json()
@@ -2212,7 +2228,9 @@ export default function ATSCheckerClient({
 
       {/* ── Scanning Animation ───────────────────────────────────────────── */}
       {isScanning && (
-        <ScanningAnimation isMatchMode={isMatchMode} />
+        <div ref={scanningAnimationRef}>
+          <ScanningAnimation isMatchMode={isMatchMode} />
+        </div>
       )}
 
       {/* ── Results ──────────────────────────────────────────────────────────── */}
@@ -2230,8 +2248,10 @@ export default function ATSCheckerClient({
                     ? scanResult.score
                     : isMatchMode && autoRescanResult
                     ? autoRescanResult.score
+                    : isMatchMode && isAutoRescanning
+                    ? null
                     : (optimisedScore ?? scanResult.score)
-                  const scoreState = getScoreState(score)
+                  const scoreState = score !== null ? getScoreState(score) : null
                   const tabScoreLabel = tab === 'optimised' && isMatchMode
                     ? (autoRescanResult ? 'Match Score' : isAutoRescanning ? 'Calculating...' : 'ATS Quality')
                     : scoreRingLabel
@@ -2260,8 +2280,10 @@ export default function ATSCheckerClient({
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-black tracking-tight">{score}</p>
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${selected ? 'bg-white/12 text-white' : scoreState.toneClassName}`}>
+                          {score !== null && (
+                            <p className="text-2xl font-black tracking-tight">{score}</p>
+                          )}
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] ${selected ? 'bg-white/12 text-white' : (scoreState?.toneClassName ?? 'bg-zinc-100 text-zinc-600')}`}>
                             {tabScoreLabel}
                           </span>
                         </div>
@@ -2518,7 +2540,9 @@ export default function ATSCheckerClient({
                 </div>
 
                 {isOptimising && (
-                  <TailoringAnimation isMatchMode={isMatchMode} />
+                  <div ref={tailoringAnimationRef}>
+                    <TailoringAnimation isMatchMode={isMatchMode} />
+                  </div>
                 )}
 
                 {(optimiseError || customizeError) && (
