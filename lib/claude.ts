@@ -1,10 +1,10 @@
 // lib/claude.ts - Refactored for OpenRouter support
 export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'google/gemini-2.5-flash'
-export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v3.2'
+export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v4-flash'
 
 // ── Rezoomed LLM Pipeline v3 ────────────────────────────────────────────────
 const FALLBACK_CHAIN = [
-  'deepseek/deepseek-v3.2',        // $0.26/$0.38 per 1M — best value
+  'deepseek/deepseek-v4-flash',    // fast, low cost — primary
   'google/gemini-2.5-flash',       // $0.30/$2.50 — safe fallback
   'meta-llama/llama-3.3-70b',      // free tier available, last resort
 ]
