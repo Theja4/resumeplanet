@@ -57,8 +57,8 @@ interface StoredBlogResumeExampleRecord {
 
 const PAGE_H = 1123 // A4 at 96 DPI
 const PAGE_GAP = 48
-const PAGE_BOTTOM_PADDING = 38
-const CONTINUATION_PAGE_TOP_PADDING = 38 // 10mm continuation-page inset
+const PAGE_BOTTOM_PADDING = 48 // ~12.7mm (0.5in) bottom margin
+const CONTINUATION_PAGE_TOP_PADDING = 48 // ~12.7mm (0.5in) top margin on pages 2+
 const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
 const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
@@ -598,10 +598,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
     const containerTop = container.getBoundingClientRect().top
     const elements = container.querySelectorAll(
-      '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4'
+      '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4, div[class*="text-"], div[class*="mb-"]'
     )
     const lineCandidateElements = container.querySelectorAll<HTMLElement>(
-      '[data-resume-path], li, p, h1, h2, h3, h4'
+      '[data-resume-path], li, p, h1, h2, h3, h4, div[class*="text-"], div[class*="mb-"]'
     )
     const blockCandidateElements = container.querySelectorAll<HTMLElement>(
       '[data-resume-page-break], [data-resume-section-heading], h2'

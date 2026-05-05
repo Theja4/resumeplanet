@@ -68,11 +68,11 @@ export default function PdfRenderClient() {
       <style jsx global>{`
         @page {
           size: A4;
-          margin: 10mm 0 10mm 0;
+          margin: 12.7mm 0 12.7mm 0;
         }
 
         @page:first {
-          margin: 0 0 10mm 0;
+          margin: 0 0 12.7mm 0;
         }
 
         html,
@@ -108,6 +108,18 @@ export default function PdfRenderClient() {
         .resume-pdf-render-layer [data-resume-section-heading] {
           break-after: avoid;
           page-break-after: avoid;
+        }
+
+        .resume-pdf-render-layer li,
+        .resume-pdf-render-layer p,
+        .resume-pdf-render-layer [data-resume-path] {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        .resume-pdf-render-layer [data-resume-section-frame] {
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
 
         .resume-pdf-loading {

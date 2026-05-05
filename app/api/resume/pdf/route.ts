@@ -118,14 +118,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const executablePath = await getExecutablePath()
+    const isLocal = Boolean(findLocalChromeExecutable())
 
     browser = await puppeteer.launch({
-      args: [
-        ...chromium.args,
-        '--font-render-hinting=none',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-      ],
+      args: isLocal
+        ? ['--font-render-hinting=none', '--no-sandbox', '--disable-setuid-sandbox']
+        : [...chromium.args, '--font-render-hinting=none', '--no-sandbox', '--disable-setuid-sandbox'],
       defaultViewport: {
         width: A4_WIDTH_PX,
         height: A4_HEIGHT_PX,
