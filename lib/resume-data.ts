@@ -247,10 +247,11 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
   const existingGpa = normalizeGpaValue(item.gpa ?? '')
   const degreeWithoutGpa = stripEmbeddedGpa(item.degree ?? '')
   const fieldWithoutGpa = stripEmbeddedGpa(item.field ?? '')
-  const derivedGpa =
-    existingGpa ||
-    normalizeGpaValue(item.degree ?? '') ||
-    normalizeGpaValue(item.field ?? '')
+  // Only derive GPA from degree/field text if gpa was never set (undefined/null).
+  // An empty string means the user explicitly cleared it.
+  const derivedGpa = item.gpa != null
+    ? existingGpa
+    : (existingGpa || normalizeGpaValue(item.degree ?? '') || normalizeGpaValue(item.field ?? ''))
 
   let degree = degreeWithoutGpa
   let field = fieldWithoutGpa
@@ -263,6 +264,12 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
     }
   }
 
+  // Only fall back to endDate if graduationDate was never set (undefined/null).
+  // An empty string means the user explicitly cleared it.
+  const graduationDate = item.graduationDate != null
+    ? (item.graduationDate.trim())
+    : (item.endDate?.trim() || '')
+
   return {
     ...item,
     degree,
@@ -270,7 +277,7 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
     gpa: derivedGpa,
     startDate: item.startDate?.trim() ?? '',
     endDate: item.endDate?.trim() ?? '',
-    graduationDate: item.graduationDate?.trim() || item.endDate?.trim() || '',
+    graduationDate,
   }
 }
 

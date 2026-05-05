@@ -117,11 +117,6 @@ export default function PdfRenderClient() {
           page-break-inside: avoid;
         }
 
-        .resume-pdf-render-layer [data-resume-section-frame] {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-
         .resume-pdf-loading {
           width: 794px;
           min-height: 1123px;
