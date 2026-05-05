@@ -244,7 +244,7 @@ export function estimateResumeDataTextLength(data: ResumeData | null | undefined
   }
 
   for (const item of data.education) {
-    parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate, item.gpa)
+    parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate ?? '', item.gpa)
   }
 
   for (const item of data.projects) {

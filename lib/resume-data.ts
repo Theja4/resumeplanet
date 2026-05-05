@@ -378,7 +378,7 @@ export function resumeDataToPlainText(data: ResumeData | null | undefined): stri
   }
 
   for (const item of safe.education) {
-    parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate, item.gpa)
+    parts.push(item.institution, item.degree, item.field, item.startDate ?? '', item.endDate ?? '', item.graduationDate ?? '', item.gpa)
   }
 
   const skillSections = safe.skillSections ?? []

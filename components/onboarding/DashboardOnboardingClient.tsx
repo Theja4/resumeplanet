@@ -114,7 +114,7 @@ function hasAnyResumeContent(data: ResumeData) {
         textValue(item.field) ||
         textValue(item.startDate ?? '') ||
         textValue(item.endDate ?? '') ||
-        textValue(item.graduationDate) ||
+        textValue(item.graduationDate ?? '') ||
         textValue(item.gpa)
       )
   )
@@ -154,7 +154,7 @@ function cleanEducationItem(item: EducationItem): EducationItem | null {
     !textValue(item.field) &&
     !textValue(item.startDate ?? '') &&
     !textValue(item.endDate ?? '') &&
-    !textValue(item.graduationDate) &&
+    !textValue(item.graduationDate ?? '') &&
     !textValue(item.gpa)
   ) {
     return null
@@ -166,7 +166,7 @@ function cleanEducationItem(item: EducationItem): EducationItem | null {
     field: item.field.trim(),
     startDate: item.startDate?.trim() ?? '',
     endDate: item.endDate?.trim() ?? '',
-    graduationDate: item.graduationDate.trim(),
+    graduationDate: item.graduationDate?.trim() ?? '',
     gpa: item.gpa.trim(),
   }
 }
