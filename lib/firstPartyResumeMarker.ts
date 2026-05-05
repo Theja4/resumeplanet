@@ -50,13 +50,15 @@ function normalizeExperienceItem(value: unknown): ExperienceItem | null {
 function normalizeEducationItem(value: unknown): EducationItem | null {
   if (!isRecord(value)) return null
 
+  const endDate = stringValue(value.endDate)
+
   return {
     institution: stringValue(value.institution),
     degree: stringValue(value.degree),
     field: stringValue(value.field),
     startDate: stringValue(value.startDate),
-    endDate: stringValue(value.endDate),
-    graduationDate: stringValue(value.graduationDate),
+    endDate,
+    graduationDate: stringValue(value.graduationDate) || endDate,
     gpa: stringValue(value.gpa),
   }
 }

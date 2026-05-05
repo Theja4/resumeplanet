@@ -10,14 +10,14 @@ interface EditorProps {
   onChange: (updated: ResumeData) => void
 }
 
-const EMPTY_EDU: EducationItem = { institution: '', degree: '', field: '', startDate: '', endDate: '', graduationDate: '', gpa: '' }
+const EMPTY_EDU: EducationItem = { institution: '', degree: '', field: '', startDate: '', endDate: '', gpa: '' }
 
 export default function EducationEditor({ data, onChange }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   function updateItem(index: number, updated: EducationItem) {
     const next = [...data.education]
-    next[index] = updated
+    next[index] = { ...updated, graduationDate: updated.endDate }
     onChange(syncResumeData({ ...data, education: next }))
   }
 
@@ -56,7 +56,6 @@ export default function EducationEditor({ data, onChange }: EditorProps) {
                   ['field', 'Field of Study'],
                   ['startDate', 'Start Date'],
                   ['endDate', 'End Date'],
-                  ['graduationDate', 'Graduation Date'],
                   ['gpa', 'GPA (optional)'],
                 ] as [keyof EducationItem, string][]
               ).map(([key, label]) => (

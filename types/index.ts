@@ -119,7 +119,7 @@ export interface EducationItem {
   field: string
   startDate?: string
   endDate?: string
-  graduationDate: string
+  graduationDate?: string
   gpa: string
 }
 

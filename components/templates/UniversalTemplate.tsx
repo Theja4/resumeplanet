@@ -58,7 +58,6 @@ function hasEducationItemContent(item: {
     hasText(item.field) ||
     hasText(item.startDate) ||
     hasText(item.endDate) ||
-    hasText(item.graduationDate) ||
     hasText(item.gpa)
   )
 }
@@ -320,6 +319,7 @@ export default function UniversalTemplate({
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
                 />
+
                 {skillIndex < section.skills.length - 1 && <span className="text-gray-400">{separator}</span>}
               </React.Fragment>
             ))}
@@ -533,7 +533,7 @@ export default function UniversalTemplate({
                 />
               </div>
 
-              {(degreeLine || educationDate || edu.gpa) && (
+              {(degreeLine || educationDate || hasText(edu.gpa)) && (
                 <div className="mt-[1px] flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 break-words text-[13px] italic leading-[1.15] text-black">
                     {degreeLine ? (
@@ -559,7 +559,7 @@ export default function UniversalTemplate({
                         ) : null}
                       </>
                     ) : null}
-                    {edu.gpa ? <span>{degreeLine ? ', ' : ''}GPA: {edu.gpa}</span> : null}
+                    {hasText(edu.gpa) ? <span>{degreeLine ? ', ' : ''}GPA: {edu.gpa}</span> : null}
                   </div>
                   {educationDate && (
                     <EditableText
@@ -713,7 +713,9 @@ export default function UniversalTemplate({
                   bulletStyle={bulletStyle}
                   dateLayout={dateLayout}
                   onNavigateToField={onNavigateToField}
+                  isSidebarContext={isSidebarContext}
                 />
+
               ))}
             </div>
           </div>
@@ -768,6 +770,7 @@ export default function UniversalTemplate({
                     bulletStyle={bulletStyle}
                     dateLayout={dateLayout}
                     onNavigateToField={onNavigateToField}
+                    isSidebarContext={isSidebarContext}
                   />
                 ) : null
               )}
@@ -836,7 +839,7 @@ export default function UniversalTemplate({
                           />
                         )}
                       </div>
-                      {edu.gpa && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
+                      {hasText(edu.gpa) && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
                     </div>
                     {dateLayout === 'right' && getEducationDateLabel(edu) && (
                       <EditableText
@@ -845,7 +848,7 @@ export default function UniversalTemplate({
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
-                        className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
+                        className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}
                       />
                     )}
                     {dateLayout === 'inline' && getEducationDateLabel(edu) && (
@@ -855,7 +858,7 @@ export default function UniversalTemplate({
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
-                        className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[10px]' : 'text-xs'}`}
+                        className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}
                       />
                     )}
                   </div>
@@ -906,9 +909,11 @@ export default function UniversalTemplate({
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
+                        className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}
                       />
                       {')'}
                     </>
+
                   ) : null}
                 </p>
               ))}
@@ -934,6 +939,7 @@ export default function UniversalTemplate({
                   density={density}
                   bulletStyle={bulletStyle}
                   dateLayout={dateLayout}
+                  isSidebarContext={isSidebarContext}
                 />
               ))}
             </div>
@@ -1025,9 +1031,11 @@ export default function UniversalTemplate({
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
+                        className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}
                       />
                       {')'}
                     </>
+
                   ) : null}
                 </p>
               ))}
@@ -1059,7 +1067,7 @@ export default function UniversalTemplate({
                 <div key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
                   <EditableText value={p.title} path={`publications.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
                   {(p.publisher || p.date) && (
-                    <span className="text-gray-500 block text-[10px] italic">
+                    <span className={`text-gray-500 block italic ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
                       {p.publisher ? (
                         <EditableText
                           value={p.publisher}
@@ -1068,6 +1076,7 @@ export default function UniversalTemplate({
                           onFieldChange={onFieldChange}
                           onNavigateToField={onNavigateToField}
                         />
+
                       ) : null}
                       {p.publisher && p.date ? ' · ' : null}
                       {p.date ? (
@@ -1078,6 +1087,7 @@ export default function UniversalTemplate({
                           onFieldChange={onFieldChange}
                           onNavigateToField={onNavigateToField}
                         />
+
                       ) : null}
                     </span>
                   )}
@@ -1351,6 +1361,7 @@ interface ExperienceItemProps {
   bulletStyle: UniversalConfig['bulletStyle']
   dateLayout: UniversalConfig['dateLayout']
   onNavigateToField?: (path: string) => void
+  isSidebarContext?: boolean
 }
 
 function ExperienceItem({
@@ -1364,6 +1375,7 @@ function ExperienceItem({
   bulletStyle,
   dateLayout,
   onNavigateToField,
+  isSidebarContext = false,
 }: ExperienceItemProps) {
   const isCompressed = density === 'compressed'
   const bulletMarker = bulletStyle === 'dash' ? '–' : bulletStyle === 'square' ? '▪' : '•'
@@ -1378,6 +1390,7 @@ function ExperienceItem({
           onFieldChange={onFieldChange}
           onNavigateToField={onNavigateToField}
         />
+
       ) : exp.date ? (
         <EditableText
           value={exp.date}
@@ -1386,6 +1399,7 @@ function ExperienceItem({
           onFieldChange={onFieldChange}
           onNavigateToField={onNavigateToField}
         />
+
       ) : null}
       {exp.endDate ? (
         <>
@@ -1397,6 +1411,7 @@ function ExperienceItem({
             onFieldChange={onFieldChange}
             onNavigateToField={onNavigateToField}
           />
+
         </>
       ) : null}
     </>
@@ -1481,15 +1496,15 @@ function ExperienceItem({
           )}
         </div>
         {showRightDate && dateContent && (
-          <span className={`text-gray-400 shrink-0 ml-4 ${isCompressed ? 'text-[11px]' : 'text-xs'}`}>
+          <span className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
             {dateContent}
           </span>
         )}
       </div>
 
-      {exp.location && <p className={`text-gray-400 ${isCompressed ? 'text-[11px] mt-0.5' : 'text-xs mt-0.5'}`}>{exp.location}</p>}
+      {exp.location && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px] mt-0.5' : 'text-xs mt-0.5'}`}>{exp.location}</p>}
       {!showRightDate && dateContent && (
-        <span className={`mt-0.5 block text-gray-400 ${isCompressed ? 'text-[11px]' : 'text-xs'}`}>
+        <span className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
           {dateContent}
         </span>
       )}

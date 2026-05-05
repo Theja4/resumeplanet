@@ -43,12 +43,9 @@ export default function EducationItemEditor({ item, pathPrefix, onChange }: Prop
       </div>
       <div className="grid grid-cols-2 gap-2">
         <InputField label="Start Date" path={`${pathPrefix}.startDate`} value={item.startDate ?? ''} onChange={v => onChange({ ...item, startDate: v })} placeholder="Sep 2020" />
-        <InputField label="End Date" path={`${pathPrefix}.endDate`} value={item.endDate ?? ''} onChange={v => onChange({ ...item, endDate: v, graduationDate: v || item.graduationDate })} placeholder="Present or May 2024" />
+        <InputField label="End Date" path={`${pathPrefix}.endDate`} value={item.endDate ?? ''} onChange={v => onChange({ ...item, endDate: v, graduationDate: v })} placeholder="Present or May 2024" />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <InputField label="Graduation Date" path={`${pathPrefix}.graduationDate`} value={item.graduationDate} onChange={v => onChange({ ...item, graduationDate: v, endDate: item.endDate || v })} placeholder="May 2024" />
-        <InputField label="GPA (optional)" path={`${pathPrefix}.gpa`} value={item.gpa} onChange={v => onChange({ ...item, gpa: v })} placeholder="3.8" />
-      </div>
+      <InputField label="GPA (optional)" path={`${pathPrefix}.gpa`} value={item.gpa} onChange={v => onChange({ ...item, gpa: v })} placeholder="3.8" />
     </div>
   )
 }

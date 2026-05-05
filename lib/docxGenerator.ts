@@ -133,7 +133,7 @@ export async function generateDOCX(
               ],
               spacing: { before: 80, after: 40 },
             }),
-            body(`${edu.degree}${edu.field ? ` · ${edu.field}` : ''}${edu.gpa ? `  GPA: ${edu.gpa}` : ''}`, { color: '555555' }),
+            body(`${edu.degree}${edu.field ? ` · ${edu.field}` : ''}${edu.gpa.trim() ? `  GPA: ${edu.gpa}` : ''}`, { color: '555555' }),
             gap(),
           ]),
         ]

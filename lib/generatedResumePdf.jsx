@@ -596,7 +596,7 @@ function renderEducationSection(writer, items) {
       })
       const afterInstitutionY = writer.getY()
 
-      const detail = `${degreeLine}${item.gpa ? `${degreeLine ? ', ' : ''}GPA: ${item.gpa}` : ''}`
+      const detail = `${degreeLine}${item.gpa?.trim() ? `${degreeLine ? ', ' : ''}GPA: ${item.gpa}` : ''}`
       const detailStartY = writer.getY()
 
       if (detail) {
@@ -635,14 +635,15 @@ function renderEducationSection(writer, items) {
         maxWidth: leftMaxWidth,
         after: writer.tokens.titleAfter,
       }) +
-      ((degreeLine || item.gpa) ? writer.estimateWrappedHeight(
-        `${degreeLine}${item.gpa ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`,
+      ((degreeLine || item.gpa?.trim()) ? writer.estimateWrappedHeight(
+        `${degreeLine}${item.gpa?.trim() ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`,
         {
           fontSize: writer.tokens.bodyFontSize - 0.4,
           maxWidth: leftMaxWidth,
           after: writer.tokens.detailAfter,
         }
-      ) : 0) +
+      ) : 0)
+ +
       (!showRightDate && educationDate
         ? writer.estimateWrappedHeight(educationDate, {
             fontSize: writer.tokens.metaFontSize,
@@ -678,8 +679,8 @@ function renderEducationSection(writer, items) {
       })
     }
 
-    if (degreeLine || item.gpa) {
-      const detail = `${degreeLine}${item.gpa ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`
+    if (degreeLine || item.gpa?.trim()) {
+      const detail = `${degreeLine}${item.gpa?.trim() ? `${degreeLine ? '  |  ' : ''}GPA: ${item.gpa}` : ''}`
       writer.writeWrappedText(detail, {
         fontSize: writer.tokens.bodyFontSize - 0.4,
         color: [55, 65, 81],

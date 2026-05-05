@@ -205,9 +205,8 @@ export function getEducationDateLabel(education: Pick<EducationItem, 'startDate'
   const graduationDate = education.graduationDate?.trim() ?? ''
 
   if (startDate && endDate) return `${startDate} - ${endDate}`
-  if (startDate && graduationDate) return `${startDate} - ${graduationDate}`
-  if (startDate) return startDate
   if (endDate) return endDate
+  if (startDate) return startDate
   return graduationDate
 }
 
@@ -217,7 +216,7 @@ const GPA_REMOVAL_RE = /\s*(?:[|,;·•]\s*)?\b(?:CGPA|GPA)\b\s*[:\-]?\s*[0-9]+(
 const LOCATION_LIKE_RE = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/
 const ROLE_FRAGMENT_RE = /(analyst|engineer|developer|manager|consultant|intern|designer|specialist|associate|lead|architect|administrator|product|business|full stack)/i
 
-function normalizeGpaValue(value: string) {
+function normalizeGpaValue(value: string, strict = false) {
   const trimmed = value.trim()
   if (!trimmed) return ''
 
@@ -231,7 +230,7 @@ function normalizeGpaValue(value: string) {
     return valueOnlyMatch[1].replace(/\s*\/\s*/g, ' / ').trim()
   }
 
-  return trimmed
+  return strict ? '' : trimmed
 }
 
 function stripEmbeddedGpa(value: string) {
@@ -251,7 +250,7 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
   // An empty string means the user explicitly cleared it.
   const derivedGpa = item.gpa != null
     ? existingGpa
-    : (existingGpa || normalizeGpaValue(item.degree ?? '') || normalizeGpaValue(item.field ?? ''))
+    : (existingGpa || normalizeGpaValue(item.degree ?? '', true) || normalizeGpaValue(item.field ?? '', true))
 
   let degree = degreeWithoutGpa
   let field = fieldWithoutGpa
@@ -264,11 +263,10 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
     }
   }
 
-  // Only fall back to endDate if graduationDate was never set (undefined/null).
-  // An empty string means the user explicitly cleared it.
-  const graduationDate = item.graduationDate != null
-    ? (item.graduationDate.trim())
-    : (item.endDate?.trim() || '')
+  // Normalize graduationDate and endDate.
+  // We are moving towards using endDate as the primary field for the end of the education period.
+  const endDate = item.endDate?.trim() ?? ''
+  const graduationDate = (item.graduationDate?.trim() || endDate)
 
   return {
     ...item,
@@ -276,7 +274,7 @@ function normalizeEducationItem(item: EducationItem): EducationItem {
     field,
     gpa: derivedGpa,
     startDate: item.startDate?.trim() ?? '',
-    endDate: item.endDate?.trim() ?? '',
+    endDate,
     graduationDate,
   }
 }

@@ -198,7 +198,10 @@ function formatResumeContext(data: ResumeData) {
   if (data.education.length > 0) {
     parts.push('Education:')
     data.education.forEach((item, index) => {
-      parts.push(`${index + 1}. ${item.degree || '(missing degree)'} ${item.field ? `in ${item.field}` : ''} at ${item.institution || '(missing institution)'} (${item.startDate || item.graduationDate || '?'} - ${item.endDate || item.graduationDate || '?'})`)
+      const start = item.startDate || ''
+      const end = item.endDate || item.graduationDate || '?'
+      const dateRange = start ? `${start} - ${end}` : end
+      parts.push(`${index + 1}. ${item.degree || '(missing degree)'} ${item.field ? `in ${item.field}` : ''} at ${item.institution || '(missing institution)'} (${dateRange})`)
     })
   }
 

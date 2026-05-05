@@ -204,7 +204,7 @@ function getAllResumeText(data: ResumeData): string {
     parts.push(exp.title, exp.company, exp.location, exp.summary ?? '', ...exp.bullets)
   }
   for (const edu of data.education) {
-    parts.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.graduationDate, edu.gpa)
+    parts.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.gpa)
   }
   parts.push(...skills)
   for (const proj of data.projects) {
@@ -306,7 +306,7 @@ function getPlaceholderCount(data: ResumeData): number {
   }
 
   for (const edu of data.education) {
-    segments.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.graduationDate, edu.gpa)
+    segments.push(edu.institution, edu.degree, edu.field, edu.startDate ?? '', edu.endDate ?? '', edu.gpa)
   }
 
   for (const project of data.projects) {

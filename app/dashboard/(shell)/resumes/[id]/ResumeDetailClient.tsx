@@ -247,7 +247,7 @@ function EducationEditor({
   }
 
   function startAdd() {
-    setDraft({ institution: '', degree: '', field: '', startDate: '', endDate: '', graduationDate: '', gpa: '' })
+    setDraft({ institution: '', degree: '', field: '', startDate: '', endDate: '', gpa: '' })
     setEditIndex(items.length)
   }
 
@@ -255,7 +255,7 @@ function EducationEditor({
     if (!draft || editIndex === null) return
     setSaving(true)
     const updated = [...items]
-    updated[editIndex] = draft
+    updated[editIndex] = { ...draft, graduationDate: draft.endDate }
     await onSave(updated)
     setSaving(false)
     setEditIndex(null)
@@ -269,7 +269,7 @@ function EducationEditor({
   if (editIndex !== null && draft) {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-indigo-200 p-4 bg-indigo-50/30">
-        {(['institution', 'degree', 'field', 'startDate', 'endDate', 'graduationDate', 'gpa'] as const).map((field) => (
+        {(['institution', 'degree', 'field', 'startDate', 'endDate', 'gpa'] as const).map((field) => (
           <div key={field} className="flex flex-col gap-1">
             <label className="text-xs font-medium text-gray-500 capitalize">{field}</label>
             <input

@@ -723,14 +723,8 @@ export default function DashboardOnboardingClient({
               <InputField
                 label="End date"
                 value={item.endDate ?? ''}
-                onChange={(value) => updateEducationItem(index, { endDate: value, graduationDate: value || item.graduationDate })}
+                onChange={(value) => updateEducationItem(index, { endDate: value, graduationDate: value })}
                 placeholder="Present or May 2022"
-              />
-              <InputField
-                label="Graduation date"
-                value={item.graduationDate}
-                onChange={(value) => updateEducationItem(index, { graduationDate: value, endDate: item.endDate || value })}
-                placeholder="May 2022"
               />
             </div>
           </div>

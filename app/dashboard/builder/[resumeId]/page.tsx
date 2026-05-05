@@ -227,7 +227,6 @@ function createEmptySectionItem(sectionId: 'experience' | 'education' | 'project
       field: '',
       startDate: '',
       endDate: '',
-      graduationDate: '',
       gpa: '',
     }
   }
@@ -263,7 +262,6 @@ function hasMeaningfulEducationItem(item: ResumeData['education'][number]) {
     hasMeaningfulText(item.field) ||
     hasMeaningfulText(item.startDate) ||
     hasMeaningfulText(item.endDate) ||
-    hasMeaningfulText(item.graduationDate) ||
     hasMeaningfulText(item.gpa)
   )
 }

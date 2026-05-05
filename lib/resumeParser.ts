@@ -916,12 +916,12 @@ function parseEducation(lines: string[]): ResumeData['education'] {
       const dates = extractDateRange(line)
       entry.startDate = dates.start
       entry.endDate = dates.end || dates.start
-      entry.graduationDate = dates.end || dates.start
+      entry.graduationDate = entry.endDate
     } else {
       const inlineDate = extractDateRange(line)
       entry.startDate = inlineDate.start
       entry.endDate = inlineDate.end || inlineDate.start
-      entry.graduationDate = inlineDate.end || inlineDate.start
+      entry.graduationDate = entry.endDate
     }
 
     let consumed = 1
@@ -941,11 +941,11 @@ function parseEducation(lines: string[]): ResumeData['education'] {
         entry.institution = nextLine
       } else if (!entry.degree && DEGREE_RE.test(nextLine)) {
         entry.degree = nextLine.replace(/,.*$/, '').trim()
-      } else if (!entry.graduationDate && isLikelyDateLine(nextLine)) {
+      } else if (!entry.endDate && isLikelyDateLine(nextLine)) {
         const dates = extractDateRange(nextLine)
         entry.startDate = dates.start
         entry.endDate = dates.end || dates.start
-        entry.graduationDate = dates.end || dates.start
+        entry.graduationDate = entry.endDate
       } else if (!entry.gpa) {
         entry.gpa = GPA_RE.exec(nextLine)?.[1]?.replace(/\s*\/\s*/g, ' / ') ?? ''
       } else if (!entry.field && entry.degree && nextLine.length <= 100 && !isBulletLine(nextLine)) {
@@ -955,7 +955,7 @@ function parseEducation(lines: string[]): ResumeData['education'] {
       consumed += 1
     }
 
-    if (entry.institution || entry.degree || entry.graduationDate) {
+    if (entry.institution || entry.degree || entry.endDate) {
       entries.push(entry)
     }
     index += consumed
