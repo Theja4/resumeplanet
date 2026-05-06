@@ -202,6 +202,7 @@ const ATS_PREVIEW_SECTION_ORDER = [
 const ATS_PREVIEW_PAGE_WIDTH = 794
 const ATS_PREVIEW_PAGE_HEIGHT = 1123
 const SCAN_RESULTS_REVEAL_DELAY_MS = 5000
+const SCAN_FINISHING_ANIMATION_MS = 2000
 
 function wait(ms: number) {
   return new Promise(resolve => window.setTimeout(resolve, ms))
@@ -209,7 +210,8 @@ function wait(ms: number) {
 
 async function waitForScanReveal(startedAt: number) {
   const elapsed = performance.now() - startedAt
-  const remaining = SCAN_RESULTS_REVEAL_DELAY_MS - elapsed
+  // Ensure at least SCAN_FINISHING_ANIMATION_MS after API returns AND the normal minimum from start
+  const remaining = Math.max(SCAN_RESULTS_REVEAL_DELAY_MS - elapsed, SCAN_FINISHING_ANIMATION_MS)
   if (remaining > 0) {
     await wait(remaining)
   }
@@ -537,7 +539,15 @@ function applySelectedChangeComparisons(
   return nextData
 }
 
-function ScanningAnimation({ isMatchMode }: { isMatchMode: boolean }) {
+const RADAR_BLIPS = [
+  { cx: 63, cy: 27 },
+  { cx: 78, cy: 54 },
+  { cx: 62, cy: 76 },
+  { cx: 33, cy: 65 },
+  { cx: 26, cy: 38 },
+]
+
+function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean; isFinishing?: boolean }) {
   const steps = isMatchMode
     ? [
         'Reading your resume...',
@@ -554,66 +564,138 @@ function ScanningAnimation({ isMatchMode }: { isMatchMode: boolean }) {
         'Calculating your score...',
       ]
 
+  const NORMAL_STEP_MS = 12000
+  const FINISHING_STEP_MS = 350
+
   const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStepIndex(i => (i + 1) % steps.length)
-    }, 1200)
-    return () => clearInterval(interval)
-  }, [steps.length])
+    if (isFinishing) {
+      // Fast-forward remaining steps over ~2s
+      const interval = setInterval(() => {
+        setStepIndex(i => Math.min(i + 1, steps.length - 1))
+      }, FINISHING_STEP_MS)
+      return () => clearInterval(interval)
+    } else {
+      const interval = setInterval(() => {
+        setStepIndex(i => (i + 1) % steps.length)
+      }, NORMAL_STEP_MS)
+      return () => clearInterval(interval)
+    }
+  }, [isFinishing, steps.length])
 
   return (
-    <div className="rounded-[1.6rem] border border-black/6 bg-white p-10 shadow-[0_24px_60px_rgba(25,28,29,0.08)]">
-      <div className="flex flex-col items-center gap-8">
-        {/* Animated rings */}
-        <div className="relative h-36 w-36">
-          <div className="absolute inset-0 rounded-full border-4 border-surface-container-high" />
-          <div className="absolute inset-0 animate-spin rounded-full border-4 border-transparent border-t-primary [animation-duration:2s]" />
-          <div className="absolute inset-2 animate-spin rounded-full border-4 border-transparent border-t-primary/40 [animation-duration:3s] [animation-direction:reverse]" />
+    <div className="overflow-hidden rounded-[1.6rem] bg-[#070d09] shadow-[0_28px_70px_rgba(0,0,0,0.45)] ring-1 ring-emerald-500/12">
+      <div className="flex flex-col items-center gap-8 p-10">
+
+        {/* ── Radar display ─────────────────────────────────────── */}
+        <div className="relative h-52 w-52">
+          {/* Concentric rings */}
+          {[0, 1, 2, 3].map(i => (
+            <div
+              key={i}
+              className="absolute rounded-full border border-emerald-500/18"
+              style={{ inset: `${i * 12.5}%` }}
+            />
+          ))}
+
+          {/* Crosshairs */}
+          <div className="absolute inset-0 flex items-center">
+            <div className="h-px w-full bg-emerald-500/12" />
+          </div>
+          <div className="absolute inset-0 flex justify-center">
+            <div className="h-full w-px bg-emerald-500/12" />
+          </div>
+
+          {/* Sweep trail (conic-gradient) */}
+          <div
+            className="absolute inset-0 rounded-full animate-spin [animation-duration:3s] [animation-timing-function:linear]"
+            style={{
+              background:
+                'conic-gradient(from 0deg, transparent 0%, transparent 68%, rgba(52,211,153,0.04) 74%, rgba(52,211,153,0.22) 90%, rgba(52,211,153,0.32) 100%)',
+            }}
+          />
+
+          {/* Sweep arm */}
+          <div className="absolute inset-0 animate-spin [animation-duration:3s] [animation-timing-function:linear]">
+            <div
+              className="absolute top-0 h-1/2 w-px bg-gradient-to-b from-emerald-400 to-transparent"
+              style={{ left: '50%', transform: 'translateX(-50%)' }}
+            />
+          </div>
+
+          {/* Blips — appear as steps complete */}
+          {RADAR_BLIPS.map((blip, i) => (
+            <div
+              key={i}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${blip.cx}%`, top: `${blip.cy}%` }}
+            >
+              {i <= stepIndex && (
+                <>
+                  <div className="absolute -inset-2 animate-ping rounded-full bg-emerald-400/25 [animation-duration:2s]" />
+                  <div className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_3px_rgba(52,211,153,0.55)]" />
+                </>
+              )}
+              {i > stepIndex && (
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-900/60" />
+              )}
+            </div>
+          ))}
+
+          {/* Center dot */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <Sparkles size={36} className="animate-pulse text-primary" strokeWidth={1.5} />
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_14px_5px_rgba(52,211,153,0.5)]" />
           </div>
         </div>
 
-        <div className="space-y-2 text-center">
-          <h3 className="text-2xl font-black tracking-tight text-on-background">
-            {isMatchMode ? 'Analysing your fit...' : 'Scanning your resume...'}
-          </h3>
-          <p key={stepIndex} className="animate-pulse text-sm text-on-surface-variant">
+        {/* ── Title & current step ──────────────────────────────── */}
+        <div className="space-y-1.5 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">
+              {isMatchMode ? 'Deep analysis active' : 'Resume scan active'}
+            </h3>
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 [animation-delay:0.5s]" />
+          </div>
+          <p
+            key={stepIndex}
+            className="text-xl font-black tracking-tight text-white transition-all duration-500"
+          >
             {steps[stepIndex]}
           </p>
         </div>
 
-        <div className="w-full max-w-sm space-y-2">
+        {/* ── Step checklist ────────────────────────────────────── */}
+        <div className="w-full max-w-sm space-y-1.5">
           {steps.map((step, i) => (
             <div
               key={step}
-              className={`flex items-center gap-3 rounded-[1rem] px-4 py-2.5 transition-all duration-500 ${
+              className={`flex items-center gap-3 rounded-[0.9rem] px-4 py-2.5 transition-all duration-700 ${
                 i < stepIndex
-                  ? 'bg-emerald-50'
+                  ? 'bg-emerald-500/14'
                   : i === stepIndex
-                  ? 'bg-primary-container/25 ring-1 ring-primary/20'
-                  : 'opacity-30'
+                  ? 'bg-white/7 ring-1 ring-emerald-500/28'
+                  : 'opacity-20'
               }`}
             >
               {i < stepIndex ? (
-                <CheckCircle2 size={15} className="shrink-0 text-emerald-600" />
+                <CheckCircle2 size={14} className="shrink-0 text-emerald-400" />
               ) : i === stepIndex ? (
-                <svg className="h-4 w-4 shrink-0 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+                <svg className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-400" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : (
-                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-outline-variant" />
+                <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/20" />
               )}
               <span
                 className={`text-sm ${
                   i < stepIndex
-                    ? 'font-medium text-emerald-700'
+                    ? 'font-medium text-emerald-300'
                     : i === stepIndex
-                    ? 'font-semibold text-on-background'
-                    : 'text-on-surface-variant'
+                    ? 'font-semibold text-white'
+                    : 'text-white/35'
                 }`}
               >
                 {step}
@@ -622,6 +704,9 @@ function ScanningAnimation({ isMatchMode }: { isMatchMode: boolean }) {
           ))}
         </div>
       </div>
+
+      {/* Bottom scan line accent */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
     </div>
   )
 }
@@ -1105,6 +1190,7 @@ export default function ATSCheckerClient({
   const [jobDescription, setJobDescription] = useState('')
 
   const [isScanning, setIsScanning] = useState(false)
+  const [isScanFinishing, setIsScanFinishing] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanResult, setScanResult] = useState<ScanResponse | null>(null)
   const [scansLeft, setScansLeft] = useState(initialScansLeft)
@@ -1467,6 +1553,7 @@ export default function ATSCheckerClient({
     setAppliedOptimisedChangeIds([])
     setHasTouchedOptimisedChangeSelection(false)
     setOptimisedResumeId(null)
+    setIsScanFinishing(false)
     setIsScanning(true)
 
     const scanStartedAt = performance.now()
@@ -1491,10 +1578,12 @@ export default function ATSCheckerClient({
       })
       const json = await res.json()
       if (!res.ok || !json.success) {
+        setIsScanFinishing(true)
         await waitForScanReveal(scanStartedAt)
         setScanError(ERROR_MESSAGES[json.error ?? 'INTERNAL_ERROR'] ?? json.error)
         return
       }
+      setIsScanFinishing(true)
       await waitForScanReveal(scanStartedAt)
       setScanResult(json.data)
       shouldAutoScrollResultsRef.current = true
@@ -1512,10 +1601,12 @@ export default function ATSCheckerClient({
         void router.prefetch('/dashboard/resumes')
       }
     } catch {
+      setIsScanFinishing(true)
       await waitForScanReveal(scanStartedAt)
       setScanError(ERROR_MESSAGES['INTERNAL_ERROR'])
     } finally {
       setIsScanning(false)
+      setIsScanFinishing(false)
     }
   }
   handleScanRef.current = handleScan
@@ -2231,7 +2322,7 @@ export default function ATSCheckerClient({
       {/* ── Scanning Animation ───────────────────────────────────────────── */}
       {isScanning && (
         <div ref={scanningAnimationRef}>
-          <ScanningAnimation isMatchMode={isMatchMode} />
+          <ScanningAnimation isMatchMode={isMatchMode} isFinishing={isScanFinishing} />
         </div>
       )}
 
