@@ -74,19 +74,29 @@ function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
 function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
   // 1. Identify category-prefixed skills from AI (e.g. "Technical: SQL, Python")
   const currentSections = normalizeSkillSections(data.skillSections, data.skills)
+  const sectionTitlesLower = new Set(currentSections.map(s => s.title.toLowerCase()))
   const categoryMap = new Map<string, string[]>()
-  
+
   const cleanMergedSkills: string[] = []
   for (const rawSkill of mergedSkills) {
     const colonIndex = rawSkill.indexOf(':')
     if (colonIndex > 0 && colonIndex < 30) {
       const title = rawSkill.slice(0, colonIndex).trim()
       const content = rawSkill.slice(colonIndex + 1).trim()
-      
+
       // Check if this title matches an existing section (case-insensitive)
       const matchingSection = currentSections.find(s => s.title.toLowerCase() === title.toLowerCase())
       if (matchingSection) {
-        const skills = splitSkillInput(content)
+        const skills = splitSkillInput(content).filter(skill => {
+          const sk = skill.trim()
+          if (!sk) return false
+          // Remove garbage items the AI sometimes emits (e.g. "Skill section -")
+          if (/^skill\s+section/i.test(sk)) return false
+          // Remove nested section references (e.g. "Product Delivery: story refinement")
+          const innerColon = sk.indexOf(':')
+          if (innerColon > 0 && innerColon < 30 && sectionTitlesLower.has(sk.slice(0, innerColon).trim().toLowerCase())) return false
+          return true
+        })
         categoryMap.set(matchingSection.title, [...(categoryMap.get(matchingSection.title) || []), ...skills])
         continue
       }
@@ -101,7 +111,7 @@ function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
   const rebuilt = currentSections.map(section => {
     // Skills explicitly mapped via "Title: ..." strings
     const explicitlyAssigned = categoryMap.get(section.title) || []
-    
+
     // Skills from the original section that survived the merge
     const kept = section.skills
       .map(skill => {
@@ -112,7 +122,13 @@ function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
       })
       .filter((skill): skill is string => Boolean(skill))
 
-    const finalSkills = dedupeSkills([...explicitlyAssigned, ...kept])
+    // If AI addressed this section, use its output; otherwise preserve original skills intact
+    let finalSkills: string[]
+    if (explicitlyAssigned.length > 0 || kept.length > 0) {
+      finalSkills = dedupeSkills([...explicitlyAssigned, ...kept])
+    } else {
+      finalSkills = dedupeSkills(section.skills)
+    }
     finalSkills.forEach(skill => assigned.add(skill.toLowerCase()))
 
     return {

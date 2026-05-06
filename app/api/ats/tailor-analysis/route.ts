@@ -43,6 +43,7 @@ OUTPUT CONTRACT:
 - bulletOrderPlans.sectionId must be one of: experience, volunteer.
 - If a section does not need changes, omit it from sectionFocus or keep arrays empty.
 - Keep bulletRewrites focused on the highest-leverage changes. Quality over quantity.
+- SKILL SECTIONS: If the resume has skillSections (e.g. "Product Delivery", "Domain", "Technical", "Tools"), skillsPlan.recommendedOrder MUST contain one entry per section using the format "SectionTitle: skill1, skill2, ..." — include ALL sections, not just the most relevant one. Never nest section references inside a skill list (e.g. do NOT write "Product Delivery: story refinement" as a skill inside another section). Never emit strings like "Skill section -".
 
 SCORING CALIBRATION:
 - STRONG_FIT / HIGH or VERY_HIGH only when the resume already maps strongly to the role.
