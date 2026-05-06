@@ -265,7 +265,7 @@ export async function analyzeResume<T>(
   for (const model of FALLBACK_CHAIN) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 90000)
+      const timeoutId = setTimeout(() => controller.abort(), 120000)
 
       const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
         method: 'POST',
@@ -437,14 +437,16 @@ export async function callClaudeJSONFallback<T>(options: {
   perModelTimeoutMs?: number
   jsonRetryTimeoutMs?: number
 }): Promise<T> {
+  // We prioritize DeepSeek V4 Flash as the primary cost-effective model.
   const models = Array.from(new Set([
     DEEPSEEK_V4_FLASH,
     options.model,
     ...(options.fallbackModels ?? FALLBACK_CHAIN),
   ].filter(Boolean)))
-  const totalTimeoutMs = options.timeoutMs ?? 120000
-  const perModelTimeoutMs = options.perModelTimeoutMs ?? Math.max(30000, Math.floor(totalTimeoutMs / Math.max(1, Math.min(models.length, 2))))
-  const jsonRetryTimeoutMs = options.jsonRetryTimeoutMs ?? Math.min(30000, perModelTimeoutMs)
+  
+  const totalTimeoutMs = options.timeoutMs ?? 180000
+  const perModelTimeoutMs = options.perModelTimeoutMs ?? 80000
+  const jsonRetryTimeoutMs = options.jsonRetryTimeoutMs ?? 30000
   const failures: Array<{ model: string; reason: string }> = []
 
   for (const model of models) {

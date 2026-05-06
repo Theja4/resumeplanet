@@ -1,16 +1,23 @@
 'use client'
 
+import { useRef } from 'react'
 import { Plus, X } from 'lucide-react'
 import type { ResumeData, CertificationItem } from '@/types'
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 interface EditorProps {
   data: ResumeData
   onChange: (updated: ResumeData) => void
+  focusPath?: string | null
+  onFocusHandled?: () => void
 }
 
 const EMPTY: CertificationItem = { name: '', issuer: '', date: '' }
 
-export default function CertificationsEditor({ data, onChange }: EditorProps) {
+export default function CertificationsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
+
   function updateItem(index: number, updated: CertificationItem) {
     const next = [...data.certifications]
     next[index] = updated
@@ -26,11 +33,12 @@ export default function CertificationsEditor({ data, onChange }: EditorProps) {
   }
 
   return (
-    <div className="p-4 space-y-2">
+    <div ref={rootRef} className="p-4 space-y-2">
       {data.certifications.map((cert, i) => (
         <div key={i} className="flex items-center gap-2">
           <input
             type="text"
+            data-field-path={`certifications.${i}.name`}
             value={cert.name}
             onChange={(e) => updateItem(i, { ...cert, name: e.target.value })}
             placeholder="Certification name"
@@ -38,6 +46,7 @@ export default function CertificationsEditor({ data, onChange }: EditorProps) {
           />
           <input
             type="text"
+            data-field-path={`certifications.${i}.issuer`}
             value={cert.issuer}
             onChange={(e) => updateItem(i, { ...cert, issuer: e.target.value })}
             placeholder="Issuer"
@@ -45,6 +54,7 @@ export default function CertificationsEditor({ data, onChange }: EditorProps) {
           />
           <input
             type="text"
+            data-field-path={`certifications.${i}.date`}
             value={cert.date}
             onChange={(e) => updateItem(i, { ...cert, date: e.target.value })}
             placeholder="Year"
@@ -64,3 +74,4 @@ export default function CertificationsEditor({ data, onChange }: EditorProps) {
     </div>
   )
 }
+

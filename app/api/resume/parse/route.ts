@@ -1,28 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
-import { createClient } from '@/lib/supabase/server'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import type { ResumeData, APIResponse, Resume } from '@/types'
 import { buildRoundTripVisibility } from '@/lib/firstPartyResumeMarker'
 import { MAX_RESUME_UPLOAD_BYTES } from '@/lib/uploadLimits'
 import { syncResumeData } from '@/lib/resume-data'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
+import { withAuth } from '@/lib/api-middleware'
 
 const ALLOWED_MIME_TYPE = 'application/pdf'
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  const supabase = await createClient()
-
-  // ── Auth check ─────────────────────────────────────────────────────────────
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Unauthorized' },
-      { status: 401 }
-    )
-  }
-
+export const POST = withAuth(async (request, { user, supabase }) => {
   // ── Rate Limit ─────────────────────────────────────────────────────────────
   const rateLimit = await consumeRateLimit({
     request,
@@ -212,4 +201,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     { success: true, data: resume as Resume },
     { status: 201 }
   )
-}
+})

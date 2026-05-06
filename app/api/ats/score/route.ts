@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withErrorHandling } from '@/lib/api-middleware'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache, type AIRequestCacheFeature } from '@/lib/aiRequestCache'
@@ -410,7 +411,7 @@ async function getScoringResumeData(
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export const POST = withErrorHandling(async (request: NextRequest) => {
   const supabase = await createClient()
 
   const {
@@ -463,7 +464,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (analysisMode === 'match' && countWords(jobDescription) < 20) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'JOB_DESCRIPTION_TOO_SHORT' },
+      { 
+        success: false, 
+        error: 'JOB_DESCRIPTION_TOO_SHORT',
+        message: 'Job description must be at least 20 words. Try copying the full duties and requirements.'
+      },
+      { status: 400 }
+    )
+  }
+
+  if (jobDescription && jobDescription.length > 25000) {
+    return NextResponse.json<APIResponse<never>>(
+      { 
+        success: false, 
+        error: 'JOB_DESCRIPTION_TOO_LONG', 
+        message: 'Job description is too long (max 25,000 characters). Please focus on the key requirements.' 
+      },
+      { status: 400 }
+    )
+  }
+
+  if (resumeText.length > 60000) {
+    return NextResponse.json<APIResponse<never>>(
+      { 
+        success: false, 
+        error: 'RESUME_TOO_LONG', 
+        message: 'Resume text is too long for AI analysis. Try removing some older or irrelevant sections.' 
+      },
       { status: 400 }
     )
   }
@@ -622,4 +649,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     },
     { status: 200 }
   )
-}
+})

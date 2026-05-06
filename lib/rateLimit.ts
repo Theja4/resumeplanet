@@ -82,7 +82,12 @@ export async function consumeRateLimit({
   })
 
   if (error) {
-    throw new Error(`RATE_LIMIT_FAILED: ${error.message}`)
+    console.error('Rate limit RPC failed (failing open):', error)
+    return {
+      allowed: true,
+      remaining: limit,
+      resetAt: new Date(Date.now() + windowSeconds * 1000).toISOString(),
+    }
   }
 
   const row = Array.isArray(data) ? data[0] : data

@@ -932,6 +932,37 @@ export default function AIInsightsPanel({
     )
   }
 
+  function handleEditSection(sectionId: string) {
+    // Basic mapping for common section labels to internal IDs
+    const sectionMap: Record<string, string> = {
+      'summary': 'summary',
+      'skills': 'skills',
+      'experience': 'experience',
+      'work experience': 'experience',
+      'education': 'education',
+      'projects': 'projects',
+      'volunteer': 'volunteer',
+      'certifications': 'certifications',
+    }
+    
+    const mappedId = sectionMap[sectionId.toLowerCase()] || sectionId.toLowerCase()
+    
+    // Trigger scroll and expand via parent/DOM
+    // We assume the parent is handling setExpandedSection via the DOM id we added
+    const element = document.getElementById(`section-row-${mappedId}`)
+    if (element) {
+      // Find the "Edit" button or just the row and click it if not expanded?
+      // Actually, we can just rely on the parent's expandedSection state if we could pass it up.
+      // For now, let's just use the DOM scroll as a first step.
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      
+      // To properly expand, we might need a new prop on AIInsightsPanel
+      // But we can try to find the row's clickable header
+      const header = element.querySelector('.group') as HTMLElement
+      if (header) header.click()
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="p-6 overflow-y-auto flex-1">
@@ -1140,7 +1171,7 @@ export default function AIInsightsPanel({
 
                 <TabsContent value="roadmap" className="mt-0">
                   {liveRoadmap ? (
-                    <RoadToNinetyPanel roadmap={liveRoadmap} />
+                    <RoadToNinetyPanel roadmap={liveRoadmap} onEditSection={handleEditSection} />
                   ) : (
                     <p className="text-xs text-zinc-400 text-center py-8">
                       Run AI Insights to build your Road to 90.

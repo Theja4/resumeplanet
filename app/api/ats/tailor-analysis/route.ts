@@ -245,7 +245,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (countWords(jobDescription) < 20) {
     return NextResponse.json<APIResponse<never>>(
-      { success: false, error: 'Job description must contain at least 20 words.' },
+      { 
+        success: false, 
+        error: 'JOB_DESCRIPTION_TOO_SHORT', 
+        message: 'Job description must be at least 20 words. Try copying the full duties and requirements.' 
+      },
+      { status: 400 }
+    )
+  }
+
+  if (jobDescription.length > 25000) {
+    return NextResponse.json<APIResponse<never>>(
+      { 
+        success: false, 
+        error: 'JOB_DESCRIPTION_TOO_LONG', 
+        message: 'Job description is too long (max 25,000 characters). Please focus on the key requirements.' 
+      },
+      { status: 400 }
+    )
+  }
+
+  const resumeText = JSON.stringify(resumeData)
+  if (resumeText.length > 60000) {
+    return NextResponse.json<APIResponse<never>>(
+      { 
+        success: false, 
+        error: 'RESUME_TOO_LONG', 
+        message: 'Resume data is too large for AI analysis. Try removing some older or irrelevant sections.' 
+      },
       { status: 400 }
     )
   }

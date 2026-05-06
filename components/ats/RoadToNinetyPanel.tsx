@@ -1,6 +1,6 @@
 'use client'
 
-import { ShieldAlert, Target, TrendingUp } from 'lucide-react'
+import { ShieldAlert, Target, TrendingUp, PencilLine } from 'lucide-react'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
 import type { ATSScoreRoadmap } from '@/types'
 
@@ -12,8 +12,10 @@ function formatGainRange(min: number, max: number) {
 
 export default function RoadToNinetyPanel({
   roadmap,
+  onEditSection,
 }: {
   roadmap: ATSScoreRoadmap
+  onEditSection?: (sectionId: string) => void
 }) {
   const fixableActions = roadmap.fixableNow.slice(0, 4)
   const evidenceBlockers = roadmap.evidenceBlockers.slice(0, 3)
@@ -88,15 +90,33 @@ export default function RoadToNinetyPanel({
                     </span>
                   </div>
                   <p className="mt-3 text-sm leading-6 text-on-surface-variant">{action.reason}</p>
-                  {action.evidence.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {action.evidence.map(item => (
-                        <span key={item} className="rounded-md bg-primary-container/35 px-2.5 py-1 text-xs font-medium text-on-primary-container">
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    {action.evidence.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {action.evidence.map(item => (
+                          <span key={item} className="rounded-md bg-primary-container/35 px-2.5 py-1 text-xs font-medium text-on-primary-container">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    ) : <div />}
+
+                    {onEditSection && (
+                      <button
+                        onClick={() => {
+                          const sectionId = action.section.toLowerCase().includes('work experience') 
+                            ? 'experience' 
+                            : action.section.toLowerCase()
+                          onEditSection(sectionId)
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-100 shrink-0"
+                      >
+                        <PencilLine size={12} />
+                        Edit
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -43,6 +43,8 @@ interface EditingSkill {
 interface SortableSkillChipProps {
   id: string
   skill: string
+  sectionIndex: number
+  skillIndex: number
   isEditing: boolean
   draftValue: string
   onDraftChange: (value: string) => void
@@ -55,6 +57,8 @@ interface SortableSkillChipProps {
 function SortableSkillChip({
   id,
   skill,
+  sectionIndex,
+  skillIndex,
   isEditing,
   draftValue,
   onDraftChange,
@@ -79,6 +83,7 @@ function SortableSkillChip({
       >
         <input
           autoFocus
+          data-field-path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
           value={draftValue}
           onChange={(event) => onDraftChange(event.target.value)}
           onBlur={onCommitEdit}
@@ -227,7 +232,8 @@ function SectionOverlayCard({ title, skillCount }: { title: string; skillCount: 
 export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const titleRefs = useRef<Record<number, HTMLInputElement | null>>({})
-  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
+  const focusSectionIndex = focusPath?.startsWith('skillSections.') ? parseInt(focusPath.split('.')[1], 10) : null
+
   const chipSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -256,6 +262,12 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     : [{ title: 'Core Skills', tag: '', skills: normalizeEditorSkillList(data.skills ?? []) }]
   const displayedSections = draftSection ? [...sections, draftSection] : sections
   const isMultiSection = displayedSections.length > 1
+
+  useFocusFieldPath({
+    focusPath: (!isMultiSection || (expandedIndex !== null && expandedIndex === focusSectionIndex) || focusSectionIndex === null) ? focusPath : null,
+    rootRef,
+    onHandled: onFocusHandled
+  })
 
   function isDraftSectionIndex(index: number) {
     return draftSection !== null && index === sections.length
@@ -470,6 +482,31 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   }, [pendingFocusIndex, displayedSections.length])
 
   const sectionIds = displayedSections.map((_, i) => `section-${i}`)
+  const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
+
+  if (focusPath !== prevFocusPath) {
+    setPrevFocusPath(focusPath)
+    if (focusPath && focusPath.startsWith('skillSections.')) {
+      const parts = focusPath.split('.')
+      const sectionIndex = parseInt(parts[1], 10)
+      if (!isNaN(sectionIndex)) {
+        setExpandedIndex(sectionIndex)
+
+        // If focusPath targets a specific skill (e.g. skillSections.0.skills.2)
+        if (parts[2] === 'skills' && parts[3]) {
+          const skillIndex = parseInt(parts[3], 10)
+          if (!isNaN(skillIndex)) {
+            const section = displayedSections[sectionIndex]
+            const skill = section?.skills[skillIndex]
+            if (skill !== undefined) {
+              setEditingSkill({ sectionIndex, skillIndex })
+              setDraftSkill(skill)
+            }
+          }
+        }
+      }
+    }
+  }
 
   function renderSectionEditor(section: SkillSection, sectionIndex: number) {
     return (
@@ -507,6 +544,8 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
                     key={skillId(sectionIndex, skillIndex)}
                     id={skillId(sectionIndex, skillIndex)}
                     skill={skill}
+                    sectionIndex={sectionIndex}
+                    skillIndex={skillIndex}
                     isEditing={isEditing}
                     draftValue={draftSkill}
                     onDraftChange={setDraftSkill}
@@ -527,7 +566,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
         </DndContext>
 
         <input
-          data-field-path={focusPath?.startsWith(`skillSections.${sectionIndex}.skills`) ? focusPath : `skillSections.${sectionIndex}.skills`}
+          data-field-path={`skillSections.${sectionIndex}.skills`}
           value={inputs[sectionIndex] ?? ''}
           onChange={(e) => setInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
           onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {

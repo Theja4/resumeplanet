@@ -382,9 +382,9 @@ async function generatePatches(prompt: string, systemPrompt: string = PATCH_SYST
     system: systemPrompt,
     prompt,
     maxTokens: 4000,
-    timeoutMs: 120000,
-    perModelTimeoutMs: 60000,
-    jsonRetryTimeoutMs: 20000,
+    timeoutMs: 180000,
+    perModelTimeoutMs: 80000,
+    jsonRetryTimeoutMs: 30000,
   })
 
   return Array.isArray(result.patches) ? result.patches : []

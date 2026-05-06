@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -16,6 +16,8 @@ import ExperienceItemEditor from './ExperienceItemEditor'
 import EducationItemEditor from './EducationItemEditor'
 import ProjectItemEditor from './ProjectItemEditor'
 import CertificationItemEditor from './CertificationItemEditor'
+
+import { useFocusFieldPath } from './useFocusFieldPath'
 
 type ComplexSectionId = 'experience' | 'education' | 'projects' | 'certifications' | string
 type ComplexSectionItem = ExperienceItem | EducationItem | ProjectItem | CertificationItem
@@ -146,8 +148,19 @@ export default function SubItemList({
   onItemEditorOpen,
 }: Props) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+
+  if (focusPath !== prevFocusPath) {
+    setPrevFocusPath(focusPath)
+    if (focusPath && focusPath.startsWith(`${sectionId}.`)) {
+      const index = getItemIndexFromFocusPath(sectionId, focusPath)
+      if (index !== null) {
+        setEditingIndex(index)
+      }
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -159,32 +172,13 @@ export default function SubItemList({
   const itemVisibility = visibility.items[sectionId] || []
   const effectiveEditingIndex = editingIndex !== null && editingIndex < items.length ? editingIndex : null
 
-  useEffect(() => {
-    if (!focusPath || !focusPath.startsWith(`${sectionId}.`)) return
-    const index = getItemIndexFromFocusPath(sectionId, focusPath)
-    if (index === null) return
-    const timeout = window.setTimeout(() => setEditingIndex(index), 0)
-    return () => window.clearTimeout(timeout)
-  }, [focusPath, sectionId])
+  const focusIndex = focusPath ? getItemIndexFromFocusPath(sectionId, focusPath) : null
 
-  useEffect(() => {
-    if (editingIndex === null || !focusPath || !focusPath.startsWith(`${sectionId}.`) || !rootRef.current) return
-    const id = window.requestAnimationFrame(() => {
-      const root = rootRef.current
-      if (!root) return
-      const escapedPath =
-        typeof window !== 'undefined' && window.CSS?.escape
-          ? window.CSS.escape(focusPath)
-          : focusPath
-      const target = root.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field-path="${escapedPath}"]`) ?? root.querySelector<HTMLInputElement | HTMLTextAreaElement>('input, textarea')
-      if (target) {
-        target.focus()
-        target.select?.()
-        onFocusHandled?.()
-      }
-    })
-    return () => window.cancelAnimationFrame(id)
-  }, [editingIndex, focusPath, sectionId, onFocusHandled])
+  useFocusFieldPath({
+    focusPath: (editingIndex !== null && editingIndex === focusIndex) ? focusPath : null,
+    rootRef,
+    onHandled: onFocusHandled
+  })
 
   function updateItems(newItems: typeof items) {
     if (sectionId.startsWith('custom_')) {

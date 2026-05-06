@@ -7,11 +7,11 @@ import { getSiteUrl, SITE_NAME } from '@/lib/site'
 import { DEFAULT_OG_IMAGE, DEFAULT_SEO_DESCRIPTION, getAbsoluteUrl } from '@/lib/seo'
 import PromoBanner from '@/components/shared/PromoBanner'
 import PaddleProvider from '@/components/providers/PaddleProvider'
-import PostHogProvider from '@/components/providers/PostHogProvider'
-import GoogleAnalyticsProvider from '@/components/providers/GoogleAnalyticsProvider'
+import AnalyticsProviders from '@/components/providers/AnalyticsProviders'
 import AffiliateReferralTracker from '@/components/providers/AffiliateReferralTracker'
 import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
 import CookieConsentBanner from '@/components/shared/CookieConsentBanner'
+
 import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import {
   COOKIE_CONSENT_COOKIE,
@@ -116,15 +116,13 @@ export default async function RootLayout({
       >
         {showCookieConsentBanner ? <CookieConsentBanner /> : null}
         <AffiliateReferralTracker />
-        <PostHogProvider enabled={analyticsEnabled}>
-          <GoogleAnalyticsProvider enabled={analyticsEnabled}>
-            <PaddleProvider>
-              {bannerPromo && <PromoBanner promo={bannerPromo} />}
-              {children}
-              {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
-            </PaddleProvider>
-          </GoogleAnalyticsProvider>
-        </PostHogProvider>
+        <AnalyticsProviders analyticsEnabled={analyticsEnabled}>
+          <PaddleProvider>
+            {bannerPromo && <PromoBanner promo={bannerPromo} />}
+            {children}
+            {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
+          </PaddleProvider>
+        </AnalyticsProviders>
       </body>
     </html>
   );

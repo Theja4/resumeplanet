@@ -155,10 +155,10 @@ export default function UniversalTemplate({
     )
   }
 
-  function renderTags(tags: string[], pathPrefix: string) {
+  function renderTags(tags: string[], pathPrefix: string, textClassName: string = "text-sm text-gray-700") {
     return tags.map((tag, i) => (
       <React.Fragment key={i}>
-        <EditableText value={tag} path={`${pathPrefix}.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-700" />
+        <EditableText value={tag} path={`${pathPrefix}.${i}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={textClassName} />
         {i < tags.length - 1 && <span className="text-gray-400">, </span>}
       </React.Fragment>
     ))
@@ -683,12 +683,13 @@ export default function UniversalTemplate({
       }
 
       if (custom.type === 'tags' && custom.tags && custom.tags.length > 0) {
+        const textClassName = `${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700`
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <p className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700`}>
+            <p className={textClassName}>
               <span className={isCompressed ? 'leading-tight' : 'leading-normal'}>
-                {renderTags(custom.tags, `${id}.tags`)}
+                {renderTags(custom.tags, `${id}.tags`, textClassName)}
               </span>
             </p>
           </div>
@@ -839,7 +840,17 @@ export default function UniversalTemplate({
                           />
                         )}
                       </div>
-                      {hasText(edu.gpa) && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>GPA: {edu.gpa}</p>}
+                      {hasText(edu.gpa) && (
+                        <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
+                          GPA: <EditableText
+                            value={edu.gpa}
+                            path={`education.${i}.gpa`}
+                            isEditing={isEditing}
+                            onFieldChange={onFieldChange}
+                            onNavigateToField={onNavigateToField}
+                          />
+                        </p>
+                      )}
                     </div>
                     {dateLayout === 'right' && getEducationDateLabel(edu) && (
                       <EditableText
@@ -900,6 +911,19 @@ export default function UniversalTemplate({
               {data.certifications.map((c, i) => (
                 <p key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
                   <EditableText value={c.name} path={`certifications.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  {c.issuer && (
+                    <>
+                      {' · '}
+                      <EditableText
+                        value={c.issuer}
+                        path={`certifications.${i}.issuer`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className="text-gray-600"
+                      />
+                    </>
+                  )}
                   {c.date ? (
                     <>
                       {' ('}
@@ -976,6 +1000,22 @@ export default function UniversalTemplate({
                     {proj.description && (
                       <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
                     )}
+                    {proj.technologies && proj.technologies.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-1">
+                        {proj.technologies.map((tech, techIndex) => (
+                          <React.Fragment key={techIndex}>
+                            <EditableText
+                              value={tech}
+                              path={`projects.${i}.technologies.${techIndex}`}
+                              isEditing={isEditing}
+                              onFieldChange={onFieldChange}
+                              onNavigateToField={onNavigateToField}
+                              className={`${isSidebarContext ? 'text-[9px]' : 'text-[11px]'} px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium`}
+                            />
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
                     {(proj.bullets?.length ?? 0) > 0 && (
                       <div className="mt-1.5 space-y-1">
                         {(proj.bullets ?? []).map((bullet, bulletIndex) => (
@@ -1022,6 +1062,19 @@ export default function UniversalTemplate({
               {data.awards.map((award, i) => (
                 <p key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
                   <EditableText value={award.title} path={`awards.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  {award.issuer && (
+                    <>
+                      {' · '}
+                      <EditableText
+                        value={award.issuer}
+                        path={`awards.${i}.issuer`}
+                        isEditing={isEditing}
+                        onFieldChange={onFieldChange}
+                        onNavigateToField={onNavigateToField}
+                        className="text-gray-600"
+                      />
+                    </>
+                  )}
                   {award.date ? (
                     <>
                       {' ('}
@@ -1502,7 +1555,16 @@ function ExperienceItem({
         )}
       </div>
 
-      {exp.location && <p className={`text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px] mt-0.5' : 'text-xs mt-0.5'}`}>{exp.location}</p>}
+      {exp.location && (
+        <EditableText
+          value={exp.location}
+          path={`${pathPrefix}.${ei}.location`}
+          isEditing={isEditing}
+          onFieldChange={onFieldChange}
+          onNavigateToField={onNavigateToField}
+          className={`text-gray-400 block ${isSidebarContext || isCompressed ? 'text-[11px] mt-0.5' : 'text-xs mt-0.5'}`}
+        />
+      )}
       {!showRightDate && dateContent && (
         <span className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
           {dateContent}

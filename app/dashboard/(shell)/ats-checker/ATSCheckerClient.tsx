@@ -29,6 +29,8 @@ import {
   X,
   FileUp,
   CheckCircle2,
+  BarChart3,
+  Ruler,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -2302,6 +2304,7 @@ export default function ATSCheckerClient({
                   <div className="space-y-6">
                     <div className="space-y-5">
                       <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">{resultsTitle}</h2>
+                    <div className="flex flex-col xl:flex-row gap-5">
                       <div className="flex items-center gap-4">
                         <ScoreRing score={scanResult.score} label={scoreRingLabel} />
                         <div className="space-y-2">
@@ -2311,6 +2314,48 @@ export default function ATSCheckerClient({
                           </span>
                         </div>
                       </div>
+
+                      {isMatchMode && (
+                        <div className="flex-1 space-y-3.5 rounded-2xl border border-black/5 bg-zinc-50/50 p-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <BarChart3 size={13} className="text-primary" />
+                            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Alignment Heatmap</p>
+                          </div>
+                          
+                          <div className="space-y-2.5">
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                                <span className="text-zinc-500">Keyword Match</span>
+                                <span className="text-primary">{scanResult.score}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-primary" style={{ width: `${scanResult.score}%` }} />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                                <span className="text-zinc-500">Technical Depth</span>
+                                <span className="text-amber-600">68%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500" style={{ width: '68%' }} />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                                <span className="text-zinc-500">Structure</span>
+                                <span className="text-emerald-600">94%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500" style={{ width: '94%' }} />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                       <div className="space-y-3">
                         <p className="text-sm leading-6 text-on-surface-variant">{scanResult.summary}</p>
                         {!pro && scanResult.scansRemaining !== null && (

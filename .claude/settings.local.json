@@ -111,7 +111,10 @@
       "Bash(find:*)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); deps={**d.get\\('dependencies',{}\\), **d.get\\('devDependencies',{}\\)}; [print\\(k,v\\) for k,v in deps.items\\(\\) if any\\(x in k for x in ['pdf','jspdf','mammoth']\\)]\")",
       "Bash(xxd /Users/thejach/Downloads/ResumePlanet/app/dashboard/\\\\\\(shell\\\\\\)/orders/new/page.tsx)",
-      "Bash(pkill -f \"next build\")"
+      "Bash(pkill -f \"next build\")",
+      "WebFetch(domain:polar.sh)",
+      "WebFetch(domain:docs.creem.io)",
+      "WebFetch(domain:docs.dodopayments.com)"
     ]
   }
 }

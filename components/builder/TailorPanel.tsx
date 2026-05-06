@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { ArrowUpRight, Briefcase, Loader2, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUpRight, Briefcase, Check, Loader2, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react'
 import { countWords } from '@/lib/text'
 import { canApplyTailorSection } from '@/lib/tailorResume'
 import type { TailorAnalysis, TailorIntensity } from '@/types'
@@ -94,11 +94,33 @@ export default function TailorPanel({
   const panelScrollRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const jobWordCount = countWords(jobDescription)
+  
+  const [appliedSections, setAppliedSections] = useState<Set<string>>(new Set())
+  const [prevAnalysis, setPrevAnalysis] = useState(analysis)
+
+  if (analysis !== prevAnalysis) {
+    setPrevAnalysis(analysis)
+    setAppliedSections(new Set())
+  }
+
   const hasDirectTailorChanges = analysis
     ? ['summary', 'skills', 'experience', 'projects', 'volunteer'].some(sectionId =>
         canApplyTailorSection(analysis, sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer')
       )
     : false
+
+  function handleApplyAll() {
+    onApplyAll()
+    if (analysis) {
+      const all = ['summary', 'skills', 'experience', 'projects', 'volunteer'].filter(s => canApplyTailorSection(analysis, s as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer'))
+      setAppliedSections(new Set(all))
+    }
+  }
+
+  function handleApplySection(sectionId: string) {
+    onApplySection(sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer')
+    setAppliedSections(prev => new Set(prev).add(sectionId))
+  }
 
   useEffect(() => {
     if (!analysis || !panelScrollRef.current || !resultsRef.current) return
@@ -268,12 +290,12 @@ export default function TailorPanel({
             )}
 
             <button
-              onClick={onApplyAll}
-              disabled={!hasDirectTailorChanges}
+              onClick={handleApplyAll}
+              disabled={!hasDirectTailorChanges || appliedSections.size >= 3}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:brightness-100"
             >
               <Sparkles size={16} />
-              Apply all tailored changes
+              {appliedSections.size >= 3 ? 'Changes applied to builder' : 'Apply all tailored changes'}
             </button>
 
             <div className="rounded-[1.25rem] border border-black/6 bg-white/88 p-4 shadow-[0_14px_30px_rgba(15,23,42,0.05)]">
@@ -329,6 +351,7 @@ export default function TailorPanel({
                     analysis,
                     focus.sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer'
                   )
+                  const isApplied = appliedSections.has(focus.sectionId)
 
                   return (
                     <div key={`${focus.sectionId}-${focus.title}`} className="rounded-[1.2rem] border border-black/6 bg-white/90 p-4 shadow-[0_10px_22px_rgba(15,23,42,0.04)]">
@@ -350,9 +373,14 @@ export default function TailorPanel({
                         </span>
                       </div>
                       <p className="mt-2 text-sm leading-6 text-zinc-700">{focus.reason}</p>
-                      {canApply ? (
+                      {isApplied ? (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-700 border border-emerald-100">
+                          <Check size={12} />
+                          Applied
+                        </div>
+                      ) : canApply ? (
                         <button
-                          onClick={() => onApplySection(focus.sectionId)}
+                          onClick={() => handleApplySection(focus.sectionId)}
                           className="mt-3 inline-flex items-center gap-2 rounded-full border border-black/8 bg-white px-4 py-2 text-xs font-bold uppercase tracking-[0.14em] text-zinc-900 transition hover:bg-surface-container-low"
                         >
                           Apply section

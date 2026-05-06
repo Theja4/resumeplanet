@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   CloudUpload,
   Cloud,
+  CloudOff,
   Check,
   Undo2,
   Redo,
@@ -441,6 +442,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isTitleFocused, setIsTitleFocused] = useState(false)
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveFailed, setSaveFailed] = useState(false)
   const [isDownloadOpen, setIsDownloadOpen] = useState(false)
   const [activeDownloadFormat, setActiveDownloadFormat] = useState<ActiveDownloadFormat>(null)
   const [downloadError, setDownloadError] = useState<string | null>(null)
@@ -455,7 +457,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
-  const saveTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const resumeRef = useRef<HTMLDivElement>(null)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -890,6 +891,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     router.replace(nextUrl, { scroll: false })
   }, [pathname, router, searchParams])
 
+  const saveLockRef = useRef(false)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
   const hasUnsavedChanges =
     !!resumeData && (
       JSON.stringify(resumeData) !== JSON.stringify(savedData) ||
@@ -898,7 +902,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     )
 
   async function forceSave() {
-    if (!resumeData || !hasUnsavedChanges || isSaving) return
+    if (!resumeData || !hasUnsavedChanges || isSaving || saveLockRef.current) return
 
     // Define what constitutes a truly 'empty' resume to avoid ghost records on new drafts.
     // If it's a new draft, we only save if the user has actually done something.
@@ -913,7 +917,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       if (isDataEmpty && isTemplateDefault) return
     }
 
+    saveLockRef.current = true
     setIsSaving(true)
+    setSaveFailed(false)
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = undefined
@@ -966,6 +972,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         setSavedTemplateConfig(templateConfig)
       }
     } catch (err: unknown) {
+      setSaveFailed(true)
       const errorDetails =
         err && typeof err === 'object'
           ? (err as { message?: string; details?: string; hint?: string; code?: string })
@@ -979,6 +986,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       })
     } finally {
       setIsSaving(false)
+      saveLockRef.current = false
     }
   }
 
@@ -1229,12 +1237,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
 
     setExpandedSection(sectionId)
+    setIsLeftCollapsed(false)
     setFocusedFieldPath(path)
   }
 
   // Keyboard shortcuts: Ctrl+Z / Cmd+Z for undo, Ctrl+Shift+Z / Cmd+Shift+Z for redo
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      ) {
+        return
+      }
+
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
@@ -1289,10 +1307,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
   }
 
+  function scrollToSection(sectionId: string) {
+    // We wait a tick for React to expand the section before scrolling
+    window.requestAnimationFrame(() => {
+      const element = document.getElementById(`section-row-${sectionId}`)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    })
+  }
+
   function handleApplyTailorSection(sectionId: 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'volunteer') {
     if (!resumeData || !tailorAnalysis) return
 
     setExpandedSection(sectionId)
+    scrollToSection(sectionId)
+
     if (!canApplyTailorSection(tailorAnalysis, sectionId)) return
 
     const result = applyTailorAnalysisToResumeData(resumeData, tailorAnalysis, sectionId)
@@ -1321,6 +1351,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       result.touchedSections.forEach(sectionId => next.add(sectionId))
       return next
     })
+
+    // If summary was touched, expand it as it's the most visible change
+    if (result.touchedSections.includes('summary')) {
+      setExpandedSection('summary')
+      scrollToSection('summary')
+    } else if (result.touchedSections.length > 0) {
+      setExpandedSection(result.touchedSections[0])
+      scrollToSection(result.touchedSections[0])
+    }
   }
 
   function handleApplyAIInsightFix(suggestion: InsightSuggestionLike) {
@@ -1330,6 +1369,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       if (updated === previous) return previous
       history.pushHistory(previous, visibility)
       builderAnalytics.trackSectionEdit(suggestion.sectionHint, 'edit')
+      
+      // Expand and scroll to the section being fixed
+      setExpandedSection(suggestion.sectionHint)
+      scrollToSection(suggestion.sectionHint)
+
       return updated
     })
   }
@@ -1594,6 +1638,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   isTitleFocused ? 'bg-white shadow-[inset_0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-transparent'
                 }`}
               />
+            </div>
+            
+            {/* Save Status Indicator */}
+            <div className="flex items-center gap-2 px-1">
+              {isSaving ? (
+                <div className="flex items-center gap-1.5 text-zinc-400 animate-pulse">
+                  <Loader2 size={12} className="animate-spin" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Saving...</span>
+                </div>
+              ) : saveFailed ? (
+                <button 
+                  onClick={() => forceSave()}
+                  className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  <CloudOff size={12} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Save Failed</span>
+                </button>
+              ) : hasUnsavedChanges ? (
+                <div className="flex items-center gap-1.5 text-amber-500">
+                  <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Unsaved</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 text-emerald-500/60">
+                  <Check size={12} strokeWidth={3} />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Saved</span>
+                </div>
+              )}
             </div>
           </div>
           

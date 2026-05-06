@@ -31,8 +31,35 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
       <div>
         <label className="block text-xs text-gray-500 mb-1">Description</label>
         <textarea data-field-path={`${pathPrefix}.description`} value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
-          rows={3} placeholder="What does this project do?"
+          rows={2} placeholder="What does this project do?"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Technologies (comma separated)</label>
+        <input
+          data-field-path={`${pathPrefix}.technologies`}
+          value={(item.technologies ?? []).join(', ')}
+          onChange={e => onChange({
+            ...item,
+            technologies: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+          })}
+          placeholder="React, Next.js, Tailwind..."
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Key Achievements (one per line)</label>
+        <textarea
+          data-field-path={`${pathPrefix}.bullets`}
+          value={(item.bullets ?? []).join('\n')}
+          onChange={e => onChange({
+            ...item,
+            bullets: e.target.value.split('\n').map(b => b.trim()).filter(Boolean)
+          })}
+          rows={3}
+          placeholder="Describe your contributions..."
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        />
       </div>
     </div>
   )

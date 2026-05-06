@@ -23,11 +23,24 @@ export function useFocusFieldPath({
       if (!root) return
 
       const escapedPath = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(focusPath) : focusPath
-      const exact = root.querySelector<HTMLElement>(`[data-field-path="${escapedPath}"]`)
+      let exact = root.querySelector<HTMLElement>(`[data-field-path="${escapedPath}"]`)
+      
+      // If no exact match, try stripping the last segment (e.g. .0 or .title) to find a parent container/input
+      if (!exact && focusPath.includes('.')) {
+        const segments = focusPath.split('.')
+        while (segments.length > 1 && !exact) {
+          segments.pop()
+          const parentPath = segments.join('.')
+          const escapedParent = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(parentPath) : parentPath
+          exact = root.querySelector<HTMLElement>(`[data-field-path="${escapedParent}"]`)
+        }
+      }
+
       const fallback = exact ?? root.querySelector<HTMLElement>(fallbackSelector)
 
       if (fallback instanceof HTMLInputElement || fallback instanceof HTMLTextAreaElement) {
-        fallback.focus()
+        fallback.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        fallback.focus({ preventScroll: true })
         fallback.select?.()
         onHandled?.()
       }

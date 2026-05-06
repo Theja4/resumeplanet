@@ -514,8 +514,24 @@ async function handleSubscriptionActivated(subscription: PaddleSubscription, sup
   const userId = subscription.customData?.userId
   if (!userId) return
 
+  // Idempotency check
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, paddle_subscription_id, subscription_status')
+    .eq('id', userId)
+    .maybeSingle()
+
   const priceId = subscription.items?.[0]?.price?.id ?? null
   const subscriptionInterval = resolveInterval(priceId)
+
+  if (
+    profile?.plan === 'pro' &&
+    profile?.paddle_subscription_id === subscription.id &&
+    profile?.subscription_status === 'active'
+  ) {
+    console.log(`User ${userId} already has active Pro subscription ${subscription.id}, skipping update.`)
+    return
+  }
 
   await updateProfileByUserId(
     supabase,
@@ -536,11 +552,28 @@ async function handleSubscriptionActivated(subscription: PaddleSubscription, sup
 }
 
 async function handleSubscriptionUpdated(subscription: PaddleSubscription, supabase: ServiceClient) {
+  // Idempotency check
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('plan, paddle_subscription_id, subscription_status, subscription_interval')
+    .eq('paddle_subscription_id', subscription.id)
+    .maybeSingle()
+
   // A subscription is considered "Pro" as long as it isn't explicitly canceled or deleted.
   // 'past_due' users should keep access while Paddle retries the payment.
   const isPro = ['active', 'trialing', 'past_due'].includes(subscription.status)
   const priceId = subscription.items?.[0]?.price?.id ?? null
   const subscriptionInterval = isPro ? resolveInterval(priceId) : null
+
+  if (
+    profile &&
+    profile.plan === (isPro ? 'pro' : 'free') &&
+    profile.subscription_status === subscription.status &&
+    profile.subscription_interval === subscriptionInterval
+  ) {
+    console.log(`Subscription ${subscription.id} already up to date, skipping update.`)
+    return
+  }
 
   await updateProfileBySubscriptionReference(
     supabase,

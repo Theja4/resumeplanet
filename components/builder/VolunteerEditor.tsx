@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
 import type { ResumeData, ExperienceItem } from '@/types'
 import { useFocusFieldPath } from './useFocusFieldPath'
@@ -23,17 +23,26 @@ const EMPTY_ROLE: ExperienceItem = {
 
 export default function VolunteerEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
   const rootRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!focusPath || !focusPath.startsWith('volunteer.')) return
-    const match = focusPath.match(/^volunteer\.(\d+)/)
-    if (!match) return
-    const timeout = window.setTimeout(() => setExpandedIndex(Number(match[1])), 0)
-    return () => window.clearTimeout(timeout)
-  }, [focusPath])
+  if (focusPath !== prevFocusPath) {
+    setPrevFocusPath(focusPath)
+    if (focusPath && focusPath.startsWith('volunteer.')) {
+      const match = focusPath.match(/^volunteer\.(\d+)/)
+      if (match) {
+        setExpandedIndex(Number(match[1]))
+      }
+    }
+  }
 
-  useFocusFieldPath({ focusPath, rootRef, onHandled: onFocusHandled })
+  const focusIndex = focusPath?.startsWith('volunteer.') ? Number(focusPath.match(/^volunteer\.(\d+)/)?.[1]) : null
+
+  useFocusFieldPath({
+    focusPath: (expandedIndex !== null && expandedIndex === focusIndex) ? focusPath : null,
+    rootRef,
+    onHandled: onFocusHandled
+  })
 
   function updateItem(index: number, updated: ExperienceItem) {
     const next = [...data.volunteer]

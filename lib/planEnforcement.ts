@@ -1,10 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { Profile } from '@/types'
+import type { User } from '@supabase/supabase-js'
 
 interface AuthResult {
   userId: string
   profile: Profile
+  user: User
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any
 }
@@ -28,7 +30,7 @@ export async function requirePro(): Promise<AuthResult | NextResponse> {
     return NextResponse.json({ success: false, error: 'PRO_REQUIRED' }, { status: 403 })
   }
 
-  return { userId: user.id, profile: profile as Profile, supabase }
+  return { userId: user.id, user, profile: profile as Profile, supabase }
 }
 
 /** Use at the top of auth-required API routes. Returns 401 NextResponse if not logged in. */
@@ -50,5 +52,5 @@ export async function requireAuth(): Promise<AuthResult | NextResponse> {
     return NextResponse.json({ success: false, error: 'Profile not found' }, { status: 401 })
   }
 
-  return { userId: user.id, profile: profile as Profile, supabase }
+  return { userId: user.id, user, profile: profile as Profile, supabase }
 }
