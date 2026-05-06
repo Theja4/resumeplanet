@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Pencil,
   Star,
+  X,
   Loader2,
   ArrowLeft,
   CloudUpload,
