@@ -39,11 +39,14 @@ function dedupeSkills(skills: string[]) {
 }
 
 function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
-  const existing = dedupeSkills(existingSkills)
-  const recommendationMap = new Map(existing.map(skill => [skill.toLowerCase(), skill]))
-
+  // Use original existing skills to preserve formatting (capitalization, etc.)
+  const existingMap = new Map(existingSkills.map(skill => [skill.toLowerCase().trim(), skill]))
+  
   const recommended = analysis.skillsPlan.recommendedOrder
-    .map(skill => recommendationMap.get(skill.trim().toLowerCase()) ?? skill.trim())
+    .map(skill => {
+      const trimmed = skill.trim()
+      return existingMap.get(trimmed.toLowerCase()) ?? trimmed
+    })
     .filter(Boolean)
 
   const additions = analysis.skillsPlan.add.map(skill => skill.trim()).filter(Boolean)
@@ -52,9 +55,13 @@ function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
   const recommendedSet = new Set(recommended.map(skill => skill.toLowerCase()))
   const additionSet = new Set(additions.map(skill => skill.toLowerCase()))
 
-  const carryForward = existing.filter(skill => !recommendedSet.has(skill.toLowerCase()) && !additionSet.has(skill.toLowerCase()))
-  const prioritizedCarryForward = carryForward.filter(skill => !deprioritized.has(skill.toLowerCase()))
-  const deprioritizedCarryForward = carryForward.filter(skill => deprioritized.has(skill.toLowerCase()))
+  const carryForward = existingSkills.filter(skill => {
+    const lower = skill.toLowerCase().trim()
+    return !recommendedSet.has(lower) && !additionSet.has(lower)
+  })
+  
+  const prioritizedCarryForward = carryForward.filter(skill => !deprioritized.has(skill.toLowerCase().trim()))
+  const deprioritizedCarryForward = carryForward.filter(skill => deprioritized.has(skill.toLowerCase().trim()))
 
   return dedupeSkills([
     ...recommended,
@@ -65,28 +72,54 @@ function mergeSkills(existingSkills: string[], analysis: TailorAnalysis) {
 }
 
 function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
-  const normalizedSkills = mergedSkills.flatMap(splitSkillInput).map(skill => skill.trim()).filter(Boolean)
-
-  if ((data.skillSections?.length ?? 0) === 0) {
-    return normalizedSkills.length > 0 ? [{ title: 'Core Skills', skills: normalizedSkills }] : []
+  // 1. Identify category-prefixed skills from AI (e.g. "Technical: SQL, Python")
+  const currentSections = normalizeSkillSections(data.skillSections, data.skills)
+  const categoryMap = new Map<string, string[]>()
+  
+  const cleanMergedSkills: string[] = []
+  for (const rawSkill of mergedSkills) {
+    const colonIndex = rawSkill.indexOf(':')
+    if (colonIndex > 0 && colonIndex < 30) {
+      const title = rawSkill.slice(0, colonIndex).trim()
+      const content = rawSkill.slice(colonIndex + 1).trim()
+      
+      // Check if this title matches an existing section (case-insensitive)
+      const matchingSection = currentSections.find(s => s.title.toLowerCase() === title.toLowerCase())
+      if (matchingSection) {
+        const skills = splitSkillInput(content)
+        categoryMap.set(matchingSection.title, [...(categoryMap.get(matchingSection.title) || []), ...skills])
+        continue
+      }
+    }
+    cleanMergedSkills.push(rawSkill)
   }
 
-  const currentSections = normalizeSkillSections(data.skillSections, data.skills)
+  const normalizedSkills = cleanMergedSkills.flatMap(splitSkillInput).map(skill => skill.trim()).filter(Boolean)
   const lowerMergedSkills = new Map(normalizedSkills.map(skill => [skill.toLowerCase(), skill]))
   const assigned = new Set<string>()
 
   const rebuilt = currentSections.map(section => {
+    // Skills explicitly mapped via "Title: ..." strings
+    const explicitlyAssigned = categoryMap.get(section.title) || []
+    
+    // Skills from the original section that survived the merge
     const kept = section.skills
-      .map(skill => lowerMergedSkills.get(skill.toLowerCase()))
+      .map(skill => {
+        const found = lowerMergedSkills.get(skill.toLowerCase())
+        if (found) return found
+        const fallbackMatch = normalizedSkills.find(ns => ns.toLowerCase() === skill.toLowerCase())
+        return fallbackMatch ? skill : null
+      })
       .filter((skill): skill is string => Boolean(skill))
 
-    kept.forEach(skill => assigned.add(skill.toLowerCase()))
+    const finalSkills = dedupeSkills([...explicitlyAssigned, ...kept])
+    finalSkills.forEach(skill => assigned.add(skill.toLowerCase()))
 
     return {
       ...section,
-      skills: kept,
+      skills: finalSkills,
     }
-  }).filter(section => section.title || section.tag || section.skills.length > 0)
+  })
 
   const unassigned = normalizedSkills.filter(skill => !assigned.has(skill.toLowerCase()))
 
@@ -97,17 +130,12 @@ function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
         ...rebuilt[coreIndex],
         skills: [...rebuilt[coreIndex].skills, ...unassigned],
       }
-    } else if (rebuilt.length > 0) {
-      rebuilt[0] = {
-        ...rebuilt[0],
-        skills: [...rebuilt[0].skills, ...unassigned],
-      }
     } else {
-      rebuilt.push({ title: 'Core Skills', tag: '', skills: unassigned })
+      rebuilt.push({ title: 'Additional Skills', tag: '', skills: unassigned })
     }
   }
 
-  return rebuilt
+  return rebuilt.filter(section => section.title || section.tag || section.skills.length > 0)
 }
 
 function applyBulletRewritesToItems(

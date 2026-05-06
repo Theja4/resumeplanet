@@ -454,6 +454,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPageWarningDismissed, setIsPageWarningDismissed] = useState(false)
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
@@ -998,6 +999,15 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const [isRightCollapsed, setIsRightCollapsed] = useState(false)
   const builderPanelWidthsRef = useRef({ left: 420, right: 380 })
+
+  useEffect(() => {
+    if (isOverRecommendedPages && !isPageWarningDismissed) {
+      const timer = setTimeout(() => {
+        setIsPageWarningDismissed(true)
+      }, 15000)
+      return () => clearTimeout(timer)
+    }
+  }, [isOverRecommendedPages, isPageWarningDismissed])
 
   useEffect(() => {
     if (activeMode !== 'tailor') {
@@ -1788,14 +1798,17 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         </header>
 
         {/* Page-count warning banner */}
-        {isOverRecommendedPages && (
-          <div className="fixed top-[57px] left-0 right-0 z-40 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-semibold px-4 py-1.5 text-center">
-            Your resume is {pageCount} pages. For best results, keep it to 1-2 pages.
+        {isOverRecommendedPages && !isPageWarningDismissed && (
+          <div className="fixed top-[57px] left-0 right-0 z-40 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-semibold px-4 py-1.5 flex items-center justify-center gap-2">
+            <span>Your resume is {pageCount} pages. For best results, keep it to 1-2 pages.</span>
+            <button onClick={() => setIsPageWarningDismissed(true)} className="p-0.5 hover:bg-amber-200/50 rounded-full transition-colors" aria-label="Dismiss warning">
+              <X size={14} className="opacity-70 hover:opacity-100" />
+            </button>
           </div>
         )}
 
         {/* ── Main Workspace ── */}
-        <main className={`flex h-screen ${isOverRecommendedPages ? 'pt-[88px]' : 'pt-16'}`}>
+        <main className={`flex h-screen ${(isOverRecommendedPages && !isPageWarningDismissed) ? 'pt-[88px]' : 'pt-16'}`}>
           
           {/* Left Sidebar: EDITOR SECTIONS */}
           <aside style={{ width: isLeftCollapsed ? 48 : leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 flex flex-col shrink-0 relative transition-[width] duration-300">

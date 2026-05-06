@@ -2304,11 +2304,13 @@ export default function ATSCheckerClient({
                   <div className="space-y-6">
                     <div className="space-y-5">
                       <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">{resultsTitle}</h2>
-                    <div className="flex flex-col xl:flex-row gap-5">
-                      <div className="flex items-center gap-4">
-                        <ScoreRing score={scanResult.score} label={scoreRingLabel} />
-                        <div className="space-y-2">
-                          <p className="text-4xl font-black tracking-tight text-on-background">{getScoreState(scanResult.score).label}</p>
+                    <div className="flex flex-col sm:flex-row xl:flex-col 2xl:flex-row gap-5 flex-wrap">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="shrink-0">
+                          <ScoreRing score={scanResult.score} label={scoreRingLabel} />
+                        </div>
+                        <div className="space-y-2 min-w-0">
+                          <p className="text-3xl sm:text-4xl font-black tracking-tight text-on-background break-words leading-tight">{getScoreState(scanResult.score).label}</p>
                           <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${getScoreState(scanResult.score).toneClassName}`}>
                             {scoreBadgeLabel}
                           </span>
