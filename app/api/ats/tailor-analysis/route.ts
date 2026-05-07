@@ -327,7 +327,7 @@ Remember:
   try {
     const analysis = await callClaudeJSON<TailorAnalysis>({
       model: CLAUDE_PREMIUM,
-      system: getTailorSystemPrompt(resumeData.skillSections.length > 1),
+      system: getTailorSystemPrompt((resumeData.skillSections?.length ?? 0) > 1),
       prompt,
       maxTokens: 8192,
       timeoutMs: 180000,
