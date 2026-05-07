@@ -22,7 +22,10 @@ const EMPTY_ROLE: ExperienceItem = {
 }
 
 export default function VolunteerEditor({ data, onChange, focusPath, onFocusHandled }: EditorProps) {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  const initialFocusIndex = focusPath?.startsWith('volunteer.') ? Number(focusPath.match(/^volunteer\.(\d+)/)?.[1]) : null
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(
+    initialFocusIndex !== null && !isNaN(initialFocusIndex) ? initialFocusIndex : null
+  )
   const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
   const rootRef = useRef<HTMLDivElement>(null)
 

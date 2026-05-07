@@ -453,7 +453,7 @@ export default function SectionList({
               placeholder="E.g. Leadership, Memberships..."
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full text-sm font-medium border-zinc-200 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 mb-3 placeholder:font-normal"
+              className="w-full px-3.5 py-2 text-sm font-medium border-zinc-200 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 mb-3 placeholder:font-normal"
             />
             <div className="flex flex-col gap-2 mb-4">
               <button

@@ -242,16 +242,6 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
-  const [inputs, setInputs] = useState<Record<number, string>>({})
-  const [editingSkill, setEditingSkill] = useState<EditingSkill | null>(null)
-  const [draftSkill, setDraftSkill] = useState('')
-  const skipNextEditCommitRef = useRef(false)
-  const [pendingFocusIndex, setPendingFocusIndex] = useState<number | null>(null)
-  const [activeDrag, setActiveDrag] = useState<{ sectionIndex: number; skillIndex: number } | null>(null)
-  const [draftSection, setDraftSection] = useState<SkillSection | null>(null)
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-  const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
-  const [activeSectionDrag, setActiveSectionDrag] = useState<number | null>(null)
 
   const sections: SkillSection[] = data.skillSections?.length
     ? data.skillSections.map(section => ({
@@ -260,6 +250,38 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
         skills: normalizeEditorSkillList(section.skills ?? []),
       }))
     : [{ title: 'Core Skills', tag: '', skills: normalizeEditorSkillList(data.skills ?? []) }]
+
+  // Determine initial editing state from focusPath
+  let initialEditingSkill: EditingSkill | null = null
+  let initialDraftSkill = ''
+  const initialExpandedIndex = focusSectionIndex !== null && !isNaN(focusSectionIndex) ? focusSectionIndex : null
+
+  if (focusPath && focusPath.startsWith('skillSections.')) {
+    const parts = focusPath.split('.')
+    const sectionIndex = parseInt(parts[1], 10)
+    if (!isNaN(sectionIndex) && parts[2] === 'skills' && parts[3]) {
+      const skillIndex = parseInt(parts[3], 10)
+      if (!isNaN(skillIndex)) {
+        const skill = sections[sectionIndex]?.skills[skillIndex]
+        if (skill !== undefined) {
+          initialEditingSkill = { sectionIndex, skillIndex }
+          initialDraftSkill = skill
+        }
+      }
+    }
+  }
+
+  const [inputs, setInputs] = useState<Record<number, string>>({})
+  const [editingSkill, setEditingSkill] = useState<EditingSkill | null>(initialEditingSkill)
+  const [draftSkill, setDraftSkill] = useState(initialDraftSkill)
+  const skipNextEditCommitRef = useRef(false)
+  const [pendingFocusIndex, setPendingFocusIndex] = useState<number | null>(null)
+  const [activeDrag, setActiveDrag] = useState<{ sectionIndex: number; skillIndex: number } | null>(null)
+  const [draftSection, setDraftSection] = useState<SkillSection | null>(null)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(initialExpandedIndex)
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
+  const [activeSectionDrag, setActiveSectionDrag] = useState<number | null>(null)
+
   const displayedSections = draftSection ? [...sections, draftSection] : sections
   const isMultiSection = displayedSections.length > 1
 

@@ -1,8 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Eye, EyeOff, Trash2,
+import { GripVertical, Eye, EyeOff, Trash2, Pencil,
   User, AlignLeft, Briefcase, GraduationCap, Zap,
   Code, Award, Heart, Globe, Star, Trophy, BookOpen, Users,
   List, Tags, Component
@@ -100,6 +101,7 @@ export default function SortableSectionRow({
   onSectionAction,
   onSubSectionEditorOpened,
 }: Props) {
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
   const {
     attributes, listeners, setNodeRef,
     transform, transition, isDragging,
@@ -152,6 +154,15 @@ export default function SortableSectionRow({
       ...visibility,
       sections: { ...visibility.sections, [sectionId]: !(!isHidden) },
     })
+  }
+
+  function handleTitleChange(newTitle: string) {
+    if (!isCustom) return
+    const newSections = [...(resumeData.customSections || [])]
+    const idx = newSections.findIndex(c => c.id === sectionId)
+    if (idx === -1) return
+    newSections[idx] = { ...newSections[idx], title: newTitle }
+    onDataChange({ ...resumeData, customSections: newSections })
   }
 
   function handleDeleteSection() {
@@ -286,9 +297,38 @@ export default function SortableSectionRow({
           )}
 
           {/* Icon & Label */}
-          <div className={`flex items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
+          <div className={`flex-1 flex items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
             <Icon size={18} className={isExpanded ? 'text-primary' : ''} />
-            <span className={`text-sm ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+            {isEditingTitle && isCustom ? (
+              <input 
+                value={label}
+                onChange={(e) => handleTitleChange(e.target.value)}
+                onBlur={() => setIsEditingTitle(false)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingTitle(false) }}
+                onClick={(e) => e.stopPropagation()}
+                data-action="prevent-expand"
+                className="bg-transparent border-none p-0 text-sm font-semibold text-emerald-700 focus:ring-0 w-full placeholder:text-emerald-200"
+                placeholder="Section Title"
+                autoFocus
+              />
+            ) : (
+              <div className="flex-1 flex items-center gap-2 group/title min-w-0 overflow-hidden">
+                <span className={`text-sm break-all ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+                {isExpanded && isCustom && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsEditingTitle(true)
+                    }}
+                    data-action="prevent-expand"
+                    className="p-1 rounded hover:bg-black/5 text-zinc-400 opacity-0 group-hover/title:opacity-100 transition-opacity"
+                    title="Edit Title"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                )}
+              </div>
+            )}
             {hasHint && (
               <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0 ml-1" />
             )}

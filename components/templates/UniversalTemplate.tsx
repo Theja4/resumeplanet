@@ -665,10 +665,32 @@ export default function UniversalTemplate({
       const custom = data.customSections?.find(c => c.id === id)
       if (!custom) return null
 
+      const header = isSidebarContext ? (
+        <SidebarLabel
+          text={custom.title}
+          accent={accent}
+          path={`${id}.title`}
+          isEditing={isEditing}
+          onFieldChange={onFieldChange}
+          onNavigateToField={onNavigateToField}
+        />
+      ) : (
+        <SectionHeading
+          title={custom.title}
+          accent={accent}
+          density={density}
+          styleVariant={sectionHeadingStyle}
+          path={`${id}.title`}
+          isEditing={isEditing}
+          onFieldChange={onFieldChange}
+          onNavigateToField={onNavigateToField}
+        />
+      )
+
       if (custom.type === 'text' && custom.text && custom.text.trim()) {
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
-            {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {header}
             <EditableText
               value={custom.text}
               path={`${id}.text`}
@@ -686,7 +708,7 @@ export default function UniversalTemplate({
         const textClassName = `${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700`
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
-            {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {header}
             <p className={textClassName}>
               <span className={isCompressed ? 'leading-tight' : 'leading-normal'}>
                 {renderTags(custom.tags, `${id}.tags`, textClassName)}
@@ -699,7 +721,7 @@ export default function UniversalTemplate({
       if (custom.type === 'complex' && custom.items && custom.items.length > 0) {
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
-            {isSidebarContext ? <SidebarLabel text={custom.title} accent={accent} /> : <SectionHeading title={custom.title} accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            {header}
             <div className={isLatexStyle && !isSidebarContext ? 'space-y-[5px]' : isCompressed ? 'space-y-3' : 'space-y-5'}>
               {custom.items.map((exp, ei) => (
                 <ExperienceItem
@@ -1234,14 +1256,35 @@ function SectionHeading({
   accent,
   density,
   styleVariant,
+  path,
+  isEditing,
+  onFieldChange,
+  onNavigateToField,
 }: {
   title: string
   accent: string
   density: 'compressed' | 'relaxed'
   styleVariant: UniversalConfig['sectionHeadingStyle']
+  path?: string
+  isEditing?: boolean
+  onFieldChange?: (path: string, value: string) => void
+  onNavigateToField?: (path: string) => void
 }) {
   const isCompressed = density === 'compressed'
   const spacingClassName = isCompressed ? 'mt-3 mb-1.5' : 'mt-6 mb-3'
+
+  const content = path ? (
+    <EditableText
+      value={title}
+      path={path}
+      isEditing={isEditing}
+      onFieldChange={onFieldChange}
+      onNavigateToField={onNavigateToField}
+      className="break-all"
+    />
+  ) : (
+    <span className="break-all">{title}</span>
+  )
 
   if (styleVariant === 'latex-rule') {
     return (
@@ -1250,7 +1293,7 @@ function SectionHeading({
         className="mt-3 mb-1 border-b border-black pb-[1px] text-[18px] font-normal leading-none text-black"
         style={{ fontVariantCaps: 'small-caps' }}
       >
-        {title}
+        {content}
       </h2>
     )
   }
@@ -1258,7 +1301,7 @@ function SectionHeading({
   if (styleVariant === 'minimal') {
     return (
       <h2 data-resume-section-heading className={`text-[13px] font-semibold text-gray-900 ${spacingClassName}`}>
-        {title}
+        {content}
       </h2>
     )
   }
@@ -1267,7 +1310,7 @@ function SectionHeading({
     return (
       <div data-resume-section-heading className={`flex items-center gap-3 ${spacingClassName}`}>
         <span style={{ color: accent }} className="text-[10px] font-bold uppercase tracking-[0.22em]">
-          {title}
+          {content}
         </span>
         <span className="h-px flex-1 bg-gray-200" />
       </div>
@@ -1275,16 +1318,43 @@ function SectionHeading({
   }
 
   return (
-    <h2 data-resume-section-heading style={{ color: accent }} className={`text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 ${spacingClassName}`}>
-      {title}
+    <h2 data-resume-section-heading style={{ color: accent }} className={`text-xs font-bold uppercase tracking-widest border-b border-gray-200 pb-1 break-all ${spacingClassName}`}>
+      {content}
     </h2>
   )
 }
 
-function SidebarLabel({ text, accent }: { text: string; accent: string }) {
+function SidebarLabel({ 
+  text, 
+  accent,
+  path,
+  isEditing,
+  onFieldChange,
+  onNavigateToField,
+}: { 
+  text: string; 
+  accent: string;
+  path?: string
+  isEditing?: boolean
+  onFieldChange?: (path: string, value: string) => void
+  onNavigateToField?: (path: string) => void
+}) {
+  const content = path ? (
+    <EditableText
+      value={text}
+      path={path}
+      isEditing={isEditing}
+      onFieldChange={onFieldChange}
+      onNavigateToField={onNavigateToField}
+      className="break-all"
+    />
+  ) : (
+    <span className="break-all">{text}</span>
+  )
+
   return (
     <p style={{ color: accent }} className="text-[10px] font-bold uppercase tracking-widest opacity-70 mt-3 mb-0.5">
-      {text}
+      {content}
     </p>
   )
 }

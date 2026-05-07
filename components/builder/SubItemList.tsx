@@ -147,7 +147,8 @@ export default function SubItemList({
   onItemDelete,
   onItemEditorOpen,
 }: Props) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const initialFocusIndex = focusPath ? getItemIndexFromFocusPath(sectionId, focusPath) : null
+  const [editingIndex, setEditingIndex] = useState<number | null>(initialFocusIndex)
   const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)

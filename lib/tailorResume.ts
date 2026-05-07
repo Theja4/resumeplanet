@@ -129,6 +129,7 @@ function mergeSkillSections(data: ResumeData, mergedSkills: string[]) {
     } else {
       finalSkills = dedupeSkills(section.skills)
     }
+    console.debug(`[tailor:section "${section.title}"] original:`, section.skills, '| explicit:', explicitlyAssigned, '| kept:', kept, '| final:', finalSkills)
     finalSkills.forEach(skill => assigned.add(skill.toLowerCase()))
 
     return {
@@ -272,6 +273,9 @@ function applyScopeMutations(
   if (scope === 'skills') {
     const existingSkills = getResumeSkills(next)
     const mergedSkills = mergeSkills(existingSkills, analysis)
+    console.debug('[tailor:skills] skillsPlan:', JSON.stringify(analysis.skillsPlan, null, 2))
+    console.debug('[tailor:skills] existingSkills:', existingSkills)
+    console.debug('[tailor:skills] mergedSkills:', mergedSkills)
     if (JSON.stringify(mergedSkills) !== JSON.stringify(existingSkills)) {
       next.skills = mergedSkills
       next.skillSections = mergeSkillSections(next, mergedSkills)

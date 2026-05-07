@@ -1225,6 +1225,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (!sectionId) return
 
     const indexedFieldMatch = path.match(/^(experience|education|projects)\.(\d+)\./)
+    const customIndexedMatch = path.match(/^(custom_[a-z0-9]+)\.items\.(\d+)\./)
+
     if (indexedFieldMatch) {
       const indexedSectionId = indexedFieldMatch[1] as 'experience' | 'education' | 'projects'
       const requestedIndex = Number(indexedFieldMatch[2])
@@ -1244,6 +1246,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           ...previous,
           [indexedSectionId]: nextItems,
         }
+      })
+    } else if (customIndexedMatch) {
+      const indexedSectionId = customIndexedMatch[1]
+      const requestedIndex = Number(customIndexedMatch[2])
+
+      setResumeData(previous => {
+        if (!previous) return previous
+
+        const customSections = [...(previous.customSections || [])]
+        const idx = customSections.findIndex(c => c.id === indexedSectionId)
+        if (idx === -1 || customSections[idx].type !== 'complex') return previous
+
+        const currentItems = customSections[idx].items || []
+        if (currentItems.length > requestedIndex) return previous
+
+        const nextItems = [...currentItems]
+        while (nextItems.length <= requestedIndex) {
+          nextItems.push({ company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] })
+        }
+
+        customSections[idx] = { ...customSections[idx], items: nextItems }
+        return { ...previous, customSections }
       })
     }
 
