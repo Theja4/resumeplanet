@@ -86,7 +86,7 @@ export default function PdfRenderClient() {
       '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4, div[class*="text-"], div[class*="mb-"]'
     )
     const lineCandidateElements = container.querySelectorAll<HTMLElement>(
-      '[data-resume-path], li, p, h1, h2, h3, h4, div[class*="text-"], div[class*="mb-"]'
+      'span[data-resume-path], a[data-resume-path], em[data-resume-path], strong[data-resume-path]'
     )
     const blockCandidateElements = container.querySelectorAll<HTMLElement>(
       '[data-resume-page-break], [data-resume-section-heading], h2'

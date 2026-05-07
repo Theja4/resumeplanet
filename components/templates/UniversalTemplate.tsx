@@ -624,15 +624,16 @@ export default function UniversalTemplate({
               </div>
 
               {project.description && (
-                <EditableText
-                  value={project.description}
-                  path={`projects.${projectIndex}.description`}
-                  isEditing={isEditing}
-                  onFieldChange={onFieldChange}
-                  onNavigateToField={onNavigateToField}
-                  className="mt-[2px] block break-words text-[13px] leading-[1.22] text-black"
-                  as="p"
-                />
+                <div className="mt-[2px] block break-words text-[13px] leading-[1.22] text-black">
+                  <EditableText
+                    value={project.description}
+                    path={`projects.${projectIndex}.description`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className="break-words text-[13px] leading-[1.22] text-black"
+                  />
+                </div>
               )}
 
               {(project.bullets?.length ?? 0) > 0 && (
@@ -691,15 +692,15 @@ export default function UniversalTemplate({
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {header}
-            <EditableText
-              value={custom.text}
-              path={`${id}.text`}
-              isEditing={isEditing}
-              onFieldChange={onFieldChange}
-              onNavigateToField={onNavigateToField}
-              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}
-              as="p"
-            />
+            <div className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}>
+              <EditableText
+                value={custom.text}
+                path={`${id}.text`}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+              />
+            </div>
           </div>
         )
       }
@@ -752,15 +753,15 @@ export default function UniversalTemplate({
         return hasText(data.summary) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <EditableText
-              value={data.summary}
-              path="summary"
-              isEditing={isEditing}
-              onFieldChange={onFieldChange}
-              onNavigateToField={onNavigateToField}
-              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}
-              as="p"
-            />
+            <div className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}>
+              <EditableText
+                value={data.summary}
+                path="summary"
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+              />
+            </div>
           </div>
         ) : shouldRenderGuidance ? (
           <div>
@@ -1020,7 +1021,9 @@ export default function UniversalTemplate({
                       <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
                     </div>
                     {proj.description && (
-                      <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`} as="p" />
+                      <div className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`}>
+                        <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} />
+                      </div>
                     )}
                     {proj.technologies && proj.technologies.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-x-1.5 gap-y-1">
