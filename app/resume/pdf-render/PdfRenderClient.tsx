@@ -6,8 +6,8 @@ import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { ResumeData, UniversalConfig } from '@/types'
 
 const PAGE_H = 1123 // A4 at 96 DPI
-const PAGE_BOTTOM_PADDING = 24 // ~6.35mm (0.25in) bottom margin
-const CONTINUATION_PAGE_TOP_PADDING = 24 // ~6.35mm (0.25in) top margin on pages 2+
+const PAGE_BOTTOM_PADDING = 48 // ~12.7mm (0.5in) bottom margin
+const CONTINUATION_PAGE_TOP_PADDING = 48 // ~12.7mm (0.5in) top margin on pages 2+
 const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
 const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING

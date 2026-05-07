@@ -257,8 +257,8 @@ export default function UniversalTemplate({
               )}
               <div className="mt-1 space-y-1">
                 {section.skills.map((skill, skillIndex) => (
-                  <div key={skillIndex} className="flex gap-2">
-                    <span style={{ color: accentValue, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
+                  <div key={skillIndex} className="relative pl-[1.125rem]">
+                    <span style={{ color: accentValue, opacity: 0.7 }} className="absolute left-0 text-xs leading-5">•</span>
                     <EditableText
                       value={skill}
                       path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
@@ -1041,8 +1041,8 @@ export default function UniversalTemplate({
                     {(proj.bullets?.length ?? 0) > 0 && (
                       <div className="mt-1.5 space-y-1">
                         {(proj.bullets ?? []).map((bullet, bulletIndex) => (
-                          <div key={bulletIndex} className="flex gap-2">
-                            <span style={{ color: accent, opacity: 0.7 }} className="shrink-0 text-xs leading-5">•</span>
+                          <div key={bulletIndex} className="relative pl-[1.125rem]">
+                            <span style={{ color: accent, opacity: 0.7 }} className="absolute left-0 text-xs leading-5">•</span>
                             <EditableText
                               value={bullet}
                               path={`projects.${i}.bullets.${bulletIndex}`}
@@ -1405,8 +1405,8 @@ function GhostHintList({
   return (
     <ul aria-hidden={isInteractive ? undefined : 'true'} className={`${isSidebarContext ? 'mt-1 space-y-1' : 'mt-1.5 space-y-1'}`}>
       {items.map((item) => (
-        <li key={item} className="flex gap-2">
-          <span className="shrink-0 text-gray-300">•</span>
+        <li key={item} className="relative pl-[1.125rem]">
+          <span className="absolute left-0 text-gray-300">•</span>
           <GhostHintText
             isSidebarContext={isSidebarContext}
             className="min-w-0"
@@ -1644,8 +1644,8 @@ function ExperienceItem({
       {exp.bullets && exp.bullets.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.bullets.map((b: string, bi: number) => (
-            <li key={bi} className="flex gap-2">
-              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 text-base ${isCompressed ? 'mt-0' : 'mt-0.5'}`}>{bulletMarker}</span>
+            <li key={bi} className="relative pl-[1.125rem]">
+              <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
             </li>
           ))}
@@ -1654,8 +1654,8 @@ function ExperienceItem({
       {exp.highlights && exp.highlights.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.highlights.map((b: string, bi: number) => (
-            <li key={bi} className="flex gap-2">
-              <span style={{ color: accent, opacity: 0.7 }} className={`shrink-0 text-base ${isCompressed ? 'mt-0' : 'mt-0.5'}`}>{bulletMarker}</span>
+            <li key={bi} className="relative pl-[1.125rem]">
+              <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.highlights.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
             </li>
           ))}
