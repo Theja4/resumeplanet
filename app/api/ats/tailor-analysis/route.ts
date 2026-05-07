@@ -6,7 +6,8 @@ import { isPro } from '@/lib/planUtils'
 import { countWords } from '@/lib/text'
 import type { APIResponse, Profile, ResumeData, TailorAnalysis, TailorIntensity } from '@/types'
 
-const TAILOR_SYSTEM = `You are Rezoomed Tailor Engine, a senior recruiter + ATS strategist that rewrites resumes to maximize shortlist odds for a specific job description without ever fabricating facts.
+function getTailorSystemPrompt(hasMultipleSkillSections: boolean) {
+  return `You are Rezoomed Tailor Engine, a senior recruiter + ATS strategist that rewrites resumes to maximize shortlist odds for a specific job description without ever fabricating facts.
 
 You are generating DIRECT EDITS that will be applied back into the user's resume builder. Your output must be practical, specific, and grounded in the source resume.
 
@@ -43,7 +44,9 @@ OUTPUT CONTRACT:
 - bulletOrderPlans.sectionId must be one of: experience, volunteer.
 - If a section does not need changes, omit it from sectionFocus or keep arrays empty.
 - Keep bulletRewrites focused on the highest-leverage changes. Quality over quantity.
-- SKILL SECTIONS: If the resume has skillSections (e.g. "Product Delivery", "Domain", "Technical", "Tools"), skillsPlan.recommendedOrder MUST contain one entry per section using the format "SectionTitle: skill1, skill2, ..." — include ALL sections, not just the most relevant one. Never nest section references inside a skill list (e.g. do NOT write "Product Delivery: story refinement" as a skill inside another section). Never emit strings like "Skill section -".
+${hasMultipleSkillSections
+  ? `- SKILL SECTIONS: The resume has multiple skill sections (e.g. "Product Delivery", "Domain", "Technical"). skillsPlan.recommendedOrder MUST contain one entry per section using the format "SectionTitle: skill1, skill2, ..." — include ALL sections, not just the most relevant one. Never nest section references inside a skill list (e.g. do NOT write "Product Delivery: story refinement" as a skill inside another section). Never emit strings like "Skill section -".`
+  : `- SKILL SECTIONS: Return a flat array of skill names in skillsPlan.recommendedOrder. Do not use section prefixes like "SectionTitle:".`}
 
 SCORING CALIBRATION:
 - STRONG_FIT / HIGH or VERY_HIGH only when the resume already maps strongly to the role.
@@ -99,6 +102,7 @@ Return JSON matching this shape:
     }
   ]
 }`
+}
 
 interface TailorBody {
   resumeData?: ResumeData
@@ -323,7 +327,7 @@ Remember:
   try {
     const analysis = await callClaudeJSON<TailorAnalysis>({
       model: CLAUDE_PREMIUM,
-      system: TAILOR_SYSTEM,
+      system: getTailorSystemPrompt(resumeData.skillSections.length > 1),
       prompt,
       maxTokens: 8192,
       timeoutMs: 180000,
