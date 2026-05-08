@@ -25,6 +25,8 @@ interface PricingWorkspaceClientProps {
   isPro: boolean
   priceOptions: PriceOption[]
   currentSubscriptionInterval?: 'monthly' | 'annual' | null
+  currentPaymentProvider?: string | null
+  currentPeriodEnd?: string | null
   pricingCountryCode?: string | null
   loginRedirectPath?: string | null
   consumeCheckoutIntent?: boolean
@@ -36,6 +38,8 @@ export default function PricingWorkspaceClient({
   isPro,
   priceOptions,
   currentSubscriptionInterval = null,
+  currentPaymentProvider = null,
+  currentPeriodEnd = null,
   pricingCountryCode,
   loginRedirectPath = null,
   consumeCheckoutIntent = false,
@@ -44,6 +48,7 @@ export default function PricingWorkspaceClient({
   const hasAttemptedIntentRef = useRef(false)
   const { openSubscriptionCheckout } = usePaddleCheckout()
   const isSubscribedMonthlyPro = isPro && currentSubscriptionInterval === 'monthly'
+  const isRazorpaySubscriptionPro = isPro && currentPaymentProvider === 'razorpay'
   const isManualProAccess = isPro && currentSubscriptionInterval == null
 
   const ribbonCode = availablePromo?.paddleDiscountCode ?? null
@@ -51,8 +56,8 @@ export default function PricingWorkspaceClient({
     availablePromo?.discountType === 'percent' ? availablePromo.discountValue : null
   const shouldShowPromoRibbon =
     Boolean(ribbonCode && ribbonDiscountPercent) &&
-    (!isPro || isSubscribedMonthlyPro)
-  const baseDisplayPromo = isManualProAccess ? availablePromo : null
+    !isPro
+  const baseDisplayPromo = null
   const exitPriceOption = useMemo(
     () => resolvePromoPriceOption(priceOptions, availablePromo),
     [priceOptions, availablePromo]
@@ -118,14 +123,24 @@ export default function PricingWorkspaceClient({
           <div className="rounded-[2.3rem] border border-black/5 bg-black/[0.02] p-8">
             <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
               <div className="space-y-1">
-                <h3 className="text-xl font-black tracking-tight text-slate-900">Current Subscription</h3>
+                <h3 className="text-xl font-black tracking-tight text-slate-900">
+                  Current Subscription
+                </h3>
                 <p className="text-sm text-slate-500">
                   You are currently on the <span className="font-bold text-[#026d32]">Pro {currentSubscriptionInterval === 'annual' ? 'Annual' : 'Monthly'}</span> plan.
+                  {isRazorpaySubscriptionPro && currentPeriodEnd ? (
+                    <> Current period ends <span className="font-bold text-slate-700">{new Date(currentPeriodEnd).toLocaleDateString()}</span>.</>
+                  ) : null}
                 </p>
               </div>
               <div className="flex w-full flex-col items-center gap-4 md:w-auto">
-                <ManageSubscriptionButton className="flex w-full items-center justify-center gap-2 rounded-full bg-[#026d32] px-8 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#026d32]/20 transition-all hover:bg-[#015623] hover:-translate-y-0.5 md:w-auto" />
-                <CancelSubscriptionButton />
+                {isRazorpaySubscriptionPro ? null : (
+                  <ManageSubscriptionButton
+                    provider={currentPaymentProvider}
+                    className="flex w-full items-center justify-center gap-2 rounded-full bg-[#026d32] px-8 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#026d32]/20 transition-all hover:bg-[#015623] hover:-translate-y-0.5 md:w-auto"
+                  />
+                )}
+                <CancelSubscriptionButton provider={currentPaymentProvider} />
               </div>
             </div>
           </div>

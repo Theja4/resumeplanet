@@ -117,8 +117,16 @@ function isBrowser() {
   return typeof window !== 'undefined'
 }
 
+function isLocalAnalyticsDisabled() {
+  if (!isBrowser()) return false
+  if (process.env.NEXT_PUBLIC_ENABLE_LOCAL_ANALYTICS === 'true') return false
+
+  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+}
+
 function isAnalyticsAllowed() {
   if (!isBrowser()) return false
+  if (isLocalAnalyticsDisabled()) return false
 
   const consent = parseCookieConsentPreference(readCookie(COOKIE_CONSENT_COOKIE))
   if (consent === 'all') return true

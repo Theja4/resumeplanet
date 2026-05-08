@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/planEnforcement'
 import type { Profile } from '@/types'
 import type { User } from '@supabase/supabase-js'
 import type { createClient } from '@/lib/supabase/server'
+import { isPro } from '@/lib/planUtils'
 
 export interface APIAuthContext {
   userId: string
@@ -61,7 +62,7 @@ export function withAuth(handler: APIHandler) {
  */
 export function withPro(handler: APIHandler) {
   return withAuth(async (req, ctx) => {
-    if (ctx.profile.plan !== 'pro') {
+    if (!isPro(ctx.profile)) {
       return NextResponse.json(
         { success: false, error: 'PRO_REQUIRED' },
         { status: 403 }

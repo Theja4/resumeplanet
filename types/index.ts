@@ -10,6 +10,16 @@ export interface Profile {
   paddle_subscription_id: string | null
   paypal_customer_id: string | null
   paypal_subscription_id: string | null
+  polar_customer_id?: string | null
+  polar_subscription_id?: string | null
+  payment_provider?: string | null
+  current_period_start?: string | null
+  current_period_end?: string | null
+  razorpay_order_id?: string | null
+  razorpay_payment_id?: string | null
+  razorpay_subscription_id?: string | null
+  razorpay_plan_id?: string | null
+  razorpay_customer_id?: string | null
   subscription_status: string | null
   subscription_interval: 'monthly' | 'annual' | null
   affiliate_source_code: string | null

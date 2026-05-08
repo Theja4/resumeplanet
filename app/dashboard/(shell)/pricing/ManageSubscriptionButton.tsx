@@ -3,11 +3,12 @@
 import { useState } from 'react'
 
 interface Props {
+  provider?: string | null
   label?: string
   className?: string
 }
 
-export default function ManageSubscriptionButton({ label = 'Manage Subscription', className }: Props) {
+export default function ManageSubscriptionButton({ provider, label = 'Manage Subscription', className }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,8 +16,14 @@ export default function ManageSubscriptionButton({ label = 'Manage Subscription'
     setLoading(true)
     setError(null)
     try {
+      if (provider === 'razorpay') {
+        setError('Use Cancel Subscription to stop Razorpay renewal. Plan changes are not available here yet.')
+        setLoading(false)
+        return
+      }
+
       const endpoint =
-        process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar'
+        provider === 'polar' || process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar'
           ? '/api/polar/portal'
           : '/api/paddle/portal'
       const res = await fetch(endpoint, { method: 'POST' })

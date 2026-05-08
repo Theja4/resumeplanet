@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { AlertTriangle, Loader2 } from 'lucide-react'
 
 interface Props {
+  provider?: string | null
   className?: string
 }
 
-export default function CancelSubscriptionButton({ className }: Props) {
+export default function CancelSubscriptionButton({ provider, className }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +18,21 @@ export default function CancelSubscriptionButton({ className }: Props) {
     setLoading(true)
     setError(null)
     try {
-      if (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar') {
+      if (provider === 'razorpay') {
+        const res = await fetch('/api/razorpay/subscription/cancel', { method: 'POST' })
+        const json = await res.json()
+
+        if (json.success) {
+          setSuccess(true)
+          setTimeout(() => window.location.reload(), 3000)
+        } else {
+          setError(json.error ?? 'Failed to cancel subscription. Please try again.')
+          setLoading(false)
+        }
+        return
+      }
+
+      if (provider === 'polar' || process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar') {
         const res = await fetch('/api/polar/portal', { method: 'POST' })
         const json = await res.json()
         const url = json.data?.portalUrl

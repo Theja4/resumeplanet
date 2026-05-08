@@ -26,6 +26,7 @@ import type { Affiliate, Order } from '@/types'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
 import { detectRequestCountry } from '@/lib/cookie-consent'
 import { getLiveVisibleProPriceOptions } from '@/lib/paddle-pricing'
+import { isPro as hasActiveProAccess } from '@/lib/planUtils'
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -110,7 +111,7 @@ export default async function PricingPage({
     buildAffiliatePricingPromo(affiliateAttribution) ??
     activePromotionFromQuery ??
     getActiveAutoApplyPromotion()
-  const isPro = profile.plan === 'pro'
+  const isPro = hasActiveProAccess(profile)
   const paidOrders = (ordersResult.data ?? []) as Order[]
   const priceOptions = await priceOptionsPromise
 
@@ -154,6 +155,8 @@ export default async function PricingPage({
               isPro={isPro}
               priceOptions={priceOptions}
               currentSubscriptionInterval={profile.subscription_interval}
+              currentPaymentProvider={profile.payment_provider}
+              currentPeriodEnd={profile.current_period_end}
               pricingCountryCode={pricingCountryCode}
               consumeCheckoutIntent
             />

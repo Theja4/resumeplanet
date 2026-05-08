@@ -74,6 +74,10 @@ export async function POST(request: NextRequest) {
 
   const requestedPriceId = typeof body.priceId === 'string' ? body.priceId : undefined
   const pricingCountryCode = detectRequestCountry(request.headers)
+  if (pricingCountryCode === 'IN') {
+    return err('Indian checkout uses Razorpay fixed-term payments. Use /api/checkout.')
+  }
+
   const proPlan = getProPlanForCountry(pricingCountryCode)
   const selectedPriceOption =
     requestedPriceId

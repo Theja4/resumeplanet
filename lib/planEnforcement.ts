@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { Profile } from '@/types'
 import type { User } from '@supabase/supabase-js'
+import { isPro } from '@/lib/planUtils'
 
 interface AuthResult {
   userId: string
@@ -26,7 +27,7 @@ export async function requirePro(): Promise<AuthResult | NextResponse> {
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.plan !== 'pro') {
+  if (!profile || !isPro(profile as Profile)) {
     return NextResponse.json({ success: false, error: 'PRO_REQUIRED' }, { status: 403 })
   }
 

@@ -58,6 +58,10 @@ const PAYPAL_SUPPORTED_REGIONAL_CURRENCIES = new Set([
 function isRegionalProviderCurrencySupported(currency: string) {
   const provider = process.env.NEXT_PUBLIC_PAYMENT_PROVIDER
 
+  if (currency === 'INR') {
+    return true
+  }
+
   if (provider === 'polar' || process.env.NEXT_PUBLIC_POLAR_CHECKOUT_ENABLED === 'true') {
     return POLAR_SUPPORTED_REGIONAL_CURRENCIES.has(currency)
   }

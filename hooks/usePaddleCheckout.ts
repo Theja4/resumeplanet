@@ -12,6 +12,13 @@ import { getPaddleConfigurationError } from '@/lib/paddleConfig'
 import { PolarEmbedCheckout } from '@/lib/polarEmbedCheckout'
 import { HUMAN_WRITTEN_ORDER, PRO_PLAN } from '@/lib/pricing'
 
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Razorpay?: new (options: Record<string, any>) => { open: () => void }
+  }
+}
+
 function getPaymentProvider() {
   return process.env.NEXT_PUBLIC_PAYMENT_PROVIDER
 }
@@ -40,6 +47,36 @@ function getClientPaddleUnavailableMessage() {
       clientToken: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN,
     }) ?? 'Paddle not initialized'
   )
+}
+
+function shouldUseUnifiedProCheckout() {
+  return true
+}
+
+function loadRazorpayCheckoutScript() {
+  return new Promise<void>((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve()
+      return
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    )
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('Razorpay checkout failed to load')), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Razorpay checkout failed to load'))
+    document.body.appendChild(script)
+  })
 }
 
 export function usePaddleCheckout() {
@@ -126,9 +163,8 @@ export function usePaddleCheckout() {
       const selectedPrice = PRO_PLAN.getPriceById(params.priceId ?? '') ?? PRO_PLAN.defaultPrice
       const checkoutPrice = selectedPrice.display.displayPrice
 
-      if (isPolarCheckoutPreferred() || isPayPalCheckoutPreferred()) {
-        const provider = isPolarCheckoutPreferred() ? 'polar' : 'paypal'
-        const res = await fetch(`/api/${provider}/checkout`, {
+      if (shouldUseUnifiedProCheckout()) {
+        const res = await fetch('/api/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -148,8 +184,83 @@ export function usePaddleCheckout() {
           typeof json.data?.amount === 'number' ? json.data.amount : checkoutPrice
         const checkoutDiscountCode =
           typeof json.data?.discountCode === 'string' ? json.data.discountCode : params.promotionCode
-        const redirectUrl =
-          provider === 'polar' ? json.data?.checkoutUrl : json.data?.approvalUrl
+        const provider = json.data?.provider
+
+        if (provider === 'razorpay') {
+          await loadRazorpayCheckoutScript()
+
+          if (!window.Razorpay) {
+            throw new Error('Razorpay checkout is unavailable')
+          }
+
+          Analytics.checkoutStarted({
+            product: 'pro_subscription',
+            price: checkoutAmount,
+            discountCode: checkoutDiscountCode,
+          })
+          setCheckoutContext({
+            product: 'pro_subscription',
+            price: checkoutAmount,
+            discountCode: checkoutDiscountCode,
+            step: 'razorpay_overlay',
+          })
+
+          const checkout = new window.Razorpay({
+            key: json.data.keyId,
+            amount: json.data.amount,
+            currency: json.data.currency,
+            name: 'Rezoomed',
+            description: json.data.description,
+            subscription_id: json.data.subscriptionId,
+            prefill: {
+              name: json.data.customerName ?? undefined,
+              email: json.data.customerEmail ?? undefined,
+            },
+            hidden: {
+              contact: true,
+            },
+            notes: {
+              price_id: json.data.priceId,
+              interval: json.data.interval,
+            },
+            handler: async (response: {
+              razorpay_subscription_id: string
+              razorpay_payment_id: string
+              razorpay_signature: string
+            }) => {
+              const verifyRes = await fetch('/api/razorpay/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(response),
+              })
+              const verifyJson = await verifyRes.json().catch(() => null)
+
+              if (!verifyJson?.success) {
+                clearCheckoutContext()
+                params.onError?.(verifyJson?.error ?? 'Razorpay payment verification failed')
+                return
+              }
+
+              clearCheckoutContext()
+              window.location.href = '/dashboard/pricing?upgraded=true&provider=razorpay'
+            },
+            modal: {
+              ondismiss: () => {
+                Analytics.checkoutAbandoned({
+                  product: 'pro_subscription',
+                  step: 'razorpay_overlay_closed',
+                })
+                clearCheckoutContext()
+                params.onSuccess?.()
+              },
+            },
+          })
+
+          checkout.open()
+          return
+        }
+
+        const redirectUrl = json.data?.checkoutUrl
 
         if (typeof redirectUrl !== 'string' || !redirectUrl) {
           throw new Error('Checkout did not return a redirect URL')
@@ -167,7 +278,7 @@ export function usePaddleCheckout() {
           step:
             provider === 'polar' && !shouldUsePolarRedirectCheckout()
               ? 'polar_inline'
-              : `${provider}_redirect`,
+              : 'polar_redirect',
         })
 
         if (provider === 'polar' && !shouldUsePolarRedirectCheckout()) {

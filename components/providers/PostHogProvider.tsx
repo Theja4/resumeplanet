@@ -54,6 +54,11 @@ export default function PostHogProvider({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
   const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
+  const localAnalyticsEnabled = process.env.NEXT_PUBLIC_ENABLE_LOCAL_ANALYTICS === 'true'
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+  const shouldEnablePostHog = enabled && (!isLocalhost || localAnalyticsEnabled)
 
   const options = useMemo(
     () => ({
@@ -68,7 +73,7 @@ export default function PostHogProvider({
   )
 
   useEffect(() => {
-    if (!apiKey || !enabled) return
+    if (!apiKey || !shouldEnablePostHog) return
 
     const posthogWithState = posthog as typeof posthog & { __loaded?: boolean }
     if (posthogWithState.__loaded) {
@@ -78,9 +83,9 @@ export default function PostHogProvider({
 
     posthog.init(apiKey, options as Parameters<typeof posthog.init>[1])
     posthogWithState.__loaded = true
-  }, [apiKey, enabled, options])
+  }, [apiKey, shouldEnablePostHog, options])
 
-  if (!apiKey || !enabled) {
+  if (!apiKey || !shouldEnablePostHog) {
     return <>{children}</>
   }
 

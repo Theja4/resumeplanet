@@ -5,6 +5,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 const publicRoutes = [
   '/api/paddle/webhook',
   '/api/webhooks/paddle',
+  '/api/webhooks/razorpay',
   '/api/auth/callback',
 ]
 
