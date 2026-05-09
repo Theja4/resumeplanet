@@ -1,4 +1,5 @@
 import type { BlogPost } from '@/lib/blog/shared'
+import { SEO_CONTENT_UPGRADES } from '@/lib/blog/seo-content-upgrades'
 
 type BlogOverride = Partial<Pick<BlogPost, 'title' | 'excerpt' | 'content'>>
 type BlogToolLink = {
@@ -858,6 +859,21 @@ function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
     ]
   }
 
+  if (post.slug === 'best-resume-keywords-to-match-a-job-description') {
+    return [
+      {
+        label: 'Match Score',
+        href: '/match-score',
+        description: 'Compare your resume against a target job description and find truthful keyword gaps.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Check structure and readability after adding role-relevant keywords.',
+      },
+    ]
+  }
+
   if (TAILORING_POST_SLUGS.has(post.slug)) {
     return [
       {
@@ -1126,7 +1142,7 @@ export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
     }
   }
 
-  const override = BLOG_OVERRIDES[post.slug]
+  const override = SEO_CONTENT_UPGRADES[post.slug] ?? BLOG_OVERRIDES[post.slug]
   const nextPost = override
     ? {
         ...post,
