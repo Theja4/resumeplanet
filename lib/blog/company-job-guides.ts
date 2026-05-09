@@ -1,4 +1,5 @@
 import type { ExperienceItem, SkillSection } from '@/types'
+import { FINANCE_COMPANY_JOB_GUIDES } from '@/lib/blog/finance-company-job-guides'
 
 export interface CompanyResumeExampleConfig {
   id: string
@@ -91,6 +92,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     ],
     sourceLinks: [
       { label: 'OpenAI Careers', href: 'https://openai.com/careers' },
+      { label: 'OpenAI Interview Guide', href: 'https://openai.com/interview-guide/' },
       { label: 'OpenAI Preparedness', href: 'https://openai.com/safety/' },
     ],
     resumeExample: {
@@ -373,7 +375,8 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     ],
     sourceLinks: [
       { label: 'Microsoft Careers', href: 'https://careers.microsoft.com/' },
-      { label: 'Microsoft Interview Tips', href: 'https://careers.microsoft.com/v2/global/en/hiring-tips' },
+      { label: 'Microsoft How We Hire', href: 'https://careers.microsoft.com/i/us/en/how-we-hire' },
+      { label: 'Microsoft Interview Tips', href: 'https://careers.microsoft.com/v2/global/en/hiring-tips/interview-tips.html' },
     ],
     resumeExample: {
       id: 'microsoft-cloud-program',
@@ -468,6 +471,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     sourceLinks: [
       { label: 'Amazon Jobs', href: 'https://www.amazon.jobs/' },
       { label: 'Amazon Interviewing', href: 'https://www.amazon.jobs/content/en/how-we-hire/interviewing-at-amazon' },
+      { label: 'Amazon Leadership Principles', href: 'https://www.amazon.jobs/content/en/our-workplace/leadership-principles' },
     ],
     resumeExample: {
       id: 'amazon-operations-product',
@@ -560,7 +564,8 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
       },
     ],
     sourceLinks: [
-      { label: 'Apple Jobs', href: 'https://jobs.apple.com/' },
+      { label: 'Apple Careers', href: 'https://www.apple.com/careers/us/' },
+      { label: 'Apple Jobs', href: 'https://jobs.apple.com/en-us/search' },
       { label: 'Apple Teams', href: 'https://www.apple.com/careers/us/teams.html' },
     ],
     resumeExample: {
@@ -937,6 +942,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     ],
     sourceLinks: [
       { label: 'Airbnb Careers', href: 'https://careers.airbnb.com/' },
+      { label: 'Airbnb Careers FAQ', href: 'https://careers.airbnb.com/faq/' },
       { label: 'Airbnb News', href: 'https://news.airbnb.com/' },
     ],
     resumeExample: {
@@ -1031,6 +1037,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     ],
     sourceLinks: [
       { label: 'Uber Careers', href: 'https://www.uber.com/us/en/careers/' },
+      { label: 'Uber How We Hire', href: 'https://www.uber.com/us/en/careers/interviewing/' },
       { label: 'Uber Engineering', href: 'https://www.uber.com/blog/engineering/' },
     ],
     resumeExample: {
@@ -1219,6 +1226,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
     ],
     sourceLinks: [
       { label: 'NVIDIA Careers', href: 'https://www.nvidia.com/en-us/about-nvidia/careers/' },
+      { label: 'Life at NVIDIA', href: 'https://www.nvidia.com/en-us/about-nvidia/careers/life-at-nvidia/' },
       { label: 'NVIDIA Developer', href: 'https://developer.nvidia.com/' },
     ],
     resumeExample: {
@@ -1465,6 +1473,7 @@ export const COMPANY_JOB_GUIDES: CompanyJobGuide[] = [
       accentColor: '#A259FF',
     },
   },
+  ...FINANCE_COMPANY_JOB_GUIDES,
 ]
 
 const COMPANY_JOB_GUIDE_BY_SLUG = new Map(COMPANY_JOB_GUIDES.map(guide => [guide.slug, guide]))

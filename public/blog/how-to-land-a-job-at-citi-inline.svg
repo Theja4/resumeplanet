@@ -1,0 +1,49 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Citi career guide illustration</title>
+  <rect width="1600" height="900" fill="#0A0A0A" />
+
+  <ellipse cx="400" cy="150" rx="600" ry="400" fill="url(#brandGlow1)" opacity="0.15" />
+  <ellipse cx="1200" cy="750" rx="700" ry="500" fill="url(#brandGlow2)" opacity="0.1" />
+
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#grid)" />
+
+  <rect x="500" y="250" width="600" height="400" rx="40" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+  <circle cx="800" cy="450" r="112" fill="#004B93" opacity="0.15" filter="url(#glow)"/>
+  <g>
+    <rect x="688" y="349" width="224" height="142" rx="24" fill="white" fill-opacity="0.96" />
+    <svg x="710" y="367" width="180" height="106" viewBox="0 0 56 33" preserveAspectRatio="xMidYMid meet" overflow="visible">
+      <g color="white" fill="inherit">
+        <g transform="matrix(1,0,0,1,-16.5485,-28.4944)">
+        <path d="M16.549,50.274C16.549,44.5 21.277,40.005 27.438,40.005C31.004,40.005 34.259,41.593 36.119,43.996L33.445,46.67C32.736,45.762 31.831,45.026 30.798,44.516C29.765,44.006 28.629,43.736 27.477,43.725C23.796,43.725 20.85,46.477 20.85,50.274C20.85,54.111 23.796,56.863 27.477,56.863C28.671,56.861 29.848,56.584 30.917,56.053C31.985,55.522 32.917,54.751 33.639,53.801L36.274,56.398C34.492,58.917 31.081,60.583 27.438,60.583C21.277,60.583 16.549,56.088 16.549,50.274Z" style="fill:rgb(37,91,227);fill-rule:nonzero;"/>
+        <rect x="39.762" y="40.702" width="4.224" height="19.183" style="fill:rgb(37,91,227);fill-rule:nonzero;"/>
+        <path d="M51.854,54.731L51.854,44.268L47.242,44.268L47.242,40.702L52.047,40.702L52.047,36.594L56,34.656L56,40.702L62.279,40.702L62.279,44.268L56,44.268L56,54.034C56,55.971 57.086,56.824 59.14,56.824C60.208,56.829 61.266,56.605 62.24,56.165L62.24,59.808C61.019,60.344 59.697,60.608 58.364,60.583C54.605,60.583 51.854,58.529 51.854,54.731Z" style="fill:rgb(37,91,227);fill-rule:nonzero;"/>
+        <rect x="65.612" y="40.702" width="4.224" height="19.183" style="fill:rgb(37,91,227);fill-rule:nonzero;"/>
+        <path d="M54.76,28.494C58.23,28.486 61.65,29.313 64.732,30.905C67.815,32.497 70.469,34.807 72.471,37.641L67.549,37.641C65.936,35.847 63.964,34.414 61.761,33.432C59.557,32.451 57.172,31.943 54.76,31.943C52.348,31.943 49.963,32.451 47.76,33.432C45.557,34.414 43.585,35.847 41.971,37.641L37.05,37.641C39.051,34.807 41.706,32.497 44.788,30.905C47.871,29.313 51.291,28.486 54.76,28.494Z" style="fill:rgb(255,60,40);fill-rule:nonzero;"/>
+    </g>
+      </g>
+    </svg>
+    <text x="800" y="548" font-family="'Inter', Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="white" fill-opacity="0.62" text-anchor="middle" letter-spacing="5">FINANCE CAREERS</text>
+  </g>
+
+  <text x="800" y="750" font-family="'Inter', -apple-system, sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.4)" text-anchor="middle" letter-spacing="4">HOW TO LAND A JOB AT</text>
+  <text x="800" y="810" font-family="'Inter', -apple-system, sans-serif" font-size="48" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">Citi</text>
+
+  <defs>
+    <radialGradient id="brandGlow1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#004B93" />
+      <stop offset="100%" stop-color="#004B93" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="brandGlow2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#004B93" />
+      <stop offset="100%" stop-color="#004B93" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+    </filter>
+  </defs>
+</svg>

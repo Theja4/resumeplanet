@@ -7,6 +7,7 @@ export interface BlogResumeExample {
   id: string
   blogSlug: string
   title: string
+  badgeLabel: string
   sourceLabel: string
   sourceUrl: string
   sourceNote: string
@@ -185,6 +186,7 @@ function buildCompanyExample(guide: any): BlogResumeExample {
     id: config.id,
     blogSlug: guide.slug,
     title: config.title,
+    badgeLabel: config.badgeLabel,
     sourceLabel: config.sourceLabel,
     sourceUrl: config.sourceUrl,
     sourceNote: config.sourceNote,
@@ -250,6 +252,7 @@ const BLOG_RESUME_EXAMPLES: BlogResumeExample[] = [
     id: 'google-team-leader',
     blogSlug: 'how-to-land-a-google-job',
     title: 'Google Team Leader Resume Example',
+    badgeLabel: 'Real Google-hired sample',
     sourceLabel: 'Kickresume',
     sourceUrl: 'https://www.kickresume.com/en/help-center/google-team-leader-resume-sample/',
     sourceNote:

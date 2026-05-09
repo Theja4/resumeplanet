@@ -22,6 +22,17 @@ export default function BlogResumeShowcase({
   const ctaHref = isAuthenticated
     ? builderHref
     : `/auth/login?next=${encodeURIComponent(builderHref)}`
+  const sourceTagline =
+    example.sourceLabel === 'Rezoomed example'
+      ? 'Built in Rezoomed'
+      : 'Reformatted in Rezoomed'
+  const resumeSubject =
+    example.blogSlug === 'how-to-land-a-google-job'
+      ? 'Google resume example'
+      : `${example.title.split(' ')[0]} resume template`
+  const ctaText = isAuthenticated
+    ? `Customize this ${resumeSubject}`
+    : `Log in to customize this ${resumeSubject}`
 
   return (
     <section className="my-10 overflow-hidden rounded-[2rem] border border-zinc-900/10 bg-[linear-gradient(155deg,#07110b_0%,#0b1d13_46%,#10261a_100%)] shadow-[0_28px_90px_rgba(4,10,7,0.24)]">
@@ -29,10 +40,10 @@ export default function BlogResumeShowcase({
         <div className="border-b border-white/10 p-5 sm:p-6 lg:border-b-0 lg:border-r">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center rounded-full border border-[#A3FFB3]/20 bg-[#A3FFB3]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">
-              Real Google-hired sample
+              {example.badgeLabel}
             </span>
             <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/42">
-              Reformatted in Rezoomed
+              {sourceTagline}
             </span>
           </div>
 
@@ -76,12 +87,12 @@ export default function BlogResumeShowcase({
             <BlogTrackedAppLink
               slug={slug}
               ctaType="inline"
-              ctaText={isAuthenticated ? 'Customize this Google resume example' : 'Log in to customize this Google resume example'}
+              ctaText={ctaText}
               position={1}
               href={ctaHref}
               className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#A3FFB3] px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#062313] transition-all hover:-translate-y-0.5 hover:bg-[#b4ffc1] shadow-lg shadow-[#A3FFB3]/15"
             >
-              {isAuthenticated ? 'Customize this Google resume' : 'Log in to customize this resume'}
+              {isAuthenticated ? `Customize this ${resumeSubject}` : 'Log in to customize this resume'}
               <ArrowRight size={14} strokeWidth={2.5} />
             </BlogTrackedAppLink>
           </div>

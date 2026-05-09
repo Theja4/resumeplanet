@@ -1,0 +1,43 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Deutsche Bank career guide illustration</title>
+  <rect width="1600" height="900" fill="#0A0A0A" />
+
+  <ellipse cx="400" cy="150" rx="600" ry="400" fill="url(#brandGlow1)" opacity="0.15" />
+  <ellipse cx="1200" cy="750" rx="700" ry="500" fill="url(#brandGlow2)" opacity="0.1" />
+
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#grid)" />
+
+  <rect x="500" y="250" width="600" height="400" rx="40" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
+  <circle cx="800" cy="450" r="112" fill="#0018A8" opacity="0.15" filter="url(#glow)"/>
+  <g>
+    
+    <svg x="739" y="359" width="122" height="122" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" overflow="visible">
+      <g color="white" fill="currentColor">
+        <path d="M3.375 3.375v17.25h17.25V3.375H3.375zM0 0h24v24H0V0zm5.25 18.225 9.15-12.45h4.35L9.6 18.225H5.25z"/>
+      </g>
+    </svg>
+    <text x="800" y="548" font-family="'Inter', Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="white" fill-opacity="0.62" text-anchor="middle" letter-spacing="5">FINANCE CAREERS</text>
+  </g>
+
+  <text x="800" y="750" font-family="'Inter', -apple-system, sans-serif" font-size="28" font-weight="600" fill="rgba(255,255,255,0.4)" text-anchor="middle" letter-spacing="4">HOW TO LAND A JOB AT</text>
+  <text x="800" y="810" font-family="'Inter', -apple-system, sans-serif" font-size="43" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">Deutsche Bank</text>
+
+  <defs>
+    <radialGradient id="brandGlow1" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#0018A8" />
+      <stop offset="100%" stop-color="#0018A8" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="brandGlow2" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#0018A8" />
+      <stop offset="100%" stop-color="#0018A8" stop-opacity="0" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+    </filter>
+  </defs>
+</svg>

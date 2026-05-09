@@ -762,6 +762,16 @@ const COMPANY_JOB_POST_SLUGS = new Set([
   'how-to-land-a-job-at-nvidia',
   'how-to-land-a-job-at-notion',
   'how-to-land-a-job-at-figma',
+  'how-to-land-a-job-at-jpmorgan-chase',
+  'how-to-land-a-job-at-goldman-sachs',
+  'how-to-land-a-job-at-morgan-stanley',
+  'how-to-land-a-job-at-blackrock',
+  'how-to-land-a-job-at-bank-of-america',
+  'how-to-land-a-job-at-citi',
+  'how-to-land-a-job-at-barclays',
+  'how-to-land-a-job-at-ubs',
+  'how-to-land-a-job-at-deutsche-bank',
+  'how-to-land-a-job-at-hsbc',
 ])
 
 const METADATA_POST_SLUGS = new Set([
@@ -937,51 +947,154 @@ import {
   getCompanyJobGuideBySlug,
 } from '@/lib/blog/company-job-guides'
 
+function formatBulletList(items: string[]) {
+  return items.map(item => `- ${item}`).join('\n')
+}
+
+function formatNumberedList(items: string[]) {
+  return items.map((item, index) => `${index + 1}. ${item}`).join('\n')
+}
+
+function buildRoleLaneTable(guide: any) {
+  return guide.lanes
+    .map((lane: string, index: number) => {
+      const signal = guide.resumeSignals[index % guide.resumeSignals.length]
+      const proof = guide.proofItems[index % guide.proofItems.length]
+      return `| ${lane} | Lead with ${signal}. | Use proof such as ${proof}. |`
+    })
+    .join('\n')
+}
+
+function buildApplicationSteps(guide: any) {
+  return [
+    `Choose one ${guide.companyName} role lane before editing the resume.`,
+    'Read the job description for repeated nouns, verbs, tools, customer groups, and operating constraints.',
+    `Rewrite the summary so the first screen makes your ${guide.companyName} fit obvious.`,
+    `Replace generic bullets with evidence tied to ${guide.resumeSignals.slice(0, 3).join(', ')}.`,
+    'Add only truthful keywords you can defend in an interview.',
+    'Attach portfolio, writing, project, or GitHub proof when it helps the role.',
+    'Run one final ATS and readability pass before submitting.',
+  ]
+}
+
+function buildTopThirdChecklist(guide: any) {
+  return [
+    `A one-line summary that names the target ${guide.companyName} lane.`,
+    `Two or three bullets that prove ${guide.resumeSignals.slice(0, 2).join(' and ')}.`,
+    `Metrics for ${guide.proofItems.slice(0, 3).join(', ')} where you have them.`,
+    'A skills section grouped by role relevance, not a single keyword dump.',
+    'Links to the strongest external proof only if they are polished and role-relevant.',
+  ]
+}
+
+function getCompanyCareersLink(guide: any) {
+  return guide.sourceLinks.find((link: any) => /careers|jobs/i.test(link.label)) ?? guide.sourceLinks[0]
+}
+
 function buildCompanyJobGuideContent(guide: any) {
+  const careersLink = getCompanyCareersLink(guide)
+
   return `
 # ${guide.title}
 
 ${guide.opening}
 
-## Application Strategy
+Start with the official ${guide.companyName} careers site before tailoring anything: [${careersLink.label}](${careersLink.href}).
+
+This guide is built from the official ${guide.companyName} sources linked at the bottom, plus resume patterns that consistently make competitive applications easier to evaluate. Use it as a role-targeting guide, not a generic company fan letter.
+
+!!! What this guide covers
+- how to choose the right ${guide.companyName} role lane
+- what proof belongs in the top third of your resume
+- how to rewrite weak bullets into company-relevant evidence
+- a ${guide.companyName}-ready resume example template you can customize in Rezoomed
+- how to turn the resume into interview preparation
+
+## Why ${guide.companyName} applications need a sharper strategy
+
+Do not apply to ${guide.companyName} as a brand. Apply to a specific problem space, team type, and role family.
+
+The mistake most candidates make is trying to sound broadly impressive. That usually creates a resume with too many directions at once. A stronger ${guide.companyName} application makes one argument clearly: this candidate has already solved adjacent problems and can do it again here.
 
 !!! ${guide.companyName} Strategy
 ${guide.strategyNote}
 
-### Recommended role lanes
-${guide.lanes.map((lane: string) => `- ${lane}`).join('\n')}
+## Pick the right ${guide.companyName} role lane first
 
-### Key resume signals
-${guide.resumeSignals.map((signal: string) => `- ${signal}`).join('\n')}
+| Role lane | Resume angle | Strong proof to bring forward |
+| --- | --- | --- |
+${buildRoleLaneTable(guide)}
 
-## Resume Example
+If two lanes both look plausible, build two resume versions. The version for ${guide.lanes[0]} should not read the same as the version for ${guide.lanes[1] ?? guide.lanes[0]}.
 
-Study this example for positioning, evidence density, and ATS-safe structure.
+## What ${guide.companyName} needs to see on your resume
+
+The strongest ${guide.companyName} resumes usually make these signals obvious within the first screen:
+
+${formatBulletList(guide.resumeSignals)}
+
+### Top-third resume checklist
+
+${formatBulletList(buildTopThirdChecklist(guide))}
+
+## Step-by-step application plan
+
+${formatNumberedList(buildApplicationSteps(guide))}
+
+Official role requirements change often, so use [${careersLink.label}](${careersLink.href}) as the source of truth for open roles, locations, teams, and current application instructions.
+
+## ${guide.companyName} resume example template
+
+Study this example for positioning, evidence density, and ATS-safe structure. If you are logged in, the button opens the example directly in the Rezoomed builder. If you are not logged in, it sends you to login first and then opens the same builder template.
 
 [[company-resume-example]]
 
-## Better vs Worse Evidence
+### Why this ${guide.companyName} resume template works
+
+${formatBulletList(guide.resumeExample.analysisPoints)}
+
+## Better vs worse resume evidence
 
 | Before | After |
 | --- | --- |
 ${guide.beforeAfterRows.map((row: [string, string]) => `| ${row[0]} | ${row[1]} |`).join('\n')}
 
-## Application Checklist
+## What to fix before you apply
 
 !!! ${guide.companyName} Checklist
-${guide.checklistItems.map((item: string) => `- ${item}`).join('\n')}
+${formatBulletList(guide.checklistItems)}
 
-## Proof that matters
-${guide.proofItems.map((item: string) => `- ${item}`).join('\n')}
+## Proof that matters outside the resume
 
-## Interview Preparation
-${guide.interviewPrepItems.map((item: string) => `- ${item}`).join('\n')}
+For competitive ${guide.companyName} roles, the resume often needs backup proof. That does not mean adding every link you have. It means giving recruiters or hiring managers one or two high-signal places to verify your judgment.
+
+${formatBulletList(guide.proofItems)}
+
+## How to prepare once ${guide.companyName} responds
+
+Your resume should become your interview story bank. Every major bullet needs a deeper story with context, tradeoffs, actions, and results.
+
+!!! Interview prep pack
+${formatBulletList(guide.interviewPrepItems)}
+
+Before interviews, turn each major resume claim into this structure:
+
+| Resume claim | Interview story you need |
+| --- | --- |
+| Metric or launch result | What the starting problem was, what you owned, and why the result mattered. |
+| Cross-functional work | Who disagreed, what tradeoff you made, and how you kept the work moving. |
+| Technical or operational depth | What constraints mattered, what alternatives you considered, and what you learned. |
+| Failure or rollback | What changed in your process after the miss. |
 
 ## Frequently asked questions
 
 ${guide.faqItems.map((item: any) => `### ${item.question}\n\n${item.answer}`).join('\n\n')}
 
-## Official Sources
+## Final takeaway
+
+The best ${guide.companyName} application is narrow, sourced, and evidence-heavy. Pick one lane, make the first screen prove fit, use the resume example above as a structure guide, and keep the application truthful enough that every bullet can survive an interview.
+
+## Official sources and further reading
 ${guide.sourceLinks.map((link: any) => `- [${link.label}](${link.href})`).join('\n')}
   `.trim()
 }
