@@ -177,11 +177,13 @@ export async function createRazorpaySubscription(params: {
   interval: RazorpayInterval
   notes: Record<string, string>
 }) {
+  const totalCount = params.interval === 'annual' ? 10 : 120
+
   return razorpayFetch<RazorpaySubscriptionResponse>('/subscriptions', {
     method: 'POST',
     body: JSON.stringify({
       plan_id: params.planId,
-      total_count: params.interval === 'annual' ? 100 : 1200,
+      total_count: totalCount,
       quantity: 1,
       customer_notify: true,
       notes: params.notes,
