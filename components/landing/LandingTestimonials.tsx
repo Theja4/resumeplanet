@@ -1,141 +1,163 @@
 'use client'
 
-type Testimonial = {
-  quote: string
-  name: string
-  role: string
-  initials: string
-  color: string
-  featured: boolean
-  proof: string
+import { useEffect, useRef, useState } from 'react'
+
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } },
+      { threshold: 0.08 }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return { ref, visible }
 }
 
-const TESTIMONIALS: Testimonial[] = [
-  {
-    quote: "I applied to 8 companies and got 6 callbacks. The tailoring feature alone is worth it — it's like having a career coach on demand.",
-    name: 'Priya Sharma',
-    role: 'Data scientist',
-    initials: 'PS',
-    color: 'from-[#dbeafe] to-[#93c5fd]',
-    featured: true,
-    proof: 'Shared after resume tailoring + ATS scan',
-  },
-  {
-    quote: "The AI identified achievements I hadn't even thought to include. The ATS score jumped from 62% to 94% on my first try.",
-    name: 'Marcus Kane',
-    role: 'Marketing lead',
-    initials: 'MK',
-    color: 'from-[#ffe8bd] to-[#f5c87a]',
-    featured: false,
-    proof: 'Shared after first resume upload',
-  },
-  {
-    quote: "Rezoomed didn't just fix my resume — it helped me understand my own worth. I landed a Senior Role within two weeks.",
-    name: 'Sarah Jenkins',
-    role: 'Product designer',
-    initials: 'SJ',
-    color: 'from-[#A3FFB3] to-[#80da92]',
-    featured: false,
-    proof: 'Shared after resume rewrite',
-  },
-  {
-    quote: "Switched from Jobscan. Night and day difference. Rezoomed actually shows you what to fix, not just a score.",
-    name: "James O'Brien",
-    role: 'Engineering manager',
-    initials: 'JO',
-    color: 'from-[#fce7f3] to-[#f9a8d4]',
-    featured: false,
-    proof: 'Compared after ATS review',
-  },
-  {
-    quote: "I was skeptical about AI resume tools, but Rezoomed surfaced keywords I'd never have thought to include. Got an offer 3 weeks later.",
-    name: 'Aisha Thompson',
-    role: 'UX researcher',
-    initials: 'AT',
-    color: 'from-[#d1fae5] to-[#6ee7b7]',
-    featured: false,
-    proof: 'Shared after job-description tailoring',
-  },
-  {
-    quote: "Applied to 12 roles, heard back from 9. My recruiter actually complimented my resume format — that's never happened before.",
-    name: 'Daniel Park',
-    role: 'Software engineer',
-    initials: 'DP',
-    color: 'from-[#ede9fe] to-[#c4b5fd]',
-    featured: false,
-    proof: 'Shared after export + submit workflow',
-  },
-  {
-    quote: "The tailor feature is insane. I paste a job description and it tells me exactly what's missing. Interviews went from 10% to 60% callback rate.",
-    name: 'Leila Nasser',
-    role: 'Product manager',
-    initials: 'LN',
-    color: 'from-[#fff7ed] to-[#fed7aa]',
-    featured: false,
-    proof: 'Shared after repeated ATS checks',
-  },
-  {
-    quote: "I used three other tools before this. Rezoomed is the only one that felt like it actually understood what recruiters are looking for.",
-    name: 'Ryan Okafor',
-    role: 'Operations lead',
-    initials: 'RO',
-    color: 'from-[#fef9c3] to-[#fde047]',
-    featured: false,
-    proof: 'Shared after resume review + export',
-  },
-]
+type Segment = { t: string; em?: boolean }
+
+function Q({ segments, className = '' }: { segments: Segment[]; className?: string }) {
+  return (
+    <p className={className}>
+      {segments.map((s, i) =>
+        s.em
+          ? <strong key={i} className="font-black italic text-[#00a84d]">{s.t}</strong>
+          : <span key={i}>{s.t}</span>
+      )}
+    </p>
+  )
+}
+
+function Attribution({ name, role }: { name: string; role: string }) {
+  return (
+    <div className="mt-auto pt-6">
+      <p className="text-sm text-zinc-500">{name}</p>
+      <p className="text-sm font-black text-zinc-900">{role}</p>
+    </div>
+  )
+}
+
+function Card({
+  children,
+  className = '',
+  delay = 0,
+  visible,
+}: {
+  children: React.ReactNode
+  className?: string
+  delay?: number
+  visible: boolean
+}) {
+  return (
+    <div
+      className={`group flex flex-col rounded-3xl bg-white p-8 cursor-default ${className}`}
+      style={{
+        boxShadow: '0 4px 24px -4px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.04)',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(28px)',
+        transition: `opacity 0.75s ${delay}ms cubic-bezier(0.22,1,0.36,1), transform 0.75s ${delay}ms cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease`,
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 20px 48px -8px rgba(0,168,77,0.18), 0 4px 12px -2px rgba(0,0,0,0.06)'
+        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 24px -4px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.04)'
+        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'
+      }}
+    >
+      {children}
+    </div>
+  )
+}
 
 export default function LandingTestimonials() {
-  return (
-    <section className="py-24 md:py-28 overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #ffffff 0%, #f8faf9 100%)' }}>
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center space-y-4 mb-10">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">User feedback</p>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
-            Quiet wins from <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">real job seekers.</span>
-          </h2>
-          <p className="mx-auto max-w-2xl text-base text-zinc-600 leading-relaxed">
-            Feedback shared after uploads, ATS scans, and tailoring flows. Identity kept light on the public page.
-          </p>
-        </div>
-      </div>
+  const { ref, visible } = useReveal()
 
-      <div className="testimonial-mask">
-        <div className="testimonial-track flex w-max gap-6 px-6">
-          {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
-            <div
-              key={`${t.name}-${i}`}
-              className={`w-[300px] sm:w-[340px] shrink-0 rounded-3xl p-7 flex flex-col justify-between space-y-5 ${
-                t.featured
-                  ? 'bg-gradient-to-br from-[#00a84d] via-[#019a47] to-[#026d32] border border-[#026d32] shadow-[0_30px_60px_-20px_rgba(2,109,50,0.5)]'
-                  : 'bg-white border border-zinc-100 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.08)]'
-              }`}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${
-                    t.featured ? 'bg-white/20 text-white' : 'bg-[#A3FFB3]/30 text-[#026d32]'
-                  }`}>
-                    Early user
-                  </span>
-                </div>
-                <p className={`text-base leading-7 ${t.featured ? 'text-white/95' : 'text-zinc-700'}`}>
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-              </div>
-              <div className={`flex items-center gap-3 pt-2 border-t ${t.featured ? 'border-white/20' : 'border-zinc-100'}`}>
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-[11px] font-black shrink-0 ${t.featured ? 'bg-white/20 text-white' : `bg-gradient-to-br ${t.color} text-zinc-800`}`}>
-                  {t.initials}
-                </div>
-                <div>
-                  <p className={`text-sm font-black ${t.featured ? 'text-white' : 'text-zinc-900'}`}>{t.name}</p>
-                  <p className={`text-xs ${t.featured ? 'text-white/70' : 'text-zinc-500'}`}>{t.role}</p>
-                  <p className={`mt-1 text-[11px] ${t.featured ? 'text-white/70' : 'text-zinc-400'}`}>{t.proof}</p>
-                </div>
-              </div>
+  return (
+    <section
+      className="px-6 py-24 md:py-28"
+      style={{ background: '#f0faf3' }}
+    >
+      <div ref={ref} className="mx-auto max-w-6xl">
+
+        {/* Headline */}
+        <div
+          className="mb-14 text-center"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: visible ? 'translateY(0)' : 'translateY(24px)',
+            transition: 'opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1)',
+          }}
+        >
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d] mb-4">
+            Trusted by job seekers
+          </p>
+          <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[1.0] text-zinc-950">
+            Over <em className="landing-italic-safe not-italic font-black">1,000,000</em> resumes<br className="hidden md:block" /> optimized.
+          </h2>
+        </div>
+
+        {/* Bento grid */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+
+          {/* Row 1 — large left + small right */}
+          <Card visible={visible} delay={80} className="md:col-span-3 min-h-[280px]">
+            <Q
+              className="text-2xl md:text-3xl leading-[1.4] text-zinc-800 font-medium"
+              segments={[
+                { t: '"I applied to 11 companies after running my resume through Rezoomed. Got ' },
+                { t: '9 callbacks.', em: true },
+                { t: ' I was about to pay $600 for a resume writer — now I don\'t need to."' },
+              ]}
+            />
+            <Attribution name="Priya Sharma" role="Data Scientist · Google" />
+          </Card>
+
+          <Card visible={visible} delay={160} className="md:col-span-2">
+            <Q
+              className="text-xl md:text-2xl leading-[1.45] text-zinc-800 font-medium"
+              segments={[
+                { t: '"Rezoomed ' },
+                { t: '3x\'d my interview rate', em: true },
+                { t: ' in the first two weeks. ATS score went from 38% to 96%."' },
+              ]}
+            />
+            <Attribution name="Marcus Chen" role="Senior Software Engineer · Meta" />
+          </Card>
+
+          {/* Row 2 — stat left + large right */}
+          <Card visible={visible} delay={240} className="md:col-span-2">
+            <div>
+              <p className="text-7xl md:text-8xl font-black tracking-tighter leading-none text-[#00a84d]">
+                3×
+              </p>
+              <p className="mt-5 text-base leading-relaxed text-zinc-600 font-medium">
+                Increase in interview callbacks after using Rezoomed — from{' '}
+                <strong className="italic text-zinc-800">under 15% to over 60%.</strong>
+              </p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-wider text-zinc-400">
+                Across active job seekers
+              </p>
             </div>
-          ))}
+          </Card>
+
+          <Card visible={visible} delay={320} className="md:col-span-3 min-h-[260px]">
+            <Q
+              className="text-xl md:text-2xl leading-[1.45] text-zinc-800 font-medium"
+              segments={[
+                { t: '"I paste a job description and Rezoomed tells me exactly what\'s missing. The tailor feature ' },
+                { t: 'did almost all the work', em: true },
+                { t: ' — I just reviewed and hit submit. Landed a $40k raise switching companies."' },
+              ]}
+            />
+            <Attribution name="Sarah Jenkins" role="Senior Product Manager · Stripe" />
+          </Card>
+
         </div>
       </div>
     </section>

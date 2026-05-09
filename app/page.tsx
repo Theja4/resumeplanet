@@ -4,6 +4,7 @@ import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import LandingHeroV2 from '@/components/landing/LandingHeroV2'
 import LandingBento from '@/components/landing/LandingBento'
+import LandingBeforeAfter from '@/components/landing/LandingBeforeAfter'
 import LandingStats from '@/components/landing/LandingStats'
 import LandingWorkflow from '@/components/landing/LandingWorkflow'
 import LandingFinalCTA from '@/components/landing/LandingFinalCTA'
@@ -157,6 +158,8 @@ export default async function LandingPage() {
         <LogoMarqueeSection />
 
         <LandingBento />
+
+        <LandingBeforeAfter />
 
         <LandingStats />
 

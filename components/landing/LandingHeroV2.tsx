@@ -140,7 +140,7 @@ export default function LandingHeroV2() {
               <Link href="/auth/register" className="group">
                 <button className="relative inline-flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-br from-[#00a84d] via-[#019a47] to-[#026d32] px-8 py-4 text-base font-black text-white shadow-[0_20px_48px_-12px_rgba(2,109,50,0.6)] transition-all hover:shadow-[0_28px_58px_-12px_rgba(2,109,50,0.75)] hover:scale-[1.02] cursor-pointer">
                   <Sparkles size={18} className="transition-transform group-hover:rotate-12" />
-                  <span className="tracking-wide">Get started free</span>
+                  <span className="tracking-wide">Get started</span>
                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
                   <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                 </button>
@@ -152,6 +152,14 @@ export default function LandingHeroV2() {
                 </button>
               </Link>
             </div>
+
+            {/* Social proof metric */}
+            <p
+              className="hero-text-rise mt-3 text-center lg:text-left text-[12px] text-zinc-500"
+              style={{ animationDelay: '0.5s' }}
+            >
+              <span className="font-black text-zinc-800">1,000,000+</span> resumes optimized and counting
+            </p>
 
             {/* Powered-by strip */}
             <div

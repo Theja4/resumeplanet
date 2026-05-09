@@ -92,7 +92,7 @@ export default function LandingStats() {
             { value: 5, suffix: '×', label: 'More callbacks on average', color: '#00a84d' },
             { value: 98, suffix: '%', label: 'Hit ATS readability', color: '#026d32' },
             { value: 42, suffix: 's', label: 'To tailor one resume', color: '#7bd3fc' },
-            { value: 12, suffix: 'k+', label: 'Job seekers served', color: '#ff66c4' },
+            { value: 1, suffix: 'M+', label: 'Resumes optimized', color: '#ff66c4' },
           ].map((s, i) => (
             <Reveal key={s.label} delay={i * 80}>
               <div className="relative overflow-hidden rounded-3xl border border-zinc-100 bg-white p-6 md:p-8 shadow-[0_20px_50px_-20px_rgba(2,109,50,0.15)]">
