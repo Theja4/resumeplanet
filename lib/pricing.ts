@@ -645,6 +645,36 @@ export const PROMOTIONS: PromoConfig[] = [
     bannerBgColor: undefined,
     bannerTextColor: undefined,
   },
+
+  // ── NEHA50 ────────────────────────
+  {
+    id: 'neha50',
+    name: 'NEHA50 Partner Offer',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_NEHA50 ?? '',
+    paddleDiscountCode: 'NEHA50',
+    discountType: 'percent',
+    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_NEHA50_PERCENT', 50),
+    appliesTo: 'all',
+    overrideDisplay: {
+      displayPrice: 0,
+      actualPrice: 0,
+    },
+    label: 'NEHA50',
+    badge: '50% OFF',
+    bannerEmoji: undefined,
+    headline: 'NEHA50 partner offer',
+    subheadline: 'Use NEHA50 to unlock 50% off Rezoomed Pro.',
+    ctaLabel: 'Claim NEHA50',
+    disclaimerText: '50% off applies at checkout using NEHA50.',
+    startDate: undefined,
+    endDate: undefined,
+    isExitIntent: false,
+    isBanner: false,
+    isAutoApply: false,
+    exitIntentTimerSeconds: 600,
+    bannerBgColor: undefined,
+    bannerTextColor: undefined,
+  },
 ]
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

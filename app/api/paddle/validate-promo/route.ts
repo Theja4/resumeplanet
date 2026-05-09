@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (resolution.status !== 'promotion') {
+    if (resolution.status !== 'promotion' && resolution.status !== 'misconfigured_promotion') {
       return NextResponse.json({
         valid: false,
         errorMessage: 'Invalid or expired promo code',
