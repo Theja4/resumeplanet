@@ -1,5 +1,6 @@
 import type { BlogPost } from '@/lib/blog/shared'
 import { SEO_CONTENT_UPGRADES } from '@/lib/blog/seo-content-upgrades'
+import { getAuthorForSlug } from '@/lib/blog/authors'
 
 type BlogOverride = Partial<Pick<BlogPost, 'title' | 'excerpt' | 'content'>>
 type BlogToolLink = {
@@ -798,6 +799,10 @@ const COVER_LETTER_POST_SLUGS = new Set([
   'ai-cover-letter-generator-what-good-output-looks-like',
 ])
 
+const RESUME_FORMAT_POST_SLUGS = new Set([
+  'us-resume-format-best-practices-examples',
+])
+
 function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
   if (METADATA_POST_SLUGS.has(post.slug)) {
     return [
@@ -837,9 +842,14 @@ function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
         description: 'Run a live ATS scan on your resume and catch parsing or keyword gaps fast.',
       },
       {
-        label: 'Match Score',
-        href: '/match-score',
-        description: 'Compare your resume against a target job description instead of checking ATS hygiene alone.',
+        label: 'ATS Resume Test',
+        href: '/ats-resume-test',
+        description: 'Use a step-by-step ATS test when you want to check parsing, formatting, and keywords before applying.',
+      },
+      {
+        label: 'Resume Scanner',
+        href: '/resume-scanner',
+        description: 'Scan the exact file you plan to send and fix preventable recruiter-readability issues.',
       },
     ]
   }
@@ -867,9 +877,34 @@ function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
         description: 'Compare your resume against a target job description and find truthful keyword gaps.',
       },
       {
-        label: 'ATS Checker',
-        href: '/ats-checker',
-        description: 'Check structure and readability after adding role-relevant keywords.',
+        label: 'ATS Resume Test',
+        href: '/ats-resume-test',
+        description: 'Test parsing and formatting after adding role-relevant keywords.',
+      },
+      {
+        label: 'ATS Resume Format',
+        href: '/ats-resume-format',
+        description: 'Keep keyword edits inside a format that applicant tracking systems can read cleanly.',
+      },
+    ]
+  }
+
+  if (RESUME_FORMAT_POST_SLUGS.has(post.slug)) {
+    return [
+      {
+        label: 'Resume Format Guide',
+        href: '/resume-format',
+        description: 'Use the format hub for section order, ATS-safe rules, examples, and role-specific formats.',
+      },
+      {
+        label: 'ATS Resume Format',
+        href: '/ats-resume-format',
+        description: 'Apply the safest layout rules before you upload the resume to employer portals.',
+      },
+      {
+        label: 'Resume Builder',
+        href: '/resume-builder',
+        description: 'Rebuild the resume in a cleaner structure and export a more application-ready version.',
       },
     ]
   }
@@ -885,6 +920,26 @@ function getRelatedToolLinks(post: BlogPost): BlogToolLink[] {
         label: 'Match Score',
         href: '/match-score',
         description: 'Use job-description comparison to decide what to rewrite and what to leave alone.',
+      },
+    ]
+  }
+
+  if (post.slug === 'how-to-land-a-job-at-amazon') {
+    return [
+      {
+        label: 'Amazon ATS Resume Guide',
+        href: '/amazon-ats-resume-guide',
+        description: 'Use the Amazon-specific resume workflow for format, keywords, and application proof.',
+      },
+      {
+        label: 'What ATS Does Amazon Use?',
+        href: '/what-ats-does-amazon-use',
+        description: 'Get the honest answer before optimizing around unverified ATS vendor claims.',
+      },
+      {
+        label: 'ATS Checker',
+        href: '/ats-checker',
+        description: 'Scan the final resume before submitting it through Amazon Jobs.',
       },
     ]
   }
@@ -1128,6 +1183,8 @@ function appendRelatedToolLinks(post: BlogPost): string {
 }
 
 export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
+  const author = getAuthorForSlug(post.slug)
+
   const guide = getCompanyJobGuideBySlug(post.slug)
   if (guide) {
     const nextPost = {
@@ -1135,6 +1192,7 @@ export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
       title: guide.title,
       excerpt: guide.excerpt,
       content: buildCompanyJobGuideContent(guide),
+      author_name: author.name,
     }
     return {
       ...nextPost,
@@ -1147,8 +1205,9 @@ export function applyOptimizedBlogPost(post: BlogPost): BlogPost {
     ? {
         ...post,
         ...override,
+        author_name: author.name,
       }
-    : post
+    : { ...post, author_name: author.name }
 
   return {
     ...nextPost,

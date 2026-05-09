@@ -26,6 +26,7 @@ import { getCompanyJobGuideBySlug } from '@/lib/blog/company-job-guides'
 import { getBlogResumeExampleForSlug } from '@/lib/blog/resume-examples'
 import { buildBlogPostKeywords } from '@/lib/blog/seo'
 import { getSiteUrl } from '@/lib/site'
+import { getAuthorForSlug } from '@/lib/blog/authors'
 
 const GOOGLE_JOB_FAQS = [
   {
@@ -329,6 +330,7 @@ export default async function BlogPostPage({
           : {}),
       }
     : undefined
+  const author = getAuthorForSlug(post.slug)
   const extractedFaqItems = extractFaqItems(articleContent)
   const faqItems =
     extractedFaqItems.length > 0
@@ -345,8 +347,9 @@ export default async function BlogPostPage({
     datePublished: post.published_at,
     dateModified: post.updated_at,
     author: {
-      '@type': 'Organization',
+      '@type': 'Person',
       name: post.author_name,
+      jobTitle: author.title,
     },
     publisher: {
       '@type': 'Organization',
@@ -558,7 +561,7 @@ export default async function BlogPostPage({
                   </div>
                   <div>
                     <p className="text-sm font-black text-white/90">{post.author_name}</p>
-                    <p className="text-[11px] text-white/35">Rezoomed Editorial</p>
+                    <p className="text-[11px] text-white/35">{author.title}</p>
                   </div>
                 </div>
                 <span className="text-white/20">·</span>
@@ -649,6 +652,20 @@ export default async function BlogPostPage({
                 customBlocks={customBlocks}
               />
               </article>
+            </div>
+
+            {/* Author bio card */}
+            <div className="blog-load-in rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8" style={entryStyle(0.16)}>
+              <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-base font-black text-[#022c14] shadow-sm">
+                  {author.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-base font-black text-zinc-900">{author.name}</p>
+                  <p className="mb-3 text-sm font-semibold text-[#026d32]">{author.title}</p>
+                  <p className="text-sm leading-6 text-zinc-600">{author.bio}</p>
+                </div>
+              </div>
             </div>
 
             <div className="blog-load-in blog-glare-surface blog-glare-dark rounded-[2rem] bg-[#030f07] p-8 sm:p-10" style={entryStyle(0.18)}>
