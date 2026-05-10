@@ -24,6 +24,7 @@ const POLAR_PRODUCT_BY_INTERVAL: Record<PolarInterval, string | undefined> = {
 
 const POLAR_DISCOUNT_BY_CODE: Record<string, string | undefined> = {
   CAREER50: process.env.POLAR_DISCOUNT_CAREER50_ID,
+  JOBS50: process.env.POLAR_DISCOUNT_JOBS50_ID,
   NEERAJA50: process.env.POLAR_DISCOUNT_NEERAJA50_ID,
 }
 

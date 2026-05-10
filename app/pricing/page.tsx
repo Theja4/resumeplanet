@@ -143,7 +143,6 @@ export default async function PublicPricingPage({
                 priceOptions={priceOptions}
                 pricingCountryCode={pricingCountryCode}
                 loginRedirectPath="/dashboard/pricing"
-                showPromoRibbon={false}
               />
             </div>
           </DashboardSurface>

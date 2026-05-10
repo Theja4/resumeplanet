@@ -675,6 +675,36 @@ export const PROMOTIONS: PromoConfig[] = [
     bannerBgColor: undefined,
     bannerTextColor: undefined,
   },
+
+  // ── JOBS50 ────────────────────────
+  {
+    id: 'jobs50',
+    name: 'JOBS50 Partner Offer',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_JOBS50 ?? '',
+    paddleDiscountCode: 'JOBS50',
+    discountType: 'percent',
+    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_JOBS50_PERCENT', 50),
+    appliesTo: 'all',
+    overrideDisplay: {
+      displayPrice: 0,
+      actualPrice: 0,
+    },
+    label: 'JOBS50',
+    badge: '50% OFF',
+    bannerEmoji: undefined,
+    headline: 'JOBS50 partner offer',
+    subheadline: 'Use JOBS50 to unlock 50% off Rezoomed Pro.',
+    ctaLabel: 'Claim JOBS50',
+    disclaimerText: '50% off applies at checkout using JOBS50.',
+    startDate: undefined,
+    endDate: undefined,
+    isExitIntent: false,
+    isBanner: false,
+    isAutoApply: false,
+    exitIntentTimerSeconds: 600,
+    bannerBgColor: undefined,
+    bannerTextColor: undefined,
+  },
 ]
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
