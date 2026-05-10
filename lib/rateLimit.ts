@@ -12,6 +12,8 @@ type RateLimitScope =
   | 'resume_parse_authenticated'
   | 'cover_letter_generate_authenticated'
   | 'metadata_audit_authenticated'
+  | 'ats_insights_authenticated'
+  | 'ats_optimise_authenticated'
 
 interface ConsumeRateLimitOptions {
   request: NextRequest

@@ -80,6 +80,13 @@ const SLUG_AUTHOR_MAP: Record<string, string> = {
   'how-to-write-a-cover-letter-for-a-job-you-really-want': 'Priya Nair',
   'ai-cover-letter-generator-what-good-output-looks-like': 'Priya Nair',
   'how-to-land-a-google-job': 'Priya Nair',
+  // Competitor comparisons — Sarah Chen (ATS/tool expertise)
+  'rezoomed-vs-jobscan': 'Sarah Chen',
+  'rezoomed-vs-resume-worded': 'Sarah Chen',
+  'rezoomed-vs-zety': 'Sarah Chen',
+  'rezoomed-vs-rezi': 'Sarah Chen',
+  'rezoomed-vs-enhancv': 'Sarah Chen',
+  'rezoomed-vs-canva': 'Sarah Chen',
 }
 
 export function getAuthorForSlug(slug: string): Author {

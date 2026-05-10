@@ -100,7 +100,7 @@ function renderSpotlightListCard(title: string, items: string[], key: string) {
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.16),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(48,192,107,0.14),transparent_24%)]" />
       <div className="relative">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">Preparation card</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#A3FFB3]">Key takeaway</p>
         <h4 className="mt-2 text-2xl font-black tracking-tight text-white">{title}</h4>
         <div className="mt-4 grid gap-2.5">
           {items.map(item => (

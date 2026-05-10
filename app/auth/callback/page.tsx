@@ -81,23 +81,25 @@ export default function AuthCallbackPage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(163,255,179,0.34),transparent_26%),radial-gradient(circle_at_84%_16%,rgba(2,109,50,0.08),transparent_22%),radial-gradient(circle_at_50%_92%,rgba(163,255,179,0.24),transparent_28%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(180deg,transparent,rgba(163,255,179,0.18))]" />
 
-      <div className="callback-loader relative z-10 flex items-center justify-center gap-6 px-6">
+      <div className="callback-loader relative z-10 flex items-center justify-center gap-4 px-5 sm:gap-6 sm:px-6">
         <div className="callback-logo-wrap shrink-0">
           <Image
             src="/auth-login-logo.png"
             alt="Rezoomed logo"
             width={80}
             height={80}
-            className="h-20 w-20 object-contain drop-shadow-[0_20px_32px_rgba(2,109,50,0.18)]"
+            className="h-16 w-16 object-contain drop-shadow-[0_20px_32px_rgba(2,109,50,0.18)] sm:h-20 sm:w-20"
           />
         </div>
-        <div className="callback-wordmark-wrap">
-          <div className="callback-wordmark-glow" />
-          <div className="callback-wordmark">Rezoomed</div>
+        <div className="flex min-w-0 flex-col items-start">
+          <div className="callback-wordmark-wrap">
+            <div className="callback-wordmark-glow" />
+            <div className="callback-wordmark">Rezoomed</div>
+          </div>
+          <p className="mt-1 text-sm font-medium tracking-[0.02em] text-zinc-500 sm:text-base">
+            Signing you in...
+          </p>
         </div>
-        <p className="mt-4 text-sm font-medium tracking-[0.02em] text-zinc-500 sm:text-base">
-          Signing you in...
-        </p>
       </div>
 
       <style jsx>{`

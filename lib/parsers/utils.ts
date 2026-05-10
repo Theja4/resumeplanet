@@ -33,8 +33,8 @@ export const BULLET_RE = /^[\s]*[⋅∙🞄•⦁⚫●⬤⚬○▸▹›▶►�
  * - Preserve bullet groups by joining consecutive bullet lines.
  */
 export function normalizeText(raw: string): string {
-  // Collapse multiple blank lines
-  let text = raw.replace(/\n{2,}/g, '\n')
+  // Collapse 3+ newlines to double newlines (preserve paragraph/section breaks)
+  let text = raw.replace(/\n{3,}/g, '\n\n')
   // Trim each line
   text = text
     .split('\n')
@@ -52,8 +52,6 @@ export function isBulletLine(line: string): boolean {
 export function isHeadingLine(line: string): boolean {
   const trimmed = line.trim()
   if (!trimmed) return false
-  const allCaps = trimmed === trimmed.toUpperCase() && trimmed.length > 2
-  const endsColon = trimmed.endsWith(':')
   // Strip decorations (numbering, dashes, equals, colons) before matching
   const stripped = trimmed
     .replace(/^(?:\d+[.)]\s*|[IVXLC]+[.)]\s*)/i, '')
@@ -62,7 +60,15 @@ export function isHeadingLine(line: string): boolean {
     .replace(/:$/, '')
     .trim()
   const known = /^(experience|work experience|professional experience|education|skills|technical skills|core skills|key skills|projects|certifications|certificates|languages|volunteer|volunteer experience|interests|awards|publications|references|summary|professional summary|profile|objective|competencies|core competencies|areas of expertise|achievements|accomplishments|hobbies)$/i.test(stripped)
-  return allCaps || endsColon || known
+  if (known) return true
+  // ALL-CAPS only counts as heading if it's short (≤4 words) and contains
+  // at least one letter — avoids false positives on company names, locations, acronyms
+  const allCaps = trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)
+  const wordCount = trimmed.split(/\s+/).length
+  if (allCaps && wordCount <= 4 && wordCount >= 1 && trimmed.length <= 40) return true
+  // Lines ending with colon are likely headings only if short
+  const endsColon = trimmed.endsWith(':') && wordCount <= 5
+  return endsColon
 }
 
 /**
@@ -73,15 +79,19 @@ export function splitIntoSections(text: string): string[] {
   const lines = text.split('\n')
   const sections: string[] = []
   let current = ''
+  let prevLineEmpty = false
   for (const line of lines) {
-    if (isHeadingLine(line) && current) {
+    const isEmpty = line.trim() === ''
+    // Split on heading lines or double newlines (blank line gaps = section boundary)
+    if ((isHeadingLine(line) || (isEmpty && prevLineEmpty)) && current.trim()) {
       sections.push(current.trim())
-      current = line
+      current = isEmpty ? '' : line
     } else {
       current += '\n' + line
     }
+    prevLineEmpty = isEmpty
   }
-  if (current) sections.push(current.trim())
+  if (current.trim()) sections.push(current.trim())
   return sections
 }
 
@@ -92,39 +102,51 @@ export function splitIntoSections(text: string): string[] {
  */
 /**
  * Chunk large resumes into smaller pieces to stay within token limits.
- * Simple heuristic: split on detected sections.
- * ADDED: Overlap ensures context is preserved for roles/projects that span chunks.
+ * Uses section-aware splitting: chunks always break at section boundaries.
+ * Overlap is done by repeating the last section(s) from the previous chunk
+ * so the LLM has context for entries that span near a boundary.
  */
 export function chunkText(
   text: string,
   maxChunkLength: number = 8000,
-  overlap: number = 1000
+  _overlap: number = 1000
 ): string[] {
   const sections = splitIntoSections(text)
   const chunks: string[] = []
-  let current = ''
+  let currentSections: string[] = []
+  let currentLength = 0
 
-  for (const sec of sections) {
-    // If adding this section exceeds max length, push current and start new with overlap
-    if ((current + '\n' + sec).length > maxChunkLength) {
-      if (current) {
-        chunks.push(current.trim())
-        // Start next chunk with the end of the previous one for context
-        current = current.slice(-overlap) + '\n' + sec
-      } else {
-        // Single section too long: split it
-        for (let i = 0; i < sec.length; i += maxChunkLength - overlap) {
-          const start = Math.max(0, i - overlap)
-          chunks.push(sec.slice(start, i + maxChunkLength).trim())
-        }
-        current = ''
+  for (let i = 0; i < sections.length; i++) {
+    const sec = sections[i]
+
+    // If adding this section exceeds max length, finalize the current chunk
+    if (currentLength > 0 && currentLength + sec.length + 1 > maxChunkLength) {
+      chunks.push(currentSections.join('\n').trim())
+
+      // Section-aware overlap: carry over the last section for context
+      const lastSection = currentSections[currentSections.length - 1]
+      currentSections = [lastSection, sec]
+      currentLength = lastSection.length + sec.length + 1
+    } else if (sec.length > maxChunkLength && currentSections.length === 0) {
+      // Single section too long: split by raw length with 20% overlap
+      const overlapLen = Math.round(maxChunkLength * 0.2)
+      const step = maxChunkLength - overlapLen
+      for (let j = 0; j < sec.length; j += step) {
+        chunks.push(sec.slice(j, j + maxChunkLength).trim())
       }
+      currentSections = []
+      currentLength = 0
     } else {
-      current += (current ? '\n' : '') + sec
+      currentSections.push(sec)
+      currentLength += sec.length + (currentSections.length > 1 ? 1 : 0)
     }
   }
 
-  if (current.trim()) chunks.push(current.trim())
+  if (currentSections.length > 0) {
+    const final = currentSections.join('\n').trim()
+    if (final) chunks.push(final)
+  }
+
   return chunks
 }
 
@@ -207,63 +229,67 @@ function rescueSkillsFromExperience(experience: LooseRecord[]): string[] {
 }
 
 /**
+ * Check if a bullet looks like a split fragment that should be merged with the next line.
+ * Must be short AND not end with punctuation AND the next line starts lowercase.
+ * Avoids merging intentionally separate short bullets like "Dean's List".
+ */
+function shouldMergeBullets(current: string, next: string): boolean {
+  // Must not end with sentence-ending punctuation
+  if (/[.!?;]$/.test(current)) return false
+  // Next must start lowercase (continuation)
+  if (!/^[a-z]/.test(next)) return false
+  // Current must be short enough to look like a fragment (under 50 chars / 8 words)
+  const wordCount = current.split(/\s+/).length
+  if (wordCount > 8 || current.length > 50) return false
+  // Don't merge if current ends with a colon (it's a label like "Technologies used:")
+  if (current.endsWith(':')) return false
+  return true
+}
+
+/**
  * Post‑process parsed ResumeData to fix common issues:
- * - Merge split sentences where a bullet ends without punctuation and the next starts lowercase.
+ * - Merge split sentences where a bullet is clearly a fragment of the next.
  * - Ensure required top‑level fields exist.
  * - Normalize bullets fields that might be strings instead of string[].
  */
 export function postProcessResume(data: object): LooseRecord {
   const mutableData = data as LooseRecord
-  // Normalize and merge split bullet sentences for experience items
-  const experience = Array.isArray(mutableData.experience) ? mutableData.experience as LooseRecord[] : []
-  experience.forEach((exp) => {
-    normalizeBulletsArray(exp)
-    const bullets = Array.isArray(exp.bullets) ? exp.bullets.filter((bullet): bullet is string => typeof bullet === 'string') : []
-    const merged: string[] = []
-    for (let i = 0; i < bullets.length; i++) {
-      const bullet = bullets[i]
-      if (i < bullets.length - 1) {
-        const next = bullets[i + 1]
-        if (!/[.!?]$/.test(bullet) && /^[a-z]/.test(next)) {
-          merged.push(bullet + ' ' + next)
+
+  function mergeSplitBullets(items: LooseRecord[]) {
+    items.forEach((item) => {
+      normalizeBulletsArray(item)
+      const bullets = Array.isArray(item.bullets) ? item.bullets.filter((b): b is string => typeof b === 'string') : []
+      const merged: string[] = []
+      for (let i = 0; i < bullets.length; i++) {
+        const bullet = bullets[i]
+        if (i < bullets.length - 1 && shouldMergeBullets(bullet, bullets[i + 1])) {
+          merged.push(bullet + ' ' + bullets[i + 1])
           i++
-          continue
+        } else {
+          merged.push(bullet)
         }
       }
-      merged.push(bullet)
-    }
-    exp.bullets = merged
-  })
+      item.bullets = merged
+    })
+  }
+
+  // Normalize and merge split bullet sentences for experience items
+  const experience = Array.isArray(mutableData.experience) ? mutableData.experience as LooseRecord[] : []
+  mergeSplitBullets(experience)
 
   // Same for volunteer items
   const volunteer = Array.isArray(mutableData.volunteer) ? mutableData.volunteer as LooseRecord[] : []
-  volunteer.forEach((v) => {
-    normalizeBulletsArray(v)
-    const bullets = Array.isArray(v.bullets) ? v.bullets.filter((bullet): bullet is string => typeof bullet === 'string') : []
-    const merged: string[] = []
-    for (let i = 0; i < bullets.length; i++) {
-      const bullet = bullets[i]
-      if (i < bullets.length - 1) {
-        const next = bullets[i + 1]
-        if (!/[.!?]$/.test(bullet) && /^[a-z]/.test(next)) {
-          merged.push(bullet + ' ' + next)
-          i++
-          continue
-        }
-      }
-      merged.push(bullet)
-    }
-    v.bullets = merged
-  })
+  mergeSplitBullets(volunteer)
+
+  // Same for project items
+  const projects = Array.isArray(mutableData.projects) ? mutableData.projects as LooseRecord[] : []
+  mergeSplitBullets(projects)
 
   // Custom sections with complex items that may have bullets
   const customSections = Array.isArray(mutableData.customSections) ? mutableData.customSections as LooseRecord[] : []
   customSections.forEach((section) => {
     if (Array.isArray(section.items)) {
-      section.items.forEach((item) => {
-        if (!item || typeof item !== 'object') return
-        normalizeBulletsArray(item as LooseRecord)
-      })
+      mergeSplitBullets(section.items as LooseRecord[])
     }
   })
 

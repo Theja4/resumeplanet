@@ -457,15 +457,17 @@ function scoreSummary(data: ResumeData): { score: number; max: number; details: 
     .map(part => part.trim())
     .filter(Boolean).length
 
-  if (wc >= 30 && wc <= 80 && sentenceCount <= 3) {
+  if (wc >= 15 && wc <= 100 && sentenceCount <= 4) {
     score += 4
   } else {
-    if (wc < 30) issues.push(`Summary too short (${wc} words, need 30-80)`)
-    if (wc > 80) issues.push(`Summary too long (${wc} words, need 30-80)`)
-    if (sentenceCount > 3) issues.push(`Summary too long-form (${sentenceCount} sentences, keep it to 2-3)`)
+    if (wc < 15) issues.push(`Summary too short (${wc} words, need 15-100)`)
+    if (wc > 100) issues.push(`Summary too long (${wc} words, need 15-100)`)
+    if (sentenceCount > 4) issues.push(`Summary too long-form (${sentenceCount} sentences, keep it to 2-4)`)
   }
 
-  // Contains at least 2 terms from experience titles / currentRole
+  // Contains at least 1 term from experience titles, currentRole, or skills
+  // Uses skills as fallback so career changers whose summary targets a new field
+  // can still pass by mentioning transferable skills
   const roleTerms = new Set<string>()
   if (data.currentRole?.trim()) {
     data.currentRole.trim().toLowerCase().split(/\s+/).forEach(w => {
@@ -479,6 +481,11 @@ function scoreSummary(data: ResumeData): { score: number; max: number; details: 
       })
     }
   }
+  // Include top skills so career changers referencing skills in summary get credit
+  const skills = getResumeSkills(data)
+  for (const skill of skills.slice(0, 10)) {
+    if (skill.trim().length > 2) roleTerms.add(skill.trim().toLowerCase())
+  }
 
   const summaryLower = summary.toLowerCase()
   let matchCount = 0
@@ -488,8 +495,11 @@ function scoreSummary(data: ResumeData): { score: number; max: number; details: 
 
   if (matchCount >= 2) {
     score += 4
+  } else if (matchCount >= 1) {
+    score += 2
+    issues.push('Summary could reference more role-relevant terms')
   } else {
-    issues.push(`Summary contains ${matchCount} role-relevant term(s), need at least 2`)
+    issues.push('Summary lacks role-relevant terms from your experience or skills')
   }
 
   const details = issues.length === 0
@@ -521,9 +531,9 @@ function scoreExpVerbs(data: ResumeData): { score: number; max: number; details:
   else if (pct >= 40) score = 5
   else score = 2
 
-  // Deduct 1 per filler phrase bullet, min 0
+  // Deduct 1 per filler phrase bullet, capped at 3 so filler doesn't zero out a decent verb score
   const fillerCount = nonEmpty.filter(b => bulletStartsWithFiller(b)).length
-  score = Math.max(0, score - fillerCount)
+  score = Math.max(0, score - Math.min(fillerCount, 3))
 
   const weakBullets = nonEmpty.filter(b => !bulletStartsWithVerb(b))
 
@@ -584,12 +594,7 @@ function scoreExpDepth(data: ResumeData): { score: number; max: number; details:
   else if (avg >= 1) score = 2
   else score = 0
 
-  // Cap at 6 if only 1 role
-  if (roles.length < 2) {
-    score = Math.min(score, 6)
-  }
-
-  const details = `${roles.length} role(s), avg ${avg.toFixed(1)} bullets/role${roles.length < 2 ? ' (capped: need 2+ roles for full marks)' : ''}`
+  const details = `${roles.length} role(s), avg ${avg.toFixed(1)} bullets/role`
 
   return { score, max, details }
 }
@@ -612,24 +617,22 @@ function scoreSkills(data: ResumeData): { score: number; max: number; details: s
   // 8+ skills
   if (skills.length >= 8) {
     score += 4
+  } else if (skills.length >= 4) {
+    score += 2
+    parts.push(`need 8+ skills (have ${skills.length})`)
   } else {
     parts.push(`need 8+ skills (have ${skills.length})`)
   }
 
-  // Skills appear in experience bullets
-  const bullets = getAllBullets(data)
-  if (bullets.length > 0 && skills.length > 0) {
-    const integrated = skills.filter(s => skillAppearsInBullets(s, bullets))
-    const ratio = integrated.length / skills.length
-    if (ratio >= 0.3) {
-      score += 4
-    } else {
-      const proportional = Math.round((ratio / 0.3) * 4)
-      score += proportional
-      parts.push(`${integrated.length}/${skills.length} skills appear in bullets (${Math.round(ratio * 100)}%)`)
-    }
+  // Variety bonus: skills span multiple categories (technical + soft + tools)
+  const hasMultipleSections = (data.skillSections?.length ?? 0) >= 2
+  if (hasMultipleSections) {
+    score += 4
+  } else if (skills.length >= 5) {
+    score += 2
+    parts.push('Consider organizing skills into categories')
   } else {
-    parts.push('No experience bullets to cross-reference skills')
+    parts.push('Organize skills into labeled categories')
   }
 
   return { score, max, details: parts.join('; ') }
@@ -694,34 +697,44 @@ function scoreEducation(data: ResumeData): { score: number; max: number; details
     return { score: 0, max, details: 'No education entries' }
   }
 
-  const first = data.education[0]
-  let score = 0
-  const parts: string[] = []
+  // Score the best education entry, not just the first
+  let bestScore = 0
+  let bestParts: string[] = []
 
-  if (first.institution?.trim()) {
-    score += 2
-  } else {
-    parts.push('missing institution')
+  for (const edu of data.education) {
+    let entryScore = 0
+    const entryParts: string[] = []
+
+    if (edu.institution?.trim()) {
+      entryScore += 2
+    } else {
+      entryParts.push('missing institution')
+    }
+
+    if (edu.degree?.trim() && edu.field?.trim()) {
+      entryScore += 2
+    } else {
+      if (!edu.degree?.trim()) entryParts.push('missing degree')
+      if (!edu.field?.trim()) entryParts.push('missing field of study')
+    }
+
+    if (getEducationDateLabel(edu)) {
+      entryScore += 2
+    } else {
+      entryParts.push('missing graduation date')
+    }
+
+    if (entryScore > bestScore) {
+      bestScore = entryScore
+      bestParts = entryParts
+    }
   }
 
-  if (first.degree?.trim() && first.field?.trim()) {
-    score += 2
-  } else {
-    if (!first.degree?.trim()) parts.push('missing degree')
-    if (!first.field?.trim()) parts.push('missing field of study')
-  }
-
-  if (getEducationDateLabel(first)) {
-    score += 2
-  } else {
-    parts.push('missing graduation date')
-  }
-
-  const details = parts.length === 0
+  const details = bestParts.length === 0
     ? 'Education section complete'
-    : `Education incomplete: ${parts.join(', ')}`
+    : `Education incomplete: ${bestParts.join(', ')}`
 
-  return { score, max, details }
+  return { score: bestScore, max, details }
 }
 
 function scoreKeywords(data: ResumeData): { score: number; max: number; details: string; unmatchedSkills: string[] } {
@@ -758,13 +771,13 @@ function scorePolish(data: ResumeData): { score: number; max: number; details: s
   let score = 0
   const parts: string[] = []
 
-  // Total word count 300-900
+  // Total word count 250-1200 (wider range to accommodate senior/academic CVs)
   const totalText = getAllResumeText(data)
   const wc = wordCount(totalText)
-  if (wc >= 300 && wc <= 900) {
+  if (wc >= 250 && wc <= 1200) {
     score += 3
   } else {
-    parts.push(wc < 300 ? `Resume too short (${wc} words, need 300-900)` : `Resume too long (${wc} words, need 300-900)`)
+    parts.push(wc < 250 ? `Resume too short (${wc} words, need 250+)` : `Resume too long (${wc} words, consider trimming to under 1200)`)
   }
 
   // No standard sections completely empty

@@ -336,8 +336,10 @@ export async function callClaude(options: {
   prompt: string
   maxTokens?: number
   timeoutMs?: number
+  temperature?: number
+  jsonMode?: boolean
 }): Promise<string> {
-  const { model, system, prompt, maxTokens = 4096, timeoutMs = 90000 } = options
+  const { model, system, prompt, maxTokens = 4096, timeoutMs = 90000, temperature, jsonMode } = options
 
   const OPENROUTER_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
   const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
@@ -349,7 +351,7 @@ export async function callClaude(options: {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
-  const body = {
+  const body: Record<string, unknown> = {
     model,
     messages: [
       { role: 'system', content: system },
@@ -357,6 +359,8 @@ export async function callClaude(options: {
     ],
     max_tokens: Number(maxTokens),
   }
+  if (temperature !== undefined) body.temperature = temperature
+  if (jsonMode) body.response_format = { type: 'json_object' }
 
   try {
     console.log(`[LLM] model=${model} | url=${OPENROUTER_URL}/chat/completions`)
@@ -365,8 +369,8 @@ export async function callClaude(options: {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${OPENROUTER_KEY}`,
-        'HTTP-Referer': 'https://resumeplanet.ai',
-        'X-Title': 'ResumePlanet',
+        'HTTP-Referer': 'https://rezoomed.com',
+        'X-Title': 'Rezoomed',
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -423,6 +427,8 @@ export async function callClaudeJSON<T>(options: {
   prompt: string
   maxTokens?: number
   timeoutMs?: number
+  temperature?: number
+  jsonMode?: boolean
 }): Promise<T> {
   return callClaudeJSONFallback<T>(options)
 }
@@ -433,6 +439,8 @@ export async function callClaudeJSONFallback<T>(options: {
   prompt: string
   maxTokens?: number
   timeoutMs?: number
+  temperature?: number
+  jsonMode?: boolean
   fallbackModels?: string[]
   perModelTimeoutMs?: number
   jsonRetryTimeoutMs?: number

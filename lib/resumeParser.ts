@@ -1264,7 +1264,7 @@ function extractNameFromLines(
     const looksLikeName =
       words.length >= 2 &&
       words.length <= 5 &&
-      words.every(w => /^[A-Za-z'-]+$/.test(w))
+      words.every(w => /^[\p{L}\p{M}'-]+$/u.test(w))
 
     if (looksLikeName && isLargeOrBold) return t
   }
@@ -1278,7 +1278,7 @@ function extractNameFromLines(
     const looksLikeName =
       words.length >= 2 &&
       words.length <= 5 &&
-      words.every(w => /^[A-Za-z'-]+$/.test(w))
+      words.every(w => /^[\p{L}\p{M}'-]+$/u.test(w))
     if (looksLikeName) return t
   }
 
@@ -1457,7 +1457,7 @@ export async function parseResumeText(rawText: string): Promise<ResumeData> {
       if (!t || t === email || PHONE_RE.test(t) || URL_RE.test(t)) continue
       if (t.length < 2 || t.length > 50 || !t.includes(' ') || EMAIL_RE.test(t)) continue
       const words = t.split(/\s+/)
-      if (words.length >= 2 && words.length <= 5 && words.every(w => /^[A-Za-z'-]+$/.test(w))) return t
+      if (words.length >= 2 && words.length <= 5 && words.every(w => /^[\p{L}\p{M}'-]+$/u.test(w))) return t
     }
     return ''
   })()

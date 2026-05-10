@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
 import { callClaudeJSON } from '@/lib/claude'
 import { isPro } from '@/lib/planUtils'
@@ -278,6 +279,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { success: false, error: 'Unauthorized' },
       { status: 401 }
     )
+  }
+
+  const insightsRateLimit = await consumeRateLimit({
+    request,
+    userId: user.id,
+    scope: 'ats_insights_authenticated',
+    limit: 30,
+    windowSeconds: 60 * 60,
+  })
+  if (!insightsRateLimit.allowed) {
+    return createRateLimitResponse(insightsRateLimit, 'TOO_MANY_INSIGHT_REQUESTS')
   }
 
   let body: { resumeText?: string; resumeId?: string; resumeData?: ResumeData }

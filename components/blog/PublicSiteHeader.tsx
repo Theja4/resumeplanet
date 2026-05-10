@@ -131,7 +131,10 @@ export default function PublicSiteHeader({
             {isMobileMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
           </button>
 
-          <Link href="/" className="flex items-center gap-2 text-xl font-bold text-zinc-900">
+          <Link
+            href="/"
+            className="absolute left-1/2 flex -translate-x-1/2 items-center gap-2 text-xl font-bold text-zinc-900 md:static md:translate-x-0"
+          >
             <Image
               src="/auth-login-logo.png"
               alt="Rezoomed logo"

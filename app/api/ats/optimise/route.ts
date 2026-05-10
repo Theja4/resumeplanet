@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callClaudeJSONFallback, CLAUDE_PREMIUM, CLAUDE_STANDARD } from '@/lib/claude'
+import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { requirePro } from '@/lib/planEnforcement'
 import { scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import { parseResumeText } from '@/lib/resumeParser'
@@ -531,6 +532,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const authResult = await requirePro()
   if (authResult instanceof NextResponse) return authResult
   const { userId, supabase } = authResult
+
+  const optimiseRateLimit = await consumeRateLimit({
+    request,
+    userId,
+    scope: 'ats_optimise_authenticated',
+    limit: 20,
+    windowSeconds: 60 * 60,
+  })
+  if (!optimiseRateLimit.allowed) {
+    return createRateLimitResponse(optimiseRateLimit, 'TOO_MANY_OPTIMISE_REQUESTS')
+  }
 
   // ── Parse body ─────────────────────────────────────────────────────────────
   let body: OptimiseBody

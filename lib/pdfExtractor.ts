@@ -56,9 +56,27 @@ async function createLoadingTask(buffer: Buffer) {
 
 // Extract text items with full positional metadata
 export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> {
-  const loadingTask = await createLoadingTask(buffer)
+  let loadingTask: Awaited<ReturnType<typeof createLoadingTask>>
+  try {
+    loadingTask = await createLoadingTask(buffer)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('password') || msg.includes('encrypted')) {
+      throw new Error('PASSWORD_PROTECTED_PDF')
+    }
+    throw e
+  }
 
-  const pdf = await loadingTask.promise
+  let pdf
+  try {
+    pdf = await loadingTask.promise
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    if (msg.includes('password') || msg.includes('encrypted') || msg.includes('PasswordException')) {
+      throw new Error('PASSWORD_PROTECTED_PDF')
+    }
+    throw e
+  }
   const pages: ExtractedPage[] = []
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -107,10 +125,17 @@ export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> 
       })
     }
 
+    // Dynamic y-tolerance based on median font size for better line grouping
+    const fontSizes = items.map(item => item.fontSize).filter(s => s > 0)
+    const medianFS = fontSizes.length > 0
+      ? fontSizes.sort((a, b) => a - b)[Math.floor(fontSizes.length / 2)]
+      : 12
+    const yTolerance = Math.max(3, Math.round(medianFS * 0.4))
+
     // Sort: top to bottom, then left to right
     items.sort((a, b) => {
       const yDiff = a.y - b.y
-      if (Math.abs(yDiff) > 3) return yDiff
+      if (Math.abs(yDiff) > yTolerance) return yDiff
       return a.x - b.x
     })
 
@@ -201,13 +226,20 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
     const totalChars = page.items.reduce((sum, item) => sum + item.text.length, 0)
     const avgCharWidth = totalChars > 0 ? totalWidth / totalChars : 8
 
-    // Group items by y-coordinate proximity (within 3px = same line)
+    // Dynamic y-tolerance for line grouping based on median font size
+    const pageFontSizes = page.items.map(item => item.fontSize).filter(s => s > 0)
+    const pageMedianFS = pageFontSizes.length > 0
+      ? pageFontSizes.sort((a, b) => a - b)[Math.floor(pageFontSizes.length / 2)]
+      : 12
+    const lineYTolerance = Math.max(3, Math.round(pageMedianFS * 0.4))
+
+    // Group items by y-coordinate proximity
     const lineGroups: TextItem[][] = []
     let currentGroup: TextItem[] = []
     let lastY = -1
 
     for (const item of page.items) {
-      if (lastY === -1 || Math.abs(item.y - lastY) <= 3) {
+      if (lastY === -1 || Math.abs(item.y - lastY) <= lineYTolerance) {
         currentGroup.push(item)
         lastY = item.y
       } else {

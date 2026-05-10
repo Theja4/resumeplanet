@@ -20,23 +20,29 @@ export interface ResumeParseConfidenceContext {
   sourceTextLength?: number | null
 }
 
-const SECTION_HEADING_TERMS = [
-  'experience',
+// Multi-word terms are unambiguous section headings — match anywhere
+const UNAMBIGUOUS_HEADING_TERMS = [
   'work experience',
   'professional experience',
   'employment history',
   'work history',
-  'education',
   'educational background',
   'academic background',
+  'academic qualifications',
+  'technical skills',
+  'core skills',
+]
+
+// Single-word terms can appear naturally in prose (e.g. "My interests include...")
+// Only match when they look like leaked headings: followed by colon/newline or at line start
+const AMBIGUOUS_HEADING_TERMS = [
+  'experience',
+  'education',
   'academia',
   'academics',
   'qualification',
   'qualifications',
-  'academic qualifications',
   'skills',
-  'technical skills',
-  'core skills',
   'competencies',
   'projects',
   'certifications',
@@ -48,7 +54,23 @@ const SECTION_HEADING_TERMS = [
   'references',
 ]
 
-const SUMMARY_LEAK_RE = new RegExp(`\\b(?:${SECTION_HEADING_TERMS.map(escapeForRegex).join('|')})\\b`, 'i')
+// Unambiguous terms: plain word boundary match
+const UNAMBIGUOUS_LEAK_RE = new RegExp(
+  `\\b(?:${UNAMBIGUOUS_HEADING_TERMS.map(escapeForRegex).join('|')})\\b`, 'i'
+)
+// Ambiguous terms: require heading-like context (start of string, after newline, or followed by colon)
+const AMBIGUOUS_LEAK_RE = new RegExp(
+  `(?:^|\\n)\\s*(?:${AMBIGUOUS_HEADING_TERMS.map(escapeForRegex).join('|')})\\s*(?::|\\n|$)`, 'im'
+)
+// Combined check used in assessSummary
+const SUMMARY_LEAK_RE = {
+  test(text: string): boolean {
+    return UNAMBIGUOUS_LEAK_RE.test(text) || AMBIGUOUS_LEAK_RE.test(text)
+  },
+  exec(text: string): RegExpExecArray | null {
+    return UNAMBIGUOUS_LEAK_RE.exec(text) || AMBIGUOUS_LEAK_RE.exec(text)
+  },
+}
 const DATE_CLUSTER_RE = /\b(?:\d{1,2}\/\d{4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}|\d{4}\s*[-–—]\s*(?:\d{4}|present|current|now))\b/gi
 
 function escapeForRegex(value: string): string {
@@ -75,7 +97,7 @@ function assessSummary(summary: string, issues: string[]): number {
 
   let score = 10
   const wordCount = trimmed.split(/\s+/).filter(Boolean).length
-  const headingHits = trimmed.match(SUMMARY_LEAK_RE) ?? []
+  const hasHeadingLeak = SUMMARY_LEAK_RE.test(trimmed)
   const dateHits = trimmed.match(DATE_CLUSTER_RE) ?? []
 
   if (wordCount < 12) {
@@ -86,7 +108,7 @@ function assessSummary(summary: string, issues: string[]): number {
     issues.push('summary too long')
   }
 
-  if (headingHits.length >= 2) {
+  if (hasHeadingLeak) {
     score -= 6
     issues.push('summary contains downstream section content')
   }
@@ -100,20 +122,25 @@ function assessSummary(summary: string, issues: string[]): number {
 }
 
 function assessExperience(data: ResumeData, issues: string[]): number {
-  if (data.experience.length === 0) {
+  // Consider volunteer entries as experience for candidates who rely on them
+  const allExperience = [
+    ...data.experience,
+    ...(data.volunteer ?? []),
+  ]
+  if (allExperience.length === 0) {
     issues.push('missing experience section')
     return 0
   }
 
   let score = 16
-  const completeEntries = data.experience.filter(item => item.title && item.company)
-  const bulletEntries = data.experience.filter(item => item.bullets.length > 0)
-  const datedEntries = data.experience.filter(item => item.startDate || item.endDate)
+  const completeEntries = allExperience.filter(item => item.title && item.company)
+  const bulletEntries = allExperience.filter(item => item.bullets.length > 0)
+  const datedEntries = allExperience.filter(item => item.startDate || item.endDate)
 
   if (completeEntries.length === 0) {
     score -= 8
     issues.push('experience entries missing title or company')
-  } else if (completeEntries.length < data.experience.length) {
+  } else if (completeEntries.length < allExperience.length) {
     score -= 4
     issues.push('some experience entries incomplete')
   }
@@ -121,7 +148,7 @@ function assessExperience(data: ResumeData, issues: string[]): number {
   if (bulletEntries.length === 0) {
     score -= 6
     issues.push('experience bullets missing')
-  } else if (bulletEntries.length < data.experience.length) {
+  } else if (bulletEntries.length < allExperience.length) {
     score -= 3
     issues.push('some experience bullets missing')
   }
@@ -381,6 +408,9 @@ export function assessResumeParseConfidence(
 export function shouldAttemptRepair(candidate: ResumeParseCandidate | null): boolean {
   if (!candidate) return true
   if (candidate.confidence.level === 'low') return true
+  // Also repair medium-confidence parses — deterministic parsers often produce
+  // structurally valid but incomplete results that the LLM parser can improve.
+  if (candidate.confidence.level === 'medium') return true
 
   return candidate.confidence.issues.some(issue =>
     issue === 'summary contains downstream section content' ||

@@ -279,26 +279,24 @@ function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData, scorerRes
     }
   }
 
-  const keywordWeakArea = scorerResult.weakAreas.find(area => area.criterionId === 'keywords')
+  // No JD provided — show skills that ARE integrated into bullets as strengths,
+  // and skills only listed in the skills section (not backed by evidence) as gaps
   const allSkills = getResumeSkills(data).filter(skill => skill.trim())
-  const missingKeywordSet = new Set(
-    (keywordWeakArea?.relevantText ?? [])
-      .map(keyword => keyword.trim().toLowerCase())
-      .filter(Boolean)
-  )
-  const presentKeywords = allSkills
-    .filter(skill => !missingKeywordSet.has(skill.trim().toLowerCase()))
-    .slice(0, 10)
-  const missingKeywords = allSkills
-    .filter(skill => missingKeywordSet.has(skill.trim().toLowerCase()))
-    .slice(0, 10)
+  const allBullets = [
+    ...(data.experience ?? []).flatMap(e => e.bullets ?? []),
+    ...(data.projects ?? []).flatMap(p => p.bullets ?? []),
+    ...(data.volunteer ?? []).flatMap(v => v.bullets ?? []),
+  ]
+  const bulletText = allBullets.join(' ')
+  const integratedSkills = allSkills.filter(s => includesKeyword(bulletText, s))
+  const unintegratedSkills = allSkills.filter(s => !includesKeyword(bulletText, s))
 
   return {
-    presentKeywords,
-    missingKeywords,
+    presentKeywords: integratedSkills.slice(0, 10),
+    missingKeywords: unintegratedSkills.slice(0, 10),
     keywordAnalysis: {
-      mustHave: missingKeywords.slice(0, 8),
-      niceToHave: presentKeywords.slice(0, 6),
+      mustHave: unintegratedSkills.slice(0, 8),
+      niceToHave: integratedSkills.slice(0, 6),
       overused: [] as string[],
     },
   }
