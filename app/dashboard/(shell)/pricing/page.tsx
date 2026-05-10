@@ -159,6 +159,7 @@ export default async function PricingPage({
               currentPeriodEnd={profile.current_period_end}
               pricingCountryCode={pricingCountryCode}
               consumeCheckoutIntent
+              showPromoRibbon={false}
             />
           </div>
         </DashboardSurface>

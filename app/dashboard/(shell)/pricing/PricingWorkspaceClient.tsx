@@ -30,6 +30,7 @@ interface PricingWorkspaceClientProps {
   pricingCountryCode?: string | null
   loginRedirectPath?: string | null
   consumeCheckoutIntent?: boolean
+  showPromoRibbon?: boolean
 }
 
 export default function PricingWorkspaceClient({
@@ -43,6 +44,7 @@ export default function PricingWorkspaceClient({
   pricingCountryCode,
   loginRedirectPath = null,
   consumeCheckoutIntent = false,
+  showPromoRibbon = true,
 }: PricingWorkspaceClientProps) {
   const [activePromo, setActivePromo] = useState<PromoConfig | null>(null)
   const hasAttemptedIntentRef = useRef(false)
@@ -55,6 +57,7 @@ export default function PricingWorkspaceClient({
   const ribbonDiscountPercent =
     availablePromo?.discountType === 'percent' ? availablePromo.discountValue : null
   const shouldShowPromoRibbon =
+    showPromoRibbon &&
     Boolean(ribbonCode && ribbonDiscountPercent) &&
     !isPro
   const baseDisplayPromo = null
