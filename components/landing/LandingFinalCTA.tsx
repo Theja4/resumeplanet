@@ -96,25 +96,15 @@ export default function LandingFinalCTA() {
           <div className="absolute left-1/2 top-1/2 h-[340px] w-[340px] md:h-[420px] md:w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10" />
           <div className="absolute left-1/2 top-1/2 h-[260px] w-[260px] md:h-[330px] md:w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" />
 
-          {/* Mascot sticker (pink sticker matches the mascot's source bg) */}
+          {/* Transparent mascot floats centered with halo */}
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 mascot-bob">
-            <div
-              className="relative h-[260px] w-[260px] md:h-[340px] md:w-[340px] overflow-hidden rounded-[3rem]"
-              style={{
-                background:
-                  'radial-gradient(circle at 30% 20%, #ff8acc 0%, #ff3dc0 50%, #d81b93 100%)',
-                boxShadow:
-                  '0 40px 100px -30px rgba(216,27,147,0.65), 0 0 0 4px rgba(255,255,255,0.08)',
-              }}
-            >
-              <Image
-                src="/Brands/mascot-hero-pink.png"
-                alt="Rezoomed hero mascot"
-                width={600}
-                height={600}
-                className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-              />
-            </div>
+            <Image
+              src="/Brands/mascot-hero-pink.png"
+              alt="Rezoomed hero mascot"
+              width={600}
+              height={600}
+              className="relative h-[280px] w-[280px] md:h-[380px] md:w-[380px] object-contain drop-shadow-[0_40px_60px_rgba(0,0,0,0.45)]"
+            />
           </div>
         </div>
       </div>

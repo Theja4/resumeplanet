@@ -759,13 +759,23 @@
 .orbit-medium { animation: orbit-medium 14s linear infinite; }
 
 @keyframes rotate-words {
-  0%, 16%   { transform: translateY(0);      opacity: 1; }
-  20%, 28%  { transform: translateY(-100%);  opacity: 0; }
-  32%, 48%  { transform: translateY(-100%);  opacity: 1; }
-  52%, 60%  { transform: translateY(-200%);  opacity: 0; }
-  64%, 80%  { transform: translateY(-200%);  opacity: 1; }
-  84%, 92%  { transform: translateY(-300%);  opacity: 0; }
-  96%, 100% { transform: translateY(-300%);  opacity: 1; }
+  /* word 0 — show */
+  0%,  15%  { transform: translateY(0);        opacity: 1; }
+  /* fade out, step to word 1 */
+  19%, 24%  { transform: translateY(-1.1em);   opacity: 0; }
+  /* word 1 — show */
+  28%, 40%  { transform: translateY(-1.1em);   opacity: 1; }
+  /* fade out, step to word 2 */
+  44%, 49%  { transform: translateY(-2.2em);   opacity: 0; }
+  /* word 2 — show */
+  53%, 65%  { transform: translateY(-2.2em);   opacity: 1; }
+  /* fade out, step to word 3 */
+  69%, 74%  { transform: translateY(-3.3em);   opacity: 0; }
+  /* word 3 — show */
+  78%, 90%  { transform: translateY(-3.3em);   opacity: 1; }
+  /* fade out, step to word 4 (duplicate of word 0 for seamless loop) */
+  94%, 99%  { transform: translateY(-4.4em);   opacity: 0; }
+  100%      { transform: translateY(-4.4em);   opacity: 1; }
 }
 
 .rotating-words-mask {
@@ -792,11 +802,46 @@
   50%, 95% { opacity: 0; }
   100% { opacity: 1; }
 }
-.cursor-blink {
+/* Wrapper that holds the rotating mask + an ::after cursor bar */
+.rotating-word-wrapper {
+  position: relative;
   display: inline-block;
-  width: 0.08em;
+  vertical-align: bottom;
+}
+.rotating-word-wrapper::after {
+  content: '';
+  position: absolute;
+  right: -0.14em;
+  bottom: 0.1em;
+  width: 0.07em;
+  height: 0.8em;
   background: currentColor;
+  border-radius: 2px;
+  animation: cursor-blink 1.1s steps(1) infinite;
+}
+
+/* Legacy – kept for reduced-motion override below */
+.cursor-blink {
+  display: none;
+}
+
+/* Hero V2 rotating-word row */
+.hero-rotating-row {
+  display: block;
+  height: 1.1em;
+  overflow: hidden;
+  line-height: 1.1;
+}
+
+/* Blinking cursor beside the rotating word */
+.hero-cursor {
+  display: inline-block;
+  width: 0.06em;
+  height: 0.85em;
+  background: currentColor;
+  border-radius: 2px;
   margin-left: 0.08em;
+  vertical-align: bottom;
   animation: cursor-blink 1.1s steps(1) infinite;
 }
 
@@ -967,7 +1012,7 @@
   .mascot-bob, .mascot-bob-reverse, .mascot-wiggle,
   .sparkle-twinkle, .orbit-slow, .orbit-medium,
   .badge-drift-up, .badge-drift-down, .confetti-piece,
-  .rotating-words-track, .cursor-blink, .scan-pulse,
+  .rotating-words-track, .cursor-blink, .rotating-word-wrapper::after, .hero-cursor, .scan-pulse,
   .gradient-shift, .ring-expand::before, .ring-expand::after,
   .marquee-vertical-track, .marquee-vertical-track-reverse {
     animation: none !important;

@@ -48,15 +48,10 @@ type Step = {
   mascot: string
   mascotAlt: string
   background: string
-  stickerBackground: string
-  stickerShadow: string
   Icon: typeof UploadCloud
   accentText: string
   mascotBlur: string
 }
-
-const STICKER_BLUE = 'radial-gradient(circle at 30% 20%, #5fa3ff 0%, #2770ff 55%, #0a2ea8 100%)'
-const STICKER_PINK = 'radial-gradient(circle at 30% 20%, #ff8acc 0%, #ff3dc0 50%, #d81b93 100%)'
 
 const STEPS: Step[] = [
   {
@@ -66,8 +61,6 @@ const STEPS: Step[] = [
     mascot: '/Brands/mascot-wave-blue.png',
     mascotAlt: 'Friendly mascot waving',
     background: 'linear-gradient(145deg, #2770ff 0%, #1e4fe6 55%, #0a2ea8 100%)',
-    stickerBackground: STICKER_BLUE,
-    stickerShadow: '0 30px 60px -12px rgba(0,0,0,0.5)',
     Icon: UploadCloud,
     accentText: 'text-[#A3FFB3]',
     mascotBlur: '#7bd3fc',
@@ -79,11 +72,9 @@ const STEPS: Step[] = [
     mascot: '/Brands/mascot-magnify-pink.png',
     mascotAlt: 'Mascot inspecting resume with magnifier',
     background: 'linear-gradient(145deg, #ff66c4 0%, #ff3dc0 55%, #d81b93 100%)',
-    stickerBackground: STICKER_PINK,
-    stickerShadow: '0 30px 60px -12px rgba(216,27,147,0.55)',
     Icon: Wand2,
     accentText: 'text-white',
-    mascotBlur: '#ff66c4',
+    mascotBlur: '#ffffff',
   },
   {
     n: '03',
@@ -92,8 +83,6 @@ const STEPS: Step[] = [
     mascot: '/Brands/mascot-plane-blue.png',
     mascotAlt: 'Mascot flying off with resume airplane',
     background: 'linear-gradient(145deg, #00a84d 0%, #019a47 55%, #022c14 100%)',
-    stickerBackground: STICKER_BLUE,
-    stickerShadow: '0 30px 60px -12px rgba(39,112,255,0.5)',
     Icon: Send,
     accentText: 'text-[#A3FFB3]',
     mascotBlur: '#A3FFB3',
@@ -149,29 +138,21 @@ export default function LandingWorkflow() {
                       <span className="absolute top-[60%] right-[22%] sparkle-twinkle text-white" style={{ animationDelay: '0.8s' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/></svg></span>
                       <span className="absolute bottom-[12%] left-[8%] sparkle-twinkle text-white" style={{ animationDelay: '1.6s' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/></svg></span>
 
-                      {/* Mascot sticker — matches mascot's source bg color */}
+                      {/* Transparent mascot floats on the card background */}
                       <div className="relative mt-6 flex items-end justify-center">
                         <div className="relative w-[240px] md:w-[300px] lg:w-[340px]">
                           <div
-                            className="absolute -inset-6 rounded-full blur-3xl opacity-70"
+                            className="absolute inset-4 rounded-full blur-xl opacity-55"
                             style={{ background: step.mascotBlur }}
                           />
                           <div className="relative mascot-bob">
-                            <div
-                              className="relative h-[240px] w-[240px] md:h-[300px] md:w-[300px] lg:h-[340px] lg:w-[340px] overflow-hidden rounded-[2.5rem]"
-                              style={{
-                                background: step.stickerBackground,
-                                boxShadow: step.stickerShadow,
-                              }}
-                            >
-                              <Image
-                                src={step.mascot}
-                                alt={step.mascotAlt}
-                                width={500}
-                                height={500}
-                                className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                              />
-                            </div>
+                            <Image
+                              src={step.mascot}
+                              alt={step.mascotAlt}
+                              width={500}
+                              height={500}
+                              className="relative h-[300px] w-[300px] md:h-[370px] md:w-[370px] lg:h-[420px] lg:w-[420px] object-contain drop-shadow-[0_30px_50px_rgba(0,0,0,0.45)]"
+                            />
                           </div>
                         </div>
                       </div>

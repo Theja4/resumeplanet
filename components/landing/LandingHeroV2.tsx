@@ -86,18 +86,22 @@ export default function LandingHeroV2() {
               className="hero-text-rise mt-6 font-extrabold tracking-tighter leading-[0.95] text-zinc-950 text-5xl md:text-6xl lg:text-[5.5rem]"
               style={{ animationDelay: '0.15s' }}
             >
-              Resumes that{' '}
-              <span className="rotating-words-mask align-bottom text-[#00a84d]">
+              Resumes that
+            </h1>
+            {/* Rotating words live in their own block — no inline layout fighting */}
+            <div
+              className="hero-text-rise hero-rotating-row text-5xl md:text-6xl lg:text-[5.5rem] font-extrabold tracking-tighter text-[#00a84d]"
+              style={{ animationDelay: '0.2s' }}
+            >
+              <span className="rotating-words-mask">
                 <span className="rotating-words-track">
                   {[...ROTATING_WORDS, ROTATING_WORDS[0]].map((w, i) => (
-                    <span key={i} className="italic">
-                      {w}
-                    </span>
+                    <span key={i} className="italic block">{w}</span>
                   ))}
                 </span>
               </span>
-              <span className="cursor-blink ml-1 text-[#00a84d]">|</span>
-            </h1>
+              <span className="hero-cursor" />
+            </div>
 
             <p
               className="hero-text-rise mt-6 text-lg md:text-xl text-zinc-600 max-w-xl mx-auto lg:mx-0 leading-relaxed"
@@ -157,58 +161,43 @@ export default function LandingHeroV2() {
           </div>
 
           {/* ── Right: mascot stage ───────────────────────────────── */}
-          <div className="relative h-[480px] md:h-[560px] lg:h-[620px]">
-            {/* Orbital glowing ring */}
-            <div className="absolute left-1/2 top-1/2 h-[380px] w-[380px] md:h-[460px] md:w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#00a84d]/20" />
-            <div className="absolute left-1/2 top-1/2 h-[300px] w-[300px] md:h-[360px] md:w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#00a84d]/10" />
+          <div className="relative flex items-center justify-center py-8 lg:py-0">
+            {/* Soft ambient halo */}
+            <div
+              className="absolute inset-0 m-auto h-[500px] w-[500px] rounded-full blur-3xl opacity-50 pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(163,255,179,0.9) 0%, rgba(123,211,252,0.3) 50%, transparent 70%)' }}
+            />
+            {/* Orbital rings */}
+            <div className="absolute inset-0 m-auto h-[540px] w-[540px] rounded-full border border-[#00a84d]/15" />
+            <div className="absolute inset-0 m-auto h-[420px] w-[420px] rounded-full border border-[#00a84d]/10" />
 
-            {/* Mascot sticker — pink container matches the mascot's source bg */}
+            {/* Mascot */}
             <div
               ref={mascotRef}
-              className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+              className="relative z-10 mascot-bob"
               style={{
-                transform: `translate(calc(-50% + ${parallax.x}px), calc(-50% + ${parallax.y}px))`,
+                transform: `translate(${parallax.x}px, ${parallax.y}px)`,
                 transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
               }}
             >
-              <div className="mascot-bob relative">
-                {/* Pink sticker frame matches the mascot's source bg */}
-                <div
-                  className="relative h-[360px] w-[360px] md:h-[440px] md:w-[440px] overflow-hidden rounded-[3rem] shadow-[0_60px_160px_-40px_rgba(216,27,147,0.45)]"
-                  style={{
-                    background:
-                      'radial-gradient(circle at 30% 20%, #ff8acc 0%, #ff3dc0 50%, #d81b93 100%)',
-                  }}
-                >
-                  {/* Sparkles on the card */}
-                  <div className="absolute left-[12%] top-[14%] text-white sparkle-twinkle z-10" style={{ animationDelay: '0s' }}>
-                    <Sparkles size={22} />
-                  </div>
-                  <div className="absolute right-[14%] top-[22%] text-white sparkle-twinkle z-10" style={{ animationDelay: '0.8s' }}>
-                    <Sparkles size={16} />
-                  </div>
-                  <div className="absolute right-[22%] bottom-[16%] text-white sparkle-twinkle z-10" style={{ animationDelay: '1.6s' }}>
-                    <Sparkles size={20} />
-                  </div>
-                  <div className="absolute left-[18%] bottom-[22%] text-white sparkle-twinkle z-10" style={{ animationDelay: '2.2s' }}>
-                    <Sparkles size={14} />
-                  </div>
+              {/* Sparkles */}
+              <div className="absolute left-[4%] top-[8%] text-[#00a84d] sparkle-twinkle z-10" style={{ animationDelay: '0s' }}><Sparkles size={24} /></div>
+              <div className="absolute right-[6%] top-[14%] text-[#7bd3fc] sparkle-twinkle z-10" style={{ animationDelay: '0.8s' }}><Sparkles size={18} /></div>
+              <div className="absolute right-[10%] bottom-[16%] text-[#00a84d] sparkle-twinkle z-10" style={{ animationDelay: '1.6s' }}><Sparkles size={22} /></div>
+              <div className="absolute left-[8%] bottom-[20%] text-[#A3FFB3] sparkle-twinkle z-10" style={{ animationDelay: '2.2s' }}><Sparkles size={16} /></div>
 
-                  {/* Mascot fills the sticker; pink bg of image blends into pink frame */}
-                  <Image
-                    src="/Brands/mascot-hero-pink.png"
-                    alt="Rezoomed mascot hero"
-                    width={600}
-                    height={600}
-                    priority
-                    className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                  />
-                </div>
-              </div>
+              <Image
+                src="/Brands/mascot-checklist-pink.png"
+                alt="Rezoomed mascot hero"
+                width={700}
+                height={700}
+                priority
+                className="h-[480px] w-[480px] md:h-[580px] md:w-[580px] lg:h-[640px] lg:w-[640px] object-contain drop-shadow-[0_40px_80px_rgba(2,109,50,0.4)]"
+              />
             </div>
 
             {/* Floating badge: ATS Score */}
-            <div className="absolute left-[-8%] top-[12%] z-20 hidden md:block badge-drift-up">
+            <div className="absolute left-[-4%] top-[15%] z-20 hidden md:block badge-drift-up">
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#A3FFB3]">
@@ -223,7 +212,7 @@ export default function LandingHeroV2() {
             </div>
 
             {/* Floating badge: Callbacks */}
-            <div className="absolute right-[-2%] top-[30%] z-20 hidden md:block badge-drift-down">
+            <div className="absolute right-[-2%] top-[28%] z-20 hidden md:block badge-drift-down">
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Callbacks</p>
@@ -236,10 +225,7 @@ export default function LandingHeroV2() {
             </div>
 
             {/* Floating badge: Keyword match */}
-            <div
-              className="absolute right-[6%] bottom-[10%] z-20 hidden lg:block badge-drift-up"
-              style={{ animationDelay: '1s' }}
-            >
+            <div className="absolute right-[4%] bottom-[12%] z-20 hidden lg:block badge-drift-up" style={{ animationDelay: '1s' }}>
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#7bd3fc] to-[#026d32]">
@@ -253,8 +239,8 @@ export default function LandingHeroV2() {
               </div>
             </div>
 
-            {/* Bottom left: live tailoring tag */}
-            <div className="absolute left-[2%] bottom-[14%] z-20 hidden lg:block badge-drift-down" style={{ animationDelay: '0.5s' }}>
+            {/* Tailoring live pill */}
+            <div className="absolute left-[2%] bottom-[16%] z-20 hidden lg:block badge-drift-down" style={{ animationDelay: '0.5s' }}>
               <div className="rounded-full bg-black px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)]">
                 <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-[#A3FFB3] animate-pulse" />
                 Tailoring live

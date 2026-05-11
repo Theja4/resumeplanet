@@ -113,23 +113,15 @@ export default function LandingBento() {
                 <div className="relative flex-1 mt-6 flex items-end justify-center">
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[95%] w-[75%] rounded-2xl border-2 border-dashed border-white/30" />
                   <div className="relative mascot-bob">
-                    <div
-                      className="relative h-[260px] w-[260px] md:h-[300px] md:w-[300px] lg:h-[340px] lg:w-[340px] overflow-hidden rounded-[2.5rem] shadow-[0_30px_60px_-12px_rgba(216,27,147,0.6)]"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 20%, #ff8acc 0%, #ff3dc0 50%, #d81b93 100%)',
-                      }}
-                    >
-                      {/* Subtle scanning line on top */}
-                      <span className="scan-pulse" style={{ background: 'linear-gradient(90deg, transparent, #fff, #A3FFB3, #fff, transparent)' }} />
-                      <Image
-                        src="/Brands/mascot-magnify-pink.png"
-                        alt="ATS scanner mascot"
-                        width={500}
-                        height={500}
-                        className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                      />
-                    </div>
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[90%] w-[90%] rounded-full blur-xl opacity-45 pointer-events-none"
+                      style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.55) 0%, transparent 70%)' }} />
+                    <Image
+                      src="/Brands/mascot-magnify-pink.png"
+                      alt="ATS scanner mascot"
+                      width={500}
+                      height={500}
+                      className="relative h-[310px] w-[310px] md:h-[360px] md:w-[360px] lg:h-[400px] lg:w-[400px] object-contain drop-shadow-[0_24px_40px_rgba(0,0,0,0.35)]"
+                    />
                   </div>
                 </div>
 
@@ -182,24 +174,16 @@ export default function LandingBento() {
                   </div>
                 </div>
 
-                <div className="relative w-[140px] md:w-[170px] shrink-0">
-                  <div className="absolute -inset-3 rounded-full blur-2xl opacity-60 bg-[#7bd3fc]" />
+                <div className="relative w-[190px] md:w-[220px] shrink-0">
+                  <div className="absolute inset-2 rounded-full blur-lg opacity-50 bg-[#7bd3fc]" />
                   <div className="relative mascot-bob-reverse">
-                    <div
-                      className="relative h-[140px] w-[140px] md:h-[170px] md:w-[170px] overflow-hidden rounded-3xl shadow-[0_18px_36px_-10px_rgba(39,112,255,0.4)]"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 20%, #5fa3ff 0%, #2770ff 55%, #0a2ea8 100%)',
-                      }}
-                    >
-                      <Image
-                        src="/Brands/mascot-papers-blue.png"
-                        alt="Match score mascot"
-                        width={320}
-                        height={320}
-                        className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                      />
-                    </div>
+                    <Image
+                      src="/Brands/mascot-papers-blue.png"
+                      alt="Match score mascot"
+                      width={320}
+                      height={320}
+                      className="relative h-[190px] w-[190px] md:h-[220px] md:w-[220px] object-contain drop-shadow-[0_16px_28px_rgba(39,112,255,0.35)]"
+                    />
                   </div>
                 </div>
               </div>
@@ -230,23 +214,16 @@ export default function LandingBento() {
                   </p>
                 </div>
 
-                <div className="relative w-[140px] md:w-[160px] shrink-0">
+                <div className="relative w-[180px] md:w-[210px] shrink-0">
+                  <div className="absolute inset-2 rounded-full blur-lg opacity-50 bg-[#A3FFB3]" />
                   <div className="relative mascot-bob">
-                    <div
-                      className="relative h-[140px] w-[140px] md:h-[160px] md:w-[160px] overflow-hidden rounded-3xl shadow-[0_24px_50px_-10px_rgba(0,0,0,0.45)]"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 20%, #5fa3ff 0%, #2770ff 55%, #0a2ea8 100%)',
-                      }}
-                    >
-                      <Image
-                        src="/Brands/mascot-wave-blue.png"
-                        alt="Resume builder mascot"
-                        width={320}
-                        height={320}
-                        className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                      />
-                    </div>
+                    <Image
+                      src="/Brands/mascot-wave-blue.png"
+                      alt="Resume builder mascot"
+                      width={320}
+                      height={320}
+                      className="relative h-[180px] w-[180px] md:h-[210px] md:w-[210px] object-contain drop-shadow-[0_20px_36px_rgba(0,0,0,0.35)]"
+                    />
                   </div>
                 </div>
               </div>
@@ -282,24 +259,16 @@ export default function LandingBento() {
                   </div>
                 </div>
 
-                <div className="relative w-[160px] md:w-[190px] lg:w-[220px] shrink-0">
-                  <div className="absolute -inset-3 rounded-full blur-2xl opacity-60 bg-[#A3FFB3]" />
+                <div className="relative w-[210px] md:w-[250px] lg:w-[290px] shrink-0">
+                  <div className="absolute inset-3 rounded-full blur-xl opacity-55 bg-[#A3FFB3]" />
                   <div className="relative mascot-bob">
-                    <div
-                      className="relative h-[160px] w-[160px] md:h-[190px] md:w-[190px] lg:h-[220px] lg:w-[220px] overflow-hidden rounded-3xl shadow-[0_30px_60px_-12px_rgba(216,27,147,0.5)]"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 20%, #ff8acc 0%, #ff3dc0 50%, #d81b93 100%)',
-                      }}
-                    >
-                      <Image
-                        src="/Brands/mascot-hero-pink.png"
-                        alt="Tailoring hero mascot"
-                        width={400}
-                        height={400}
-                        className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                      />
-                    </div>
+                    <Image
+                      src="/Brands/mascot-hero-pink.png"
+                      alt="Tailoring hero mascot"
+                      width={400}
+                      height={400}
+                      className="relative h-[210px] w-[210px] md:h-[250px] md:w-[250px] lg:h-[290px] lg:w-[290px] object-contain drop-shadow-[0_24px_40px_rgba(0,0,0,0.4)]"
+                    />
                   </div>
                 </div>
               </div>
@@ -323,22 +292,15 @@ export default function LandingBento() {
                   </h3>
                 </div>
                 <div className="relative mt-4 flex items-end justify-end">
-                  <div className="relative w-[150px] md:w-[170px] mascot-bob-reverse">
-                    <div
-                      className="relative h-[150px] w-[150px] md:h-[170px] md:w-[170px] overflow-hidden rounded-3xl shadow-[0_18px_36px_-10px_rgba(39,112,255,0.35)]"
-                      style={{
-                        background:
-                          'radial-gradient(circle at 30% 20%, #5fa3ff 0%, #2770ff 55%, #0a2ea8 100%)',
-                      }}
-                    >
-                      <Image
-                        src="/Brands/mascot-plane-blue.png"
-                        alt="Cover letter mascot"
-                        width={320}
-                        height={320}
-                        className="absolute inset-0 h-full w-full object-cover scale-[1.05]"
-                      />
-                    </div>
+                  <div className="relative w-[190px] md:w-[215px] mascot-bob-reverse">
+                    <div className="absolute inset-2 rounded-full blur-lg opacity-45 bg-[#7bd3fc]" />
+                    <Image
+                      src="/Brands/mascot-plane-blue.png"
+                      alt="Cover letter mascot"
+                      width={320}
+                      height={320}
+                      className="relative h-[190px] w-[190px] md:h-[215px] md:w-[215px] object-contain drop-shadow-[0_18px_28px_rgba(39,112,255,0.4)]"
+                    />
                   </div>
                 </div>
               </div>
