@@ -55,6 +55,7 @@ async function upsertActiveSubscription(data: Record<string, any>, status = 'act
       plan: 'pro',
       subscription_status: status,
       subscription_interval: interval,
+      payment_provider: 'polar',
       polar_customer_id: customerId,
       polar_subscription_id: subscriptionId,
     })
@@ -80,6 +81,7 @@ async function markSubscriptionStatus(data: Record<string, any>, status: string)
         }
       : {
           subscription_status: status,
+          payment_provider: 'polar',
         }
 
   let query = serviceSupabase.from('profiles').update(values)

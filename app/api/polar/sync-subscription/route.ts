@@ -82,6 +82,7 @@ export async function POST() {
         polar_subscription_id: activeSubscription.id,
         subscription_status: activeSubscription.status,
         subscription_interval: resolveInterval(activeSubscription),
+        payment_provider: 'polar',
       })
       .eq('id', user.id)
 
