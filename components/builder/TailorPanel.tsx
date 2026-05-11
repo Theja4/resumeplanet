@@ -1,7 +1,21 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUpRight, Briefcase, Check, Loader2, ShieldCheck, Sparkles, Target, Wand2 } from 'lucide-react'
+import {
+  ArrowUpRight,
+  Briefcase,
+  Check,
+  CheckCircle2,
+  FileText,
+  ListChecks,
+  Loader2,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Wand2,
+  Zap,
+} from 'lucide-react'
 import { countWords } from '@/lib/text'
 import { canApplyTailorSection } from '@/lib/tailorResume'
 import type { TailorAnalysis, TailorIntensity } from '@/types'
@@ -42,6 +56,39 @@ const INTENSITY_OPTIONS: Array<{
   },
 ]
 
+const TAILORING_ANIMATION_STEPS = [
+  {
+    label: 'Reading job signals',
+    detail: 'Role keywords, seniority, and must-have requirements',
+    Icon: Search,
+  },
+  {
+    label: 'Mapping resume evidence',
+    detail: 'Matching real experience against the target role',
+    Icon: ListChecks,
+  },
+  {
+    label: 'Rewriting high-impact bullets',
+    detail: 'Sharpening language while keeping claims truthful',
+    Icon: Wand2,
+  },
+  {
+    label: 'Scoring final fit',
+    detail: 'Checking coverage, gaps, and section priority',
+    Icon: Target,
+  },
+]
+
+const TAILORING_KEYWORDS = ['Impact', 'Ownership', 'Stack', 'Scale']
+const TAILORING_ANIMATION_DURATION_MS = 90_000
+const TAILORING_FAST_FINISH_MS = 2_000
+
+type TailoringAnimationState = {
+  visible: boolean
+  startedAt: number
+  finishStartedAt: number | null
+}
+
 function getIntensityIndex(intensity: TailorIntensity) {
   return Math.max(0, INTENSITY_OPTIONS.findIndex(option => option.value === intensity))
 }
@@ -57,6 +104,162 @@ function getProbabilityTone(probability: TailorAnalysis['shortlistingProbability
     default:
       return 'bg-red-100 text-red-700'
   }
+}
+
+function TailoringLiveAnimation({
+  startedAt,
+  finishStartedAt,
+}: {
+  startedAt: number
+  finishStartedAt: number | null
+}) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 120)
+
+    return () => window.clearInterval(id)
+  }, [])
+
+  const runProgress = Math.min(1, Math.max(0, (now - startedAt) / TAILORING_ANIMATION_DURATION_MS))
+  const finishStartProgress = finishStartedAt
+    ? Math.min(1, Math.max(0, (finishStartedAt - startedAt) / TAILORING_ANIMATION_DURATION_MS))
+    : runProgress
+  const finishProgress = finishStartedAt
+    ? Math.min(1, Math.max(0, (now - finishStartedAt) / TAILORING_FAST_FINISH_MS))
+    : 0
+  const progress = finishStartedAt
+    ? Math.min(1, finishStartProgress + (1 - finishStartProgress) * finishProgress)
+    : runProgress
+  const activeStep = Math.min(
+    TAILORING_ANIMATION_STEPS.length - 1,
+    Math.floor(progress * TAILORING_ANIMATION_STEPS.length)
+  )
+  const active = TAILORING_ANIMATION_STEPS[activeStep]
+  const ActiveIcon = active.Icon
+  const progressWidth = `${Math.round(progress * 100)}%`
+
+  return (
+    <div className="relative overflow-hidden rounded-[1.35rem] border border-emerald-400/18 bg-[#07120d] p-4 text-white shadow-[0_18px_44px_rgba(2,109,50,0.22)]">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-55"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(74,222,128,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(74,222,128,0.08) 1px, transparent 1px)',
+          backgroundSize: '28px 28px',
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/80 to-transparent" />
+
+      <div className="relative space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-emerald-300/18 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-emerald-200">
+              <Sparkles size={12} />
+              Tailoring live
+            </p>
+            <p className="mt-2 inline-flex rounded-full border border-white/10 bg-white/[0.065] px-2.5 py-1 text-[11px] font-semibold text-emerald-50/70">
+              can take 2-3 min
+            </p>
+            <p className="mt-3 text-sm font-black tracking-tight text-white">{active.label}</p>
+            <p className="mt-1 text-xs leading-5 text-emerald-50/62">{active.detail}</p>
+          </div>
+
+          <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-300/10">
+            <span className="absolute inset-0 rounded-2xl bg-emerald-300/12 animate-ping" />
+            <ActiveIcon size={18} className="relative text-emerald-200" />
+          </span>
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_minmax(0,1fr)] items-center gap-3">
+          <div className="rounded-[1rem] border border-white/8 bg-white/[0.055] p-3">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/48">
+              <FileText size={12} />
+              Resume
+            </div>
+            <div className="space-y-2">
+              {[68, 92, 58, 82].map((width, index) => (
+                <span
+                  key={`${width}-${index}`}
+                  className={`block h-2 rounded-full transition-all duration-500 ${
+                    index === activeStep % 4 ? 'animate-pulse bg-emerald-300/70' : 'bg-white/14'
+                  }`}
+                  style={{
+                    width: `${width}%`,
+                    animationDelay: `${index * 120}ms`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex h-24 items-center justify-center">
+            <div className="relative flex h-full w-full items-center justify-center">
+              <span className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-gradient-to-r from-emerald-300/15 via-emerald-200/70 to-emerald-300/15" />
+              <span className="absolute left-1 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-emerald-200 shadow-[0_0_16px_rgba(110,231,183,0.75)] animate-ping" />
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-300/25 bg-[#092015] shadow-[0_0_24px_rgba(52,211,153,0.18)]">
+                <Wand2 size={18} className="text-emerald-200 animate-pulse" />
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-[1rem] border border-white/8 bg-white/[0.055] p-3">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/48">
+              <Zap size={12} />
+              JD
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {TAILORING_KEYWORDS.map((keyword, index) => (
+                <span
+                  key={keyword}
+                  className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                    index === activeStep
+                      ? 'bg-emerald-300 text-[#062014]'
+                      : 'bg-white/10 text-white/58'
+                  }`}
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#34d399,#a7f3d0,#fef3c7)] transition-all duration-700 ease-out"
+            style={{ width: progressWidth }}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          {TAILORING_ANIMATION_STEPS.map(({ label, Icon }, index) => {
+            const done = index < activeStep
+            const current = index === activeStep
+
+            return (
+              <div
+                key={label}
+                className={`flex items-center gap-2.5 rounded-[0.85rem] px-3 py-2 transition-colors ${
+                  current ? 'bg-emerald-300/12 text-emerald-100' : done ? 'text-emerald-200/72' : 'text-white/30'
+                }`}
+              >
+                {done ? (
+                  <CheckCircle2 size={13} className="shrink-0 text-emerald-300" />
+                ) : current ? (
+                  <Loader2 size={13} className="shrink-0 animate-spin text-emerald-200" />
+                ) : (
+                  <Icon size={13} className="shrink-0" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">{label}</span>
+                {current && <span className="h-1.5 w-1.5 rounded-full bg-emerald-200 animate-pulse" />}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 interface Props {
@@ -93,26 +296,36 @@ export default function TailorPanel({
   const selectedIntensity = INTENSITY_OPTIONS[getIntensityIndex(intensity)]
   const panelScrollRef = useRef<HTMLDivElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const tailoringAnimationRef = useRef<HTMLDivElement>(null)
   const jobWordCount = countWords(jobDescription)
   
   const [appliedSections, setAppliedSections] = useState<Set<string>>(new Set())
   const [prevAnalysis, setPrevAnalysis] = useState(analysis)
+  const [showTailorResults, setShowTailorResults] = useState(() => Boolean(analysis))
+  const [tailoringAnimation, setTailoringAnimation] = useState<TailoringAnimationState>({
+    visible: false,
+    startedAt: 0,
+    finishStartedAt: null,
+  })
 
   if (analysis !== prevAnalysis) {
     setPrevAnalysis(analysis)
     setAppliedSections(new Set())
   }
 
-  const hasDirectTailorChanges = analysis
+  const visibleAnalysis = showTailorResults ? analysis : null
+  const isTailoringUiBusy = isTailoring || tailoringAnimation.visible
+
+  const hasDirectTailorChanges = visibleAnalysis
     ? ['summary', 'skills', 'experience', 'projects', 'volunteer'].some(sectionId =>
-        canApplyTailorSection(analysis, sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer')
+        canApplyTailorSection(visibleAnalysis, sectionId as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer')
       )
     : false
 
   function handleApplyAll() {
     onApplyAll()
-    if (analysis) {
-      const all = ['summary', 'skills', 'experience', 'projects', 'volunteer'].filter(s => canApplyTailorSection(analysis, s as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer'))
+    if (visibleAnalysis) {
+      const all = ['summary', 'skills', 'experience', 'projects', 'volunteer'].filter(s => canApplyTailorSection(visibleAnalysis, s as 'summary' | 'skills' | 'experience' | 'projects' | 'volunteer'))
       setAppliedSections(new Set(all))
     }
   }
@@ -123,7 +336,74 @@ export default function TailorPanel({
   }
 
   useEffect(() => {
-    if (!analysis || !panelScrollRef.current || !resultsRef.current) return
+    if (!isTailoring) return
+
+    const id = window.setTimeout(() => {
+      setShowTailorResults(false)
+      setTailoringAnimation({
+        visible: true,
+        startedAt: Date.now(),
+        finishStartedAt: null,
+      })
+    }, 0)
+
+    return () => window.clearTimeout(id)
+  }, [isTailoring])
+
+  useEffect(() => {
+    if (isTailoring || tailoringAnimation.visible) return
+
+    const id = window.setTimeout(() => {
+      setShowTailorResults(Boolean(analysis) && !tailorError)
+    }, 0)
+
+    return () => window.clearTimeout(id)
+  }, [analysis, isTailoring, tailorError, tailoringAnimation.visible])
+
+  useEffect(() => {
+    if (isTailoring || !tailoringAnimation.visible) return
+
+    if (!analysis || tailorError) {
+      const id = window.setTimeout(() => {
+        setShowTailorResults(false)
+        setTailoringAnimation(prev => ({ ...prev, visible: false, finishStartedAt: null }))
+      }, 0)
+
+      return () => window.clearTimeout(id)
+    }
+
+    const elapsed = Date.now() - tailoringAnimation.startedAt
+    if (elapsed >= TAILORING_ANIMATION_DURATION_MS) {
+      const id = window.setTimeout(() => {
+        setTailoringAnimation(prev => ({ ...prev, visible: false, finishStartedAt: null }))
+        setShowTailorResults(true)
+      }, 0)
+
+      return () => window.clearTimeout(id)
+    }
+
+    if (tailoringAnimation.finishStartedAt === null) {
+      const id = window.setTimeout(() => {
+        setTailoringAnimation(prev => ({ ...prev, finishStartedAt: Date.now() }))
+      }, 0)
+
+      return () => window.clearTimeout(id)
+    }
+  }, [analysis, isTailoring, tailorError, tailoringAnimation.finishStartedAt, tailoringAnimation.startedAt, tailoringAnimation.visible])
+
+  useEffect(() => {
+    if (!tailoringAnimation.visible || tailoringAnimation.finishStartedAt === null) return
+
+    const id = window.setTimeout(() => {
+      setTailoringAnimation(prev => ({ ...prev, visible: false, finishStartedAt: null }))
+      setShowTailorResults(Boolean(analysis) && !tailorError)
+    }, TAILORING_FAST_FINISH_MS)
+
+    return () => window.clearTimeout(id)
+  }, [analysis, tailorError, tailoringAnimation.finishStartedAt, tailoringAnimation.visible])
+
+  useEffect(() => {
+    if (!visibleAnalysis || !panelScrollRef.current || !resultsRef.current) return
 
     const frame = window.requestAnimationFrame(() => {
       const resultsTop = resultsRef.current?.offsetTop ?? 0
@@ -134,7 +414,21 @@ export default function TailorPanel({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [analysis])
+  }, [visibleAnalysis])
+
+  useEffect(() => {
+    if (!tailoringAnimation.visible || !panelScrollRef.current || !tailoringAnimationRef.current) return
+
+    const frame = window.requestAnimationFrame(() => {
+      const animationTop = tailoringAnimationRef.current?.offsetTop ?? 0
+      panelScrollRef.current?.scrollTo({
+        top: Math.max(0, animationTop - 18),
+        behavior: 'smooth',
+      })
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [tailoringAnimation.visible])
 
   return (
     <div ref={panelScrollRef} className="flex h-full flex-col overflow-y-auto bg-[linear-gradient(180deg,#f8fbf8_0%,#ffffff_28%)]">
@@ -225,13 +519,26 @@ export default function TailorPanel({
 
         <button
           onClick={onAnalyse}
-          disabled={isTailoring || jobWordCount < 20}
-          className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={isTailoringUiBusy || jobWordCount < 20}
+          aria-busy={isTailoringUiBusy}
+          className={`group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-zinc-950 px-5 py-3.5 text-sm font-bold text-white transition-all disabled:cursor-not-allowed ${
+            isTailoringUiBusy
+              ? 'animate-pulse shadow-[0_0_0_6px_rgba(16,185,129,0.12),0_22px_42px_rgba(2,109,50,0.24)] ring-2 ring-emerald-300/35 disabled:opacity-100'
+              : 'hover:-translate-y-0.5 hover:bg-zinc-900 disabled:opacity-50'
+          }`}
         >
-          {isTailoring ? (
+          {isTailoringUiBusy ? (
             <>
-              <Loader2 size={16} className="animate-spin" />
-              Tailoring… can take 1-2 min
+              <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_0%,rgba(255,255,255,0.2)_36%,transparent_72%)] animate-pulse" />
+              <Loader2 size={16} className="relative animate-spin" />
+              <span className="relative inline-flex items-center gap-1.5">
+                Tailoring
+                <span className="flex items-center gap-0.5">
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:-0.2s]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white [animation-delay:-0.1s]" />
+                  <span className="h-1 w-1 animate-bounce rounded-full bg-white" />
+                </span>
+              </span>
             </>
           ) : (
             <>
@@ -241,6 +548,15 @@ export default function TailorPanel({
             </>
           )}
         </button>
+
+        {tailoringAnimation.visible && (
+          <div ref={tailoringAnimationRef}>
+            <TailoringLiveAnimation
+              startedAt={tailoringAnimation.startedAt}
+              finishStartedAt={tailoringAnimation.finishStartedAt}
+            />
+          </div>
+        )}
 
         {tailorError && (
           <div className="rounded-[1.1rem] bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -254,7 +570,10 @@ export default function TailorPanel({
           </div>
         )}
 
-        {analysis && (
+        {visibleAnalysis && (() => {
+          const analysis = visibleAnalysis
+
+          return (
           <div ref={resultsRef} className="space-y-4 pb-6">
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[1.25rem] bg-[linear-gradient(180deg,rgba(211,251,219,0.85),rgba(241,250,243,0.94))] p-4">
@@ -428,7 +747,8 @@ export default function TailorPanel({
               </div>
             )}
           </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

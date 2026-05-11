@@ -52,7 +52,7 @@ function buildNavSections(showAffiliate: boolean): Array<{ title: string; collap
         { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
         {
           href: '/dashboard/builder?mode=tailor',
-          label: 'Tailor Mode',
+          label: 'Tailor Resume',
           Icon: Wand2,
           badge: 'Pro',
           builderMode: 'tailor',

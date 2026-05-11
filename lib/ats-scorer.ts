@@ -81,10 +81,10 @@ const ROADMAP_BLUEPRINTS: Record<string, RoadmapBlueprint> = {
     reason: 'Missing or non-standard sections make the resume harder to parse and trust quickly.',
   },
   education: {
-    lane: 'fixable_now',
+    lane: 'needs_stronger_evidence',
     section: 'Education',
     title: 'Complete the education entry',
-    reason: 'Education is still missing fields ATS systems expect in a consistent format.',
+    reason: 'AI should not guess missing education facts; add the actual degree, field, institution, or graduation date.',
   },
   keywords: {
     lane: 'fixable_now',
@@ -106,7 +106,7 @@ const ACTION_VERBS = new Set([
   // Leadership
   'led', 'directed', 'managed', 'oversaw', 'coordinated', 'mentored', 'supervised',
   'headed', 'guided', 'chaired', 'steered', 'mobilized', 'delegated', 'empowered',
-  'championed', 'spearheaded',
+  'championed', 'spearheaded', 'owned', 'orchestrated',
 
   // Achievement
   'achieved', 'exceeded', 'surpassed', 'delivered', 'accomplished', 'earned',
@@ -131,12 +131,12 @@ const ACTION_VERBS = new Set([
   // Analysis
   'analyzed', 'evaluated', 'assessed', 'researched', 'identified', 'diagnosed',
   'audited', 'investigated', 'forecasted', 'benchmarked', 'mapped', 'quantified',
-  'surveyed', 'validated', 'tested', 'measured',
+  'surveyed', 'validated', 'tested', 'measured', 'applied',
 
   // Communication
   'presented', 'negotiated', 'collaborated', 'facilitated', 'advocated', 'persuaded',
   'communicated', 'authored', 'published', 'documented', 'reported', 'trained',
-  'educated', 'influenced', 'briefed',
+  'educated', 'influenced', 'briefed', 'partnered', 'served',
 
   // Operations
   'executed', 'administered', 'maintained', 'processed', 'resolved', 'organized',

@@ -9,6 +9,7 @@ import { Analytics } from '@/lib/analytics'
 import { ADS_ENABLED } from '@/lib/ads'
 import { countWords } from '@/lib/text'
 import { getAtsCheckerDraftKey, readSessionDraft, writeSessionDraft } from '@/lib/sessionDrafts'
+import { writeTailorJobTransfer } from '@/lib/tailorJobTransfer'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
 import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import { getResumeSkills, resumeDataToPlainText } from '@/lib/resume-data'
@@ -17,7 +18,7 @@ import AdBanner from '@/components/shared/AdBanner'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
-import { DEFAULT_UNIVERSAL_CONFIG, DEFAULT_VISIBILITY, type ATSResult, type ATSScanTier, type Profile, type ResumeData, type UniversalConfig } from '@/types'
+import { DEFAULT_UNIVERSAL_CONFIG, DEFAULT_VISIBILITY, type ATSResult, type ATSScanTier, type Profile, type ResumeData, type TailorIntensity, type UniversalConfig } from '@/types'
 import {
   FileText,
   Briefcase,
@@ -30,7 +31,6 @@ import {
   FileUp,
   CheckCircle2,
   BarChart3,
-  Ruler,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -132,6 +132,34 @@ interface ATSCheckerSessionDraft {
 
 type AnalysisMode = 'ats' | 'match'
 
+const MATCH_TAILOR_CHOICE_SECONDS = 10
+const MATCH_TAILOR_INTENSITIES: Array<{
+  value: TailorIntensity
+  label: string
+  description: string
+}> = [
+  {
+    value: 'conservative',
+    label: 'Conservative',
+    description: 'Light cleanup with minimal rewriting.',
+  },
+  {
+    value: 'balanced',
+    label: 'Balanced',
+    description: 'Best default: sharper fit without drifting from the source.',
+  },
+  {
+    value: 'aggressive',
+    label: 'Aggressive',
+    description: 'Stronger rewrite for clearer role alignment.',
+  },
+  {
+    value: 'overboard',
+    label: 'Overboard',
+    description: 'Maximum truthful JD alignment and reprioritization.',
+  },
+]
+
 interface ATSCheckerClientProps {
   resumes: ResumeOption[]
   profile: Profile | null
@@ -222,11 +250,31 @@ function normalizeResumeTitle(title: string) {
   return trimmed.replace(/\.(pdf|docx)\s*$/i, '').trim() || 'Uploaded Resume'
 }
 
-function buildAtsBuilderHref(resumeId: string, mode: AnalysisMode) {
+function buildAtsBuilderHref(
+  resumeId: string,
+  mode: AnalysisMode,
+  options: { autoOptimize?: boolean; tailorJobKey?: string | null; autoTailor?: boolean } = {}
+) {
   const params = new URLSearchParams({
     trimOverflow: '1',
     source: mode === 'match' ? 'match' : 'ats',
   })
+
+  if (mode === 'match') {
+    params.set('mode', 'tailor')
+  }
+
+  if (options.autoOptimize && mode === 'ats') {
+    params.set('autoOptimize', '1')
+  }
+
+  if (options.tailorJobKey && mode === 'match') {
+    params.set('tailorJobKey', options.tailorJobKey)
+  }
+
+  if (options.autoTailor && mode === 'match') {
+    params.set('autoTailor', '1')
+  }
 
   return `/dashboard/builder/${resumeId}?${params.toString()}`
 }
@@ -711,111 +759,6 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
   )
 }
 
-const WAVEFORM_HEIGHTS = [16, 24, 12, 28, 20, 14, 32, 18, 22, 10, 26, 16]
-
-function TailoringAnimation({ isMatchMode }: { isMatchMode: boolean }) {
-  const steps = isMatchMode
-    ? [
-        'Extracting key requirements from the JD...',
-        'Mapping your experience to role keywords...',
-        'Rewriting bullets for stronger alignment...',
-        'Reordering experience to lead with fit...',
-        'Optimising skill section for the role...',
-        'Running quality checks...',
-      ]
-    : [
-        'Analysing ATS issues...',
-        'Identifying improvement opportunities...',
-        'Rewriting underperforming bullets...',
-        'Adding missing keywords...',
-        'Optimising skill section...',
-        'Calculating score improvement...',
-      ]
-
-  const [stepIndex, setStepIndex] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStepIndex(i => Math.min(i + 1, steps.length - 1))
-    }, 15000)
-    return () => clearInterval(interval)
-  }, [steps.length])
-
-  return (
-    <div className="rounded-[1.6rem] bg-[linear-gradient(155deg,#0c110e_0%,#111814_100%)] p-10 text-white shadow-[0_28px_64px_rgba(12,17,14,0.28)]">
-      <div className="flex flex-col items-center gap-8">
-        <div className="relative">
-          <div className="flex h-20 w-20 items-center justify-center rounded-[1.6rem] bg-white/10 backdrop-blur-sm">
-            <Sparkles size={40} className="animate-pulse text-white" strokeWidth={1.5} />
-          </div>
-          <div className="absolute -inset-2 animate-ping rounded-[1.8rem] bg-white/8 [animation-duration:2s]" />
-        </div>
-
-        <div className="space-y-2 text-center">
-          <h3 className="text-2xl font-black tracking-tight text-white">
-            {isMatchMode ? 'AI Tailoring to this role...' : 'AI Improving your resume...'}
-          </h3>
-          <p className="text-sm text-white/60">
-            This takes 1–2 minutes. You can explore the page — results will appear when done.
-          </p>
-        </div>
-
-        <div className="w-full max-w-md space-y-2">
-          {steps.map((step, i) => (
-            <div
-              key={step}
-              className={`flex items-center gap-3 rounded-[1rem] px-4 py-2.5 transition-all duration-700 ${
-                i < stepIndex
-                  ? 'bg-emerald-500/20'
-                  : i === stepIndex
-                  ? 'bg-white/10 ring-1 ring-white/15'
-                  : 'opacity-25'
-              }`}
-            >
-              {i < stepIndex ? (
-                <CheckCircle2 size={15} className="shrink-0 text-emerald-400" />
-              ) : i === stepIndex ? (
-                <svg className="h-4 w-4 shrink-0 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                </svg>
-              ) : (
-                <div className="h-4 w-4 shrink-0 rounded-full border-2 border-white/30" />
-              )}
-              <span
-                className={`text-sm ${
-                  i < stepIndex
-                    ? 'font-medium text-emerald-300'
-                    : i === stepIndex
-                    ? 'font-semibold text-white'
-                    : 'text-white/50'
-                }`}
-              >
-                {step}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Waveform */}
-        <div className="flex items-end gap-1">
-          {WAVEFORM_HEIGHTS.map((h, i) => (
-            <div
-              key={i}
-              className="w-1.5 rounded-full bg-white/60"
-              style={{
-                height: h,
-                animation: 'pulse 1.4s ease-in-out infinite',
-                animationDelay: `${i * 0.12}s`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function AutoRescanBanner({
   isAutoRescanning,
   autoRescanResult,
@@ -1147,10 +1090,8 @@ export default function ATSCheckerClient({
   const scoreRingLabel = isMatchMode ? 'Match Score' : 'ATS Score'
   const scoreBadgeLabel = isMatchMode ? 'Role Match' : 'ATS Readiness'
   const scanButtonLabel = isMatchMode ? 'Run Match Score' : 'Run ATS Scan'
-  const optimiseButtonLabel = isMatchMode ? 'AI Tailor Resume' : 'AI Insights'
-  const optimiseButtonLoadingLabel = isMatchMode
-    ? 'AI Tailoring… can take 1-2 min'
-    : 'Applying AI insights… can take 1-2 min'
+  const optimiseButtonLabel = isMatchMode ? 'AI Tailor Resume' : 'One-click optimize'
+  const optimiseButtonLoadingLabel = 'Opening builder…'
   const keywordSectionTitle = isMatchMode ? 'Coverage against the target role.' : 'Skill evidence across your resume.'
   const keywordSectionDescription = isMatchMode
     ? 'The strongest signals and gaps against the pasted job description.'
@@ -1202,7 +1143,6 @@ export default function ATSCheckerClient({
   const [isOpeningOptimisedEditor, setIsOpeningOptimisedEditor] = useState(false)
   const [openOptimisedError, setOpenOptimisedError] = useState<string | null>(null)
 
-  const [isOptimising, setIsOptimising] = useState(false)
   const [optimiseError, setOptimiseError] = useState<string | null>(null)
   const [optimiseResult, setOptimiseResult] = useState<OptimiseResponse | null>(null)
   const [appliedOptimisedChangeIds, setAppliedOptimisedChangeIds] = useState<string[]>([])
@@ -1212,20 +1152,35 @@ export default function ATSCheckerClient({
   const [hasRestoredDraft, setHasRestoredDraft] = useState(false)
   const [hasUsedPublicAtsScan, setHasUsedPublicAtsScan] = useState(false)
   const [publicAuthPromptReason, setPublicAuthPromptReason] = useState<PublicAuthPromptReason | null>(null)
-  const [isAutoRescanning, setIsAutoRescanning] = useState(false)
-  const [autoRescanResult, setAutoRescanResult] = useState<ScanResponse | null>(null)
-  const [autoRescanError, setAutoRescanError] = useState<string | null>(null)
+  const [isAutoRescanning] = useState(false)
+  const [autoRescanResult] = useState<ScanResponse | null>(null)
+  const [autoRescanError] = useState<string | null>(null)
+  const [isMatchTailorChooserOpen, setIsMatchTailorChooserOpen] = useState(false)
+  const [matchTailorCountdown, setMatchTailorCountdown] = useState(MATCH_TAILOR_CHOICE_SECONDS)
+  const isOptimiseCtaBusy = isPreparingBuilder
 
   const resultsRef = useRef<HTMLDivElement>(null)
   const scanningAnimationRef = useRef<HTMLDivElement>(null)
-  const tailoringAnimationRef = useRef<HTMLDivElement>(null)
   const lastTrackedUpgradePromptScoreRef = useRef<number | null>(null)
   const shouldAutoScrollResultsRef = useRef(false)
   const shouldAutoScrollOptimisedRef = useRef(false)
   const hasTriggeredAutoRunRef = useRef(false)
+  const matchTailorCountdownIntervalRef = useRef<number | null>(null)
+  const matchTailorAutoContinueRef = useRef<number | null>(null)
   const handleScanRef = useRef<null | (() => Promise<void>)>(null)
   const previewViewportRef = useCallback((node: HTMLDivElement | null) => {
     setPreviewViewportNode(node)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (matchTailorCountdownIntervalRef.current) {
+        window.clearInterval(matchTailorCountdownIntervalRef.current)
+      }
+      if (matchTailorAutoContinueRef.current) {
+        window.clearTimeout(matchTailorAutoContinueRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -1391,14 +1346,6 @@ export default function ATSCheckerClient({
     })
     return () => window.cancelAnimationFrame(frame)
   }, [isScanning])
-
-  useEffect(() => {
-    if (!isOptimising) return
-    const frame = window.requestAnimationFrame(() => {
-      tailoringAnimationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [isOptimising])
 
   useEffect(() => {
     if (!optimiseResult || !shouldAutoScrollOptimisedRef.current) {
@@ -1628,87 +1575,55 @@ export default function ATSCheckerClient({
     void handleScanRef.current?.()
   }, [hasRestoredDraft, inputMode, isScanning, scanResult, searchParams, selectedResumeId])
 
-  async function handleOptimise() {
-    if (!scanResult) return
-    setOptimiseError(null)
-    setOpenOptimisedError(null)
-    setOptimisedResumeId(null)
-    setHasTouchedOptimisedChangeSelection(false)
-    setAutoRescanResult(null)
-    setAutoRescanError(null)
-    setIsOptimising(true)
-    const resumeText = getResumeText()
-    try {
-      const res = await fetch('/api/ats/optimise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resumeText,
-          analysisMode: mode,
-          jobDescription: requiresJobDescription ? jobDescription || undefined : undefined,
-          atsResult: scanResult,
-          scoreId: scanResult.scoreId,
-          resumeData: scanResult.resumeData,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        console.error('Optimise API error:', json.error, res.status)
-        setOptimiseError(ERROR_MESSAGES[json.error ?? 'INTERNAL_ERROR'] ?? json.error ?? 'Something went wrong.')
-        return
-      }
-      setOptimiseResult(json.data)
-      setAppliedOptimisedChangeIds(buildChangeComparisons(scanResult.resumeData, json.data.resumeData).map(change => change.id))
-      setHasTouchedOptimisedChangeSelection(false)
-      setActiveTab('optimised')
-      shouldAutoScrollOptimisedRef.current = true
-      if (isMatchMode) {
-        void handleAutoRescan(json.data.resumeData)
-      }
-    } catch (err) {
-      console.error('AI optimise error:', err)
-      setOptimiseError(ERROR_MESSAGES['INTERNAL_ERROR'])
-    } finally {
-      setIsOptimising(false)
-    }
-  }
-
-  async function handleAutoRescan(optimisedData: ResumeData) {
-    if (!isMatchMode) return
-    setIsAutoRescanning(true)
-    setAutoRescanError(null)
-    setAutoRescanResult(null)
-    const resumeText = resumeDataToText(optimisedData)
-    try {
-      const res = await fetch('/api/ats/score', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          resumeText,
-          analysisMode: 'match',
-          jobDescription: jobDescription || undefined,
-          parsedResumeData: optimisedData,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setAutoRescanError('Could not re-calculate match score.')
-        return
-      }
-      setAutoRescanResult(json.data)
-    } catch {
-      setAutoRescanError('Could not re-calculate match score.')
-    } finally {
-      setIsAutoRescanning(false)
-    }
-  }
-
   function getSourceResumeTitle() {
     if (inputMode === 'resume') {
       return resumes.find(resume => resume.id === selectedResumeId)?.title ?? 'Optimised Resume'
     }
 
     return uploadedFile?.name ?? 'Optimised Resume'
+  }
+
+  function clearMatchTailorChoiceTimers() {
+    if (matchTailorCountdownIntervalRef.current) {
+      window.clearInterval(matchTailorCountdownIntervalRef.current)
+      matchTailorCountdownIntervalRef.current = null
+    }
+    if (matchTailorAutoContinueRef.current) {
+      window.clearTimeout(matchTailorAutoContinueRef.current)
+      matchTailorAutoContinueRef.current = null
+    }
+  }
+
+  function proceedToTailorBuilder(intensity: TailorIntensity) {
+    if (isPreparingBuilder) return
+
+    clearMatchTailorChoiceTimers()
+    setIsMatchTailorChooserOpen(false)
+    setOptimiseError(null)
+    const tailorJobKey = writeTailorJobTransfer(jobDescription, intensity)
+    void handleTemplateCustomize({
+      tailorJobKey,
+      autoTailor: Boolean(tailorJobKey),
+    })
+  }
+
+  function closeMatchTailorChooser() {
+    clearMatchTailorChoiceTimers()
+    setIsMatchTailorChooserOpen(false)
+  }
+
+  function openMatchTailorChooser() {
+    clearMatchTailorChoiceTimers()
+    setMatchTailorCountdown(MATCH_TAILOR_CHOICE_SECONDS)
+    setIsMatchTailorChooserOpen(true)
+
+    matchTailorCountdownIntervalRef.current = window.setInterval(() => {
+      setMatchTailorCountdown(previous => Math.max(0, previous - 1))
+    }, 1000)
+
+    matchTailorAutoContinueRef.current = window.setTimeout(() => {
+      proceedToTailorBuilder('balanced')
+    }, MATCH_TAILOR_CHOICE_SECONDS * 1000)
   }
 
   function handleOptimiseCTA() {
@@ -1722,7 +1637,12 @@ export default function ATSCheckerClient({
       return
     }
     if (pro) {
-      void handleOptimise()
+      setOptimiseError(null)
+      if (isMatchMode) {
+        openMatchTailorChooser()
+        return
+      }
+      void handleTemplateCustomize({ autoOptimize: true })
       return
     }
     if (scanResult) {
@@ -1733,7 +1653,9 @@ export default function ATSCheckerClient({
     router.push('/dashboard/pricing')
   }
 
-  async function handleTemplateCustomize() {
+  async function handleTemplateCustomize(
+    options: { autoOptimize?: boolean; tailorJobKey?: string | null; autoTailor?: boolean } = {}
+  ) {
     setCustomizeError(null)
 
     if (publicMode) {
@@ -1747,7 +1669,7 @@ export default function ATSCheckerClient({
     }
 
     if (scannedResumeId) {
-      router.push(buildAtsBuilderHref(scannedResumeId, mode))
+      router.push(buildAtsBuilderHref(scannedResumeId, mode, options))
       return
     }
 
@@ -1782,7 +1704,7 @@ export default function ATSCheckerClient({
       }
 
       setScannedResumeId(data.id)
-      router.push(buildAtsBuilderHref(data.id, mode))
+      router.push(buildAtsBuilderHref(data.id, mode, options))
     } catch (error) {
       console.error('Failed to create ATS builder draft:', error)
       setCustomizeError('Could not open the builder for this upload. Please try again.')
@@ -2635,10 +2557,10 @@ export default function ATSCheckerClient({
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <button
                     onClick={handleOptimiseCTA}
-                    disabled={isPreparingBuilder || (pro && isOptimising)}
+                    disabled={isPreparingBuilder}
                     className="group inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-zinc-950 px-6 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {pro && isOptimising ? (
+                    {isOptimiseCtaBusy ? (
                       <>
                         <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -2676,12 +2598,6 @@ export default function ATSCheckerClient({
                     )}
                   </button>
                 </div>
-
-                {isOptimising && (
-                  <div ref={tailoringAnimationRef}>
-                    <TailoringAnimation isMatchMode={isMatchMode} />
-                  </div>
-                )}
 
                 {(optimiseError || customizeError) && (
                   <div className="rounded-[1.2rem] bg-red-50 px-5 py-3 text-sm text-red-700">
@@ -3002,6 +2918,100 @@ export default function ATSCheckerClient({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {isMatchTailorChooserOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-zinc-950/45 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="match-tailor-intensity-title"
+        >
+          <div className="w-full max-w-2xl overflow-hidden rounded-[1.8rem] border border-white/70 bg-white shadow-[0_32px_90px_rgba(15,23,42,0.24)]">
+            <div className="border-b border-black/6 bg-[linear-gradient(135deg,rgba(236,253,245,0.95),rgba(255,255,255,0.98))] px-6 py-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                    <Sparkles size={12} />
+                    Tailor Resume
+                  </p>
+                  <h3 id="match-tailor-intensity-title" className="mt-3 text-2xl font-black tracking-tight text-zinc-950">
+                    Choose rewrite intensity.
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-600">
+                    Pick how strongly Rezoomed should rewrite this resume for the job description.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeMatchTailorChooser}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-black/8 bg-white text-zinc-500 transition hover:text-zinc-950"
+                  aria-label="Close rewrite intensity selector"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-5 px-6 py-6">
+              <div className="rounded-[1.1rem] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-semibold text-emerald-800">
+                Auto-selecting Balanced in {matchTailorCountdown}s
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {MATCH_TAILOR_INTENSITIES.map(option => {
+                  const isDefault = option.value === 'balanced'
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => proceedToTailorBuilder(option.value)}
+                      disabled={isPreparingBuilder}
+                      className={`group rounded-[1.25rem] border px-4 py-4 text-left transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 ${
+                        isDefault
+                          ? 'border-emerald-200 bg-emerald-50 shadow-[0_14px_34px_rgba(5,150,105,0.08)]'
+                          : 'border-black/8 bg-white hover:border-emerald-200 hover:bg-emerald-50/45'
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-black text-zinc-950">{option.label}</span>
+                        {isDefault && (
+                          <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">
+                            Default
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-2 block text-xs leading-5 text-zinc-500">{option.description}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => proceedToTailorBuilder('balanced')}
+                disabled={isPreparingBuilder}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-950 px-5 py-3.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isPreparingBuilder ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Opening builder…
+                  </>
+                ) : (
+                  <>
+                    Continue with Balanced
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

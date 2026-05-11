@@ -1,13 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { CheckCircle2, Loader2, Lock, RefreshCw, Sparkles, Unlock, Wand2, X, Zap } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Lock, RefreshCw, ShieldAlert, Sparkles, Target, Unlock, Wand2, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AIInsightCard from './AIInsightCard'
-import { getInsightSuggestionScoreDelta, hasBreakdownRegression, improvesIntendedCriterion } from '@/lib/ai-insights'
+import { getInsightSuggestionScoreDelta, hasBreakdownRegression } from '@/lib/ai-insights'
 import { getEducationDateLabel, getProjectBullets, getResumeSkills } from '@/lib/resume-data'
-import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { OptimizeResult } from '@/components/ats/RoadToNinetyPanel'
 import { buildATSRoadmap, scoreResume, type ScorerBreakdown } from '@/lib/ats-scorer'
 import type { ATSScoreRoadmap, ResumeData } from '@/types'
 
@@ -39,6 +38,8 @@ interface Props {
   onStartTailoring: () => void
   resumeId: string
   isPro: boolean
+  autoStartOptimize?: boolean
+  onAutoStartOptimizeConsumed?: () => void
 }
 
 interface CachedInsights {
@@ -47,7 +48,7 @@ interface CachedInsights {
   insights: InsightsData
 }
 
-const INSIGHTS_CACHE_VERSION = 4
+const INSIGHTS_CACHE_VERSION = 7
 const INSIGHTS_LOCK_TTL_MS = 20000
 const inFlightInsights = new Map<string, Promise<InsightsData>>()
 const browserSessionId =
@@ -499,6 +500,72 @@ function AnalysisLoader({ apiDone, onFinished }: { apiDone: boolean; onFinished:
   )
 }
 
+function ReviewChangesSection({
+  suggestions,
+  appliedSuggestions,
+  pendingSuggestions,
+  staleSuggestionCount,
+  onApply,
+  onUndo,
+  defaultOpen,
+}: {
+  suggestions: (Suggestion & { isApplied: boolean; isStale?: boolean; estimatedPoints: number })[]
+  appliedSuggestions: (Suggestion & { isApplied: boolean })[]
+  pendingSuggestions: (Suggestion & { isApplied: boolean })[]
+  staleSuggestionCount: number
+  onApply: (suggestion: Suggestion) => void
+  onUndo: (id: string) => void
+  defaultOpen: boolean
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  const summaryText = appliedSuggestions.length > 0
+    ? `${appliedSuggestions.length} applied${pendingSuggestions.length > 0 ? `, ${pendingSuggestions.length} pending` : ''}`
+    : `${pendingSuggestions.length} suggestion${pendingSuggestions.length !== 1 ? 's' : ''}`
+
+  return (
+    <div className="rounded-2xl border border-zinc-100 bg-white overflow-hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center gap-3 p-4 text-left hover:bg-zinc-50 transition-colors"
+      >
+        <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
+          <Wand2 size={14} className="text-zinc-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-zinc-800">Review changes</p>
+          <p className="text-[11px] text-zinc-400 mt-0.5">{summaryText}</p>
+        </div>
+        {isOpen
+          ? <ChevronUp size={14} className="text-zinc-400 shrink-0" />
+          : <ChevronDown size={14} className="text-zinc-400 shrink-0" />
+        }
+      </button>
+
+      {isOpen && (
+        <div className="px-4 pb-4 space-y-3">
+          {staleSuggestionCount > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-medium text-amber-800">
+              {staleSuggestionCount} stale — re-optimize to refresh
+            </div>
+          )}
+          {suggestions.map((suggestion) => (
+            <AIInsightCard
+              key={suggestion.id}
+              suggestion={suggestion}
+              onApply={() => onApply(suggestion)}
+              onUndo={() => onUndo(suggestion.id)}
+              isApplied={suggestion.isApplied}
+              label={TYPE_LABELS[suggestion.type] ?? suggestion.type}
+              colorClass={TYPE_COLORS[suggestion.type] ?? 'bg-zinc-50 text-zinc-700 border-zinc-200'}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AIInsightsPanel({
   resumeData,
   onApplyFix,
@@ -506,6 +573,8 @@ export default function AIInsightsPanel({
   onStartTailoring,
   resumeId,
   isPro,
+  autoStartOptimize = false,
+  onAutoStartOptimizeConsumed,
 }: Props) {
   const [insights, setInsights] = useState<InsightsData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -514,9 +583,11 @@ export default function AIInsightsPanel({
   const [isApplyingAll, setIsApplyingAll] = useState(false)
   const [needsRescan, setNeedsRescan] = useState(false)
   const [hasStarted, setHasStarted] = useState(false)
-  const [tailorDismissed, setTailorDismissed] = useState(false)
   const [showLoader, setShowLoader] = useState(false)
-  const [activeTab, setActiveTab] = useState<'fixes' | 'roadmap'>('fixes')
+  const [optimizeResult, setOptimizeResult] = useState<OptimizeResult | null>(null)
+  const [preOptimizeScore, setPreOptimizeScore] = useState<number | null>(null)
+  const autoApplyPendingRef = useRef(false)
+  const hasAutoStartedOptimizeRef = useRef(false)
 
   useEffect(() => {
     if (isLoading) setShowLoader(true)
@@ -541,6 +612,8 @@ export default function AIInsightsPanel({
   const suggestionsWithLiveImpact = useMemo(() => {
     if (!resumeData || !insights) return []
 
+    let workingData = resumeData
+
     return insights.suggestions
       .map(suggestion => {
         const isApplied = appliedIds.has(suggestion.id)
@@ -553,23 +626,25 @@ export default function AIInsightsPanel({
           }
         }
 
-        const evaluation = getInsightSuggestionScoreDelta(resumeData, suggestion)
+        const evaluation = getInsightSuggestionScoreDelta(workingData, suggestion)
+        const hasRegression =
+          evaluation.after.score < evaluation.before.score ||
+          hasBreakdownRegression(evaluation.before, evaluation.after)
+        const isStale = evaluation.updatedData === workingData || hasRegression
+        if (!isStale) {
+          workingData = evaluation.updatedData
+        }
+
         return {
           ...suggestion,
-          estimatedPoints: Math.max(0, evaluation.delta),
+          estimatedPoints: isStale
+            ? 0
+            : Math.max(1, evaluation.delta, suggestion.estimatedPoints ?? 0),
           isApplied: false,
-          isStale:
-            evaluation.delta <= 0 ||
-            hasBreakdownRegression(evaluation.before, evaluation.after) ||
-            !improvesIntendedCriterion(evaluation.before, evaluation.after, suggestion.criterionId),
+          isStale,
         }
       })
-      .filter(suggestion => suggestion.isApplied || suggestion.estimatedPoints > 0)
-      .sort((a, b) => {
-        if (a.isApplied && !b.isApplied) return -1
-        if (!a.isApplied && b.isApplied) return 1
-        return b.estimatedPoints - a.estimatedPoints
-      })
+      .filter(suggestion => suggestion.isApplied || !suggestion.isStale)
   }, [appliedIds, insights, resumeData])
 
   const staleSuggestionCount = useMemo(() => {
@@ -579,9 +654,9 @@ export default function AIInsightsPanel({
       if (appliedIds.has(suggestion.id)) return count
       const evaluation = getInsightSuggestionScoreDelta(resumeData, suggestion)
       const isStale =
-        evaluation.delta <= 0 ||
-        hasBreakdownRegression(evaluation.before, evaluation.after) ||
-        !improvesIntendedCriterion(evaluation.before, evaluation.after, suggestion.criterionId)
+        evaluation.updatedData === resumeData ||
+        evaluation.after.score < evaluation.before.score ||
+        hasBreakdownRegression(evaluation.before, evaluation.after)
       return count + (isStale ? 1 : 0)
     }, 0)
   }, [appliedIds, insights, resumeData])
@@ -707,17 +782,37 @@ export default function AIInsightsPanel({
 
   function handleStartInsightsClick() {
     if (!resumeData || isLoading) return
+    // Capture score before optimization starts
+    setPreOptimizeScore(scoreResume(resumeData).score)
+    autoApplyPendingRef.current = true
+    setOptimizeResult(null)
     setHasStarted(true)
     void fetchInsights(resumeSignature)
   }
+
+  useEffect(() => {
+    if (!autoStartOptimize) {
+      hasAutoStartedOptimizeRef.current = false
+      return
+    }
+
+    if (hasAutoStartedOptimizeRef.current || !isPro || !resumeData || !resumeSignature || isLoading) {
+      return
+    }
+
+    hasAutoStartedOptimizeRef.current = true
+    handleStartInsightsClick()
+    onAutoStartOptimizeConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartOptimize, isPro, resumeData, resumeSignature, isLoading])
 
   function handleApplyWithAnimation(suggestion: Suggestion) {
     if (!resumeData) return
     const evaluation = getInsightSuggestionScoreDelta(resumeData, suggestion)
     const isStale =
-      evaluation.delta <= 0 ||
-      hasBreakdownRegression(evaluation.before, evaluation.after) ||
-      !improvesIntendedCriterion(evaluation.before, evaluation.after, suggestion.criterionId)
+      evaluation.updatedData === resumeData ||
+      evaluation.after.score < evaluation.before.score ||
+      hasBreakdownRegression(evaluation.before, evaluation.after)
     if (isStale) {
       setToastMessage('That suggestion is outdated after your recent edits. Rescan to refresh insights.')
       setNeedsRescan(true)
@@ -737,29 +832,39 @@ export default function AIInsightsPanel({
     onUndoFix()
   }
 
-  function handleApplyAllFixes() {
+  function handleApplyAllWithResult() {
     if (!resumeData || !insights || isApplyingAll) return
-    const pending = suggestionsWithLiveImpact.filter(s => !s.isApplied && s.estimatedPoints > 0)
-    if (pending.length === 0) return
+    const pending = suggestionsWithLiveImpact.filter(s => !s.isApplied && !s.isStale)
+
+    const scoreBefore = preOptimizeScore ?? liveScorerResult?.score ?? insights.score
+
+    if (pending.length === 0) {
+      setOptimizeResult({ appliedCount: 0, skippedCount: 0, scoreBefore, scoreAfter: scoreBefore })
+      return
+    }
 
     let workingData = resumeData
     const accepted: Suggestion[] = []
+    let skipped = 0
 
     for (const suggestion of pending) {
       const evaluation = getInsightSuggestionScoreDelta(workingData, suggestion)
       const isStillSafe =
-        evaluation.delta > 0 &&
-        !hasBreakdownRegression(evaluation.before, evaluation.after) &&
-        improvesIntendedCriterion(evaluation.before, evaluation.after, suggestion.criterionId)
+        evaluation.updatedData !== workingData &&
+        evaluation.after.score >= evaluation.before.score &&
+        !hasBreakdownRegression(evaluation.before, evaluation.after)
 
-      if (!isStillSafe) continue
+      if (!isStillSafe) {
+        skipped++
+        continue
+      }
 
       accepted.push(suggestion)
       workingData = evaluation.updatedData
     }
 
     if (accepted.length === 0) {
-      setToastMessage('Those suggestions are outdated after your recent edits. Rescan to refresh insights.')
+      setOptimizeResult({ appliedCount: 0, skippedCount: skipped, scoreBefore, scoreAfter: scoreBefore })
       setNeedsRescan(true)
       return
     }
@@ -769,9 +874,9 @@ export default function AIInsightsPanel({
       setAppliedIds(prev => new Set(prev).add(suggestion.id))
       onApplyFix(suggestion)
     }
-    if (accepted.length < pending.length) {
-      setToastMessage('Some outdated suggestions were skipped. Rescan to refresh the remaining insights.')
-    }
+
+    const scoreAfter = scoreResume(workingData).score
+    setOptimizeResult({ appliedCount: accepted.length, skippedCount: skipped, scoreBefore, scoreAfter })
     setNeedsRescan(true)
     setIsApplyingAll(false)
   }
@@ -790,8 +895,25 @@ export default function AIInsightsPanel({
       setToastMessage('Make changes to your resume before rescanning.')
       return
     }
-    void fetchInsights(resumeSignature)
+    // Re-optimize: rescan then auto-apply
+    handleStartInsightsClick()
   }
+
+  // Live score preview for the initial screen
+  const previewScore = useMemo(
+    () => (resumeData ? scoreResume(resumeData).score : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resumeData?.summary, resumeData?.experience?.length, resumeData?.skills?.length]
+  )
+
+  // Auto-apply after loader finishes and insights are ready
+  useEffect(() => {
+    if (!showLoader && autoApplyPendingRef.current && insights && !isLoading) {
+      autoApplyPendingRef.current = false
+      handleApplyAllWithResult()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLoader, insights, isLoading])
 
   if (!isPro) {
     return (
@@ -871,8 +993,8 @@ export default function AIInsightsPanel({
           </div>
         </div>
       </div>
-    )
-  }
+	  )
+	}
 
   if (showLoader) {
     return (
@@ -886,329 +1008,305 @@ export default function AIInsightsPanel({
   if (!hasStarted && !insights) {
     return (
       <div className="flex flex-col h-full overflow-y-auto">
-        <div className="p-6 flex-1 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center mb-6">
-            <Sparkles size={24} className="text-emerald-600" />
+        <div className="p-6 flex-1 flex flex-col">
+          {/* Score preview */}
+          {previewScore !== null && (
+            <div className="mb-6 flex flex-col items-center">
+              <div className="relative">
+                <svg width="120" height="120" viewBox="0 0 100 100" className="-rotate-90">
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#e4e4e7" strokeWidth="6" />
+                  <circle
+                    cx="50" cy="50" r="38" fill="none"
+                    stroke={scoreColor(previewScore)}
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 38}`}
+                    strokeDashoffset={`${2 * Math.PI * 38 * (1 - previewScore / 100)}`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-black text-zinc-800 tracking-tighter leading-none">{previewScore}</span>
+                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">/ 100</span>
+                </div>
+              </div>
+              <p className="mt-3 text-sm font-bold text-zinc-700">
+                {previewScore >= 80 ? 'Looking good!' : previewScore >= 60 ? 'Room to improve' : 'Needs work'}
+              </p>
+              {previewScore < 80 && (
+                <p className="mt-1 text-xs text-zinc-400">AI can likely boost this by 5–15 points</p>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          <div className="text-center mb-6">
+            <h3 className="text-base font-black text-zinc-800 mb-2">Optimize with AI</h3>
+            <p className="text-xs text-zinc-500 leading-relaxed max-w-[260px] mx-auto">
+              One click. AI rewrites weak bullets, fixes formatting, and boosts keywords — only safe, verified changes.
+            </p>
           </div>
-          <h3 className="text-sm font-bold text-zinc-800 mb-2">AI Insights</h3>
-          <p className="text-xs text-zinc-500 leading-relaxed mb-6 max-w-[240px]">
-            Run AI Insights when you&apos;re ready. You&apos;ll get paste-ready fixes plus a truthful Road to 90 for the current resume.
-          </p>
+
           <button
             onClick={handleStartInsightsClick}
             disabled={!resumeData || isLoading}
-            className="w-full py-3 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 text-white text-sm font-bold rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-lg hover:shadow-emerald-600/20"
+            style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
           >
-            Run AI Insights
+            <span className="flex items-center justify-center gap-2">
+              <Sparkles size={16} />
+              Optimize My Resume
+            </span>
           </button>
-        </div>
 
-        {!tailorDismissed && (
-          <div className="relative p-6 bg-zinc-900 text-white rounded-t-[2rem] mt-auto">
-            <button
-              onClick={() => setTailorDismissed(true)}
-              className="absolute top-4 right-4 flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all active:scale-90"
-              aria-label="Dismiss"
-            >
-              <X size={12} />
-            </button>
-            <div className="flex items-center gap-2 mb-3">
-              <Wand2 className="text-primary-container" size={16} />
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Tailor for Job</span>
-            </div>
-            <p className="text-xs text-zinc-300 mb-4 leading-relaxed">
-              Instantly adjust your resume keywords for a specific job description.
-            </p>
+          <p className="mt-3 text-[11px] text-zinc-400 text-center">Takes 1–3 minutes. You can undo any change.</p>
+
+          {/* Tailor nudge */}
+          <div className="mt-auto pt-6">
             <button
               onClick={onStartTailoring}
               disabled={!resumeData || isLoading}
-              className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
             >
-              Start Tailoring
+              <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
+                <Target size={16} className="text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-zinc-800">Tailor for a specific job</p>
+                <p className="text-[11px] text-zinc-400 mt-0.5">Match keywords to a job description</p>
+              </div>
             </button>
           </div>
-        )}
+        </div>
       </div>
     )
   }
 
-  function handleEditSection(sectionId: string) {
-    // Basic mapping for common section labels to internal IDs
-    const sectionMap: Record<string, string> = {
-      'summary': 'summary',
-      'skills': 'skills',
-      'experience': 'experience',
-      'work experience': 'experience',
-      'education': 'education',
-      'projects': 'projects',
-      'volunteer': 'volunteer',
-      'certifications': 'certifications',
-    }
-    
-    const mappedId = sectionMap[sectionId.toLowerCase()] || sectionId.toLowerCase()
-    
-    // Trigger scroll and expand via parent/DOM
-    // We assume the parent is handling setExpandedSection via the DOM id we added
-    const element = document.getElementById(`section-row-${mappedId}`)
-    if (element) {
-      // Find the "Edit" button or just the row and click it if not expanded?
-      // Actually, we can just rely on the parent's expandedSection state if we could pass it up.
-      // For now, let's just use the DOM scroll as a first step.
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      
-      // To properly expand, we might need a new prop on AIInsightsPanel
-      // But we can try to find the row's clickable header
-      const header = element.querySelector('.group') as HTMLElement
-      if (header) header.click()
-    }
-  }
+  const pendingSuggestions = suggestionsWithLiveImpact.filter(s => !s.isApplied && !s.isStale)
+  const appliedSuggestions = suggestionsWithLiveImpact.filter(s => s.isApplied)
+  const displayScore = liveScorerResult?.score ?? insights?.score ?? 0
+  const displayLabel = liveScorerResult?.scoreLabel ?? insights?.scoreLabel ?? ''
+  const hasRemainingRoadmap = Boolean(liveRoadmap && liveRoadmap.truthfulCeiling > displayScore)
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="p-6 overflow-y-auto flex-1">
-        <div className="mb-6">
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">AI Insights</h2>
+      <div className="p-6 flex-1">
+
+        {toastMessage && (
+          <div className="mb-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs font-medium text-zinc-600 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+            {toastMessage}
+          </div>
+        )}
+
+        {error ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+              <span className="text-xl">!</span>
+            </div>
+            <p className="text-xs text-zinc-500 text-center leading-relaxed">{error}</p>
             <button
-              onClick={handleRescanClick}
-              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-all ${
-                isLoading
-                  ? 'bg-zinc-100 text-zinc-400 cursor-wait'
-                  : insights && !needsRescan
-                    ? 'bg-zinc-100 text-zinc-400'
-                    : 'bg-primary-container text-on-primary-container hover:brightness-95 active:scale-95'
-              }`}
+              onClick={() => void fetchInsights(resumeSignature)}
+              className="px-4 py-2 text-xs font-semibold bg-primary-container text-on-primary-container rounded-lg active:scale-95 transition-all"
             >
-              {isLoading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-              Rescan
+              Retry
             </button>
           </div>
+        ) : insights && (
+          <div className="space-y-5">
 
-          {toastMessage && (
-            <div className="mb-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs font-medium text-zinc-600 shadow-sm">
-              {toastMessage}
-            </div>
-          )}
+            {/* ── Hero: Score + optimization result ── */}
+            <div
+              className="relative rounded-3xl p-[1.5px] overflow-hidden"
+              style={{ background: optimizeResult && optimizeResult.appliedCount > 0
+                ? 'linear-gradient(135deg, #026d3280, #22c55e40, #e4e4e7)'
+                : `linear-gradient(135deg, ${scoreColor(displayScore)}80, ${scoreColor(displayScore)}20, #e4e4e7)` }}
+            >
+              <div className="relative flex flex-col items-center p-5 bg-white rounded-[calc(1.5rem-1.5px)] overflow-hidden">
+                <div
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full opacity-10 blur-2xl pointer-events-none"
+                  style={{ backgroundColor: scoreColor(displayScore) }}
+                />
 
-          {error ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-4">
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500">
-                <span className="text-xl">!</span>
-              </div>
-              <p className="text-xs text-zinc-500 text-center leading-relaxed">{error}</p>
-              <button
-                onClick={() => void fetchInsights(resumeSignature)}
-                className="px-4 py-2 text-xs font-semibold bg-primary-container text-on-primary-container rounded-lg active:scale-95 transition-all"
-              >
-                Retry
-              </button>
-            </div>
-          ) : (
-            <>
-              {insights && (() => {
-                const displayScore = liveScorerResult?.score ?? insights.score
-                const displayLabel = liveScorerResult?.scoreLabel ?? insights.scoreLabel
-                const scoreDelta = liveScorerResult ? liveScorerResult.score - insights.score : 0
-                return (
-                <div className="relative mb-6 rounded-3xl p-[1.5px]"
-                  style={{ background: `linear-gradient(135deg, ${scoreColor(displayScore)}80, ${scoreColor(displayScore)}20, #e4e4e7)` }}>
-                  <div className="relative flex flex-col items-center p-5 bg-white rounded-[calc(1.5rem-1.5px)] overflow-hidden">
-                    {/* Subtle radial glow behind ring */}
-                    <div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full opacity-10 blur-2xl pointer-events-none"
-                      style={{ backgroundColor: scoreColor(displayScore) }}
-                    />
+                {/* Before/After when optimization happened */}
+                {optimizeResult && optimizeResult.appliedCount > 0 ? (
+                  <div className="relative z-10 w-full">
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <CheckCircle2 size={16} className="text-emerald-500" />
+                      <span className="text-sm font-bold text-zinc-800">
+                        {optimizeResult.appliedCount} improvement{optimizeResult.appliedCount !== 1 ? 's' : ''} applied
+                      </span>
+                    </div>
 
-                    {/* SVG progress ring */}
-                    <div className="relative z-10">
-                      <svg width="96" height="96" viewBox="0 0 100 100" className="-rotate-90">
-                        <circle cx="50" cy="50" r="38" fill="none" stroke="#e4e4e7" strokeWidth="7" />
-                        <circle
-                          cx="50" cy="50" r="38" fill="none"
-                          stroke={scoreColor(displayScore)}
-                          strokeWidth="7"
-                          strokeLinecap="round"
-                          strokeDasharray={`${2 * Math.PI * 38}`}
-                          strokeDashoffset={displayScore > 94 ? '0' : `${2 * Math.PI * 38 * (1 - displayScore / 100)}`}
-                          style={{ transition: 'stroke-dashoffset 1s ease-out' }}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-2xl font-black text-zinc-800 tracking-tighter leading-none">{displayScore}</span>
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">/ 100</span>
+                    <div className="flex items-center justify-center gap-4">
+                      {/* Before */}
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Before</p>
+                        <span className="text-3xl font-black text-zinc-300 tracking-tighter">{optimizeResult.scoreBefore}</span>
+                      </div>
+
+                      {/* Arrow + delta */}
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="w-8 h-[2px] bg-zinc-200 rounded-full" />
+                        {optimizeResult.scoreAfter > optimizeResult.scoreBefore && (
+                          <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                            +{optimizeResult.scoreAfter - optimizeResult.scoreBefore}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* After */}
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Now</p>
+                        <span className="text-3xl font-black tracking-tighter" style={{ color: scoreColor(displayScore) }}>
+                          {displayScore}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Score label + live delta */}
-                    <div className="mt-3 flex items-center gap-2">
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: scoreColor(displayScore) }}
-                      />
-                      <span className="text-[13px] font-bold text-zinc-700">Resume Strength: {displayLabel}</span>
-                      {scoreDelta > 0 && (
-                        <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                          +{scoreDelta}
-                        </span>
-                      )}
-                    </div>
+                    {optimizeResult.skippedCount > 0 && (
+                      <p className="mt-3 text-[10px] text-zinc-400 text-center">{optimizeResult.skippedCount} unsafe change{optimizeResult.skippedCount !== 1 ? 's' : ''} skipped</p>
+                    )}
 
-                    {/* Summary */}
+                    {insights.summary && (
+                      <p className="mt-3 text-[11px] text-zinc-500 text-center leading-relaxed px-1">{insights.summary}</p>
+                    )}
+                  </div>
+                ) : (
+                  /* Score ring when no optimization yet (cached insights) */
+                  <div className="relative z-10 flex flex-col items-center">
+                    <svg width="96" height="96" viewBox="0 0 100 100" className="-rotate-90">
+                      <circle cx="50" cy="50" r="38" fill="none" stroke="#e4e4e7" strokeWidth="7" />
+                      <circle
+                        cx="50" cy="50" r="38" fill="none"
+                        stroke={scoreColor(displayScore)}
+                        strokeWidth="7"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 38}`}
+                        strokeDashoffset={displayScore > 94 ? '0' : `${2 * Math.PI * 38 * (1 - displayScore / 100)}`}
+                        style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ top: 0, bottom: 'auto', height: 96 }}>
+                      <span className="text-2xl font-black text-zinc-800 tracking-tighter leading-none">{displayScore}</span>
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">/ 100</span>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: scoreColor(displayScore) }} />
+                      <span className="text-[13px] font-bold text-zinc-700">{displayLabel}</span>
+                    </div>
                     {insights.summary && (
                       <p className="mt-2 text-[11px] text-zinc-500 text-center leading-relaxed px-1">{insights.summary}</p>
                     )}
-
-                    {/* Stats chips */}
-                    <div className="mt-3 flex items-center gap-2 flex-wrap justify-center">
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-100 rounded-full">
-                        <span className="text-[10px] font-bold text-zinc-600">
-                          {suggestionsWithLiveImpact.filter(s => !s.isApplied).length} suggestion{suggestionsWithLiveImpact.filter(s => !s.isApplied).length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      {liveRoadmap && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
-                          <span className="text-[10px] font-bold text-emerald-700">
-                            Ceiling {liveRoadmap.truthfulCeiling}
-                          </span>
-                        </div>
-                      )}
-                      {appliedIds.size > 0 && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
-                          <CheckCircle2 size={10} className="text-emerald-500" />
-                          <span className="text-[10px] font-bold text-emerald-700">
-                            {appliedIds.size} applied
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Apply All button */}
-                    {insights.suggestions.length > 0 && (
-                      <button
-                        onClick={handleApplyAllFixes}
-                        disabled={isApplyingAll || suggestionsWithLiveImpact.every(s => s.isApplied)}
-                        className="mt-4 w-full relative overflow-hidden flex items-center justify-center gap-2 py-2.5 text-white text-xs font-bold rounded-xl
-                          hover:brightness-110 hover:shadow-lg hover:shadow-primary/20
-                          active:scale-[0.98] active:brightness-95
-                          transition-all duration-150
-                          disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-                        style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
-                      >
-                        {isApplyingAll ? (
-                          <>
-                            <Loader2 size={13} className="animate-spin" />
-                            Applying all fixes...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles size={13} />
-                            Apply All Fixes
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
+                )}
+
+                {/* Chips */}
+                <div className="mt-3 flex items-center gap-2 flex-wrap justify-center relative z-10">
+                  {appliedIds.size > 0 && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-bold text-emerald-700">
+                      <CheckCircle2 size={10} className="text-emerald-500" />
+                      {appliedIds.size} applied
+                    </span>
+                  )}
                 </div>
-                )
-              })()}
 
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as 'fixes' | 'roadmap')}
-                className="gap-4"
-              >
-                <TabsList
-                  variant="default"
-                  className="grid !h-auto w-full grid-cols-2 items-stretch overflow-hidden rounded-[1.75rem] bg-zinc-100 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+                {/* Apply remaining (if user undid some, or loaded from cache) */}
+                {pendingSuggestions.length > 0 && (
+                  <button
+                    onClick={handleApplyAllWithResult}
+                    disabled={isApplyingAll}
+                    className="mt-4 w-full relative z-10 flex items-center justify-center gap-2 py-2.5 text-white text-xs font-bold rounded-xl
+                      hover:brightness-110 hover:shadow-lg hover:shadow-primary/20
+                      active:scale-[0.98] active:brightness-95
+                      transition-all duration-150
+                      disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                    style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
+                  >
+                    <Sparkles size={13} />
+                    {optimizeResult ? 'Apply Remaining Fixes' : 'Apply All Fixes'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ── Next steps ── */}
+            <div className="space-y-2.5">
+              {/* Re-optimize: only when resume changed */}
+              {needsRescan && (
+                <button
+                  onClick={handleRescanClick}
+                  disabled={isLoading}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
                 >
-                  <TabsTrigger
-                    value="fixes"
-                    className="min-h-[3.75rem] rounded-[1.35rem] border-0 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-                  >
-                    Fixes
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="roadmap"
-                    className="min-h-[3.75rem] rounded-[1.35rem] border-0 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500 shadow-none data-[state=active]:bg-white data-[state=active]:text-zinc-950 data-[state=active]:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-                  >
-                    Road to 90
-                  </TabsTrigger>
-                </TabsList>
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                    {isLoading ? <Loader2 size={14} className="text-white animate-spin" /> : <RefreshCw size={14} className="text-white" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-800">Re-optimize</p>
+                    <p className="text-[11px] text-emerald-600 mt-0.5">Resume changed — run AI again</p>
+                  </div>
+                </button>
+              )}
 
-                <TabsContent value="fixes" className="mt-0">
-                  {staleSuggestionCount > 0 && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
-                      {staleSuggestionCount} suggestion{staleSuggestionCount !== 1 ? 's are' : ' is'} no longer guaranteed to improve your score after your recent edits. Rescan to refresh.
+              {/* Tailor CTA */}
+              <button
+                onClick={onStartTailoring}
+                disabled={!resumeData || isLoading}
+                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+              >
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center shrink-0">
+                  <Target size={14} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-800">Tailor for a job</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">Match keywords to a specific posting</p>
+                </div>
+              </button>
+            </div>
+
+            {/* ── Collapsible: Review changes ── */}
+            {suggestionsWithLiveImpact.length > 0 && (
+              <ReviewChangesSection
+                suggestions={suggestionsWithLiveImpact}
+                appliedSuggestions={appliedSuggestions}
+                pendingSuggestions={pendingSuggestions}
+                staleSuggestionCount={staleSuggestionCount}
+                onApply={handleApplyWithAnimation}
+                onUndo={handleUndoFix}
+                defaultOpen={!optimizeResult || optimizeResult.appliedCount === 0}
+              />
+            )}
+
+            {suggestionsWithLiveImpact.length === 0 && (
+              <p className="text-xs text-zinc-400 text-center py-4">
+                {insights.score >= 80 && !hasRemainingRoadmap
+                  ? 'No suggestions — your resume looks good!'
+                  : 'No safe auto-fixes found. Try editing manually or tailoring for a specific job.'}
+              </p>
+            )}
+
+            {/* ── Evidence blockers (subtle) ── */}
+            {liveRoadmap && liveRoadmap.evidenceBlockers.length > 0 && (
+              <details className="group">
+                <summary className="flex items-center gap-2 cursor-pointer py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400 hover:text-zinc-500 transition-colors select-none list-none">
+                  <ShieldAlert size={12} className="text-amber-400" />
+                  <span>What AI can&apos;t fix ({liveRoadmap.evidenceBlockers.length})</span>
+                  <ChevronDown size={12} className="ml-auto group-open:hidden" />
+                  <ChevronUp size={12} className="ml-auto hidden group-open:block" />
+                </summary>
+                <div className="mt-2 space-y-2 pb-2">
+                  {liveRoadmap.evidenceBlockers.slice(0, 4).map(action => (
+                    <div key={action.criterionId} className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-2.5">
+                      <p className="text-[11px] font-semibold text-zinc-600">{action.title}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 leading-relaxed">{action.reason}</p>
                     </div>
-                  )}
+                  ))}
+                </div>
+              </details>
+            )}
 
-                  {suggestionsWithLiveImpact.length > 0 ? (
-                    <div className="space-y-3">
-                      {suggestionsWithLiveImpact.map((suggestion) => {
-                        return (
-                          <AIInsightCard
-                            key={suggestion.id}
-                            suggestion={suggestion}
-                            onApply={() => handleApplyWithAnimation(suggestion)}
-                            onUndo={() => handleUndoFix(suggestion.id)}
-                            isApplied={suggestion.isApplied}
-                            label={TYPE_LABELS[suggestion.type] ?? suggestion.type}
-                            colorClass={TYPE_COLORS[suggestion.type] ?? 'bg-zinc-50 text-zinc-700 border-zinc-200'}
-                          />
-                        )
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-400 text-center py-8">
-                      {insights
-                        ? insights.score >= 80
-                          ? 'No suggestions — your resume looks good!'
-                          : 'No direct AI rewrites are safe to auto-apply right now. Manual improvements are still needed.'
-                        : 'No AI analysis yet.'}
-                    </p>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="roadmap" className="mt-0">
-                  {liveRoadmap ? (
-                    <RoadToNinetyPanel roadmap={liveRoadmap} onEditSection={handleEditSection} />
-                  ) : (
-                    <p className="text-xs text-zinc-400 text-center py-8">
-                      Run AI Insights to build your Road to 90.
-                    </p>
-                  )}
-                </TabsContent>
-              </Tabs>
-            </>
-          )}
-        </div>
-      </div>
-
-      {!tailorDismissed && (
-        <div className="relative p-6 bg-zinc-900 text-white rounded-t-[2rem] mt-auto">
-          <button
-            onClick={() => setTailorDismissed(true)}
-            className="absolute top-4 right-4 flex items-center justify-center w-6 h-6 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all active:scale-90"
-            aria-label="Dismiss"
-          >
-            <X size={12} />
-          </button>
-          <div className="flex items-center gap-2 mb-3">
-            <Wand2 className="text-primary-container" size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">Tailor for Job</span>
           </div>
-          <p className="text-xs text-zinc-300 mb-4 leading-relaxed">
-            Instantly adjust your resume keywords for a specific job description.
-          </p>
-          <button
-            onClick={onStartTailoring}
-            disabled={!resumeData || isLoading}
-            className="w-full py-2.5 bg-primary-container text-on-primary-container text-sm font-bold rounded-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Start Tailoring
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

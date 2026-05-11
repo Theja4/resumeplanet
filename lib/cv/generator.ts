@@ -30,12 +30,15 @@ PRIMARY GOAL:
 - Produce a cover letter that materially improves the candidate's chance of landing an interview.
 - Sound sharp, credible, concise, and human.
 - Make the letter feel specific to the role and company without inventing anything.
+- Extract the strongest truthful fit narrative from the resume and job description.
+- The letter should make a recruiter immediately understand why this candidate is worth interviewing.
 
 NON-NEGOTIABLE HONESTY RULES:
 - Never invent employers, titles, dates, tools, responsibilities, certifications, projects, metrics, or outcomes.
 - Never exaggerate seniority or claim hands-on experience not supported by the resume.
 - Never flatter the company with made-up product knowledge.
 - Never use placeholders like [Company], [X], TBD, lorem ipsum, or bracketed filler.
+- Never claim passion, admiration, or company/product knowledge unless the job description or resume gives concrete support.
 
 LETTER STANDARD:
 - Write in first person.
@@ -44,6 +47,17 @@ LETTER STANDARD:
 - Keep sentences direct and recruiter-readable.
 - Use evidence from the resume to explain fit instead of generic enthusiasm.
 - If the company name or role title is unclear from the job description, make a best effort. If still unclear, stay generic and professional.
+- Open with the candidate's strongest relevant fit signal, not "I am excited to apply" filler.
+- Each body paragraph should connect a real resume fact to a real job requirement.
+- Prefer concrete examples of scope, tools, customers, domains, or outcomes over adjectives.
+- Close confidently without sounding desperate or inflated.
+
+GOOD DIRECTION:
+- "In my operations analyst role, I built weekly SQL dashboards for leadership, which maps directly to your need for reporting automation and stakeholder-ready insights."
+
+BAD DIRECTION:
+- "I have always admired your innovative company and believe I am the perfect fit." This is generic and unsupported.
+- "I led global AI transformation" when the resume only says the candidate created internal reports.
 
 INTENSITY GUIDANCE:
 - conservative: polished and formal, with minimal rhetorical flair.
@@ -69,6 +83,7 @@ RULES:
 - "fitHighlights" must be short phrases, max 5 items.
 - "bodyParagraphs" should usually contain 2 or 3 paragraphs.
 - The final output must be usable as a real application letter with no editing required.
+- Every paragraph must earn its space by making a specific, truthful fit argument.
 - Return JSON only. No markdown. No explanation.`
 
 async function requestCoverLetter(prompt: string) {

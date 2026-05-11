@@ -11,6 +11,7 @@ PRIMARY TASK:
 2. Read the structured resume evidence.
 3. For each requirement, decide whether the resume shows STRONG, PARTIAL, or NO support.
 4. Be factual and conservative. If the resume does not clearly support a requirement, mark it as NONE.
+5. Produce the most helpful possible fit diagnosis: what is already convincing, what can be reframed, and what is a real gap.
 
 NON-NEGOTIABLE RULES:
 - Never invent evidence, experience, tools, seniority, domain exposure, leadership scope, or outcomes.
@@ -20,6 +21,9 @@ NON-NEGOTIABLE RULES:
 - NONE means the requirement is not supported by the resume as given.
 - Do not reward generic corporate phrases as evidence.
 - Separate ATS polish from job fit. A well-formatted resume can still be a weak fit.
+- If evidence is not present in the resume context, leave evidence empty and explain the gap.
+- Do not treat a keyword in the skills list as STRONG evidence unless experience/projects show how it was used.
+- Do not give false hope. A clear mismatch should receive a low score and a plain-language explanation.
 
 EVALUATION STANDARD:
 - Prioritize must-have requirements, core responsibilities, domain experience, tools, and seniority level.
@@ -27,12 +31,28 @@ EVALUATION STANDARD:
 - Domain alignment should reflect whether the candidate has worked in a similar environment or business problem space.
 - Seniority alignment should reflect whether the candidate's existing titles/scope match the role's expected level.
 - Evidence strength should reflect whether bullets show clear ownership, scope, and outcomes relevant to the JD.
+- Requirement assessments should be the 6-12 hiring signals that actually matter, not every phrase in the JD.
+- Suggestions should identify truthful resume positioning improvements, not pretend missing qualifications can be fixed by wording.
+
+SCORE CALIBRATION:
+- 85-100: strong fit. Most critical/high requirements have direct evidence; domain and seniority are credible; bullets show relevant outcomes.
+- 70-84: good but incomplete fit. Core role is plausible, but one major requirement or several secondary requirements need stronger evidence.
+- 55-69: partial fit. Transferable background exists, but multiple important requirements are only partial or missing.
+- 35-54: weak/stretch fit. Some adjacent signals exist, but the resume does not map cleanly to the role.
+- 0-34: poor fit. Critical requirements are mostly unsupported.
+
+DIMENSION CALIBRATION:
+- domainAlignment 80+ requires similar business/domain/problem space; 50-70 means transferable but indirect; below 50 means little direct domain evidence.
+- seniorityAlignment 80+ requires matching title/scope/ownership; 50-70 means adjacent level; below 50 means clear seniority mismatch.
+- evidenceStrength 80+ requires specific bullets with ownership, scope, tools, and outcomes; 50-70 means plausible but thin; below 50 means generic or unsupported.
 
 OUTPUT CONTRACT:
 - Return ONLY valid JSON.
 - requirementAssessments should contain 6-12 items maximum.
 - Suggestions must be truthful improvements to presentation or positioning, not fabricated fixes.
 - Keep issue/fix lines compact and actionable.
+- matchedKeywords must include only keywords with credible resume evidence.
+- missingKeywords should include important JD terms that are unsupported or too weakly supported.
 
 Return JSON matching exactly this schema:
 {
@@ -258,6 +278,42 @@ function resumeDataToMatchContext(data: ResumeData) {
     null,
     2
   )
+}
+
+function getSignificantEvidenceTokens(value: string) {
+  return (value.toLowerCase().match(/[a-z][a-z0-9.+#/-]{2,}/g) ?? [])
+    .filter(token => token.length > 3 && !KEYWORD_STOPWORDS.has(token))
+}
+
+function isEvidenceSupportedByResume(evidence: string, sourceContextLower: string) {
+  const compactEvidence = evidence.trim().toLowerCase()
+  if (!compactEvidence) return false
+  if (sourceContextLower.includes(compactEvidence)) return true
+
+  const tokens = getSignificantEvidenceTokens(compactEvidence)
+  if (tokens.length === 0) return false
+  const supportedCount = tokens.filter(token => sourceContextLower.includes(token)).length
+  return supportedCount / tokens.length >= 0.7
+}
+
+function sanitizeRequirementEvidence(
+  requirement: MatchRequirementAssessment,
+  sourceContextLower: string
+): MatchRequirementAssessment {
+  const evidence = requirement.evidence
+    .filter(item => isEvidenceSupportedByResume(item, sourceContextLower))
+    .slice(0, 3)
+
+  if (evidence.length > 0 || requirement.coverage === 'none') {
+    return { ...requirement, evidence }
+  }
+
+  return {
+    ...requirement,
+    coverage: 'none',
+    evidence: [],
+    gapReason: requirement.gapReason || 'The model did not provide resume-supported evidence for this requirement.',
+  }
 }
 
 function normalizeRequirement(raw: Partial<MatchRequirementAssessment> | null | undefined): MatchRequirementAssessment | null {
@@ -570,6 +626,8 @@ export async function buildMatchScoreResult({
   pro: boolean
 }): Promise<ATSResult> {
   const deterministicKeywords = extractRelevantKeywords(jobDescription)
+  const structuredResumeContext = resumeDataToMatchContext(resumeData)
+  const structuredResumeContextLower = structuredResumeContext.toLowerCase()
   const prompt = `JOB DESCRIPTION:
 ---
 ${jobDescription.slice(0, 18000)}
@@ -580,7 +638,7 @@ ${deterministicKeywords.join(', ') || '(none)'}
 
 STRUCTURED RESUME EVIDENCE:
 ---
-${resumeDataToMatchContext(resumeData)}
+${structuredResumeContext}
 ---
 
 Produce an evidence-based match assessment.
@@ -590,7 +648,9 @@ Remember:
 - Partial means adjacent or transferable support only.
 - None means unsupported.
 - Be conservative on seniority and domain fit.
-- Suggestions must stay truthful and practical.`
+- Suggestions must stay truthful and practical.
+- Extract the maximum useful diagnosis from the supplied evidence: strongest fit signals, fixable positioning gaps, and genuine missing requirements.
+- Do not reward a keyword unless the resume shows credible usage or ownership context.`
 
   try {
     console.log(`[MatchScore] Running LLM match evaluation with model=${CLAUDE_PREMIUM}`)
@@ -607,6 +667,7 @@ Remember:
     const requirements = (raw.requirementAssessments ?? [])
       .map(item => normalizeRequirement(item))
       .filter((item): item is MatchRequirementAssessment => Boolean(item))
+      .map(item => sanitizeRequirementEvidence(item, structuredResumeContextLower))
       .slice(0, 12)
 
     if (requirements.length === 0) {
@@ -619,6 +680,10 @@ Remember:
 
     const matchedKeywords = (raw.matchedKeywords ?? [])
       .filter(item => item?.keyword?.trim() && item?.evidence?.trim())
+      .filter(item =>
+        isEvidenceSupportedByResume(item.evidence, structuredResumeContextLower) ||
+        structuredResumeContextLower.includes(item.keyword.trim().toLowerCase())
+      )
       .map(item => ({ keyword: item.keyword.trim(), evidence: item.evidence.trim() }))
       .slice(0, 12)
 

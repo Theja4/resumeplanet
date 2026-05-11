@@ -8,18 +8,25 @@ import {
   applyInsightSuggestionToResumeData,
   hasBreakdownRegression,
   hasUnresolvedPlaceholderText,
-  improvesIntendedCriterion,
   startsWithWeakResumePhrase,
 } from '@/lib/ai-insights'
 import { getEducationDateLabel, getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 
-const INSIGHTS_CACHE_VERSION = 4
+const INSIGHTS_CACHE_VERSION = 7
 const SUGGESTION_MODELS = [
   'deepseek/deepseek-v4-flash',
   'google/gemini-2.5-flash',
 ]
+
+const ATS_SCORER_RUBRIC_GUIDE = `DETERMINISTIC SCORER TARGETS:
+- summary: full credit needs 15-100 words, no more than 4 sentences, and 2+ role/skill terms already present in the resume.
+- exp_verbs: score jumps at 40%, 60%, and 80% of bullets starting with recognized action verbs. Rewrite enough weak openings to cross the next threshold, not just one.
+- exp_metrics: score jumps at 1, 3, 5, and 8 bullets with concrete impact. At least one real numeric metric is needed to exceed the no-metric cap. Never invent numbers; use existing numbers or concrete non-numeric outcomes.
+- skills: full credit needs 8+ real skills and clean grouping when possible. Only add skills already evidenced in the resume context.
+- keywords: score jumps at 20%, 40%, and 60% of listed skills appearing in experience bullets. Weave supported skills into real work evidence; do not keyword-stuff.
+- education/contact gaps require user-provided facts. Do not guess missing fields.`
 
 // ── LLM System Prompt — suggestions only, no scoring ──────────────────────
 
@@ -31,6 +38,8 @@ OPERATING STANDARD:
 - Every rewrite must be paste-ready for a real resume
 - Better means more specific, more credible, easier to skim, and more keyword-aligned without sounding stuffed
 - If the source context does not support a materially stronger rewrite, OMIT that suggestion instead of padding or guessing
+- Extract the maximum truthful improvement available from the weak areas, not just the first easy fix
+- Prefer several small, exact, high-confidence patches over one broad rewrite
 
 WHAT STRONG REWRITES LOOK LIKE:
 1. EXPERIENCE BULLETS
@@ -55,6 +64,7 @@ NON-NEGOTIABLE HONESTY RULES:
 - NEVER invent employers, titles, dates, skills, certifications, projects, metrics, team sizes, budgets, or outcomes
 - NEVER upgrade seniority or rewrite the candidate into a different role
 - NEVER use placeholders, brackets, TBD, dummy numbers, or fill-in-the-blank language
+- NEVER use inferred, implied, likely, or assumed facts. If the source does not explicitly say it, omit it.
 - NEVER output generic filler such as "responsible for", "worked on", "helped with", "various", "multiple", or "etc."
 - NEVER restate a duty with slightly different wording if it is not materially stronger
 
@@ -63,6 +73,28 @@ QUALITY BAR:
 - Each reasoning field must explain the concrete upgrade, not just say "improved ATS"
 - beforeText must be an exact substring from the provided resume context
 - Return fewer suggestions when needed; quality matters more than count
+
+${ATS_SCORER_RUBRIC_GUIDE}
+
+PATCH EXAMPLES:
+Accepted:
+{
+  "criterionId": "exp_verbs",
+  "type": "action-verb",
+  "title": "Replace passive ownership wording",
+  "beforeText": "Worked on customer onboarding process across support and implementation teams.",
+  "afterText": "Streamlined customer onboarding workflow by standardizing handoffs across support and implementation teams.",
+  "sectionHint": "experience",
+  "estimatedPoints": 2,
+  "reasoning": "Starts with a recognized action verb and makes the supported workflow ownership clearer without adding unsupported metrics."
+}
+
+Rejected:
+- beforeText that is not copied exactly from the resume.
+- afterText that adds unsupported metrics, e.g. "reduced onboarding time by 35%" when no 35% result exists.
+- afterText or reasoning that says a fact was inferred, implied, likely, or assumed.
+- keyword stuffing, e.g. appending unrelated tools to a bullet just because they are in the skills list.
+- cosmetic synonym swaps that do not make the line more specific, more credible, or more likely to score higher.
 
 OUTPUT FORMAT:
 Return ONLY valid JSON matching this schema. No markdown fences. No explanation.
@@ -83,10 +115,15 @@ Return ONLY valid JSON matching this schema. No markdown fences. No explanation.
 }
 
 RULES:
-- Return at most one suggestion per weak area provided
+- Return multiple suggestions for the same weak area when the rubric needs several changes to cross a threshold
+- For exp_verbs, rewrite every weak bullet opening that can be improved truthfully
+- For keywords, create several experience-bullet rewrites that weave real listed skills into work context where the bullet already supports them
+- Omit education/contact fixes when the missing fact is not explicitly present in the resume context
 - You may return fewer suggestions than weak areas if some cannot be improved truthfully
-- Order suggestions by estimatedPoints descending
-- Maximum 8 suggestions per scan`
+- Order suggestions in the sequence they should be applied
+- If exp_metrics is weak and no numbers are supported, improve concrete scope, audience, tool usage, or business outcome without inventing a metric
+- A good response should usually include 4-12 suggestions when there are enough truthful source facts
+- Maximum 12 suggestions per scan`
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -156,7 +193,7 @@ function buildSuggestionPrompt(
     }
     if (area.relevantText.length > 0) {
       parts.push(`Text to improve:`)
-      for (const text of area.relevantText.slice(0, 6)) {
+      for (const text of area.relevantText.slice(0, 10)) {
         parts.push(`  "${text}"`)
       }
     }
@@ -228,6 +265,78 @@ function getActionableWeakAreas(weakAreas: WeakArea[], data: ResumeData) {
         return false
     }
   })
+}
+
+function extractNumericTokens(text: string) {
+  return new Set((text.match(/\b\d+(?:[.,]\d+)?%?\b/g) ?? []).map(token => token.toLowerCase()))
+}
+
+function hasUnsupportedNumericClaim(beforeText: string, afterText: string, sourceText: string) {
+  const beforeNumbers = extractNumericTokens(beforeText)
+  const sourceNumbers = extractNumericTokens(sourceText)
+  const afterNumbers = extractNumericTokens(afterText)
+
+  for (const token of afterNumbers) {
+    if (!beforeNumbers.has(token) && !sourceNumbers.has(token)) return true
+  }
+
+  return false
+}
+
+function containsInferenceLanguage(text: string) {
+  return /\b(inferred|implied|assumed|likely|apparently|presumably)\b/i.test(text)
+}
+
+function validateSuggestionsCumulatively(
+  rawSuggestions: Suggestion[],
+  resumeData: ResumeData,
+  scorerResult: ScorerResult
+) {
+  let workingData = resumeData
+  let workingScorer = scorerResult
+  const sourceText = resumeDataToPlainText(resumeData)
+  const accepted: Array<Suggestion & { id: string }> = []
+  const remainingGapByCriterion = new Map(
+    scorerResult.weakAreas.map(area => [area.criterionId, area.gap])
+  )
+
+  rawSuggestions.forEach((suggestion, index) => {
+    if (hasUnresolvedPlaceholderText(suggestion.afterText)) return
+    if (startsWithWeakResumePhrase(suggestion.afterText)) return
+    if (containsInferenceLanguage(`${suggestion.afterText} ${suggestion.reasoning}`)) return
+    if (hasUnsupportedNumericClaim(suggestion.beforeText, suggestion.afterText, sourceText)) return
+
+    const updatedData = applyInsightSuggestionToResumeData(workingData, suggestion)
+    if (updatedData === workingData) return
+
+    const rescored = scoreResume(updatedData)
+    if (rescored.score < workingScorer.score) return
+    if (hasBreakdownRegression(workingScorer, rescored)) return
+
+    const scoreDelta = rescored.score - workingScorer.score
+    const intendedGap = remainingGapByCriterion.get(suggestion.criterionId) ?? 1
+    const modelEstimate = Number.isFinite(suggestion.estimatedPoints)
+      ? Math.max(0, Math.round(suggestion.estimatedPoints))
+      : 0
+    const estimatedPoints = Math.max(
+      scoreDelta,
+      Math.min(Math.max(modelEstimate, 1), Math.max(intendedGap, 1))
+    )
+
+    accepted.push({
+      ...suggestion,
+      estimatedPoints,
+      id: `${suggestion.criterionId}-${suggestion.type}-${index}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, ''),
+    })
+
+    workingData = updatedData
+    workingScorer = rescored
+  })
+
+  return accepted
 }
 
 function generateSummaryFromScorer(result: ScorerResult): string {
@@ -411,34 +520,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         SUGGESTION_MODELS,
         SUGGESTION_SYSTEM,
         userPrompt,
-        3000
+        4500
       )
 
-      suggestions = (llmResult.suggestions ?? [])
-        .map((suggestion, index) => {
-          if (hasUnresolvedPlaceholderText(suggestion.afterText)) return null
-          if (startsWithWeakResumePhrase(suggestion.afterText)) return null
-
-          const updatedData = applyInsightSuggestionToResumeData(resumeData, suggestion)
-          if (updatedData === resumeData) return null
-
-          const rescored = scoreResume(updatedData)
-          const actualDelta = rescored.score - scorerResult.score
-          if (actualDelta <= 0) return null
-          if (hasBreakdownRegression(scorerResult, rescored)) return null
-          if (!improvesIntendedCriterion(scorerResult, rescored, suggestion.criterionId)) return null
-
-          return {
-            ...suggestion,
-            estimatedPoints: actualDelta,
-            id: `${suggestion.criterionId}-${suggestion.type}-${index}`
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, '-')
-              .replace(/^-+|-+$/g, ''),
-          }
-        })
-        .filter((suggestion): suggestion is Suggestion & { id: string } => Boolean(suggestion))
-        .sort((a, b) => b.estimatedPoints - a.estimatedPoints)
+      suggestions = validateSuggestionsCumulatively(
+        llmResult.suggestions ?? [],
+        resumeData,
+        scorerResult
+      )
     } catch (err) {
       console.warn('LLM suggestions failed, returning score only:', err instanceof Error ? err.message : err)
       // Score still works even if suggestions fail

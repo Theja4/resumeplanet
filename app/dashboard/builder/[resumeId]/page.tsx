@@ -42,6 +42,7 @@ import { generateDOCX } from '@/lib/docxGenerator'
 import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
+import { readTailorJobTransfer } from '@/lib/tailorJobTransfer'
 import { scoreResume } from '@/lib/ats-scorer'
 import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
@@ -428,6 +429,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const bulletParam = searchParams.get('bullet')
   const densityParam = searchParams.get('density')
   const downloadParam = searchParams.get('download')
+  const autoOptimizeParam = searchParams.get('autoOptimize') === '1'
+  const tailorJobKeyParam = searchParams.get('tailorJobKey')
+  const autoTailorParam = searchParams.get('autoTailor') === '1'
   const ignoreTemplateQueryOverrides = shouldIgnoreTemplateQueryOverrides(sourceParam)
 
   const { requirePro, blockedFeature, clearBlockedFeature } = useProGate()
@@ -464,6 +468,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   const hasTriggeredAutoPdfDownloadRef = useRef(false)
+  const consumedTailorJobKeyRef = useRef<string | null>(null)
+  const hasTriggeredAutoTailorRef = useRef(false)
   const userId = profile.id
   const history = useUndoHistory()
   const analyticsTemplateId = useMemo(
@@ -540,6 +546,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
     setActiveMode('tailor')
   }, [requestedMode, requirePro])
+
+  useEffect(() => {
+    if (requestedMode !== 'tailor' || !tailorJobKeyParam) return
+    if (consumedTailorJobKeyRef.current === tailorJobKeyParam) return
+
+    consumedTailorJobKeyRef.current = tailorJobKeyParam
+    const transfer = readTailorJobTransfer(tailorJobKeyParam)
+    if (!transfer) return
+
+    setJobDescription(transfer.jobDescription)
+    setTailorIntensity(transfer.intensity)
+    setTailorAnalysis(null)
+    setTailorError(null)
+    hasTriggeredAutoTailorRef.current = false
+  }, [requestedMode, tailorJobKeyParam])
 
   useEffect(() => {
     if (!isDownloadOpen) return
@@ -798,7 +819,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   useEffect(() => {
     async function load() {
       if (resumeId === 'new') {
-        router.replace('/dashboard/builder/draft')
+        const query = searchParams.toString()
+        router.replace(`/dashboard/builder/draft${query ? `?${query}` : ''}`)
         return
       }
 
@@ -892,6 +914,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setActiveMode(mode)
     router.replace(nextUrl, { scroll: false })
   }, [pathname, router, searchParams])
+
+  const clearAutoOptimizeParam = useCallback(() => {
+    if (!autoOptimizeParam) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('autoOptimize')
+
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+  }, [autoOptimizeParam, pathname, router, searchParams])
+
+  const clearAutoTailorParams = useCallback(() => {
+    if (!autoTailorParam && !tailorJobKeyParam) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('autoTailor')
+    params.delete('tailorJobKey')
+
+    const nextQuery = params.toString()
+    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false })
+  }, [autoTailorParam, pathname, router, searchParams, tailorJobKeyParam])
 
   const saveLockRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -1417,6 +1460,18 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     () => resumeData ? getVisibleResumeData(resumeData, visibility) : null,
     [resumeData, visibility]
   )
+
+  useEffect(() => {
+    if (!autoTailorParam || hasTriggeredAutoTailorRef.current) return
+    if (activeMode !== 'tailor' || isLoading || isTailoring || !visibleData) return
+    if (countWords(jobDescription) < 20) return
+
+    hasTriggeredAutoTailorRef.current = true
+    void handleAnalyse()
+    clearAutoTailorParams()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTailorParam, activeMode, isLoading, isTailoring, visibleData, jobDescription])
+
   const orderedSections = useMemo(() => getOrderedSections(visibility), [visibility])
   const orderedSidebarSections = useMemo(() => getOrderedSidebarSections(visibility), [visibility])
 
@@ -2207,6 +2262,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     onStartTailoring={handleTailorClick}
                     resumeId={resumeId}
                     isPro={isPro}
+                    autoStartOptimize={autoOptimizeParam && activeMode === 'builder' && !needsOverflowTrim}
+                    onAutoStartOptimizeConsumed={clearAutoOptimizeParam}
                   />
                 )
               )}

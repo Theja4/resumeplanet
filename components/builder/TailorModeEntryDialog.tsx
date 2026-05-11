@@ -57,13 +57,13 @@ export default function TailorModeEntryDialog({ resumes }: TailorModeEntryDialog
             <DialogHeader className="max-w-2xl pr-12">
               <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
                 <Sparkles size={14} strokeWidth={2.2} />
-                Tailor Mode
+                Tailor Resume
               </div>
               <DialogTitle className="text-3xl font-black tracking-tight text-on-background sm:text-4xl">
-                Pick a resume before you tailor.
+                Pick a resume to tailor.
               </DialogTitle>
               <DialogDescription className="text-sm leading-7 text-on-surface-variant sm:text-base">
-                Upload a new resume, continue from one you already saved, or create a fresh draft. Once you choose a resume, Rezoomed opens the builder directly in the tailor tab.
+                Upload a new resume, continue from one you already saved, or create a fresh draft. Once you choose a resume, Rezoomed opens the builder directly in Tailor Resume.
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -75,7 +75,7 @@ export default function TailorModeEntryDialog({ resumes }: TailorModeEntryDialog
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Option 1</p>
                   <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">Upload a resume</h2>
                   <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                    Start from an existing PDF and jump straight into Tailor Mode after parsing completes.
+                    Start from an existing PDF and jump straight into Tailor Resume after parsing completes.
                   </p>
                 </div>
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-container/60 text-on-primary-container">
@@ -98,7 +98,7 @@ export default function TailorModeEntryDialog({ resumes }: TailorModeEntryDialog
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Option 2</p>
                     <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">Create a new draft</h2>
                     <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                      Open a blank resume and land in the tailor tab immediately when you are ready to paste a job description.
+                      Open a blank resume and land in Tailor Resume when you are ready to paste a job description.
                     </p>
                   </div>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-container/60 text-on-primary-container">

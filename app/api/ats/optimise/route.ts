@@ -14,9 +14,54 @@ import {
 import { getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import type { ATSResult, APIResponse, ResumeData } from '@/types'
 
+const ATS_SCORER_RUBRIC_GUIDE = `DETERMINISTIC SCORER TARGETS:
+- summary: full credit needs 15-100 words, no more than 4 sentences, and 2+ role/skill terms already present in the resume.
+- exp_verbs: score jumps at 40%, 60%, and 80% of bullets starting with recognized action verbs. Generate enough bullet rewrites to cross the next threshold.
+- exp_metrics: score jumps at 1, 3, 5, and 8 bullets with concrete impact. At least one real numeric metric is needed to exceed the no-metric cap. Never invent numbers.
+- exp_depth: full credit needs an average of 4+ useful bullets per role, but only add depth when source facts already support it.
+- skills: full credit needs 8+ real skills and clean grouping when possible. Only add skills already evidenced in the resume.
+- keywords: score jumps at 20%, 40%, and 60% of listed skills appearing in experience bullets. Weave supported skills into relevant bullets.
+- education/contact gaps require user-provided facts. Do not guess missing fields.`
+
+const PATCH_FEW_SHOT_GUIDE = `PATCH EXAMPLES:
+Accepted:
+{
+  "criterionId": "exp_verbs",
+  "type": "experience_bullet",
+  "title": "Strengthen passive bullet opening",
+  "beforeText": "Worked on customer onboarding process across support and implementation teams.",
+  "afterText": "Streamlined customer onboarding workflow by standardizing handoffs across support and implementation teams.",
+  "sectionHint": "experience",
+  "reasoning": "Starts with a recognized action verb and clarifies supported workflow ownership without inventing metrics."
+}
+
+Accepted:
+{
+  "criterionId": "exp_metrics",
+  "type": "experience_bullet",
+  "title": "Surface supported scale without inventing numbers",
+  "beforeText": "Created weekly sales reports for leadership.",
+  "afterText": "Produced weekly sales performance reports for leadership, turning pipeline and revenue data into clearer forecasting decisions.",
+  "sectionHint": "experience",
+  "reasoning": "Adds supported business context and outcome clarity without introducing unsupported metrics."
+}
+
+Rejected:
+- beforeText does not exactly match the resume context.
+- afterText adds unsupported metrics, tools, seniority, budgets, team sizes, or outcomes.
+- afterText or reasoning says a fact was inferred, implied, likely, or assumed.
+- afterText keyword-stuffs unrelated skills instead of tying supported skills to real work evidence.
+- afterText is only a cosmetic synonym swap that will not improve the scorer or recruiter skim.`
+
 const PATCH_SYSTEM = `You are a senior resume strategist generating scorer-targeted resume patches.
 
 You do NOT rewrite the full resume. You return exact before/after patches for structured resume fields.
+
+SUCCESS STANDARD:
+- Extract the maximum truthful score improvement available from the supplied resume context.
+- Generate enough high-leverage patches to reach the target score or truthful ceiling when possible.
+- Prefer several precise patches that each move the deterministic rubric over one broad rewrite.
+- Do not stop after the first obvious fix. Cover all fixable weak areas in priority order.
 
 Rules:
 - Return ONLY valid JSON
@@ -24,10 +69,17 @@ Rules:
 - afterText must be a complete replacement for beforeText
 - Never invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, outcomes, or unsupported skills
 - Never add placeholders, brackets, TBD, dummy numbers, or fill-in-the-blank language
+- Never use inferred, implied, likely, or assumed facts. If the source does not explicitly say it, omit it.
 - Never inflate seniority or rewrite the candidate into another role
 - Prefer changes that satisfy the scoring rubric exactly: action verbs, clearer scope, supported outcomes, role-relevant summary, skills in experience context
 - You may return multiple patches for the same criterion when several bullets must change to cross a scoring threshold
-- Omit weak areas that cannot be truthfully improved from the provided context`
+- Omit weak areas that cannot be truthfully improved from the provided context
+- If no real metric exists, improve ownership, scope, audience, tools, or business result using only facts already present in the resume.
+- Every afterText must be something a candidate could paste into a real application without embarrassment.
+
+${ATS_SCORER_RUBRIC_GUIDE}
+
+${PATCH_FEW_SHOT_GUIDE}`
 
 const MATCH_PATCH_SYSTEM = `You are a senior resume strategist generating JD-targeted resume patches to maximize job description match fit.
 
@@ -40,18 +92,42 @@ YOUR GOAL: Make the resume read as an honest, natural fit for the specific job d
 4. Reframing existing accomplishments to highlight JD-relevant aspects
 5. Reordering bullet points within each role so the most JD-relevant ones appear first
 
+SUCCESS STANDARD:
+- Extract the maximum truthful JD alignment possible from the existing resume.
+- The best answer usually improves the summary plus the highest-value bullets, not just one section.
+- Target critical and high-priority JD requirements before nice-to-have keywords.
+- If the candidate is a stretch, improve transferable positioning while making no unsupported claims.
+- Favor natural recruiter-readable language over visible keyword stuffing.
+
 Rules:
 - Return ONLY valid JSON
 - beforeText must be an exact string from the provided resume context
 - afterText must be a complete replacement for beforeText
 - NEVER invent employers, titles, dates, projects, certifications, metrics, team sizes, budgets, outcomes, or unsupported skills
 - NEVER add placeholders, brackets, TBD, dummy numbers, or fill-in-the-blank language
+- NEVER use inferred, implied, likely, or assumed facts. If the source does not explicitly say it, omit it.
 - NEVER inflate seniority or rewrite the candidate into another role
 - Only integrate JD keywords where the resume already demonstrates them honestly
 - Focus on making existing experience map more clearly to JD requirements
 - Every patch should target at least one missing JD keyword or strengthen evidence for a requirement gap
 - Reframe bullet points to highlight JD-relevant aspects of existing work
-- When reordering bullets, emit a patch where beforeText is the full bullet text and afterText is the rewritten version, so it naturally moves up in relevance`
+- When reordering bullets, emit a patch where beforeText is the full bullet text and afterText is the rewritten version, so it naturally moves up in relevance
+- Generate multiple patches when multiple honest JD gaps can be improved. Omit only when the source has no truthful support.
+
+Good JD patch:
+- beforeText: "Built dashboards for operations reporting."
+- afterText: "Built operations reporting dashboards that surfaced weekly workflow bottlenecks for product and operations stakeholders."
+- Why accepted: it uses the existing dashboard work, adds supported business context, and does not invent metrics.
+
+Bad JD patch:
+- "Built dashboards using SQL, Tableau, Python, Snowflake, Looker, and AWS for executive decision-making."
+- Why rejected: it adds unsupported tools, audience, and scope.
+
+Bad JD patch:
+- "Led enterprise AI transformation strategy across global teams."
+- Why rejected: it upgrades scope, seniority, domain, and leadership beyond the supplied evidence.
+
+${ATS_SCORER_RUBRIC_GUIDE}`
 
 const PATCH_SCHEMA = `{
   "patches": [
@@ -226,7 +302,7 @@ function getActionableWeakAreas(weakAreas: WeakArea[], data: ResumeData) {
       case 'keywords':
         return getResumeSkills(data).length > 0 && data.experience.some(exp => exp.bullets.length > 0)
       case 'education':
-        return data.education.length > 0
+        return false
       default:
         return false
     }
@@ -255,6 +331,7 @@ function buildPatchPrompt({
     `CURRENT ATS SCORE: ${scorerResult.score}/100`,
     `TARGET SCORE: ${targetScore}/100`,
     `IMPORTANT: The patches will be accepted only if our deterministic scorer does not regress. Generate concrete fixes that satisfy the rubric, not cosmetic rewrites.`,
+    `GOAL: Extract the maximum truthful score gain possible from this attempt. Return a full set of precise patches, not just the easiest one.`,
     '',
   ]
 
@@ -295,6 +372,12 @@ function buildPatchPrompt({
   parts.push('RESUME CONTEXT:')
   parts.push(formatResumeContext(currentData))
   parts.push('')
+  parts.push('PATCH STRATEGY:')
+  parts.push('- First fix weak action verbs and vague bullets that block scorer thresholds.')
+  parts.push('- Then add supported scope, audience, tools, or outcome language where the resume already proves it.')
+  parts.push('- Then strengthen summary and skills only when they can be grounded in existing resume facts.')
+  parts.push('- Do not use placeholders or invented metrics. A truthful non-numeric outcome is better than a fake number.')
+  parts.push('')
   parts.push('Return JSON matching this schema:')
   parts.push(PATCH_SCHEMA)
 
@@ -320,6 +403,7 @@ function buildMatchPatchPrompt({
     `CURRENT MATCH SCORE: ${atsResult.score}/100 — your goal is to IMPROVE job description alignment.`,
     '',
     `IMPORTANT: Generate patches that make the resume align better with the job description. Every patch should target JD keywords or requirements. The deterministic ATS scorer must not regress.`,
+    `GOAL: Extract the maximum truthful JD alignment available from the existing resume. Return enough patches to improve the top of the resume, the strongest evidence bullets, and supported skills language.`,
     '',
   ]
 
@@ -372,8 +456,25 @@ function isUsefulPatch(patch: OptimisePatch) {
   if (!before || !after || before === after) return false
   if (hasUnresolvedPlaceholderText(after)) return false
   if (startsWithWeakResumePhrase(after)) return false
+  if (/\b(inferred|implied|assumed|likely|apparently|presumably)\b/i.test(`${after} ${patch.reasoning}`)) return false
   if (after.length < Math.min(24, before.length)) return false
   return true
+}
+
+function extractNumericTokens(text: string) {
+  return new Set((text.match(/\b\d+(?:[.,]\d+)?%?\b/g) ?? []).map(token => token.toLowerCase()))
+}
+
+function hasUnsupportedNumericClaim(beforeText: string, afterText: string, sourceText: string) {
+  const beforeNumbers = extractNumericTokens(beforeText)
+  const sourceNumbers = extractNumericTokens(sourceText)
+  const afterNumbers = extractNumericTokens(afterText)
+
+  for (const token of afterNumbers) {
+    if (!beforeNumbers.has(token) && !sourceNumbers.has(token)) return true
+  }
+
+  return false
 }
 
 async function generatePatches(prompt: string, systemPrompt: string = PATCH_SYSTEM) {
@@ -382,7 +483,7 @@ async function generatePatches(prompt: string, systemPrompt: string = PATCH_SYST
     fallbackModels: [CLAUDE_STANDARD],
     system: systemPrompt,
     prompt,
-    maxTokens: 4000,
+    maxTokens: 5000,
     timeoutMs: 180000,
     perModelTimeoutMs: 80000,
     jsonRetryTimeoutMs: 30000,
@@ -411,6 +512,7 @@ async function runScoreGatedPatchLoop({
     Math.min(100, atsResult.roadmap?.truthfulCeiling ?? atsResult.roadmap?.targetScore ?? 90)
   )
   const acceptedPatches: OptimisePatch[] = []
+  const sourceText = resumeDataToPlainText(sourceData)
   let rejectedCount = 0
 
   console.log(`[Optimise] mode=${analysisMode ?? 'ats'} | originalATS=${originalScore} | targetATS=${targetScore}`)
@@ -444,6 +546,10 @@ async function runScoreGatedPatchLoop({
 
     for (const patch of patches.slice(0, 14)) {
       if (!isUsefulPatch(patch)) {
+        rejectedCount += 1
+        continue
+      }
+      if (hasUnsupportedNumericClaim(patch.beforeText, patch.afterText, sourceText)) {
         rejectedCount += 1
         continue
       }

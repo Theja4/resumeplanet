@@ -114,7 +114,8 @@
       "Bash(pkill -f \"next build\")",
       "WebFetch(domain:polar.sh)",
       "WebFetch(domain:docs.creem.io)",
-      "WebFetch(domain:docs.dodopayments.com)"
+      "WebFetch(domain:docs.dodopayments.com)",
+      "Bash(./node_modules/.bin/eslint:*)"
     ]
   }
 }
