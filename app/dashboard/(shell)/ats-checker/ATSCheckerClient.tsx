@@ -15,6 +15,7 @@ import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitle
 import { getResumeSkills, resumeDataToPlainText } from '@/lib/resume-data'
 import { scoreResume } from '@/lib/ats-scorer'
 import AdBanner from '@/components/shared/AdBanner'
+import OneClickOptimizeModal, { type ModalPromoDisplay } from '@/components/shared/OneClickOptimizeModal'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
@@ -166,6 +167,7 @@ interface ATSCheckerClientProps {
   publicMode?: boolean
   mode?: AnalysisMode
   showIntro?: boolean
+  promoDisplay?: ModalPromoDisplay | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1076,6 +1078,7 @@ export default function ATSCheckerClient({
   publicMode = false,
   mode = 'ats',
   showIntro = true,
+  promoDisplay,
 }: ATSCheckerClientProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -1156,6 +1159,7 @@ export default function ATSCheckerClient({
   const [autoRescanResult] = useState<ScanResponse | null>(null)
   const [autoRescanError] = useState<string | null>(null)
   const [isMatchTailorChooserOpen, setIsMatchTailorChooserOpen] = useState(false)
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false)
   const [matchTailorCountdown, setMatchTailorCountdown] = useState(MATCH_TAILOR_CHOICE_SECONDS)
   const isOptimiseCtaBusy = isPreparingBuilder
 
@@ -1650,7 +1654,7 @@ export default function ATSCheckerClient({
         currentScore: scanResult.score,
       })
     }
-    router.push('/dashboard/pricing')
+    setShowOptimizeModal(true)
   }
 
   async function handleTemplateCustomize(
@@ -1990,6 +1994,13 @@ export default function ATSCheckerClient({
 
   return (
     <div className={publicMode ? "space-y-6" : "max-w-7xl mx-auto space-y-8"}>
+      {showOptimizeModal && (
+        <OneClickOptimizeModal
+          onClose={() => setShowOptimizeModal(false)}
+          promoDisplay={promoDisplay}
+          currentScore={scanResult?.score ?? null}
+        />
+      )}
       {showIntro && (
         <DashboardPageIntro
           kicker={
