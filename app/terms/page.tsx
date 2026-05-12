@@ -32,7 +32,7 @@ const termsSections = [
     points: [
       'Paid plans, billing, taxes, renewals, and checkout are handled through Paddle and related payment providers.',
       'If you subscribe to a paid plan, you authorize recurring charges until you cancel, subject to the billing terms presented during checkout.',
-      'Refund requests must be submitted within 14 days of the transaction date as described in the Refund Policy.',
+      'All paid purchases are final and non-refundable except where required by law. Technical or billing issue disputes must be sent to support@rezoomed.com as described in the Refund Policy.',
       'Access to paid features may be suspended or changed if payment fails, a charge is reversed, or a subscription is cancelled or expires.',
     ],
   },

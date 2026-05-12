@@ -329,7 +329,6 @@ export const FREE_PLAN = {
     'Up to 3 saved resumes',
     'Resume Builder with PDF export',
     'Basic ATS analysis',
-    'PDF metadata enhancer',
   ],
 
   lockedFeatures: [
@@ -339,8 +338,6 @@ export const FREE_PLAN = {
     'AI - insights (Claude Opus)',
     'Tailor Mode rewrites',
     'Editable DOCX exports',
-    'Priority resume workspace',
-    'Ad-free workspace',
   ],
 }
 
@@ -419,8 +416,7 @@ export const PRO_PLAN = {
     'Tailor Mode rewrites',
     'Unlimited saved resumes',
     'PDF + editable DOCX exports',
-    'Priority resume workspace',
-    'Ad-free workspace',
+    'PDF metadata enhancer',
   ],
 
   get visiblePrices() {

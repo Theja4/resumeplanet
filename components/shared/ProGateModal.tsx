@@ -115,9 +115,6 @@ export default function ProGateModal({ feature, onClose }: ProGateModalProps) {
             </button>
           </div>
 
-          <p className="mt-4 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-primary/70">
-            Protected by our 14-day refund policy
-          </p>
         </div>
       </div>
     </div>

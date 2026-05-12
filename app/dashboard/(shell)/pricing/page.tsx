@@ -135,20 +135,33 @@ export default async function PricingPage({
 
         <DashboardSurface variant="default" className="space-y-4 p-4 sm:p-5">
           <div className="space-y-2.5">
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-              Plans & Billing
-            </span>
-            <div className="space-y-1.5">
-              <h1 className="max-w-4xl text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem] xl:max-w-none xl:whitespace-nowrap">
-                {isPro ? 'Billing, simplified.' : 'Choose the plan that fits your workflow.'}
-              </h1>
-              <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
-                Compare the free tier with the live monthly and annual Pro plans in one cleaner view.
-              </p>
-            </div>
+            {isPro ? (
+              <>
+                <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
+                  Plans & Billing
+                </span>
+                <div className="space-y-1.5">
+                  <h1 className="max-w-4xl text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem]">
+                    Billing, simplified.
+                  </h1>
+                  <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
+                    Compare the free tier with the live monthly and annual Pro plans in one cleaner view.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <h1 className="whitespace-nowrap text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem]">
+                  Stop getting filtered. Start getting hired.
+                </h1>
+                <p className="whitespace-nowrap text-[15px] text-on-surface-variant">
+                  90%+ of resumes are auto-rejected before a human sees them. Applicants using AI-optimized resumes are getting the interviews you&apos;re missing.
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="border-t border-black/6 pt-4">
+          <div className={isPro ? 'border-t border-black/6 pt-4' : 'pt-2'}>
             <PricingWorkspaceClient
               autoFillPromo={promoCode}
               availablePromo={pricingPromo}

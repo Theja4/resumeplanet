@@ -70,6 +70,10 @@ export default function PricingCard({
   delay = '0ms',
   pricingCountryCode,
 }: Props) {
+  const headerSectionClassName = compact ? 'mb-4' : 'mb-5'
+  const priceSectionClassName = compact ? 'mb-4 min-h-[5.75rem]' : 'mb-5 min-h-[7rem]'
+  const actionSectionClassName = compact ? 'mb-5' : 'mb-6'
+
   if (variant === 'free') {
     const visibleFreeFeatures = FREE_PLAN.features
     const resolvedFreeCurrencySymbol =
@@ -87,7 +91,7 @@ export default function PricingCard({
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.22),transparent_55%)]" />
         <div className="relative flex h-full flex-col">
-          <div className={cn('flex items-start justify-between gap-4', compact ? 'mb-5' : 'mb-6')}>
+          <div className={cn('flex items-start justify-between gap-4', headerSectionClassName)}>
             <div className="space-y-2.5">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500">
                 Starter access
@@ -106,27 +110,29 @@ export default function PricingCard({
             </span>
           </div>
 
-          <div className={cn('border-b border-black/6', compact ? 'mb-5 pb-5' : 'mb-6 pb-6')}>
+          <div className={cn('border-b border-black/6', priceSectionClassName, compact ? 'pb-4' : 'pb-5')}>
             <div className="flex items-end gap-2">
-              <span className={cn('font-black tracking-tight text-slate-900', compact ? 'text-[2.9rem]' : 'text-5xl')}>
+              <span className={cn('font-black tracking-tight text-slate-900', compact ? 'text-[2.5rem]' : 'text-5xl')}>
                 {resolvedFreeCurrencySymbol}0
               </span>
               <span className="pb-2 text-sm text-slate-500">/month</span>
             </div>
-            <p className={cn('mt-2 text-slate-500', compact ? 'text-[13px]' : 'text-sm')}>
+            <p className={cn('mt-1.5 text-slate-500', compact ? 'text-[13px]' : 'text-sm')}>
               No credit card required to get started.
             </p>
           </div>
 
-          {isCurrentPlan ? (
-            <div className={cn('rounded-[1.15rem] border border-primary/10 bg-primary-container/30 px-4 py-3 text-center text-sm font-semibold text-on-primary-container', compact ? 'mb-5' : 'mb-6')}>
-              Current plan
-            </div>
-          ) : (
-            <div className={cn('rounded-[1.15rem] border border-black/6 bg-black/[0.02] px-4 py-3 text-center text-sm text-slate-500', compact ? 'mb-5' : 'mb-6')}>
-              Start here, then upgrade when you need deeper AI analysis.
-            </div>
-          )}
+          <div className={cn('flex items-start', actionSectionClassName, compact ? '-mt-5' : '-mt-6')}>
+            {isCurrentPlan ? (
+              <div className="w-full rounded-[1.15rem] border border-primary/10 bg-primary-container/30 px-4 py-3 text-center text-sm font-semibold text-on-primary-container">
+                Current plan
+              </div>
+            ) : (
+              <div className="w-full rounded-[1.15rem] border border-black/6 bg-black/[0.02] px-4 py-3 text-center text-sm text-slate-500">
+                Start here, then upgrade when you need deeper AI analysis.
+              </div>
+            )}
+          </div>
 
           <div className={cn('flex flex-1 flex-col', compact ? 'gap-4' : 'gap-5')}>
             <div>
@@ -165,7 +171,7 @@ export default function PricingCard({
         ? {
             kicker: 'Best value',
             title: 'Annual',
-            description: 'Rezoomed Pro billed yearly for the lowest effective rate.',
+            description: null,
             chip: 'Annual',
             ctaLabel: 'Choose annual',
           }
@@ -176,9 +182,10 @@ export default function PricingCard({
             chip: 'Monthly',
             ctaLabel: 'Choose monthly',
           }
+    const isAnnualPlan = resolvedPriceOption.id === 'annual'
 
     return (
-      <div className="relative opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
+      <div className="relative h-full opacity-0 [animation:card-enter_0.5s_ease_forwards]" style={{ animationDelay: delay }}>
         {promoBadge && (
           <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
             <span className="whitespace-nowrap rounded-full bg-amber-300 px-3 py-1 text-xs font-bold text-amber-950 shadow-[0_12px_24px_rgba(245,158,11,0.24)]">
@@ -199,7 +206,7 @@ export default function PricingCard({
           </div>
 
           <div className="relative flex h-full flex-col">
-            <div className={cn('flex items-start justify-between gap-4', compact ? 'mb-5' : 'mb-6')}>
+            <div className={cn('flex items-start justify-between gap-4', headerSectionClassName)}>
               <div className="space-y-2.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-100/80">
                   {planCopy.kicker}
@@ -208,9 +215,11 @@ export default function PricingCard({
                   <h3 className={cn('font-black tracking-tight text-white', compact ? 'text-[1.65rem]' : 'text-[1.9rem]')}>
                     {planCopy.title}
                   </h3>
-                  <p className={cn('mt-2 text-emerald-100/78', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
-                    {planCopy.description}
-                  </p>
+                  {planCopy.description ? (
+                    <p className={cn('mt-2 text-emerald-100/78', compact ? 'text-[13px] leading-5' : 'text-sm leading-6')}>
+                      {planCopy.description}
+                    </p>
+                  ) : null}
                 </div>
               </div>
               <span className="rounded-full border border-white/15 bg-white/14 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
@@ -218,18 +227,34 @@ export default function PricingCard({
               </span>
             </div>
 
-            <div className={cn('rounded-[1.5rem] border border-white/12 bg-white/[0.07] backdrop-blur-xl', compact ? 'mb-5 p-4' : 'mb-6 p-5')}>
+            <div className={cn('rounded-[1.5rem] border border-white/12 bg-white/[0.07] backdrop-blur-xl', priceSectionClassName, compact ? 'p-4' : 'p-5')}>
               <PriceDisplay
                 display={formatted}
                 size={compact ? 'md' : 'lg'}
                 showInterval={true}
-                showPerMonth={resolvedPriceOption.id === 'annual'}
-                showSavings={true}
+                showPerMonth={false}
+                showSavings={false}
                 className="text-white [&_span]:text-white [&_p]:text-emerald-100/78"
               />
+              {isAnnualPlan && formatted.perMonth ? (
+                <>
+                  <p className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1 text-sm font-bold text-emerald-100">
+                    <span className="text-base text-white">{formatted.perMonth}</span> billed annually
+                  </p>
+                  {formatted.savingsNote ? (
+                    <p className={cn('mt-1 truncate text-emerald-100/78', compact ? 'text-[13px]' : 'text-sm')}>
+                      {formatted.savingsNote}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className={cn('mt-1.5 truncate text-emerald-100/78', compact ? 'text-[13px]' : 'text-sm')}>
+                  Billed monthly. Cancel anytime.
+                </p>
+              )}
             </div>
 
-            <div className={compact ? 'mb-5' : 'mb-6'}>
+            <div className={cn('flex items-start', actionSectionClassName, isAnnualPlan && (compact ? 'mt-4' : 'mt-5'))}>
               {isCurrentPlan ? (
                 <div className="w-full rounded-[1.15rem] border border-white/18 bg-white/8 px-4 py-3 text-center text-sm font-semibold text-emerald-100">
                   Current plan

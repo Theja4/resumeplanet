@@ -53,8 +53,8 @@ export default function PriceDisplay({
 
       {/* Per month equivalent (for annual plans) */}
       {showPerMonth && display.perMonth && (
-        <p className="text-sm text-gray-500 mt-0.5">
-          {display.perMonth} billed annually
+        <p className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-400/20 px-3 py-1 text-sm font-bold text-emerald-300">
+          <span className="text-base">{display.perMonth}</span> billed annually
         </p>
       )}
 

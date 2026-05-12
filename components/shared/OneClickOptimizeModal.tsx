@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Lock, X, Zap, ArrowRight, CheckCircle2, Users, Clock, TrendingDown } from 'lucide-react'
+import { Lock, X, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
 export interface ModalPromoDisplay {
@@ -254,7 +254,7 @@ export default function OneClickOptimizeModal({
               onClick={onClose}
               className="w-full rounded-full border border-zinc-200 bg-zinc-100 py-3 text-sm font-semibold text-red-500 transition-colors hover:bg-zinc-200 hover:text-red-600"
             >
-              I'm not ready to get hired
+              I&apos;m not ready to get hired
             </button>
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function OneClickOptimizeModal({
               <Zap size={22} className="text-white" />
             </div>
             <h2 className="text-xl font-black text-white">
-              You're {scoreGain} points from the interview zone
+              You&apos;re {scoreGain} points from the interview zone
             </h2>
             <p className="mt-1.5 text-sm text-white/75">
               CAREER50 auto-applied — <span className="font-bold text-yellow-300">50% off</span> today
@@ -382,7 +382,7 @@ export default function OneClickOptimizeModal({
 
             {/* ── Speed / trust row ── */}
             <p className="text-center text-[11px] text-on-surface-variant">
-              Instant checkout · 14-day refund*
+              Instant checkout · Cancel anytime
             </p>
 
             {/* ── Dismiss (personalized guilt) ── */}
@@ -390,7 +390,7 @@ export default function OneClickOptimizeModal({
               onClick={onClose}
               className="w-full rounded-full border border-zinc-200 bg-zinc-100 py-3 text-sm font-semibold text-red-500 transition-colors hover:bg-zinc-200 hover:text-red-600"
             >
-              I'm not ready to get hired
+              I&apos;m not ready to get hired
             </button>
           </div>
         </div>

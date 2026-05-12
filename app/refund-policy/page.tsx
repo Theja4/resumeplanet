@@ -2,23 +2,21 @@ import Link from 'next/link'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 
-const REFUND_WINDOW_DAYS = 14
-
 const policySections = [
   {
-    title: 'Refund window',
+    title: 'No refunds',
     points: [
-      `Customers may request a refund within ${REFUND_WINDOW_DAYS} days of the transaction date.`,
-      `Requests received after ${REFUND_WINDOW_DAYS} days are not eligible for a refund.`,
-      'Approved refunds are returned to the original payment method through Polar.',
+      'All purchases are final and non-refundable, including subscription charges, renewals, discounted purchases, and paid software access.',
+      'We do not provide refunds for unused time, accidental purchases, change of mind, failure to cancel before renewal, or dissatisfaction after access has been granted.',
+      'Canceling a subscription prevents future renewals but does not refund prior charges or the current billing period.',
     ],
   },
   {
-    title: 'Subscriptions and paid software access',
+    title: 'Technical or billing issues',
     points: [
-      `The ${REFUND_WINDOW_DAYS}-day refund window applies to subscription charges and paid software purchases sold on rezoomed.com.`,
-      'Canceling a subscription prevents future renewals but does not by itself issue a refund for prior charges.',
-      'Billing and refund processing are handled by Polar.',
+      'If you believe a payment, subscription, or product-access issue was caused by a technical error, contact support@rezoomed.com before opening a chargeback or payment-provider dispute.',
+      'Include your account email, billed amount, transaction date, payment provider, and a short description of the issue so our team can investigate.',
+      'Contacting support does not guarantee a refund. Any remedy for a verified technical or billing issue is handled at Rezoomed\'s discretion, subject to applicable law.',
     ],
   },
 ]
@@ -42,24 +40,24 @@ export default function RefundPolicyPage() {
               Refund policy
             </h1>
             <p className="mt-5 text-base leading-8 text-zinc-600 sm:text-lg">
-              Rezoomed follows a fixed, transparent refund window for software purchases made on rezoomed.com.
+              Rezoomed follows a strict no-refunds policy for software purchases made on rezoomed.com.
             </p>
-            <p className="mt-4 text-sm font-medium text-zinc-500">Last updated: April 17, 2026</p>
+            <p className="mt-4 text-sm font-medium text-zinc-500">Last updated: May 13, 2026</p>
           </section>
 
           <section className="rounded-[2rem] border border-white/70 bg-white/90 p-8 shadow-[0_20px_70px_rgba(15,23,42,0.06)]">
-            <h2 className="text-2xl font-black tracking-tight">How to request a refund</h2>
+            <h2 className="text-2xl font-black tracking-tight">How to dispute a technical issue</h2>
             <div className="mt-5 space-y-4 text-sm leading-7 text-zinc-600">
               <p>
-                Send your request to{' '}
+                If you believe a charge or access issue was caused by a technical problem, contact{' '}
                 <a className="font-semibold text-[#026d32]" href="mailto:support@rezoomed.com">
                   support@rezoomed.com
                 </a>{' '}
                 from the email tied to your account.
               </p>
               <p>
-                Include your account email, the billed amount, and the transaction date. Refund requests
-                must be submitted within {REFUND_WINDOW_DAYS} days.
+                Include your account email, the billed amount, transaction date, payment provider,
+                and any screenshots or details that help us investigate the issue.
               </p>
             </div>
           </section>

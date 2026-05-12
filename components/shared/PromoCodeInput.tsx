@@ -70,8 +70,30 @@ export default function PromoCodeInput({ onApply, autoFillCode, compact = false 
     onApply({ valid: false })
   }
 
+  if (result?.valid === true) {
+    return (
+      <div className={compact
+        ? 'flex h-11 items-center gap-2 rounded-full border border-primary/15 bg-primary-container/30 px-3 text-sm text-primary shadow-[0_10px_24px_rgba(2,109,50,0.08)]'
+        : 'flex h-12 items-center gap-2 rounded-[1rem] border border-primary/15 bg-primary-container/30 px-4 text-sm text-primary shadow-[0_12px_28px_rgba(25,28,29,0.04)]'
+      }>
+        <CheckCircle size={compact ? 17 : 18} className="shrink-0" />
+        <span className="min-w-0 flex-1 truncate font-medium">
+          <span className="font-mono uppercase tracking-[0.12em]">{result.discountCode ?? code}</span>
+          {result.displayLabel ? <span className="ml-2 text-primary/85">{result.displayLabel}</span> : null}
+        </span>
+        <button
+          type="button"
+          onClick={clearPromo}
+          className="shrink-0 text-xs font-semibold text-slate-500 transition-colors hover:text-slate-700"
+        >
+          Remove
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className={compact ? 'rounded-[1.35rem] border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(244,248,246,0.9))] p-2 shadow-[0_16px_38px_rgba(25,28,29,0.06)]' : ''}>
+    <div className={compact ? 'rounded-full border border-white/80 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(244,248,246,0.9))] p-1 shadow-[0_10px_24px_rgba(25,28,29,0.05)]' : ''}>
       <div className="flex gap-2">
         <input
           value={code}
@@ -81,39 +103,22 @@ export default function PromoCodeInput({ onApply, autoFillCode, compact = false 
           }}
           onKeyDown={e => e.key === 'Enter' && handleApply()}
           placeholder="Promo code"
-          disabled={result?.valid === true}
           className={compact
-            ? 'flex-1 rounded-[1.05rem] border border-black/6 bg-white/88 px-4 py-3 text-sm font-mono uppercase tracking-[0.18em] text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-500'
+            ? 'h-10 min-w-0 flex-1 rounded-full border border-black/6 bg-white/88 px-4 text-sm font-mono uppercase tracking-[0.18em] text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20'
             : 'flex-1 rounded-[1rem] border border-black/8 bg-white px-4 py-3 text-sm font-mono uppercase tracking-wider text-slate-700 shadow-[0_12px_28px_rgba(25,28,29,0.04)] focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-gray-50 disabled:text-gray-500'
           }
         />
-        {result?.valid !== true && (
-          <button
-            onClick={() => handleApply()}
-            disabled={!code.trim() || isValidating}
-            className={compact
-              ? 'min-w-[6.75rem] rounded-[1.05rem] bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-45'
-              : 'rounded-[1rem] bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
-            }
-          >
-            {isValidating ? 'Checking…' : 'Apply'}
-          </button>
-        )}
+        <button
+          onClick={() => handleApply()}
+          disabled={!code.trim() || isValidating}
+          className={compact
+            ? 'h-10 min-w-[5.75rem] rounded-full bg-zinc-950 px-4 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-45'
+            : 'rounded-[1rem] bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-40'
+          }
+        >
+          {isValidating ? 'Checking…' : 'Apply'}
+        </button>
       </div>
-
-      {/* Success state */}
-      {result?.valid === true && (
-        <div className={`${compact ? 'mt-2.5' : 'mt-3'} flex items-center gap-2 rounded-[1rem] border border-primary/12 bg-primary-container/25 px-3 py-2.5 text-sm text-primary`}>
-          <CheckCircle size={16} className="shrink-0" />
-          <span>{result.displayLabel}</span>
-          <button
-            onClick={clearPromo}
-            className="ml-auto text-xs text-slate-500 transition-colors hover:text-slate-700"
-          >
-            Remove
-          </button>
-        </div>
-      )}
 
       {/* Error state */}
       {result?.valid === false && result.errorMessage && (

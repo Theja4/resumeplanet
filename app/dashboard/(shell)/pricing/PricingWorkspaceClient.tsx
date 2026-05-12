@@ -19,6 +19,81 @@ import {
   readPricingCheckoutIntent,
 } from '@/lib/pricingCheckoutIntent'
 
+// ─── Live counter (Booking.com-style) ─────────────────────────────────────────
+
+function useLiveCount(initial: number) {
+  const [count, setCount] = useState(initial)
+  useEffect(() => {
+    const tick = () => setCount(c => c + Math.floor(Math.random() * 20) + 5)
+    const id = window.setInterval(tick, 7000 + Math.random() * 5000)
+    return () => clearInterval(id)
+  }, [])
+  return count
+}
+
+// ─── FOMO: Slim competition strip ────────────────────────────────────────────
+
+function CompetitionStrip() {
+  const count = useLiveCount(284700)
+
+  return (
+    <div className="flex items-center justify-center gap-2 rounded-xl bg-zinc-950 px-4 py-2.5 text-sm text-white">
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+      </span>
+      <span className="text-zinc-400"><strong className="text-white">{count.toLocaleString()}</strong> resumes upgraded this month</span>
+      <span className="text-zinc-600">—</span>
+      <span className="font-semibold text-amber-300">your competition is optimizing right now</span>
+    </div>
+  )
+}
+
+// ─── FOMO: Compact proof + anchor bar (below cards) ──────────────────────────
+
+function ProofBar() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+      {/* Testimonial */}
+      <div className="flex items-center gap-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-5 py-3.5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-[10px] font-black text-emerald-800">JF</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-zinc-800 italic truncate sm:text-clip sm:whitespace-normal">
+            &ldquo;41% to 89% in one click. Had 2 interviews within a week.&rdquo;
+          </p>
+          <p className="text-xs text-on-surface-variant">James Fullerton, SWE at Stripe</p>
+        </div>
+        <span className="hidden sm:inline-flex shrink-0 rounded-full bg-emerald-200 px-2.5 py-0.5 text-[10px] font-black text-emerald-800">
+          +48 pts
+        </span>
+      </div>
+
+      {/* Price anchor */}
+      <div className="flex items-center gap-3 rounded-2xl bg-zinc-950 px-5 py-3.5 text-white">
+        <div className="text-center">
+          <p className="text-lg font-black text-red-400 line-through decoration-1">$5.50</p>
+          <p className="text-[9px] text-zinc-500">coffee</p>
+        </div>
+        <div className="h-8 w-px bg-white/15" />
+        <div className="text-center">
+          <p className="text-lg font-black text-emerald-400">$0.14</p>
+          <p className="text-[9px] text-zinc-500">Pro/day</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ClosingLine() {
+  return (
+    <p className="text-center text-xs text-on-surface-variant">
+      Every day without Pro = interviews going to someone else · Cancel anytime · Instant access
+    </p>
+  )
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
+
 interface PricingWorkspaceClientProps {
   autoFillPromo?: string
   availablePromo: PromoConfig | null
@@ -49,7 +124,6 @@ export default function PricingWorkspaceClient({
   const [activePromo, setActivePromo] = useState<PromoConfig | null>(null)
   const hasAttemptedIntentRef = useRef(false)
   const { openSubscriptionCheckout } = usePaddleCheckout()
-  const isSubscribedMonthlyPro = isPro && currentSubscriptionInterval === 'monthly'
   const isRazorpaySubscriptionPro = isPro && currentPaymentProvider === 'razorpay'
   const isManualProAccess = isPro && currentSubscriptionInterval == null
 
@@ -157,6 +231,8 @@ export default function PricingWorkspaceClient({
           </div>
         )}
 
+        {!isPro && <CompetitionStrip />}
+
         <BillingUpgradeSection
           autoFillPromo={autoFillPromo}
           baseDisplayPromo={baseDisplayPromo}
@@ -169,6 +245,13 @@ export default function PricingWorkspaceClient({
           pricingCountryCode={pricingCountryCode}
           loginRedirectPath={loginRedirectPath}
         />
+
+        {!isPro && (
+          <>
+            <ProofBar />
+            <ClosingLine />
+          </>
+        )}
       </div>
     </ExitIntentProvider>
   )
