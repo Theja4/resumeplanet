@@ -90,6 +90,20 @@ export default function PublicSiteFooter() {
               className="h-10 w-auto"
             />
           </a>
+          <a
+            href="https://launchigniter.com/product/rezoomed?ref=badge-rezoomed"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-opacity hover:opacity-80"
+          >
+            <img
+              src="https://launchigniter.com/api/badge/rezoomed?theme=light"
+              alt="Featured on LaunchIgniter"
+              width="212"
+              height="55"
+              className="h-10 w-auto"
+            />
+          </a>
         </div>
         <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
           {LEGAL_LINKS.map(({ label, href }) => (
