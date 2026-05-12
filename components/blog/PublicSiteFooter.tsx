@@ -72,9 +72,25 @@ export default function PublicSiteFooter() {
 
       {/* Copyright + legal links */}
       <div className="mx-auto max-w-7xl px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <span className="text-sm font-semibold text-zinc-400">
-          © Rezoomed AI {new Date().getFullYear()}
-        </span>
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <span className="text-sm font-semibold text-zinc-400">
+            © Rezoomed AI {new Date().getFullYear()}
+          </span>
+          <a
+            href="https://findly.tools/rezoomed?utm_source=rezoomed"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-opacity hover:opacity-80"
+          >
+            <img
+              src="https://findly.tools/badges/findly-tools-badge-light.svg"
+              alt="Featured on Findly.tools"
+              width="175"
+              height="55"
+              className="h-10 w-auto"
+            />
+          </a>
+        </div>
         <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2">
           {LEGAL_LINKS.map(({ label, href }) => (
             <Link
