@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, FileText, BarChart3, PlusCircle, type LucideIcon } from 'lucide-react'
+import { LayoutGrid, FileText, BarChart3, PlusCircle, Globe2, type LucideIcon } from 'lucide-react'
 
 const TABS: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
   { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
   { href: '/dashboard/ats-checker', label: 'ATS', Icon: BarChart3 },
+  { href: '/dashboard/resume-lio', label: 'Website', Icon: Globe2 },
   { href: '/dashboard/builder/new', label: 'Create', Icon: PlusCircle },
 ]
 

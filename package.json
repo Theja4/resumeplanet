@@ -51,6 +51,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "playwright": "^1.60.0",
     "puppeteer-core": "^24.40.0",
     "supabase": "^2.88.1",
     "tailwindcss": "^4",

@@ -51,7 +51,7 @@ export default function TemplatePortfolite({ data, socialLinks }: TemplateProps)
                   </a>
                 )}
                 {socialLinks.linkedin && (
-                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-6 py-3 text-sm font-medium text-neutral-700 transition hover:border-neutral-300">
+                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer nofollow ugc" className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-6 py-3 text-sm font-medium text-neutral-700 transition hover:border-neutral-300">
                     LinkedIn
                   </a>
                 )}

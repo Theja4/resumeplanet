@@ -118,6 +118,7 @@ export async function updateResumeLioSite(payload: {
   template_id?: ResumeLioTemplateId
   resume_data?: ResumeData
   social_links?: ResumeLioSocialLinks
+  image_overrides?: Record<string, string | null>
   published?: boolean
 }) {
   const supabase = await createClient()
@@ -136,6 +137,7 @@ export async function updateResumeLioSite(payload: {
   if (payload.template_id !== undefined) update.template_id = payload.template_id
   if (payload.resume_data !== undefined) update.resume_data = syncResumeData(payload.resume_data)
   if (payload.social_links !== undefined) update.social_links = payload.social_links
+  if (payload.image_overrides !== undefined) update.image_overrides = payload.image_overrides
   if (payload.published !== undefined) update.published = payload.published
 
   const { data, error } = await supabase

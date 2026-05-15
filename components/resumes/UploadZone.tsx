@@ -294,7 +294,7 @@ export default function UploadZone({
           transition-all border-2 border-dashed 
           ${isDragging ? 'border-primary/40 bg-primary/5' : 'border-outline-variant/20 hover:border-primary/30'}
           ${disabled || isActive ? 'cursor-default' : 'cursor-pointer'}
-          ${isCompact ? 'h-full bg-white px-5 py-6 sm:px-6 sm:py-7' : 'bg-surface-container-lowest p-10'}
+          ${isCompact ? 'h-full bg-white px-5 py-4 sm:px-6 sm:py-5' : 'bg-surface-container-lowest p-10'}
         `}
         onClick={() => {
           if (!disabled && !isActive) inputRef.current?.click()
@@ -310,65 +310,60 @@ export default function UploadZone({
         />
 
         {state === 'done' ? (
-          <div className={`${isCompact ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'} rounded-full bg-green-50 flex items-center justify-center`}>
-            <CheckCircle2 size={isCompact ? 28 : 40} className="text-green-500" />
+          <div className={`${isCompact ? 'mb-2 h-10 w-10' : 'mb-6 h-20 w-20'} rounded-full bg-green-50 flex items-center justify-center`}>
+            <CheckCircle2 size={isCompact ? 20 : 40} className="text-green-500" />
           </div>
         ) : (
-          <div className={`${isCompact ? 'mb-4 h-14 w-14' : 'mb-6 h-20 w-20'} bg-primary/5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110`}>
+          <div className={`${isCompact ? 'mb-2 h-10 w-10' : 'mb-6 h-20 w-20'} bg-primary/5 rounded-full flex items-center justify-center transition-transform group-hover:scale-110`}>
             {state === 'parsing' ? (
-              <FileText size={isCompact ? 24 : 36} className="text-primary animate-pulse" />
+              <FileText size={isCompact ? 18 : 36} className="text-primary animate-pulse" />
             ) : (
-              <Upload size={isCompact ? 24 : 36} className={`text-primary ${isDragging ? 'scale-110' : ''}`} />
+              <Upload size={isCompact ? 18 : 36} className={`text-primary ${isDragging ? 'scale-110' : ''}`} />
             )}
           </div>
         )}
 
-        <h2 className={`${isCompact ? 'text-xl' : 'text-2xl'} mb-2 font-extrabold tracking-tight text-on-surface`}>
+        <h2 className={`${isCompact ? 'text-lg' : 'text-2xl'} mb-1 font-extrabold tracking-tight text-on-surface`}>
           {state === 'parsing' ? 'Analyzing with AI…' : isCompact ? 'Upload your resume' : 'Upload Your Resume'}
         </h2>
         
-        <p className={`max-w-md text-center text-on-surface-variant ${isCompact ? 'mb-5 text-sm leading-6' : 'mb-8'}`}>
+        <p className={`max-w-md text-center text-on-surface-variant ${isCompact ? 'mb-4 text-xs leading-5' : 'mb-8'}`}>
           {state === 'parsing' 
             ? "We're extracting your skills and experience to build your professional profile."
             : isCompact
-              ? "Drop a PDF here or click to upload. After parsing, we’ll open Tailor Mode for that resume."
+              ? "Drop a PDF here or click to upload."
               : "Drag and drop your PDF here to start optimizing. We'll automatically parse your data."}
         </p>
 
         {(state === 'idle' || state === 'error') && (
           <button 
-            className={`${isCompact ? 'px-6 py-3 text-sm' : 'px-10 py-3.5'} bg-[var(--signature-gradient)] text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2`}
+            className={`${isCompact ? 'px-5 py-2.5 text-xs' : 'px-10 py-3.5'} bg-[var(--signature-gradient)] text-on-primary-container font-bold rounded-xl shadow-lg shadow-primary/10 hover:shadow-primary/20 transition-all active:scale-95 flex items-center gap-2`}
             disabled={disabled}
           >
-            <Upload size={18} />
+            <Upload size={14} />
             Select File
           </button>
         )}
 
         {/* Progress bar for active states */}
         {isActive && (
-          <div className="w-full max-w-md mt-4 space-y-2">
-            <Progress value={progress} className="h-2 bg-surface-container" />
-            <div className="flex justify-between text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
+          <div className="w-full max-w-md mt-2 space-y-1">
+            <Progress value={progress} className="h-1.5 bg-surface-container" />
+            <div className="flex justify-between text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">
               <span>{state === 'uploading' ? 'Uploading' : 'AI Processing'}</span>
               <span>{progress}%</span>
             </div>
-            {state === 'parsing' && isTakingLong && (
-              <p className="text-center text-xs font-semibold text-on-surface-variant animate-pulse">
-                Taking longer than expected. Still parsing with AI. Please keep this tab open.
-              </p>
-            )}
           </div>
         )}
 
         {state === 'error' && (
-          <div className="mt-6 flex items-center gap-2 text-error font-semibold text-sm">
-            <AlertCircle size={16} />
+          <div className="mt-4 flex items-center gap-2 text-error font-semibold text-xs">
+            <AlertCircle size={14} />
             {errorMessage || 'Upload failed'}
           </div>
         )}
 
-        <div className={`${isCompact ? 'mt-6 gap-4 text-[10px]' : 'mt-10 gap-6 text-[11px]'} flex items-center font-bold text-outline uppercase tracking-widest opacity-60`}>
+        <div className={`${isCompact ? 'mt-4 gap-3 text-[9px]' : 'mt-10 gap-6 text-[11px]'} flex items-center font-bold text-outline uppercase tracking-widest opacity-60`}>
           <span>PDF only</span>
           <span className="w-1 h-1 bg-outline rounded-full"></span>
           <span>Max size: {MAX_RESUME_UPLOAD_LABEL}</span>

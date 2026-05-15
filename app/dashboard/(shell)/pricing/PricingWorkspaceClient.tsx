@@ -125,6 +125,8 @@ export default function PricingWorkspaceClient({
   const hasAttemptedIntentRef = useRef(false)
   const { openSubscriptionCheckout } = usePaddleCheckout()
   const isRazorpaySubscriptionPro = isPro && currentPaymentProvider === 'razorpay'
+  const isPeriodBoundSubscriptionPro =
+    isPro && (currentPaymentProvider === 'razorpay' || currentPaymentProvider === 'polar')
   const isManualProAccess = isPro && currentSubscriptionInterval == null
 
   const ribbonCode = availablePromo?.paddleDiscountCode ?? null
@@ -205,7 +207,7 @@ export default function PricingWorkspaceClient({
                 </h3>
                 <p className="text-sm text-slate-500">
                   You are currently on the <span className="font-bold text-[#026d32]">Pro {currentSubscriptionInterval === 'annual' ? 'Annual' : 'Monthly'}</span> plan.
-                  {isRazorpaySubscriptionPro && currentPeriodEnd ? (
+                  {isPeriodBoundSubscriptionPro && currentPeriodEnd ? (
                     <> Current period ends <span className="font-bold text-slate-700">{new Date(currentPeriodEnd).toLocaleDateString()}</span>.</>
                   ) : null}
                 </p>

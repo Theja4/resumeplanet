@@ -1,6 +1,10 @@
+'use client'
+
 import type { ResumeLioSocialLinks } from '@/types'
 import type { ComponentType } from 'react'
 import { Globe, Mail, Phone } from 'lucide-react'
+import { useResumeLioEdit } from './edit/ResumeLioEditContext'
+import { EditableLink } from './edit/EditableLink'
 
 function LinkedInIcon({ size = 14 }: { size?: number }) {
   return (
@@ -26,41 +30,84 @@ function GitLabIcon({ size = 14 }: { size?: number }) {
   )
 }
 
-interface SocialLinksBarProps {
+const ALL_LINK_SLOTS: { key: keyof ResumeLioSocialLinks; label: string; Icon: ComponentType<{ size?: number }>; hrefPrefix?: string }[] = [
+  { key: 'linkedin', label: 'LinkedIn', Icon: LinkedInIcon },
+  { key: 'github', label: 'GitHub', Icon: GitHubIcon },
+  { key: 'gitlab', label: 'GitLab', Icon: GitLabIcon },
+  { key: 'website', label: 'Website', Icon: Globe },
+  { key: 'email', label: 'Email', Icon: Mail, hrefPrefix: 'mailto:' },
+  { key: 'phone', label: 'Phone', Icon: Phone, hrefPrefix: 'tel:' },
+]
+
+export interface SocialLinksBarProps {
   links: ResumeLioSocialLinks
   className?: string
   iconClassName?: string
   textClassName?: string
+  style?: React.CSSProperties
 }
 
-export function SocialLinksBar({ links, className = '', iconClassName = '', textClassName = '' }: SocialLinksBarProps) {
-  const items: { key: keyof ResumeLioSocialLinks; href: string; label: string; Icon: ComponentType<{size?: number}> }[] = []
+export function SocialLinksBar({ links, className = '', iconClassName = '', textClassName = '', style }: SocialLinksBarProps) {
+  const ctx = useResumeLioEdit()
+  const isEditing = !!ctx?.editMode
 
-  if (links.linkedin) items.push({ key: 'linkedin', href: links.linkedin, label: 'LinkedIn', Icon: LinkedInIcon })
-  if (links.github) items.push({ key: 'github', href: links.github, label: 'GitHub', Icon: GitHubIcon })
-  if (links.gitlab) items.push({ key: 'gitlab', href: links.gitlab, label: 'GitLab', Icon: GitLabIcon })
-  if (links.website) items.push({ key: 'website', href: links.website, label: 'Website', Icon: Globe })
-  if (links.email) items.push({ key: 'email', href: `mailto:${links.email}`, label: links.email, Icon: Mail })
-  if (links.phone) items.push({ key: 'phone', href: `tel:${links.phone}`, label: links.phone, Icon: Phone })
+  // In edit mode: show all slots (even empty) so user can add links
+  // In view mode: only show populated links
+  const items = isEditing
+    ? ALL_LINK_SLOTS.map(slot => ({
+        ...slot,
+        value: (links[slot.key] as string) || '',
+        href: (links[slot.key] as string)
+          ? (slot.hrefPrefix || '') + links[slot.key]
+          : '#',
+      }))
+    : ALL_LINK_SLOTS
+        .filter(slot => links[slot.key])
+        .map(slot => ({
+          ...slot,
+          value: links[slot.key] as string,
+          href: (slot.hrefPrefix || '') + links[slot.key],
+        }))
 
   if (items.length === 0) return null
 
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-      {items.map(({ key, href, label, Icon }) => (
-        <a
-          key={key}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`inline-flex items-center gap-1.5 transition-colors ${textClassName}`}
-        >
-          <span className={iconClassName}>
-            <Icon size={14} />
-          </span>
-          <span className="text-sm">{label}</span>
-        </a>
-      ))}
+    <div className={`flex flex-wrap items-center gap-3 ${className}`} style={style}>
+      {items.map(({ key, href, value, label, Icon }) => {
+        const content = (
+          <>
+            <span className={iconClassName}>
+              <Icon size={14} />
+            </span>
+            <span className="text-sm">{value || `Add ${label}`}</span>
+          </>
+        )
+
+        if (isEditing) {
+          return (
+            <EditableLink
+              key={key}
+              linkField={`social.${key}`}
+              href={href}
+              className={`inline-flex items-center gap-1.5 transition-colors ${textClassName} ${!value ? 'opacity-40 border border-dashed border-current rounded-full px-2 py-0.5' : ''}`}
+            >
+              {content}
+            </EditableLink>
+          )
+        }
+
+        return (
+          <a
+            key={key}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            className={`inline-flex items-center gap-1.5 transition-colors ${textClassName}`}
+          >
+            {content}
+          </a>
+        )
+      })}
     </div>
   )
 }

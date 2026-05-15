@@ -1,7 +1,7 @@
 'use client'
 
 import type { EducationItem, ExperienceItem, ProjectItem, ResumeData } from '@/types'
-import { getEducationDateLabel, getProjectDescription, getResumeSkills } from '@/lib/resume-data'
+import { getEducationDateLabel, getProjectDescription, getResumeSkills, normalizeSkillSections } from '@/lib/resume-data'
 
 export const imageSet = [
   'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
@@ -56,9 +56,70 @@ export function summaryText(data: ResumeData) {
   return data.summary?.trim() || `Experienced ${roleLabel(data).toLowerCase()} with a strong track record of delivering results.`
 }
 
+function getDeepTextValue(obj: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((cur, part) => {
+    if (cur == null) return undefined
+    const index = Number(part)
+    if (Array.isArray(cur) && Number.isInteger(index)) return cur[index]
+    if (typeof cur === 'object') return (cur as Record<string, unknown>)[part]
+    return undefined
+  }, obj)
+}
+
+export function editableTextValue(data: ResumeData, field: string, fallback: string) {
+  const value = getDeepTextValue(data, field)
+  return typeof value === 'string' && value.trim() ? value : fallback
+}
+
+export function editableTextStoredValue(data: ResumeData, field: string) {
+  const value = getDeepTextValue(data, field)
+  return typeof value === 'string' ? value : undefined
+}
+
 export function skillsFor(data: ResumeData, limit?: number) {
   const skills = getResumeSkills(data)
   return typeof limit === 'number' ? skills.slice(0, limit) : skills
+}
+
+/** Returns skill sections with titles. If the user has grouped skills (Domain, Tech, Tools etc.)
+ *  this returns the groups. Otherwise returns a single group with all skills. */
+export interface ResumeLioSkillGroup {
+  title: string
+  skills: string[]
+  titleField: string
+  skillFields: string[]
+}
+
+export function groupedSkills(data: ResumeData): ResumeLioSkillGroup[] {
+  const sectionGroups = (data.skillSections ?? [])
+    .map((section, sectionIndex) => {
+      const normalized = normalizeSkillSections([section], [])[0]
+      const skills = normalized?.skills ?? []
+
+      return {
+        title: normalized?.title || normalized?.tag || 'Skills',
+        skills,
+        titleField: `skillSections.${sectionIndex}.title`,
+        skillFields: skills.map((_, skillIndex) => `skillSections.${sectionIndex}.skills.${skillIndex}`),
+      }
+    })
+    .filter(group => group.skills.length > 0)
+
+  if (sectionGroups.length > 0) return sectionGroups
+
+  return normalizeSkillSections(null, data.skills ?? [])
+    .filter(section => section.skills.length > 0)
+    .map((section, sectionIndex) => ({
+      title: section.title || section.tag || 'Skills',
+      skills: section.skills,
+      titleField: `skillSections.${sectionIndex}.title`,
+      skillFields: section.skills.map((_, skillIndex) => `skillSections.${sectionIndex}.skills.${skillIndex}`),
+    }))
+}
+
+/** Returns true if the resume has multiple named skill sections */
+export function hasSkillGroups(data: ResumeData): boolean {
+  return groupedSkills(data).length > 1
 }
 
 export function projectDescription(project: ProjectItem) {
@@ -74,14 +135,33 @@ export function educationLabel(education: EducationItem) {
   return getEducationDateLabel(education)
 }
 
-export function proofStats(data: ResumeData) {
+export type ResumeLioProofStatId = 'experience' | 'projects' | 'skills'
+
+export interface ResumeLioProofStat {
+  id: ResumeLioProofStatId
+  value: string
+  label: string
+  valueField: string
+  labelField: string
+}
+
+export function proofStats(data: ResumeData): ResumeLioProofStat[] {
   const skills = getResumeSkills(data)
   const experience = getExperienceTenure(data.experience)
-  return [
-    { value: experience ? experience.label : `${data.experience.length || 0}`, label: experience ? 'Years Experience' : 'Roles Held' },
-    { value: `${data.projects.length || 0}`, label: 'Projects' },
-    { value: `${skills.length}`, label: 'Skills' },
+  const all = [
+    { id: 'experience' as const, value: experience ? experience.label : `${data.experience.length || 0}`, label: experience ? 'Years Experience' : 'Roles Held', numericValue: experience ? experience.years : data.experience.length },
+    { id: 'projects' as const, value: `${data.projects.length || 0}`, label: 'Projects', numericValue: data.projects.length },
+    { id: 'skills' as const, value: `${skills.length}`, label: 'Skills', numericValue: skills.length },
   ]
+  return all
+    .filter(s => s.numericValue > 0)
+    .map(({ id, value, label }) => ({
+      id,
+      value,
+      label,
+      valueField: `statValue.${id}`,
+      labelField: `statLabel.${id}`,
+    }))
 }
 
 export function contactHref(email?: string | null) {

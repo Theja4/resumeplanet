@@ -4,49 +4,108 @@ import {
   getPolarIntervalFromProductId,
   verifyPolarWebhookSignature,
 } from '@/lib/polar'
+import { isPeriodEndInFuture, normalizeIsoDate } from '@/lib/subscriptionPeriod'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 type PolarWebhookEvent = {
   type?: string
-  data?: Record<string, any>
+  data?: PolarWebhookData
 }
 
-function getCustomerExternalId(data: Record<string, any>) {
+type PolarWebhookData = Record<string, unknown>
+
+function asRecord(value: unknown): PolarWebhookData | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as PolarWebhookData
+}
+
+function getString(value: unknown) {
+  return typeof value === 'string' ? value : null
+}
+
+function getCustomerExternalId(data: PolarWebhookData) {
+  const metadata = asRecord(data.metadata)
+  const customer = asRecord(data.customer)
+
   return (
-    data.metadata?.user_id ??
-    data.customer?.external_id ??
-    data.external_customer_id ??
-    data.customer_external_id ??
+    getString(metadata?.user_id) ??
+    getString(customer?.external_id) ??
+    getString(data.external_customer_id) ??
+    getString(data.customer_external_id) ??
     null
   )
 }
 
-function getSubscriptionInterval(data: Record<string, any>) {
-  const metadataInterval = data.metadata?.interval
+function getSubscriptionInterval(data: PolarWebhookData) {
+  const metadata = asRecord(data.metadata)
+  const product = asRecord(data.product)
+  const metadataInterval = getString(metadata?.interval)
   if (metadataInterval === 'monthly' || metadataInterval === 'annual') {
     return metadataInterval
   }
 
-  const recurringInterval = data.recurring_interval ?? data.product?.recurring_interval
+  const recurringInterval = getString(data.recurring_interval) ?? getString(product?.recurring_interval)
   if (recurringInterval === 'month') return 'monthly'
   if (recurringInterval === 'year') return 'annual'
 
-  return getPolarIntervalFromProductId(data.product_id ?? data.product?.id)
+  return getPolarIntervalFromProductId(getString(data.product_id) ?? getString(product?.id))
 }
 
-async function upsertActiveSubscription(data: Record<string, any>, status = 'active') {
+function getCurrentPeriodStart(data: PolarWebhookData) {
+  return normalizeIsoDate(getString(data.current_period_start))
+}
+
+function getCurrentPeriodEnd(data: PolarWebhookData) {
+  return normalizeIsoDate(getString(data.current_period_end)) ?? normalizeIsoDate(getString(data.ends_at))
+}
+
+function hasPaidAccessThroughCanceledPeriod(data: PolarWebhookData) {
+  return isPeriodEndInFuture(getCurrentPeriodEnd(data))
+}
+
+function hasPolarProAccess(status: string, data: PolarWebhookData) {
+  return (
+    status === 'active' ||
+    status === 'trialing' ||
+    status === 'past_due' ||
+    (status === 'canceled' && hasPaidAccessThroughCanceledPeriod(data))
+  )
+}
+
+function getStatus(data: PolarWebhookData, fallback = 'active') {
+  return getString(data.status) ?? fallback
+}
+
+function shouldDowngradeForStatus(status: string) {
+  return (
+    status === 'canceled' ||
+    status === 'revoked' ||
+    status === 'unpaid' ||
+    status === 'incomplete_expired'
+  )
+}
+
+async function upsertActiveSubscription(data: PolarWebhookData, status = 'active') {
+  if (!hasPolarProAccess(status, data)) {
+    await markSubscriptionStatus(data, status)
+    return
+  }
+
   const userId = getCustomerExternalId(data)
   if (!userId) {
     console.warn('Polar webhook missing customer external id', {
-      subscriptionId: data.id ?? data.subscription_id,
-      customerId: data.customer_id,
+      subscriptionId: getString(data.id) ?? getString(data.subscription_id),
+      customerId: getString(data.customer_id),
     })
     return
   }
 
-  const subscriptionId = data.subscription_id ?? data.id ?? null
-  const customerId = data.customer_id ?? data.customer?.id ?? null
+  const customer = asRecord(data.customer)
+  const subscriptionId = getString(data.subscription_id) ?? getString(data.id)
+  const customerId = getString(data.customer_id) ?? getString(customer?.id)
   const interval = getSubscriptionInterval(data)
+  const currentPeriodStart = getCurrentPeriodStart(data)
+  const currentPeriodEnd = getCurrentPeriodEnd(data)
   const serviceSupabase = createServiceRoleClient()
 
   const { error } = await serviceSupabase
@@ -58,6 +117,8 @@ async function upsertActiveSubscription(data: Record<string, any>, status = 'act
       payment_provider: 'polar',
       polar_customer_id: customerId,
       polar_subscription_id: subscriptionId,
+      current_period_start: currentPeriodStart,
+      current_period_end: currentPeriodEnd,
     })
     .eq('id', userId)
 
@@ -66,22 +127,43 @@ async function upsertActiveSubscription(data: Record<string, any>, status = 'act
   }
 }
 
-async function markSubscriptionStatus(data: Record<string, any>, status: string) {
+async function markSubscriptionStatus(data: PolarWebhookData, status: string) {
   const serviceSupabase = createServiceRoleClient()
-  const subscriptionId = data.subscription_id ?? data.id ?? null
+  const customer = asRecord(data.customer)
+  const subscriptionId = getString(data.subscription_id) ?? getString(data.id)
+  const customerId = getString(data.customer_id) ?? getString(customer?.id)
   const userId = getCustomerExternalId(data)
+  const interval = getSubscriptionInterval(data)
+  const currentPeriodStart = getCurrentPeriodStart(data)
+  const currentPeriodEnd = getCurrentPeriodEnd(data)
+  const hasDeferredAccess = status === 'canceled' && hasPaidAccessThroughCanceledPeriod(data)
 
   const values =
-    status === 'canceled' || status === 'revoked'
+    hasDeferredAccess
+      ? {
+          plan: 'pro',
+          subscription_status: status,
+          subscription_interval: interval,
+          payment_provider: 'polar',
+          polar_customer_id: customerId,
+          polar_subscription_id: subscriptionId,
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
+        }
+      : shouldDowngradeForStatus(status)
       ? {
           plan: 'free',
           subscription_status: status,
           subscription_interval: null,
           polar_subscription_id: null,
+          current_period_start: null,
+          current_period_end: null,
         }
       : {
           subscription_status: status,
           payment_provider: 'polar',
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
         }
 
   let query = serviceSupabase.from('profiles').update(values)
@@ -126,17 +208,21 @@ export async function POST(request: NextRequest) {
   }
 
   const eventType = event.type
-  const data = event.data ?? {}
+  const data = asRecord(event.data) ?? {}
 
   try {
     switch (eventType) {
       case 'subscription.created':
+        if (hasPolarProAccess(getStatus(data), data)) {
+          await upsertActiveSubscription(data, getStatus(data))
+        }
+        break
       case 'subscription.active':
       case 'subscription.updated':
-        await upsertActiveSubscription(data, data.status ?? 'active')
+        await upsertActiveSubscription(data, getStatus(data))
         break
       case 'order.paid':
-        if (data.subscription_id) {
+        if (getString(data.subscription_id)) {
           await upsertActiveSubscription(data, 'active')
         }
         break
@@ -144,17 +230,13 @@ export async function POST(request: NextRequest) {
         await markSubscriptionStatus(data, 'past_due')
         break
       case 'subscription.canceled':
-        if (data.cancel_at_period_end && data.status === 'active') {
-          await markSubscriptionStatus(data, 'active')
-        } else {
-          await markSubscriptionStatus(data, 'canceled')
-        }
+        await markSubscriptionStatus(data, 'canceled')
         break
       case 'subscription.revoked':
         await markSubscriptionStatus(data, 'revoked')
         break
       case 'subscription.uncanceled':
-        await upsertActiveSubscription(data, data.status ?? 'active')
+        await upsertActiveSubscription(data, getStatus(data))
         break
       case 'order.refunded':
         await markSubscriptionStatus(data, 'refunded')

@@ -163,7 +163,7 @@ export default function LandingHeroV2() {
 
             {/* Powered-by strip */}
             <div
-              className="hero-text-rise mt-8 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-4"
+              className="hero-text-rise mt-8 flex flex-col items-center gap-2.5 lg:flex-row lg:items-center lg:gap-4"
               style={{ animationDelay: '0.6s' }}
             >
               {/* Label */}
@@ -172,7 +172,7 @@ export default function LandingHeroV2() {
               </p>
 
               {/* Logos — flat, no button styling */}
-              <div className="flex items-center gap-5">
+              <div className="flex flex-wrap items-center justify-center gap-5 lg:justify-start">
 
                 {/* OpenAI */}
                 <div className="flex items-center gap-1.5">

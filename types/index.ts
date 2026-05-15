@@ -693,3 +693,39 @@ export interface TrackedJob {
   updated_at: string
   job?: Job | null
 }
+
+// ─── Resume Lio ───────────────────────────────────────────────────────────────
+
+export type ResumeLioTemplateId =
+  | 'casefile'
+  | 'signal'
+  | 'pearltech'
+  | 'jane'
+  | 'stelvio'
+  | 'velora'
+  | 'welvet'
+  | 'portfolite'
+  | 'yuya'
+
+export interface ResumeLioSocialLinks {
+  linkedin?: string | null
+  github?: string | null
+  gitlab?: string | null
+  website?: string | null
+  email?: string | null
+  phone?: string | null
+}
+
+export interface ResumeLioSite {
+  id: string
+  user_id: string
+  slug: string
+  source_resume_id: string | null
+  template_id: ResumeLioTemplateId
+  resume_data: ResumeData
+  social_links: ResumeLioSocialLinks
+  image_overrides: Record<string, string | null>
+  published: boolean
+  created_at: string
+  updated_at: string
+}

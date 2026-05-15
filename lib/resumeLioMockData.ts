@@ -32,13 +32,13 @@ const profiles: Record<string, Pick<ResumeData, 'name' | 'currentRole' | 'locati
     summary: 'Brand systems designer building visual identities, launch pages, and content systems for fast-moving creator-led teams.',
   },
   welvet: {
-    name: 'Sofia Bennett',
+    name: 'Mark Jefferson',
     currentRole: 'Visual Designer',
     location: 'Portland, OR',
-    email: 'sofia.bennett@example.com',
+    email: 'mark.jefferson@example.com',
     phone: '+1 (503) 555-0136',
-    linkedin: 'https://linkedin.com/in/sofiabennett',
-    website: 'https://sofiabennett.com',
+    linkedin: 'https://linkedin.com/in/markjefferson',
+    website: 'https://markjefferson.com',
     summary: 'Visual designer focused on simple interfaces, elegant art direction, and clean systems that make creative work feel effortless.',
   },
   portfolite: {

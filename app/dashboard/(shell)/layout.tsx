@@ -4,6 +4,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import BottomNav from '@/components/layout/BottomNav'
 import MobileAppBar from '@/components/layout/MobileAppBar'
 import { getAuthenticatedUserContext } from '@/lib/authenticated-user'
+import { isPro as hasActiveProAccess } from '@/lib/planUtils'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export default async function DashboardLayout({
@@ -12,7 +13,7 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const { userId, profile: typedProfile } = await getAuthenticatedUserContext()
-  const proUser = typedProfile.plan === 'pro'
+  const proUser = hasActiveProAccess(typedProfile)
 
   const serviceSupabase = createServiceRoleClient()
   const { data: affiliateRecord } = await serviceSupabase

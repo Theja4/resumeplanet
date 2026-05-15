@@ -1,4 +1,5 @@
 import type { RazorpaySubscriptionResponse } from '@/lib/razorpay'
+import { isPeriodEndInFuture } from '@/lib/subscriptionPeriod'
 
 type ServiceSupabaseClient = ReturnType<typeof import('@/lib/supabase/service-role').createServiceRoleClient>
 type RazorpayInterval = 'monthly' | 'annual'
@@ -22,6 +23,17 @@ export function isRazorpaySubscriptionProStatus(status: string | null | undefine
   return status === 'active' || status === 'authenticated' || status === 'pending'
 }
 
+function hasPaidAccessThroughCancelledPeriod(
+  subscription: RazorpaySubscriptionResponse,
+  currentPeriodEnd: string | null
+) {
+  return (
+    subscription.status === 'cancelled' &&
+    (subscription.paid_count ?? 0) > 0 &&
+    isPeriodEndInFuture(currentPeriodEnd)
+  )
+}
+
 export async function syncRazorpaySubscriptionAccess(params: {
   supabase: ServiceSupabaseClient
   userId: string
@@ -31,12 +43,14 @@ export async function syncRazorpaySubscriptionAccess(params: {
   metadata?: Record<string, unknown>
 }) {
   const status = params.subscription.status
-  const isActiveAccess = isRazorpaySubscriptionProStatus(status)
   const currentPeriodStart = unixToIso(params.subscription.current_start) ?? new Date().toISOString()
   const currentPeriodEnd =
     unixToIso(params.subscription.current_end) ??
     unixToIso(params.subscription.end_at) ??
-    (isActiveAccess ? fallbackPeriodEnd(params.interval) : null)
+    (isRazorpaySubscriptionProStatus(status) ? fallbackPeriodEnd(params.interval) : null)
+  const isActiveAccess =
+    isRazorpaySubscriptionProStatus(status) ||
+    hasPaidAccessThroughCancelledPeriod(params.subscription, currentPeriodEnd)
 
   const { error: subscriptionError } = await params.supabase
     .from('razorpay_subscriptions')

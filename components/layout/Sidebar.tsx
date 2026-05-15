@@ -8,6 +8,7 @@ import { logout } from '@/app/dashboard/(shell)/actions'
 import { Analytics } from '@/lib/analytics'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
 import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
+import { isPro as checkIsPro } from '@/lib/planUtils'
 import type { Profile } from '@/types'
 import {
   LayoutGrid,
@@ -24,6 +25,7 @@ import {
   ChevronDown,
   Wand2,
   Handshake,
+  Globe2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -35,7 +37,7 @@ type NavItem = {
   builderMode?: 'tailor'
 }
 
-function buildNavSections(showAffiliate: boolean): Array<{ title: string; collapsible?: boolean; items: NavItem[] }> {
+function buildNavSections(showAffiliate: boolean, isPro: boolean): Array<{ title: string; collapsible?: boolean; items: NavItem[] }> {
   return [
     {
       title: 'Workspace',
@@ -62,6 +64,12 @@ function buildNavSections(showAffiliate: boolean): Array<{ title: string; collap
           label: 'Match Score',
           Icon: Target,
           badge: 'Pro',
+        },
+        {
+          href: '/dashboard/resume-lio',
+          label: 'Personal Website',
+          Icon: Globe2,
+          badge: isPro ? 'Pro' : 'New',
         },
         {
           href: '/dashboard/cv-generator',
@@ -129,7 +137,7 @@ interface SidebarProps {
 export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const navSections = buildNavSections(Boolean(isAffiliate))
+  const navSections = buildNavSections(Boolean(isAffiliate), checkIsPro(profile))
 
   function isActive(item: NavItem) {
     if (item.builderMode === 'tailor') {

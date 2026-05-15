@@ -8,6 +8,7 @@ import {
   getPolarDiscountId,
   getPolarProductId,
 } from '@/lib/polar'
+import { isPro as hasActiveProAccess } from '@/lib/planUtils'
 import { getProPlanForCountry } from '@/lib/pricing'
 import { getSiteUrl } from '@/lib/site'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -90,12 +91,12 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, email, full_name, plan, subscription_status')
+    .select('id, email, full_name, plan, subscription_status, payment_provider, current_period_end')
     .eq('id', user.id)
     .single()
 
   if (!profile) return err('Profile not found', 500)
-  if (profile.plan === 'pro' && profile.subscription_status === 'active') {
+  if (hasActiveProAccess(profile)) {
     return err('Already subscribed to Pro')
   }
 

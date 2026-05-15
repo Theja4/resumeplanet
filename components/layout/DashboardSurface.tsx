@@ -67,8 +67,8 @@ export function DashboardPageIntro({
           {actions ? <div className="flex flex-wrap gap-3 pt-1">{actions}</div> : null}
         </div>
         {aside ? (
-          <div className="border-t border-black/5 pt-4 xl:self-stretch xl:border-l xl:border-t-0 xl:pt-0 xl:pl-6">
-            <div className="flex h-full flex-col justify-center gap-3">{aside}</div>
+          <div className="border-t border-black/5 pt-4 xl:self-center xl:border-l xl:border-t-0 xl:pt-0 xl:pl-6">
+            <div className="flex flex-col gap-3">{aside}</div>
           </div>
         ) : null}
       </div>

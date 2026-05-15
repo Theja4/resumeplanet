@@ -57,7 +57,7 @@ export default function TemplatePortez({ data, socialLinks }: TemplateProps) {
                 </a>
               )}
               {socialLinks.github && (
-                <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/5">
+                <a href={socialLinks.github} target="_blank" rel="noopener noreferrer nofollow ugc" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/5">
                   View GitHub
                 </a>
               )}

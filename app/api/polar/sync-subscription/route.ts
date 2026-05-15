@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { getPolarIntervalFromProductId } from '@/lib/polar'
+import { isPeriodEndInFuture, normalizeIsoDate } from '@/lib/subscriptionPeriod'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createClient } from '@/lib/supabase/server'
 
@@ -10,6 +11,10 @@ type PolarSubscription = {
   customer_id?: string | null
   product_id?: string | null
   recurring_interval?: string | null
+  current_period_start?: string | null
+  current_period_end?: string | null
+  ends_at?: string | null
+  cancel_at_period_end?: boolean | null
   customer?: {
     external_id?: string | null
   } | null
@@ -55,6 +60,21 @@ function resolveInterval(subscription: PolarSubscription) {
   return getPolarIntervalFromProductId(subscription.product_id)
 }
 
+function getCurrentPeriodStart(subscription: PolarSubscription) {
+  return normalizeIsoDate(subscription.current_period_start)
+}
+
+function getCurrentPeriodEnd(subscription: PolarSubscription) {
+  return normalizeIsoDate(subscription.current_period_end) ?? normalizeIsoDate(subscription.ends_at)
+}
+
+function hasPolarProAccess(subscription: PolarSubscription) {
+  return (
+    ['active', 'trialing', 'past_due'].includes(subscription.status) ||
+    (subscription.status === 'canceled' && isPeriodEndInFuture(getCurrentPeriodEnd(subscription)))
+  )
+}
+
 export async function POST() {
   const supabase = await createClient()
   const {
@@ -65,15 +85,32 @@ export async function POST() {
 
   try {
     const subscriptions = await listPolarSubscriptionsForExternalCustomer(user.id)
-    const activeSubscription = subscriptions.find(subscription =>
-      ['active', 'trialing'].includes(subscription.status)
-    )
+    const activeSubscription =
+      subscriptions.find(subscription => ['active', 'trialing', 'past_due'].includes(subscription.status)) ??
+      subscriptions.find(hasPolarProAccess)
+    const serviceSupabase = createServiceRoleClient()
 
     if (!activeSubscription) {
+      const { error: inactiveUpdateError } = await serviceSupabase
+        .from('profiles')
+        .update({
+          plan: 'free',
+          subscription_status: 'canceled',
+          subscription_interval: null,
+          current_period_start: null,
+          current_period_end: null,
+          polar_subscription_id: null,
+        })
+        .eq('id', user.id)
+        .eq('payment_provider', 'polar')
+
+      if (inactiveUpdateError) {
+        throw new Error(inactiveUpdateError.message)
+      }
+
       return NextResponse.json({ isPro: false })
     }
 
-    const serviceSupabase = createServiceRoleClient()
     const { error } = await serviceSupabase
       .from('profiles')
       .update({
@@ -83,6 +120,8 @@ export async function POST() {
         subscription_status: activeSubscription.status,
         subscription_interval: resolveInterval(activeSubscription),
         payment_provider: 'polar',
+        current_period_start: getCurrentPeriodStart(activeSubscription),
+        current_period_end: getCurrentPeriodEnd(activeSubscription),
       })
       .eq('id', user.id)
 

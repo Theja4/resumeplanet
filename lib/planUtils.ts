@@ -1,5 +1,6 @@
 import type { Profile } from '@/types'
 import { FREE_PLAN, PRO_PLAN } from '@/lib/pricing'
+import { isPeriodEndInFuture } from '@/lib/subscriptionPeriod'
 
 type ProAccessProfile = Pick<Profile, 'plan'> & {
   payment_provider?: string | null
@@ -10,9 +11,11 @@ const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || 'deepseek/deepseek-v4-fla
 const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || 'deepseek/deepseek-v4-flash'
 
 export function isPro(profile: ProAccessProfile | null): boolean {
-  if (profile?.payment_provider === 'razorpay' && profile.current_period_end) {
-    const currentPeriodEnd = new Date(profile.current_period_end)
-    return profile.plan === 'pro' && !Number.isNaN(currentPeriodEnd.getTime()) && currentPeriodEnd > new Date()
+  if (
+    (profile?.payment_provider === 'razorpay' || profile?.payment_provider === 'polar') &&
+    profile.current_period_end
+  ) {
+    return profile.plan === 'pro' && isPeriodEndInFuture(profile.current_period_end)
   }
 
   return profile?.plan === 'pro'
