@@ -221,6 +221,7 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
                 {section.items.map((item) => {
                   const { href, label, Icon, badge } = item
                   const active = isActive(item)
+                  const isNew = badge === 'New'
                   const itemClassName = `dashboard-card-hover flex w-full items-center gap-3 rounded-[1rem] px-3.5 py-3 text-left transition-all duration-200 ${
                     active
                       ? 'bg-[linear-gradient(145deg,rgba(163,255,179,0.45),rgba(255,255,255,0.96))] font-semibold text-on-primary-container shadow-[0_14px_32px_rgba(2,109,50,0.08)]'
@@ -237,7 +238,7 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
                       <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
                       <span className="text-sm">{label}</span>
                       {badge ? (
-                        <span className="ml-auto rounded-full border border-[#008f44]/16 bg-[#008f44]/8 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-[#008f44]">
+                        <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] ${isNew ? 'bg-amber-400 text-black' : 'border border-[#008f44]/16 bg-[#008f44]/8 text-[#008f44]'}`}>
                           {badge}
                         </span>
                       ) : null}
