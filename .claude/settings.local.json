@@ -145,7 +145,10 @@
       "Bash(sips -s format jpeg -s formatOptions 70 /Users/thejach/Downloads/ResumePlanet/public/fomo-bunny-resized.png -o /Users/thejach/Downloads/ResumePlanet/public/fomo-bunny.jpg)",
       "Bash(cp \"/Users/thejach/Downloads/ChatGPT Image May 15, 2026, 05_28_16 PM.png\" /tmp/fomo-bunny-original.png)",
       "Bash(sips -Z 800 /tmp/fomo-bunny-original.png -s format jpeg -s formatOptions 90 -o /Users/thejach/Downloads/ResumePlanet/public/fomo-bunny.jpg)",
-      "Bash(~/.nvm/versions/node/v24.15.0/bin/npm install *)"
+      "Bash(~/.nvm/versions/node/v24.15.0/bin/npm install *)",
+      "WebFetch(domain:www.semrush.com)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(nvm use *)"
     ]
   }
 }
