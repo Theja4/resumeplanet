@@ -1,6 +1,5 @@
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { paddle } from '@/lib/paddle'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import {
@@ -159,38 +158,6 @@ export async function findAffiliateByDiscountCode(
   return data ? parseAffiliateRow(data as Record<string, unknown>) : null
 }
 
-export async function resolveAffiliatePaddleDiscountId(
-  supabase: ServiceRoleClient,
-  affiliate: Affiliate
-) {
-  if (affiliate.paddle_discount_id) {
-    return affiliate.paddle_discount_id
-  }
-
-  const discountCollection = paddle.discounts.list({
-    code: [affiliate.discount_code],
-    status: ['active'],
-    perPage: 1,
-  })
-
-  const discounts = await discountCollection.next()
-  const matchedDiscount = discounts.find(
-    discount =>
-      discount.code?.trim().toUpperCase() === affiliate.discount_code.trim().toUpperCase() &&
-      discount.enabledForCheckout
-  )
-
-  if (!matchedDiscount?.id) {
-    return null
-  }
-
-  await supabase
-    .from('affiliates')
-    .update({ paddle_discount_id: matchedDiscount.id })
-    .eq('id', affiliate.id)
-
-  return matchedDiscount.id
-}
 
 export async function getAffiliateById(
   supabase: ServiceRoleClient,
