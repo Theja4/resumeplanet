@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
       compressionOptions: { level: 6 },
     })
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(new Uint8Array(zipBuffer), {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${safeSlug}-site.zip"`,
