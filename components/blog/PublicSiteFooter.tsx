@@ -99,15 +99,16 @@ export default function PublicSiteFooter() {
       <div
         className="relative select-none overflow-hidden"
         style={{
-          background: 'linear-gradient(to bottom, #d1fae5 0%, #065f46 58%, #022c22 100%)',
+          backgroundImage:
+            'repeating-linear-gradient(90deg, #10b981 0px, #10b981 2px, #6ee7b7 2px, #6ee7b7 4px)',
         }}
       >
-        {/* Vertical stripe texture overlay */}
+        {/* Gradient overlay — tints stripes from mint at top to deep forest at bottom */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            backgroundImage:
-              'repeating-linear-gradient(90deg, rgba(255,255,255,0.22) 0px, rgba(255,255,255,0.22) 1px, transparent 1px, transparent 3px)',
+            background:
+              'linear-gradient(to bottom, rgba(209,250,229,0.55) 0%, rgba(4,120,87,0.45) 50%, rgba(2,44,34,0.82) 100%)',
           }}
         />
 
