@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   Trash2,
+  CheckCircle2,
   AlertCircle,
   ChevronDown,
   LayoutTemplate,
