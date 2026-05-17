@@ -1,4 +1,8 @@
+'use client'
+
 import Link from 'next/link'
+import { useRef } from 'react'
+import { motion, useInView } from 'framer-motion'
 
 const SOCIAL_LINKS = [
   {
@@ -46,12 +50,23 @@ const LEGAL_LINKS = [
   { label: 'Cookie Policy', href: '/cookie-policy' },
 ]
 
+const spring = { type: 'spring', stiffness: 55, damping: 18, mass: 1.1 } as const
+
 export default function PublicSiteFooter() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const inView = useInView(heroRef, { once: true, margin: '0px 0px -80px 0px' })
+
   return (
     <footer className="relative w-full overflow-hidden">
 
       {/* ── Top utility bar ── */}
-      <div className="relative z-10 border-t border-gray-200 bg-white">
+      <motion.div
+        className="relative z-10 border-t border-gray-200 bg-white"
+        initial={{ opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '0px 0px -40px 0px' }}
+        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      >
         <div className="mx-auto flex max-w-[1600px] items-center gap-6 px-6 py-4">
 
           {/* Logo + copyright */}
@@ -63,47 +78,59 @@ export default function PublicSiteFooter() {
             </span>
           </div>
 
-          {/* Legal links – centered */}
+          {/* Legal links – centered, staggered */}
           <nav className="flex flex-1 items-center justify-center gap-8">
-            {LEGAL_LINKS.map(({ label, href }) => (
-              <Link
+            {LEGAL_LINKS.map(({ label, href }, i) => (
+              <motion.div
                 key={label}
-                href={href}
-                className="text-sm text-gray-600 transition-colors hover:text-gray-900"
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.08 + i * 0.06, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
               >
-                {label}
-              </Link>
+                <Link href={href} className="text-sm text-gray-600 transition-colors hover:text-gray-900">
+                  {label}
+                </Link>
+              </motion.div>
             ))}
           </nav>
 
-          {/* Social icons – right */}
+          {/* Social icons – right, staggered */}
           <div className="flex shrink-0 items-center gap-5">
-            {SOCIAL_LINKS.map(({ label, href, icon }) => (
-              <a
+            {SOCIAL_LINKS.map(({ label, href, icon }, i) => (
+              <motion.a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={label}
                 className="text-gray-400 transition-colors hover:text-gray-700"
+                initial={{ opacity: 0, scale: 0.7 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 + i * 0.07, ...spring }}
               >
                 {icon}
-              </a>
+              </motion.a>
             ))}
           </div>
 
         </div>
-      </div>
+      </motion.div>
 
       {/* ── Brand hero area ── */}
-      <div
+      <motion.div
+        ref={heroRef}
         className="relative select-none overflow-hidden"
         style={{
           backgroundImage:
             'repeating-linear-gradient(90deg, #10b981 0px, #10b981 2px, #6ee7b7 2px, #6ee7b7 4px)',
         }}
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
       >
-        {/* Gradient overlay — tints stripes from mint at top to deep forest at bottom */}
+        {/* Gradient tint overlay */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -112,19 +139,19 @@ export default function PublicSiteFooter() {
           }}
         />
 
-        {/* Giant wordmark bleeding off the bottom */}
-        <div
-          className="pointer-events-none relative z-10 -mb-[0.1em] flex items-end justify-center"
-          aria-hidden="true"
-        >
-          <span
+        {/* Card-reveal wordmark ── overflow:hidden clips the text as it springs up */}
+        <div className="pointer-events-none relative z-10 -mb-[0.1em] flex items-end justify-center overflow-hidden">
+          <motion.span
             className="block whitespace-nowrap font-black leading-none tracking-[-0.04em] text-[#071e13]"
             style={{ fontSize: 'clamp(72px, 18.5vw, 300px)' }}
+            initial={{ y: '105%' }}
+            animate={inView ? { y: '0%' } : { y: '105%' }}
+            transition={{ ...spring, stiffness: 48, damping: 16, mass: 1.2, delay: 0.15 }}
           >
             REZOOMED
-          </span>
+          </motion.span>
         </div>
-      </div>
+      </motion.div>
 
     </footer>
   )
