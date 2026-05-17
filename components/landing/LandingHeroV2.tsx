@@ -1,40 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, Sparkles, Zap } from 'lucide-react'
+import HeroProductAnimation from '@/components/landing/HeroProductAnimation'
 
 const ROTATING_WORDS = ['land interviews', 'beat the ATS', 'get you hired', 'tailor in seconds']
 const INITIAL_WORD_INDEX = 2
 
 export default function LandingHeroV2() {
-  const mascotRef = useRef<HTMLDivElement>(null)
-  const [parallax, setParallax] = useState({ x: 0, y: 0 })
   const [activeWordIndex, setActiveWordIndex] = useState(INITIAL_WORD_INDEX)
   const [typedWord, setTypedWord] = useState(ROTATING_WORDS[INITIAL_WORD_INDEX])
   const [isHoldingWord, setIsHoldingWord] = useState(true)
 
-  useEffect(() => {
-    let ticking = false
-    const onMove = (e: MouseEvent) => {
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(() => {
-        const cx = window.innerWidth / 2
-        const cy = window.innerHeight / 2
-        setParallax({
-          x: (e.clientX - cx) / cx * 14,
-          y: (e.clientY - cy) / cy * 10,
-        })
-        ticking = false
-      })
-    }
-    window.addEventListener('mousemove', onMove, { passive: true })
-    return () => window.removeEventListener('mousemove', onMove)
-  }, [])
-
-  useEffect(() => {
+useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return
     }
@@ -213,67 +192,10 @@ export default function LandingHeroV2() {
             </div>
           </div>
 
-          {/* ── Right: mascot stage ───────────────────────────────── */}
-          <div className="relative z-0 mx-auto h-[430px] w-full max-w-[560px] min-w-0 md:h-[540px] lg:h-[590px] lg:max-w-[680px]">
-            {/* Resume preview surface */}
-            <div className="absolute inset-x-[5%] bottom-[8%] top-[18%] z-0 overflow-visible rounded-[2rem] border border-[#00a84d]/15 bg-white/70 shadow-[0_30px_80px_-40px_rgba(2,109,50,0.45)] backdrop-blur-sm">
-              <div className="scan-pulse opacity-70" />
-              <div className="absolute left-7 right-7 top-7 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-[#A3FFB3]" />
-                  <span className="h-3 w-3 rounded-full bg-[#7bd3fc]" />
-                  <span className="h-3 w-3 rounded-full bg-[#ffe8bd]" />
-                </div>
-                <span className="h-2.5 w-24 rounded-full bg-[#00a84d]/20" />
-              </div>
-              <Link
-                href="/auth/register"
-                className="absolute left-1/2 top-[43%] z-30 h-[440px] w-[440px] md:h-[540px] md:w-[540px] lg:h-[600px] lg:w-[600px] cursor-pointer"
-                style={{
-                  transform: `translate(calc(-50% + ${parallax.x}px), calc(-50% + ${parallax.y}px))`,
-                  transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
-                }}
-              >
-                <div ref={mascotRef} className="mascot-bob relative h-full w-full">
-                  <div className="absolute left-[7%] top-[13%] text-[#00a84d] sparkle-twinkle z-10" style={{ animationDelay: '0s' }}>
-                    <Sparkles size={22} />
-                  </div>
-                  <div className="absolute right-[10%] top-[20%] text-[#7bd3fc] sparkle-twinkle z-10" style={{ animationDelay: '0.8s' }}>
-                    <Sparkles size={16} />
-                  </div>
-                  <Image
-                    src="/Brands/mascot-hero-pink.png"
-                    alt="Rezoomed mascot hero"
-                    width={700}
-                    height={700}
-                    priority
-                    className="relative h-full w-full object-contain"
-                    style={{
-                      filter:
-                        'drop-shadow(0 20px 26px rgba(2,109,50,0.16)) drop-shadow(0 0 14px rgba(163,255,179,0.14))',
-                    }}
-                  />
-                </div>
-              </Link>
-              <div className="absolute left-7 right-7 top-[86px] space-y-4">
-                <span className="block h-4 w-3/5 rounded-full bg-zinc-900/10" />
-                <span className="block h-3 w-4/5 rounded-full bg-[#00a84d]/15" />
-                <span className="block h-3 w-2/3 rounded-full bg-zinc-900/10" />
-                <span className="block h-3 w-5/6 rounded-full bg-zinc-900/10" />
-              </div>
-              <div className="absolute bottom-8 left-7 right-7 grid grid-cols-3 gap-3">
-                {[0, 1, 2].map((item) => (
-                  <span key={item} className="h-16 rounded-2xl border border-[#00a84d]/10 bg-white/60" />
-                ))}
-              </div>
-            </div>
-
-            {/* Centered glowing rings */}
-            <div className="absolute left-1/2 top-[45%] z-0 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#00a84d]/20 md:h-[430px] md:w-[430px]" />
-            <div className="absolute left-1/2 top-[45%] z-0 h-[260px] w-[260px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#00a84d]/10 md:h-[330px] md:w-[330px]" />
-
+          {/* ── Right: product animation ──────────────────────────── */}
+          <div className="relative z-0 mx-auto w-full max-w-[580px] min-w-0 lg:max-w-[620px]">
             {/* Floating badge: ATS Score */}
-            <div className="absolute left-[1%] top-[18%] z-20 hidden md:block badge-drift-up">
+            <div className="absolute -left-4 -top-4 z-20 hidden md:block badge-drift-up">
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#A3FFB3]">
@@ -288,7 +210,7 @@ export default function LandingHeroV2() {
             </div>
 
             {/* Floating badge: Callbacks */}
-            <div className="absolute right-[1%] top-[30%] z-20 hidden md:block badge-drift-down">
+            <div className="absolute -right-4 -top-4 z-20 hidden md:block badge-drift-down">
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-wider text-zinc-500">Callbacks</p>
@@ -300,11 +222,16 @@ export default function LandingHeroV2() {
               </div>
             </div>
 
+            {/* Floating badge: live tailoring */}
+            <div className="absolute -bottom-4 left-4 z-20 hidden lg:block badge-drift-down" style={{ animationDelay: '0.5s' }}>
+              <div className="rounded-full bg-black px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)]">
+                <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-[#A3FFB3] animate-pulse" />
+                Tailoring live
+              </div>
+            </div>
+
             {/* Floating badge: Keyword match */}
-            <div
-              className="absolute right-[3%] bottom-[13%] z-20 hidden lg:block badge-drift-up"
-              style={{ animationDelay: '1s' }}
-            >
+            <div className="absolute -bottom-4 right-4 z-20 hidden lg:block badge-drift-up" style={{ animationDelay: '1s' }}>
               <div className="rounded-2xl border border-white/60 bg-white/95 px-4 py-3 shadow-[0_20px_50px_-12px_rgba(2,109,50,0.35)] backdrop-blur">
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#7bd3fc] to-[#026d32]">
@@ -318,13 +245,7 @@ export default function LandingHeroV2() {
               </div>
             </div>
 
-            {/* Bottom left: live tailoring tag */}
-            <div className="absolute left-[10%] bottom-[10%] z-20 hidden lg:block badge-drift-down" style={{ animationDelay: '0.5s' }}>
-              <div className="rounded-full bg-black px-4 py-2 text-xs font-black uppercase tracking-wider text-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)]">
-                <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-[#A3FFB3] animate-pulse" />
-                Tailoring live
-              </div>
-            </div>
+            <HeroProductAnimation />
           </div>
         </div>
       </div>
