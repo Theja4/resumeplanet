@@ -1,11 +1,53 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { ArrowLeft, Save, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, Save, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { ResumeLioTemplateRenderer } from '@/components/resume-lio/ResumeLioTemplateRenderer'
 import { ResumeLioEditProvider, useResumeLioEdit } from '@/components/resume-lio/edit/ResumeLioEditContext'
 import { updateResumeLioSite } from './actions'
 import type { ResumeData, ResumeLioSite, ResumeLioSocialLinks, ResumeLioTemplateId } from '@/types'
+
+function SavedToast({ show }: { show: boolean }) {
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    let t1: ReturnType<typeof setTimeout>
+    let t2: ReturnType<typeof setTimeout>
+    if (show) {
+      setMounted(true)
+      t1 = setTimeout(() => setVisible(true), 10)
+    } else {
+      setVisible(false)
+      t2 = setTimeout(() => setMounted(false), 350)
+    }
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [show])
+
+  if (!mounted) return null
+
+  return (
+    <div
+      className="fixed bottom-8 left-1/2 z-[9999] pointer-events-none"
+      style={{
+        transform: `translateX(-50%) translateY(${visible ? '0px' : '14px'})`,
+        opacity: visible ? 1 : 0,
+        transition: visible
+          ? 'opacity 300ms ease, transform 450ms cubic-bezier(0.34,1.56,0.64,1)'
+          : 'opacity 280ms ease-in, transform 280ms ease-in',
+      }}
+    >
+      <div className="flex items-center gap-2.5 rounded-full bg-gray-950 px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
+        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500">
+          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        Saved
+      </div>
+    </div>
+  )
+}
 
 /* ── Inner toolbar – must be inside the Provider to access context ── */
 function EditorToolbar({
@@ -41,11 +83,6 @@ function EditorToolbar({
       {saveError && (
         <span className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700">
           <AlertCircle size={12} /> {saveError}
-        </span>
-      )}
-      {justSaved && !saveError && (
-        <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
-          <CheckCircle2 size={12} /> Saved
         </span>
       )}
 
@@ -139,6 +176,7 @@ export function ResumeLioEditorView({ site, onClose, onSaved }: ResumeLioEditorV
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col bg-white">
+      <SavedToast show={justSaved} />
       <ResumeLioEditProvider
         initialData={site.resume_data as ResumeData}
         initialSocialLinks={site.social_links as ResumeLioSocialLinks}

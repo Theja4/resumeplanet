@@ -10,7 +10,6 @@ import {
   Copy,
   Check,
   Trash2,
-  CheckCircle2,
   AlertCircle,
   ChevronDown,
   LayoutTemplate,
@@ -261,6 +260,48 @@ function ProUpgradeModal({ open, onClose }: { open: boolean; onClose: () => void
   )
 }
 
+function SavedToast({ show }: { show: boolean }) {
+  const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    let t1: ReturnType<typeof setTimeout>
+    let t2: ReturnType<typeof setTimeout>
+    if (show) {
+      setMounted(true)
+      t1 = setTimeout(() => setVisible(true), 10)
+    } else {
+      setVisible(false)
+      t2 = setTimeout(() => setMounted(false), 350)
+    }
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [show])
+
+  if (!mounted) return null
+
+  return (
+    <div
+      className="fixed bottom-8 left-1/2 z-[9999] pointer-events-none"
+      style={{
+        transform: `translateX(-50%) translateY(${visible ? '0px' : '14px'})`,
+        opacity: visible ? 1 : 0,
+        transition: visible
+          ? 'opacity 300ms ease, transform 450ms cubic-bezier(0.34,1.56,0.64,1)'
+          : 'opacity 280ms ease-in, transform 280ms ease-in',
+      }}
+    >
+      <div className="flex items-center gap-2.5 rounded-full bg-gray-950 px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_40px_rgba(0,0,0,0.35)]">
+        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500">
+          <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+            <path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        Saved
+      </div>
+    </div>
+  )
+}
+
 export default function ResumeLioClient({ initialSite, resumes }: ResumeLioClientProps) {
   const { isPro: userIsPro } = usePlan()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -288,7 +329,7 @@ export default function ResumeLioClient({ initialSite, resumes }: ResumeLioClien
   const [slugError, setSlugError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
   const [urlCopied, setUrlCopied] = useState(false)
-  const [pdfLoading, setPdfLoading] = useState(false)
+  const [zipLoading, setZipLoading] = useState(false)
   
   // Edit mode in dashboard
   const [isEditingSettings, setIsEditingSettings] = useState(false)
@@ -420,36 +461,36 @@ export default function ResumeLioClient({ initialSite, resumes }: ResumeLioClien
     setStep('template')
   }
 
-  async function handleExportPdf() {
+  async function handleDownloadZip() {
     if (!resumeData) return
-    setPdfLoading(true)
+    setZipLoading(true)
     try {
-      const response = await fetch('/api/resume-lio/pdf', {
+      const response = await fetch('/api/resume-lio/zip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          slug: site?.slug || slug || 'resume',
+          slug: site?.slug || slug || 'my-site',
           data: resumeData,
           templateId: selectedTemplate,
           socialLinks,
-          filename: `${resumeData.name || 'resume'}-resume-lio`,
+          imageOverrides: site?.image_overrides ?? {},
         }),
       })
       if (!response.ok) {
         const json = await response.json().catch(() => ({}))
-        throw new Error(json.error || 'PDF export failed')
+        throw new Error(json.error || 'ZIP export failed')
       }
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${resumeData.name || 'resume'}-resume-lio.pdf`
+      a.download = `${(site?.slug || slug || 'my-site').replace(/[^\w-]/g, '')}-site.zip`
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'PDF export failed')
+      setError(e instanceof Error ? e.message : 'ZIP export failed')
     } finally {
-      setPdfLoading(false)
+      setZipLoading(false)
     }
   }
 
@@ -782,12 +823,7 @@ export default function ResumeLioClient({ initialSite, resumes }: ResumeLioClien
           <p className="text-sm text-red-700">{error}</p>
         </DashboardSurface>
       )}
-      {justSaved && (
-        <DashboardSurface className="flex items-center gap-3 border-emerald-200 bg-emerald-50 py-3">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          <p className="text-sm text-emerald-700">Saved.</p>
-        </DashboardSurface>
-      )}
+      <SavedToast show={justSaved} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
 
@@ -857,13 +893,13 @@ export default function ResumeLioClient({ initialSite, resumes }: ResumeLioClien
             <LayoutTemplate size={16} /> Change Template
           </button>
 
-          {/* Export PDF */}
+          {/* Download ZIP */}
           <button
-            onClick={handleExportPdf}
-            disabled={pdfLoading}
+            onClick={handleDownloadZip}
+            disabled={zipLoading}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-outline-variant/40 bg-white px-5 py-3 text-sm font-semibold text-on-surface hover:bg-surface-container transition disabled:opacity-50"
           >
-            <Download size={16} /> {pdfLoading ? 'Exporting…' : 'Export as PDF'}
+            <Download size={16} /> {zipLoading ? 'Preparing…' : 'Download Code (.zip)'}
           </button>
 
           {/* Delete */}
