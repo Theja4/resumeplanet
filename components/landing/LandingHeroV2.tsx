@@ -247,6 +247,8 @@ export default function LandingHeroV2() {
                     width={700}
                     height={700}
                     priority
+                    fetchPriority="high"
+                    sizes="(max-width: 768px) 440px, (max-width: 1024px) 540px, 600px"
                     className="relative h-full w-full object-contain"
                     style={{
                       filter:

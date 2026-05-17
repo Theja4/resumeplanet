@@ -76,7 +76,7 @@ export default function LandingBento() {
             <h2 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
               One powerful toolkit.
               <br />
-              <span className="landing-italic-safe bg-gradient-to-r from-[#00a84d] via-[#026d32] to-[#019a47] bg-clip-text text-transparent italic gradient-shift">
+              <span className="landing-italic-safe bg-gradient-to-r from-[#00a84d] via-[#026d32] to-[#019a47] bg-clip-text text-transparent italic">
                 Infinite unfair advantage.
               </span>
             </h2>
@@ -165,7 +165,7 @@ export default function LandingBento() {
                         <span>Keywords</span><span className="text-[#A3FFB3]">94%</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                        <div className="h-full w-[94%] rounded-full bg-gradient-to-r from-[#A3FFB3] to-[#00a84d] gradient-shift" />
+                        <div className="h-full w-[94%] rounded-full bg-gradient-to-r from-[#A3FFB3] to-[#00a84d]" />
                       </div>
                     </div>
                     <div>
@@ -173,7 +173,7 @@ export default function LandingBento() {
                         <span>Skills</span><span className="text-[#A3FFB3]">88%</span>
                       </div>
                       <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                        <div className="h-full w-[88%] rounded-full bg-gradient-to-r from-[#A3FFB3] to-[#00a84d] gradient-shift" />
+                        <div className="h-full w-[88%] rounded-full bg-gradient-to-r from-[#A3FFB3] to-[#00a84d]" />
                       </div>
                     </div>
                   </div>
