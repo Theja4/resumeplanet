@@ -1,14 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import posthog from 'posthog-js'
-import { PostHogProvider as ReactPostHogProvider } from 'posthog-js/react'
 import {
   Analytics,
   getBlogAttributionEvent,
   persistAnalyticsAttribution,
-  syncDistinctIdCookie,
 } from '@/lib/analytics'
 
 function RouteAnalyticsTracker() {
@@ -34,8 +31,6 @@ function RouteAnalyticsTracker() {
       referrer,
     })
 
-    syncDistinctIdCookie(posthog.get_distinct_id())
-
     const blogAttributionEvent = getBlogAttributionEvent(pathname, attribution)
     if (blogAttributionEvent) {
       Analytics.capture(blogAttributionEvent.event, blogAttributionEvent.properties)
@@ -47,52 +42,14 @@ function RouteAnalyticsTracker() {
 
 export default function PostHogProvider({
   children,
-  enabled = true,
 }: {
   children: React.ReactNode
   enabled?: boolean
 }) {
-  const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
-  const apiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com'
-  const localAnalyticsEnabled = process.env.NEXT_PUBLIC_ENABLE_LOCAL_ANALYTICS === 'true'
-  const isLocalhost =
-    typeof window !== 'undefined' &&
-    ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
-  const shouldEnablePostHog = enabled && (!isLocalhost || localAnalyticsEnabled)
-
-  const options = useMemo(
-    () => ({
-      api_host: apiHost,
-      capture_pageview: false,
-      capture_pageleave: true,
-      loaded: (instance: typeof posthog) => {
-        syncDistinctIdCookie(instance.get_distinct_id())
-      },
-    }),
-    [apiHost]
-  )
-
-  useEffect(() => {
-    if (!apiKey || !shouldEnablePostHog) return
-
-    const posthogWithState = posthog as typeof posthog & { __loaded?: boolean }
-    if (posthogWithState.__loaded) {
-      syncDistinctIdCookie(posthog.get_distinct_id())
-      return
-    }
-
-    posthog.init(apiKey, options as Parameters<typeof posthog.init>[1])
-    posthogWithState.__loaded = true
-  }, [apiKey, shouldEnablePostHog, options])
-
-  if (!apiKey || !shouldEnablePostHog) {
-    return <>{children}</>
-  }
-
   return (
-    <ReactPostHogProvider client={posthog}>
+    <>
       <RouteAnalyticsTracker />
       {children}
-    </ReactPostHogProvider>
+    </>
   )
 }

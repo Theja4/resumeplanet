@@ -1,4 +1,5 @@
 import type { PostHog, CaptureOptions } from 'posthog-js'
+import type { PostHogConfig } from 'posthog-js/lib/src/types'
 import { COOKIE_CONSENT_COOKIE, parseCookieConsentPreference } from '@/lib/cookie-consent'
 
 export type AuthMethod = 'email' | 'google' | 'github'
@@ -108,6 +109,7 @@ export const CHECKOUT_CONTEXT_STORAGE_KEY = 'rezoomed_checkout_context'
 const SESSION_COOKIE_ATTRIBUTES = '; path=/; SameSite=Lax'
 
 let posthogPromise: Promise<{ default: PostHog }> | null = null
+let posthogInitPromise: Promise<PostHog | null> | null = null
 
 type SearchParamsLike = {
   get(name: string): string | null
@@ -133,6 +135,17 @@ function isAnalyticsAllowed() {
   if (consent === 'essential') return false
 
   return document.documentElement.dataset.analyticsDefault === 'granted'
+}
+
+function scheduleIdle(callback: () => void) {
+  if (!isBrowser()) return
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(callback, { timeout: 3000 })
+    return
+  }
+
+  globalThis.setTimeout(callback, 1800)
 }
 
 function readCookie(name: string) {
@@ -178,7 +191,7 @@ function hasAttributionFields(attribution: AnalyticsAttribution) {
   )
 }
 
-async function getPostHogInstance() {
+async function importPostHog() {
   if (!isBrowser()) return null
 
   posthogPromise ??= import('posthog-js')
@@ -191,23 +204,67 @@ async function getPostHogInstance() {
   }
 }
 
+async function getPostHogInstance() {
+  if (!isBrowser() || !isAnalyticsAllowed()) return null
+
+  const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+  if (!apiKey) return null
+
+  posthogInitPromise ??= importPostHog().then(posthog => {
+    if (!posthog) return null
+
+    const posthogWithState = posthog as PostHog & { __loaded?: boolean }
+    if (posthogWithState.__loaded) {
+      syncDistinctIdCookie(posthog.get_distinct_id())
+      return posthog
+    }
+
+    const options: Partial<PostHogConfig> = {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+      capture_pageview: false,
+      capture_pageleave: false,
+      autocapture: false,
+      disable_session_recording: true,
+      capture_dead_clicks: false,
+      capture_performance: false,
+      advanced_disable_flags: true,
+      advanced_disable_feature_flags: true,
+      advanced_disable_feature_flags_on_first_load: true,
+      advanced_disable_decide: true,
+      advanced_disable_toolbar_metrics: true,
+      person_profiles: 'identified_only',
+      loaded: instance => {
+        syncDistinctIdCookie(instance.get_distinct_id())
+      },
+    }
+
+    posthog.init(apiKey, options as Parameters<typeof posthog.init>[1])
+    posthogWithState.__loaded = true
+    return posthog
+  })
+
+  return posthogInitPromise
+}
+
 function queueBrowserAnalytics(
   callback: (posthog: PostHog) => void
 ) {
   if (!isBrowser() || !isAnalyticsAllowed()) return
 
-  void getPostHogInstance()
-    .then(posthog => {
-      if (!posthog) return
-      try {
-        callback(posthog)
-      } catch {
+  scheduleIdle(() => {
+    void getPostHogInstance()
+      .then(posthog => {
+        if (!posthog) return
+        try {
+          callback(posthog)
+        } catch {
+          // Analytics failures must never break the product flow.
+        }
+      })
+      .catch(() => {
         // Analytics failures must never break the product flow.
-      }
-    })
-    .catch(() => {
-      // Analytics failures must never break the product flow.
-    })
+      })
+  })
 }
 
 function queueGoogleAnalytics(callback: (gtag: NonNullable<Window['gtag']>) => void) {
@@ -419,8 +476,8 @@ export async function clearAnalyticsClientState() {
   }
 
   try {
-    const importedModule = await import('posthog-js')
-    const posthog = importedModule.default
+    const posthog = await importPostHog()
+    if (!posthog) return
 
     if (typeof posthog.opt_out_capturing === 'function') {
       posthog.opt_out_capturing()
