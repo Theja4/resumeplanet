@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Resume Tailoring Tool | Rezoomed',
     description: 'Tailor your resume to a job description with Rezoomed, surface fit gaps, and rewrite the strongest sections for the target role.',
     url: '/resume-tailoring',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',

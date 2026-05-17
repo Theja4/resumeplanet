@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Resume Metadata Enhancer | Rezoomed',
     description: 'Improve PDF resume metadata like title, author, keywords, and language so your file is cleaner, more searchable, and recruiter-ready.',
     url: '/metadata-enhancer',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',

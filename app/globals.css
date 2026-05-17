@@ -389,6 +389,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   border-radius: 9999px;
   padding: 1rem 1.95rem;
@@ -498,6 +499,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   border-radius: 9999px;
   padding: 1rem 1.95rem;
@@ -567,6 +569,7 @@
 .landing-pill-ghost {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
   border-radius: 9999px;
   background: var(--landing-surface);
@@ -944,8 +947,9 @@
   display: block;
   white-space: nowrap;
   font-weight: 800;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
   line-height: 1;
+  padding-inline-end: 0.06em;
   background: linear-gradient(
     100deg,
     #022c14 0%,

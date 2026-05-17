@@ -195,11 +195,11 @@ export default function PublicSiteFooter() {
 
       {/* ── Animated wordmark band ────────────────────────────── */}
       <div className="footer-wordmark-stage select-none">
-        <div className="relative mx-auto max-w-[1600px] px-4 pb-[0.04em]">
+        <div className="relative mx-auto max-w-[1600px] px-6 pb-[0.04em]">
           <span
             aria-hidden="true"
             className="footer-wordmark"
-            style={{ fontSize: 'clamp(64px, 17vw, 280px)' }}
+            style={{ fontSize: 'clamp(56px, 15vw, 240px)' }}
           >
             REZOOMED
           </span>

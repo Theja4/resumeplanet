@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Resume Match Score | Rezoomed',
     description: 'Compare your resume against a job description, spot missing skills and weak evidence, and decide how to tailor before you apply.',
     url: '/match-score',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',

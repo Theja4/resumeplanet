@@ -20,6 +20,7 @@ export const metadata: Metadata = {
     title: 'Free ATS Resume Checker & Scanner',
     description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
     url: '/ats-checker',
+    images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
