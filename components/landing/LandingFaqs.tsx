@@ -1,7 +1,3 @@
-'use client'
-
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 
 const FAQS = [
@@ -48,43 +44,25 @@ const FAQS = [
 ] as const
 
 function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false)
-
   return (
-    <div className="group rounded-[1.75rem] border border-zinc-100 bg-white shadow-[0_12px_30px_rgba(18,24,21,0.04)] transition-all hover:border-[#A3FFB3] hover:shadow-[0_18px_40px_rgba(2,109,50,0.08)] overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-left p-6 md:p-7 cursor-pointer flex items-center justify-between"
+    <details className="group rounded-[1.75rem] border border-zinc-100 bg-white shadow-[0_12px_30px_rgba(18,24,21,0.04)] transition-all hover:border-[#A3FFB3] hover:shadow-[0_18px_40px_rgba(2,109,50,0.08)] overflow-hidden">
+      <summary
+        className="flex w-full cursor-pointer list-none items-center justify-between p-6 text-left md:p-7 [&::-webkit-details-marker]:hidden"
       >
         <span className="text-lg md:text-xl font-black tracking-tight text-zinc-950 pr-8">
           {question}
         </span>
-        <motion.div
-          animate={{ rotate: isOpen ? 45 : 0 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="text-[#00a84d] flex-shrink-0"
-        >
+        <span className="text-[#00a84d] flex-shrink-0 transition-transform duration-300 group-open:rotate-45">
           <Plus size={28} strokeWidth={2.5} />
-        </motion.div>
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="px-6 pb-6 md:px-7 md:pb-7 -mt-1">
-              <div className="h-px w-full bg-zinc-100 mb-5" />
-              <p className="text-sm md:text-base leading-7 text-zinc-600">
-                {answer}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+        </span>
+      </summary>
+      <div className="px-6 pb-6 md:px-7 md:pb-7 -mt-1">
+        <div className="h-px w-full bg-zinc-100 mb-5" />
+        <p className="text-sm md:text-base leading-7 text-zinc-600">
+          {answer}
+        </p>
+      </div>
+    </details>
   )
 }
 

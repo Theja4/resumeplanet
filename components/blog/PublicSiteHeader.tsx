@@ -111,12 +111,13 @@ export default function PublicSiteHeader({
     }`
 
   return (
-    <nav
+    <header
       ref={navRef}
       className={`fixed top-0 z-50 w-full bg-white/80 px-4 backdrop-blur-xl font-['Plus_Jakarta_Sans'] tracking-tight transition-all duration-300 sm:px-6 lg:px-8 ${
         isMobileHeaderCondensed ? 'py-1.5' : 'py-0'
       } ${isScrolled ? 'border-b border-zinc-900/8 shadow-[0_2px_16px_rgba(0,0,0,0.05)]' : 'shadow-none'}`}
     >
+      <nav aria-label="Primary">
       <div className={`relative flex items-center justify-between transition-all duration-300 ${isMobileHeaderCondensed ? 'h-12' : 'h-16'}`}>
         <div className="flex items-center gap-2">
           <button
@@ -335,6 +336,7 @@ export default function PublicSiteHeader({
           </div>
         </div>
       </div>
-    </nav>
+      </nav>
+    </header>
   )
 }

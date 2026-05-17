@@ -10,7 +10,7 @@ import type { JobSourceProvider } from '@/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
-  title: 'Not Found | Rezoomed',
+  title: 'Not Found',
   robots: {
     index: false,
     follow: false,

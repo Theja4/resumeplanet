@@ -1,23 +1,3 @@
-'use client'
-
-import { useEffect, useRef, useState } from 'react'
-
-function useReveal() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } },
-      { threshold: 0.08 }
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  return { ref, visible }
-}
-
 type Segment = { t: string; em?: boolean }
 
 function Q({ segments, className = '' }: { segments: Segment[]; className?: string }) {
@@ -54,20 +34,12 @@ function Card({
 }) {
   return (
     <div
-      className={`group flex flex-col rounded-3xl bg-white p-8 cursor-default ${className}`}
+      className={`group flex flex-col rounded-3xl bg-white p-8 cursor-default transition-transform duration-300 hover:-translate-y-1 ${className}`}
       style={{
         boxShadow: '0 4px 24px -4px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.04)',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(28px)',
         transition: `opacity 0.75s ${delay}ms cubic-bezier(0.22,1,0.36,1), transform 0.75s ${delay}ms cubic-bezier(0.22,1,0.36,1), box-shadow 0.25s ease`,
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 20px 48px -8px rgba(0,168,77,0.18), 0 4px 12px -2px rgba(0,0,0,0.06)'
-        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(-4px)'
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 24px -4px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.04)'
-        ;(e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'
       }}
     >
       {children}
@@ -76,14 +48,14 @@ function Card({
 }
 
 export default function LandingTestimonials() {
-  const { ref, visible } = useReveal()
+  const visible = true
 
   return (
     <section
       className="px-6 py-24 md:py-28"
       style={{ background: '#f0faf3' }}
     >
-      <div ref={ref} className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl">
 
         {/* Headline */}
         <div

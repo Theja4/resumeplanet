@@ -30,16 +30,9 @@ const pricingPreviewImage = {
 }
 
 export const metadata: Metadata = {
-  title: 'Resume Builder Pricing | Rezoomed',
+  title: 'Resume Builder Pricing',
   description:
     'Compare Rezoomed Free and Pro plans for ATS resume optimization, job matching, and AI resume building.',
-  keywords: [
-    'resume builder pricing',
-    'ats checker pricing',
-    'resume optimization pricing',
-    'Rezoomed pricing',
-    'ai resume builder pricing',
-  ],
   alternates: {
     canonical: '/pricing',
   },

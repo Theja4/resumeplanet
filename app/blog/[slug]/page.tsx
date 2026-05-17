@@ -24,7 +24,6 @@ import {
 } from '@/lib/blog'
 import { getCompanyJobGuideBySlug } from '@/lib/blog/company-job-guides'
 import { getBlogResumeExampleForSlug } from '@/lib/blog/resume-examples'
-import { buildBlogPostKeywords } from '@/lib/blog/seo'
 import { getSiteUrl } from '@/lib/site'
 import { getAuthorForSlug } from '@/lib/blog/authors'
 
@@ -48,25 +47,6 @@ const GOOGLE_JOB_FAQS = [
     question: 'Can I edit my Google application after I submit it?',
     answer:
       'No. Google says you can change an application before submission, including swapping the resume, but not after you submit.',
-  },
-]
-
-const ATS_CHECKER_HOW_TO_STEPS = [
-  {
-    name: 'Fix parsing first',
-    text: 'Ensure your name, contact info, and role dates are readable by a standard parser.',
-  },
-  {
-    name: 'Simplify formatting',
-    text: 'Remove complex tables, graphics, and text boxes that scramble ATS extraction.',
-  },
-  {
-    name: 'Align truthful keywords',
-    text: 'Match the job description language only where it mirrors your real experience.',
-  },
-  {
-    name: 'Add evidence to bullets',
-    text: 'Replace duties with measurable outcomes, tools, and scope.',
   },
 ]
 
@@ -163,14 +143,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const post = await getPublishedBlogPostBySlug(slug)
-  if (!post) return { title: 'Blog | Rezoomed' }
+  if (!post) return { title: 'Blog' }
   const siteUrl = getSiteUrl()
   const image = post.cover_image_url || getBlogMediaFallback(post.slug)?.coverImage || `${siteUrl}/icon.png`
 
   return {
     title: post.title,
     description: post.excerpt,
-    keywords: buildBlogPostKeywords(post),
     authors: [{ name: post.author_name }],
     category: post.category,
     robots: {
@@ -348,17 +327,13 @@ export default async function BlogPostPage({
     dateModified: post.updated_at,
     author: {
       '@type': 'Person',
+      '@id': `${siteUrl}/#author-${post.author_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name: post.author_name,
       jobTitle: author.title,
+      description: author.bio,
+      worksFor: { '@type': 'Organization', '@id': `${siteUrl}/#organization` },
     },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Rezoomed',
-      logo: {
-        '@type': 'ImageObject',
-        url: `${siteUrl}/icon.png`,
-      },
-    },
+    publisher: { '@id': `${siteUrl}/#organization` },
     mainEntityOfPage: `${siteUrl}/blog/${post.slug}`,
     articleSection: post.category,
   }
@@ -400,79 +375,6 @@ export default async function BlogPostPage({
         })),
       }
     : null
-  const howToJsonLd =
-    post.slug === 'how-to-land-a-google-job'
-      ? {
-          '@context': 'https://schema.org',
-          '@type': 'HowTo',
-          name: 'How to get a job at Google',
-          description: post.excerpt,
-          step: [
-            {
-              '@type': 'HowToStep',
-              name: 'Choose one target Google role',
-              text: 'Filter for the exact function, level, and team context before rewriting the resume.',
-            },
-            {
-              '@type': 'HowToStep',
-              name: 'Tailor the resume to that job',
-              text: 'Mirror the job language naturally and keep only evidence you can actually prove.',
-            },
-            {
-              '@type': 'HowToStep',
-              name: 'Check readability and file constraints',
-              text: 'Keep the resume ATS-safe, under 2 MB, and ready before submission because Google says you cannot edit after applying.',
-            },
-            {
-              '@type': 'HowToStep',
-              name: 'Submit and prepare for interviews',
-              text: 'Once the application is in, prepare concise stories about impact, leadership, ambiguity, and learning.',
-            },
-          ],
-        }
-      : companyJobGuide
-        ? {
-            '@context': 'https://schema.org',
-            '@type': 'HowTo',
-            name: `How to get a job at ${companyJobGuide.companyName}`,
-            description: post.excerpt,
-            step: [
-              {
-                '@type': 'HowToStep',
-                name: `Choose one ${companyJobGuide.companyName} role lane`,
-                text: companyJobGuide.strategyNote,
-              },
-              {
-                '@type': 'HowToStep',
-                name: `Tailor your ${companyJobGuide.companyName} resume`,
-                text: `Lead with the signals ${companyJobGuide.companyName} recruiters need to see: ${companyJobGuide.resumeSignals.join(', ')}.`,
-              },
-              {
-                '@type': 'HowToStep',
-                name: 'Use the resume example as a structure guide',
-                text: 'Study the example resume for positioning, evidence density, measurable bullets, and ATS-safe formatting before customizing your own version.',
-              },
-              {
-                '@type': 'HowToStep',
-                name: 'Prepare proof for interviews',
-                text: `Build a story bank around the same proof points your resume uses, including ${companyJobGuide.interviewPrepItems.slice(0, 3).join(', ')}.`,
-              },
-            ],
-          }
-      : post.slug === 'ats-resume-checker-what-it-tests-and-why-it-matters'
-        ? {
-            '@context': 'https://schema.org',
-            '@type': 'HowTo',
-            name: 'How to use an ATS resume checker',
-            description: post.excerpt,
-            step: ATS_CHECKER_HOW_TO_STEPS.map(step => ({
-              '@type': 'HowToStep',
-              name: step.name,
-              text: step.text,
-            })),
-          }
-      : null
-
   return (
     <div
       className="min-h-screen bg-white text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container"
@@ -492,12 +394,6 @@ export default async function BlogPostPage({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-        />
-      ) : null}
-      {howToJsonLd ? (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
         />
       ) : null}
 

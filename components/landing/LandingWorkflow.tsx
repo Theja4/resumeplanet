@@ -1,44 +1,14 @@
-'use client'
-
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ArrowRight, UploadCloud, Wand2, Send, CheckCircle2, Sparkles } from 'lucide-react'
 
-const E = 'cubic-bezier(0.22, 1, 0.36, 1)'
-
 function Reveal({ children, delay = 0, className = '', from = 'bottom' }: {
-  children: React.ReactNode; delay?: number; className?: string; from?: 'bottom' | 'left' | 'right'
+  children: ReactNode; delay?: number; className?: string; from?: 'bottom' | 'left' | 'right'
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [v, setV] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setV(true); obs.disconnect() } },
-      { threshold: 0.1, rootMargin: '0px 0px -60px 0px' },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  const hide =
-    from === 'left' ? 'translateX(-40px)' :
-    from === 'right' ? 'translateX(40px)' :
-    'translateY(36px)'
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: v ? 1 : 0,
-        transform: v ? 'translate(0,0)' : hide,
-        transition: `opacity 0.9s ${E} ${delay}ms, transform 0.9s ${E} ${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  )
+  void delay
+  void from
+  return <div className={className}>{children}</div>
 }
 
 function StepNumber({ n, active }: { n: string; active: boolean }) {
@@ -128,39 +98,8 @@ const STEPS: Step[] = [
 ]
 
 export default function LandingWorkflow() {
-  const sectionRef = useRef<HTMLElement>(null)
-  const [activeStep, setActiveStep] = useState(0)
-
-  useEffect(() => {
-    const section = sectionRef.current
-    if (!section) return
-
-    const cards = section.querySelectorAll<HTMLElement>('[data-step-card]')
-    if (!cards.length) return
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        let bestIdx = activeStep
-        let bestRatio = 0
-        entries.forEach((entry) => {
-          const idx = Number(entry.target.getAttribute('data-step-card'))
-          if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
-            bestRatio = entry.intersectionRatio
-            bestIdx = idx
-          }
-        })
-        if (bestRatio > 0) setActiveStep(bestIdx)
-      },
-      { threshold: [0.3, 0.6], rootMargin: '-10% 0px -30% 0px' },
-    )
-
-    cards.forEach((card) => obs.observe(card))
-    return () => obs.disconnect()
-  }, [activeStep])
-
   return (
     <section
-      ref={sectionRef}
       className="relative overflow-hidden px-6 py-24 md:py-28"
       style={{
         background: 'linear-gradient(180deg, #ffffff 0%, #f8faf9 30%, #edf7f0 60%, #f8faf9 100%)',
@@ -207,7 +146,7 @@ export default function LandingWorkflow() {
           <div className="h-full w-full bg-gradient-to-b from-transparent via-[#A3FFB3]/50 to-transparent" />
           <div
             className="absolute left-0 top-0 w-full bg-gradient-to-b from-[#00a84d] to-[#00a84d]/0 transition-all duration-1000 ease-out"
-            style={{ height: `${Math.min(100, (activeStep + 1) * 34)}%` }}
+            style={{ height: '100%' }}
           />
         </div>
 
@@ -216,7 +155,7 @@ export default function LandingWorkflow() {
           {STEPS.map((step, idx) => {
             const flip = idx % 2 === 1
             const { Icon } = step
-            const isActive = idx === activeStep
+            const isActive = true
 
             return (
               <div

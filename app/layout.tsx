@@ -4,13 +4,16 @@ import { Plus_Jakarta_Sans } from 'next/font/google'
 import { cookies, headers } from 'next/headers'
 import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
-import { getSiteUrl, SITE_NAME } from '@/lib/site'
-import { DEFAULT_OG_IMAGE, DEFAULT_SEO_DESCRIPTION, getAbsoluteUrl } from '@/lib/seo'
-import PromoBanner from '@/components/shared/PromoBanner'
-import AnalyticsProviders from '@/components/providers/AnalyticsProviders'
-import AffiliateReferralTracker from '@/components/providers/AffiliateReferralTracker'
-import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
-import CookieConsentBanner from '@/components/shared/CookieConsentBanner'
+import { getOrganizationSameAsLinks, getSiteUrl, SITE_NAME } from '@/lib/site'
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_SEO_DESCRIPTION,
+  buildOrganizationJsonLd,
+  buildWebsiteJsonLd,
+  getAbsoluteUrl,
+  toJsonLd,
+} from '@/lib/seo'
+import PublicRuntime from '@/components/providers/PublicRuntime'
 
 import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
 import {
@@ -71,7 +74,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: SITE_NAME,
     description: DEFAULT_SEO_DESCRIPTION,
     images: [getAbsoluteUrl(DEFAULT_OG_IMAGE.url)],
@@ -109,6 +112,9 @@ export default async function RootLayout({
     consentPreference: cookieConsentPreference,
   })
 
+  const organizationJsonLd = buildOrganizationJsonLd(getOrganizationSameAsLinks())
+  const websiteJsonLd = buildWebsiteJsonLd()
+
   return (
     <html
       lang="en"
@@ -117,17 +123,28 @@ export default async function RootLayout({
       data-scroll-behavior="smooth"
       data-analytics-default={analyticsEnabled ? 'granted' : 'denied'}
     >
+      <head>
+        <link rel="preconnect" href="https://cdn.simpleicons.org" crossOrigin="" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(organizationJsonLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(websiteJsonLd) }}
+        />
+      </head>
       <body
         suppressHydrationWarning
         className={`min-h-full flex flex-col ${showCookieConsentBanner ? 'pt-28 sm:pt-24 lg:pt-20' : ''}`}
       >
-        {showCookieConsentBanner ? <CookieConsentBanner /> : null}
-        <AffiliateReferralTracker />
-        <AnalyticsProviders analyticsEnabled={analyticsEnabled}>
-          {bannerPromo && <PromoBanner promo={bannerPromo} />}
-          {children}
-          {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
-        </AnalyticsProviders>
+        <PublicRuntime
+          analyticsEnabled={analyticsEnabled}
+          bannerPromo={bannerPromo}
+          jobBoardEnabled={JOB_BOARD_ENABLED}
+          showCookieConsentBanner={showCookieConsentBanner}
+        />
+        {children}
       </body>
     </html>
   );

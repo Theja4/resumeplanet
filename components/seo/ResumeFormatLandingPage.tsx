@@ -72,19 +72,6 @@ export default function ResumeFormatLandingPage({ page }: { page: ResumeFormatPa
       },
     })),
   }
-  const howToJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'HowTo',
-    name: page.title,
-    description: page.description,
-    step: page.sectionOrder.map((section, index) => ({
-      '@type': 'HowToStep',
-      position: index + 1,
-      name: section,
-      text: `Add a clear ${section.toLowerCase()} section using searchable text and role-relevant proof.`,
-    })),
-  }
-
   return (
     <div className="flex min-h-screen flex-col bg-background-landing font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container">
       <PublicSiteHeader />
@@ -95,10 +82,6 @@ export default function ResumeFormatLandingPage({ page }: { page: ResumeFormatPa
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
       />
 
       <main className="mx-auto flex-1 max-w-[88rem] px-6 pb-24 pt-24">

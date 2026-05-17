@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import type { ReactNode } from 'react'
 
 declare global {
   interface Window {
@@ -45,10 +44,8 @@ function scheduleAnalyticsScriptLoad(callback: () => void) {
 }
 
 export default function GoogleAnalyticsProvider({
-  children,
   enabled = true,
 }: {
-  children: ReactNode
   enabled?: boolean
 }) {
   const gaId = process.env.NEXT_PUBLIC_GA4_ID
@@ -79,5 +76,5 @@ export default function GoogleAnalyticsProvider({
     })
   }, [enabled, gaId])
 
-  return <>{children}</>
+  return null
 }

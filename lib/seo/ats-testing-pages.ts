@@ -6,7 +6,8 @@ export type AtsTestingPage = {
   path: string
   title: string
   description: string
-  keywords: string[]
+  /** @deprecated Removed from emitted metadata. Kept optional for back-compat with existing fixtures. */
+  keywords?: string[]
   eyebrow: string
   heading: string
   intro: string
@@ -53,14 +54,6 @@ export const ATS_TESTING_PAGES: Record<string, AtsTestingPage> = {
     title: 'Resume Scanner: Scan Your Resume for ATS and Recruiter Issues | Rezoomed',
     description:
       'Use the Rezoomed resume scanner to check parsing, formatting, keywords, and recruiter readability before you apply.',
-    keywords: [
-      'resume scanner',
-      'resume scan',
-      'scan resume',
-      'resume checker',
-      'ats resume scanner',
-      'resume testing',
-    ],
     eyebrow: 'Resume scanner',
     heading: 'Scan the resume file before employers scan it for you.',
     intro:
@@ -120,14 +113,6 @@ export const ATS_TESTING_PAGES: Record<string, AtsTestingPage> = {
     title: 'ATS Resume Test: Check If Your Resume Is ATS-Friendly | Rezoomed',
     description:
       'Run an ATS resume test to check parsing, formatting, keywords, and role alignment before submitting job applications.',
-    keywords: [
-      'ats resume test',
-      'ats testing',
-      'resume testing',
-      'ats resume checker',
-      'ats test resume',
-      'resume ats test',
-    ],
     eyebrow: 'ATS resume test',
     heading: 'Test whether your resume is ATS-friendly before you submit it.',
     intro:
@@ -187,13 +172,6 @@ export const ATS_TESTING_PAGES: Record<string, AtsTestingPage> = {
     title: 'Amazon ATS Resume Guide: Format, Keywords, and Application Strategy | Rezoomed',
     description:
       'Prepare an Amazon-ready resume with ATS-safe formatting, role keywords, leadership-principle proof, and an honest scan workflow before applying.',
-    keywords: [
-      'amazon ats resume',
-      'amazon resume guide',
-      'amazon resume format',
-      'amazon job application resume',
-      'amazon ats resume checker',
-    ],
     eyebrow: 'Amazon ATS resume guide',
     heading: 'Build an Amazon resume for the job description, not a generic ATS rumor.',
     intro:
@@ -272,13 +250,6 @@ export const ATS_TESTING_PAGES: Record<string, AtsTestingPage> = {
     title: 'What ATS Does Amazon Use? Honest Answer for Job Seekers | Rezoomed',
     description:
       'Amazon does not publicly reduce hiring to one ATS vendor. Learn what to do instead: optimize resume format, keywords, proof, and application readiness.',
-    keywords: [
-      'what ats does amazon use',
-      'what ats does amazon use resume',
-      'amazon applicant tracking system',
-      'amazon ats',
-      'amazon resume ats',
-    ],
     eyebrow: 'Amazon ATS answer',
     heading: 'Do not build your Amazon resume around a guessed ATS vendor.',
     intro:
@@ -361,23 +332,33 @@ export function getAllAtsTestingStaticPaths() {
   return Object.values(ATS_TESTING_PAGES).map(page => page.path)
 }
 
+function stripBrandSuffix(title: string) {
+  let cleaned = title.trim()
+  const suffix = ' | Rezoomed'
+  while (cleaned.toLowerCase().endsWith(suffix.toLowerCase())) {
+    cleaned = cleaned.slice(0, -suffix.length).trim()
+  }
+  return cleaned
+}
+
 export function buildAtsTestingMetadata(page: AtsTestingPage): Metadata {
+  const cleanTitle = stripBrandSuffix(page.title)
+  const brandedTitle = `${cleanTitle} | Rezoomed`
   return {
-    title: page.title,
+    title: { absolute: brandedTitle },
     description: page.description,
-    keywords: page.keywords,
     alternates: {
       canonical: page.path,
     },
     openGraph: {
       type: 'website',
-      title: page.title,
+      title: brandedTitle,
       description: page.description,
       url: page.path,
     },
     twitter: {
       card: 'summary_large_image',
-      title: page.title,
+      title: brandedTitle,
       description: page.description,
     },
   }

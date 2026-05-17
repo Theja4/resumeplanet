@@ -225,6 +225,782 @@
   }
 }
 
+/* ──────────────────────────────────────────────────────────────
+   Landing — semantic theme tokens
+   These live alongside the shadcn tokens above and are consumed by
+   the new light-premium hero / bento / final CTA. They're defined
+   for both :root (light) and .dark so flipping the theme later
+   re-skins every landing surface without touching components.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces & text */
+  --landing-bg: #ffffff;
+  --landing-surface: rgba(255, 255, 255, 0.72);
+  --landing-surface-strong: #ffffff;
+  --landing-border: rgba(15, 23, 42, 0.06);
+  --landing-border-strong: rgba(15, 23, 42, 0.10);
+  --landing-text: #09090b;
+  --landing-text-muted: #52525b;
+  --landing-text-subtle: #a1a1aa;
+
+  /* Brand accents (kept on-brand green, but exposed as tokens) */
+  --landing-accent: #00a84d;
+  --landing-accent-strong: #026d32;
+  --landing-accent-soft: #a3ffb3;
+
+  /* Layered shadows: 1px ring + soft drop, Stripe/Linear style */
+  --landing-shadow-sm:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  --landing-shadow-md:
+    0 8px 24px -8px rgba(15, 23, 42, 0.12),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(15, 23, 42, 0.05);
+  --landing-shadow-lg:
+    0 24px 48px -16px rgba(15, 23, 42, 0.18),
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+
+  /* Aurora shader uniforms (RGB 0–255 triplets read by AuroraShader) */
+  --aurora-bg: 252, 253, 252;
+  --aurora-c1: 134, 239, 172;
+  --aurora-c2: 125, 211, 252;
+  --aurora-c3: 196, 181, 253;
+  --aurora-intensity: 0.78;
+
+  /* CSS gradient that mirrors the shader for SSR / fallback paint */
+  --landing-aurora-fallback:
+    radial-gradient(ellipse 60% 80% at 18% 20%, rgba(134, 239, 172, 0.62), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 85% 24%, rgba(125, 211, 252, 0.5), transparent 65%),
+    radial-gradient(ellipse 80% 50% at 60% 100%, rgba(196, 181, 253, 0.38), transparent 70%),
+    linear-gradient(180deg, #fbfdfc 0%, #ffffff 100%);
+}
+
+.dark {
+  --landing-bg: #0a0a0a;
+  --landing-surface: rgba(24, 24, 27, 0.6);
+  --landing-surface-strong: #18181b;
+  --landing-border: rgba(255, 255, 255, 0.06);
+  --landing-border-strong: rgba(255, 255, 255, 0.12);
+  --landing-text: #fafafa;
+  --landing-text-muted: #a1a1aa;
+  --landing-text-subtle: #52525b;
+
+  --landing-accent: #4ade80;
+  --landing-accent-strong: #22c55e;
+  --landing-accent-soft: rgba(74, 222, 128, 0.2);
+
+  --landing-shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  --landing-shadow-md:
+    0 8px 24px -8px rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  --landing-shadow-lg:
+    0 24px 48px -16px rgba(0, 0, 0, 0.7),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+
+  --aurora-bg: 10, 10, 10;
+  --aurora-c1: 34, 197, 94;
+  --aurora-c2: 56, 189, 248;
+  --aurora-c3: 168, 85, 247;
+  --aurora-intensity: 0.65;
+
+  --landing-aurora-fallback:
+    radial-gradient(ellipse 60% 80% at 18% 20%, rgba(34, 197, 94, 0.22), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 85% 24%, rgba(56, 189, 248, 0.18), transparent 65%),
+    radial-gradient(ellipse 80% 50% at 60% 100%, rgba(168, 85, 247, 0.16), transparent 70%),
+    linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+}
+
+/* AuroraShader shell — fills its parent and shows the gradient
+   fallback under the canvas (or in place of it when reduced-motion
+   / no-WebGL). */
+.landing-aurora-shell {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--landing-aurora-fallback);
+  pointer-events: none;
+}
+
+/* Per-section override for the dark-palette aurora used in FinalCTA */
+.aurora-fallback-dark {
+  --landing-aurora-fallback:
+    radial-gradient(ellipse 60% 80% at 18% 20%, rgba(34, 197, 94, 0.28), transparent 60%),
+    radial-gradient(ellipse 60% 60% at 85% 24%, rgba(56, 189, 248, 0.22), transparent 65%),
+    radial-gradient(ellipse 80% 50% at 60% 100%, rgba(168, 85, 247, 0.20), transparent 70%),
+    linear-gradient(180deg, #050a07 0%, #02060a 100%);
+}
+
+/* Landing-specific premium primitives (used by hero / bento / cta).
+   Built on the tokens above so they flip with theme automatically. */
+
+.landing-glass-card {
+  position: relative;
+  background: var(--landing-surface);
+  border: 1px solid var(--landing-border);
+  border-radius: 1.75rem;
+  box-shadow: var(--landing-shadow-md);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.landing-glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55) 0%, transparent 38%);
+  pointer-events: none;
+}
+
+.landing-pill-dark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background: var(--landing-text);
+  color: var(--landing-bg);
+  padding: 0.7rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 8px 24px -8px rgba(15, 23, 42, 0.4);
+  transition: transform 0.18s ease, background-color 0.18s ease;
+}
+.landing-pill-dark:hover {
+  background: #18181b;
+  transform: translateY(-1px);
+}
+.dark .landing-pill-dark:hover {
+  background: #f4f4f5;
+}
+
+/* ── Primary hero CTA — polished black pill with gradient, inner
+      highlight, layered drop shadow, and a slow shine sweep ── */
+
+.landing-cta-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 9999px;
+  padding: 1rem 1.95rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, #27272a 0%, #18181b 52%, #09090b 100%);
+  box-shadow:
+    /* top inner highlight (the keycap effect on dark) */
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    /* faint inner ring keeps the edge crisp */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    /* tight elevation shadow */
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    /* layered ambient shadows that sit nicely on light bg */
+    0 8px 18px -4px rgba(0, 0, 0, 0.28),
+    0 22px 44px -12px rgba(0, 0, 0, 0.32),
+    /* outer hairline for definition against any bg */
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  isolation: isolate;
+  text-decoration: none;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-cta-primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.36),
+    0 12px 24px -4px rgba(0, 0, 0, 0.36),
+    0 26px 56px -12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.landing-cta-primary:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+.landing-cta-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 0 4px rgba(0, 168, 77, 0.32),
+    0 12px 24px -4px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Top-half glossy highlight — refined, not chrome */
+.landing-cta-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.02) 38%,
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Animated shine sweep — passive attention without being noisy */
+.landing-cta-primary::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -40%;
+  width: 35%;
+  height: 200%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.0) 30%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.0) 70%,
+    transparent 100%
+  );
+  transform: translateX(-200%) rotate(14deg);
+  pointer-events: none;
+  z-index: 2;
+  animation: cta-shine 4.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@keyframes cta-shine {
+  0%, 32%   { transform: translateX(-200%) rotate(14deg); opacity: 0; }
+  40%       { opacity: 1; }
+  62%       { opacity: 1; }
+  72%, 100% { transform: translateX(560%) rotate(14deg); opacity: 0; }
+}
+
+.landing-cta-primary > * {
+  position: relative;
+  z-index: 3;
+}
+
+/* ── Inverted primary CTA — light pill on dark surfaces (FinalCTA) ── */
+
+.landing-cta-primary-light {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 9999px;
+  padding: 1rem 1.95rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  color: #022c14;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f6f5 100%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 8px 18px -4px rgba(163, 255, 179, 0.35),
+    0 24px 50px -12px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  isolation: isolate;
+  text-decoration: none;
+  transition:
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-cta-primary-light:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 1),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    0 12px 22px -4px rgba(163, 255, 179, 0.5),
+    0 30px 60px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+.landing-cta-primary-light:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.9),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 0 0 4px rgba(163, 255, 179, 0.5),
+    0 24px 50px -12px rgba(0, 0, 0, 0.4);
+}
+.landing-cta-primary-light::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -40%;
+  width: 35%;
+  height: 200%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(163, 255, 179, 0.0) 30%,
+    rgba(163, 255, 179, 0.5) 50%,
+    rgba(163, 255, 179, 0.0) 70%,
+    transparent 100%
+  );
+  transform: translateX(-200%) rotate(14deg);
+  pointer-events: none;
+  z-index: 2;
+  animation: cta-shine 4.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  animation-delay: 1.2s;
+}
+.landing-cta-primary-light > * {
+  position: relative;
+  z-index: 3;
+}
+
+.landing-pill-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 9999px;
+  background: var(--landing-surface);
+  border: 1px solid var(--landing-border-strong);
+  color: var(--landing-text);
+  padding: 0.95rem 1.7rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.landing-pill-ghost:hover {
+  background: var(--landing-surface-strong);
+  border-color: var(--landing-text);
+  transform: translateY(-1px);
+}
+
+.landing-chip-floating {
+  border-radius: 1.1rem;
+  background: var(--landing-surface-strong);
+  border: 1px solid var(--landing-border);
+  padding: 0.75rem 1.05rem;
+  box-shadow: var(--landing-shadow-md);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.landing-section-eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--landing-text-subtle);
+}
+
+/* ── Hero: refined resume preview card behind the mascot ───── */
+
+.landing-resume-card {
+  position: absolute;
+  inset: 6% 4% 8% 4%;
+  border-radius: 1.6rem;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcfb 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 24px 60px -24px rgba(15, 23, 42, 0.18),
+    0 4px 12px -4px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  transform: rotate(-2.4deg);
+  transform-origin: 50% 60%;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Subtle scan line that travels top→bottom every ~5s */
+.landing-resume-card-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0, 168, 77, 0.85), transparent);
+  box-shadow: 0 0 14px rgba(0, 168, 77, 0.45);
+  animation: landing-resume-scan 5.4s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes landing-resume-scan {
+  0%        { top: 0;                    opacity: 0; }
+  10%       { opacity: 1; }
+  90%       { opacity: 1; }
+  100%      { top: calc(100% - 2px);     opacity: 0; }
+}
+
+/* ── Hero: live match-score widget ─────────────────────────── */
+
+@property --match-progress {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 92%;
+}
+
+.landing-match-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  padding: 0.7rem 0.95rem 0.7rem 0.7rem;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 16px 36px -12px rgba(15, 23, 42, 0.18),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.landing-match-ring {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from -90deg,
+    #00a84d 0%,
+    #00a84d var(--match-progress),
+    rgba(15, 23, 42, 0.07) var(--match-progress),
+    rgba(15, 23, 42, 0.07) 100%
+  );
+  padding: 3px;
+  flex-shrink: 0;
+  animation: landing-match-pulse 4s ease-in-out infinite;
+}
+.landing-match-ring::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 9999px;
+  background: #ffffff;
+}
+.landing-match-ring > span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #022c14;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes landing-match-pulse {
+  0%, 100% { --match-progress: 92%; }
+  50%      { --match-progress: 96%; }
+}
+
+/* ── Hero: drifting particle dust ──────────────────────────── */
+
+.landing-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: var(--landing-accent);
+  opacity: 0.5;
+  filter: blur(0.5px);
+  animation: landing-particle-drift 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.landing-particle--lg { width: 6px; height: 6px; opacity: 0.35; }
+.landing-particle--mint { background: var(--landing-accent-soft); opacity: 0.7; }
+.landing-particle--sky { background: #7bd3fc; opacity: 0.45; }
+
+@keyframes landing-particle-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(0.8);
+    opacity: 0;
+  }
+  20%       { opacity: 0.6; }
+  50% {
+    transform: translate(10px, -16px) scale(1.3);
+    opacity: 0.85;
+  }
+  80%       { opacity: 0.4; }
+}
+
+/* ── Soft section bridge (transparent → bg fade) ───────────── */
+
+.landing-section-bridge {
+  position: relative;
+  height: 80px;
+  margin-top: -1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--landing-bg) 92%,
+    var(--landing-bg) 100%
+  );
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-pill-dark,
+  .landing-pill-ghost,
+  .landing-cta-primary,
+  .landing-cta-primary-light {
+    transition: none;
+  }
+  .landing-cta-primary::before,
+  .landing-cta-primary-light::before,
+  .landing-resume-card-scan,
+  .landing-match-ring,
+  .landing-particle {
+    animation: none !important;
+  }
+  .landing-cta-primary::before,
+  .landing-cta-primary-light::before {
+    display: none;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Footer — fancy but lite (CSS-only, all theme-token aware)
+   ────────────────────────────────────────────────────────────── */
+
+/* Hairline divider with a subtle accent sweep every ~10s */
+.footer-divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--landing-border-strong) 15%,
+    var(--landing-border-strong) 85%,
+    transparent 100%
+  );
+  overflow: hidden;
+}
+.footer-divider::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--landing-accent),
+    transparent
+  );
+  transform: translateX(-100%);
+  animation: footer-sweep 10s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+@keyframes footer-sweep {
+  0%, 8%    { transform: translateX(-100%); opacity: 0; }
+  18%       { opacity: 1; }
+  62%       { opacity: 1; }
+  72%, 100% { transform: translateX(620%); opacity: 0; }
+}
+
+/* Animated underline link (Linear/Stripe style) */
+.footer-link {
+  position: relative;
+  display: inline-block;
+  color: var(--landing-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  transition: color 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.footer-link:hover {
+  color: var(--landing-text);
+}
+.footer-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.footer-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Live status dot with breathing ping */
+.footer-status-dot {
+  position: relative;
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+}
+.footer-status-dot::before,
+.footer-status-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+}
+.footer-status-dot::before {
+  background: var(--landing-accent);
+  animation: footer-status-ping 2.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.footer-status-dot::after {
+  background: var(--landing-accent);
+  box-shadow: 0 0 8px rgba(0, 168, 77, 0.45);
+}
+@keyframes footer-status-ping {
+  0%   { transform: scale(1); opacity: 0.55; }
+  80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* Social icon — pill that lifts on hover */
+.footer-social {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--landing-border-strong);
+  color: var(--landing-text-muted);
+  background: var(--landing-surface);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition:
+    color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.footer-social:hover {
+  color: var(--landing-text);
+  background: var(--landing-surface-strong);
+  border-color: var(--landing-text);
+  transform: translateY(-2px);
+}
+
+/* Big animated wordmark (gradient text that breathes slowly) */
+.footer-wordmark-stage {
+  position: relative;
+  overflow: hidden;
+  padding-top: clamp(20px, 3vw, 36px);
+  background: linear-gradient(
+    180deg,
+    var(--landing-bg) 0%,
+    rgba(2, 109, 50, 0.05) 55%,
+    rgba(2, 109, 50, 0.10) 100%
+  );
+}
+.dark .footer-wordmark-stage {
+  background: linear-gradient(
+    180deg,
+    var(--landing-bg) 0%,
+    rgba(74, 222, 128, 0.06) 55%,
+    rgba(74, 222, 128, 0.12) 100%
+  );
+}
+.footer-wordmark-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(2, 109, 50, 0.05) 0,
+    rgba(2, 109, 50, 0.05) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, transparent 0%, black 35%, black 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 35%, black 100%);
+}
+.dark .footer-wordmark-stage::before {
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0,
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px,
+    transparent 7px
+  );
+}
+
+.footer-wordmark {
+  display: block;
+  white-space: nowrap;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  background: linear-gradient(
+    100deg,
+    #022c14 0%,
+    #019a47 26%,
+    #00a84d 42%,
+    #a3ffb3 50%,
+    #00a84d 58%,
+    #019a47 74%,
+    #022c14 100%
+  );
+  background-size: 230% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: footer-wordmark-shimmer 14s ease-in-out infinite;
+}
+.dark .footer-wordmark {
+  background: linear-gradient(
+    100deg,
+    #052e16 0%,
+    #15803d 26%,
+    #22c55e 42%,
+    #86efac 50%,
+    #22c55e 58%,
+    #15803d 74%,
+    #052e16 100%
+  );
+  background-size: 230% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+@keyframes footer-wordmark-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .footer-divider::after,
+  .footer-status-dot::before,
+  .footer-wordmark,
+  .footer-social,
+  .footer-link,
+  .footer-link::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .footer-wordmark {
+    background-position: 35% 50%;
+  }
+}
+
+
 /* Landing Page Styles */
 .material-symbols-outlined {
     font-family: 'Material Symbols Outlined' !important;

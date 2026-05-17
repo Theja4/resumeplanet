@@ -1,33 +1,6 @@
-'use client'
-
 import Link from 'next/link'
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ArrowRight, CheckCircle2, Sparkles, XCircle } from 'lucide-react'
-
-function useReveal(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true)
-          obs.disconnect()
-        }
-      },
-      { threshold }
-    )
-
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [threshold])
-
-  return { ref, visible }
-}
 
 const BEFORE_ISSUES = [
   {
@@ -133,14 +106,14 @@ function BeforeResume({ visible }: { visible: boolean }) {
           </div>
 
           <section className="mt-5 rounded-[1rem] bg-zinc-100/70 p-4">
-            <h4 className="text-lg font-black underline decoration-zinc-400 decoration-2 underline-offset-4">Objective</h4>
+            <div className="text-lg font-black underline decoration-zinc-400 decoration-2 underline-offset-4">Objective</div>
             <p className="mt-3 text-[13px] leading-6 text-zinc-600">
               Seeking a challenging software engineering position where I can use my skills and contribute to company success.
             </p>
           </section>
 
           <section className="mt-5">
-            <h4 className="text-xl font-black tracking-tight text-zinc-900">Work Experience</h4>
+            <div className="text-xl font-black tracking-tight text-zinc-900">Work Experience</div>
             <div className="mt-3 border-l-4 border-zinc-300 pl-4">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="text-sm font-black text-zinc-900">Software Engineer Intern</p>
@@ -157,7 +130,7 @@ function BeforeResume({ visible }: { visible: boolean }) {
           </section>
 
           <section className="mt-5">
-            <h4 className="text-lg font-black tracking-tight text-zinc-900">Education Background</h4>
+            <div className="text-lg font-black tracking-tight text-zinc-900">Education Background</div>
             <div className="mt-3 rounded-xl border border-zinc-200 px-4 py-3">
               <p className="text-sm font-black text-zinc-800">University of California, Berkeley</p>
               <p className="mt-1 text-xs text-zinc-500">B.S. Computer Science · GPA: 3.92/4.0</p>
@@ -216,7 +189,7 @@ function AfterResume({ visible }: { visible: boolean }) {
 
           <section className="mt-5">
             <div className="flex items-center justify-between gap-3 border-b border-zinc-900 pb-1.5">
-              <h4 className="text-[13px] font-black uppercase tracking-[0.14em]">Professional Experience</h4>
+              <div className="text-[13px] font-black uppercase tracking-[0.14em]">Professional Experience</div>
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#00a84d]">moved to top</span>
             </div>
 
@@ -242,7 +215,7 @@ function AfterResume({ visible }: { visible: boolean }) {
 
           <section className="mt-5">
             <div className="border-b border-zinc-900 pb-1.5">
-              <h4 className="text-[13px] font-black uppercase tracking-[0.14em]">Projects</h4>
+              <div className="text-[13px] font-black uppercase tracking-[0.14em]">Projects</div>
             </div>
             <p className="mt-3 text-[13px] leading-6">
               <span className="font-black">Distributed Job Queue:</span> Built a Redis-backed worker system with retries, dead-letter handling, and dashboard visibility for failed jobs.
@@ -251,7 +224,7 @@ function AfterResume({ visible }: { visible: boolean }) {
 
           <section className="mt-5">
             <div className="border-b border-zinc-900 pb-1.5">
-              <h4 className="text-[13px] font-black uppercase tracking-[0.14em]">Technical Skills</h4>
+              <div className="text-[13px] font-black uppercase tracking-[0.14em]">Technical Skills</div>
             </div>
             <p className="mt-3 text-[12px] leading-6 text-zinc-700">
               <span className="font-black text-zinc-950">Languages:</span> TypeScript, Python, SQL · <span className="font-black text-zinc-950">Systems:</span> Kafka, Redis, PostgreSQL, Docker · <span className="font-black text-zinc-950">Frontend:</span> React, Node.js
@@ -263,9 +236,9 @@ function AfterResume({ visible }: { visible: boolean }) {
 
         <aside className="mt-4 rounded-[1.25rem] border border-[#00a84d]/18 bg-[linear-gradient(180deg,#f3fff7_0%,#ffffff_100%)] p-4 shadow-[0_18px_50px_-28px_rgba(0,168,77,0.45)] 2xl:absolute 2xl:left-[calc(100%+1rem)] 2xl:top-28 2xl:mt-0 2xl:w-[14.25rem]">
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#00a84d]">The upgrade</p>
-          <h4 className="mt-2 text-lg font-black leading-tight tracking-tight text-zinc-950">
+          <h3 className="mt-2 text-lg font-black leading-tight tracking-tight text-zinc-950">
             Sounds like a senior engineer, not an AI chatbot.
-          </h4>
+          </h3>
           <p className="mt-3 text-[13px] leading-6 text-zinc-600">
             Rezoomed keeps the facts honest, then raises the signal: ownership, system, scale, stack, and measurable outcome.
           </p>
@@ -288,7 +261,7 @@ function AfterResume({ visible }: { visible: boolean }) {
 }
 
 export default function LandingBeforeAfter() {
-  const { ref, visible } = useReveal()
+  const visible = true
 
   return (
     <section className="relative overflow-hidden bg-white px-5 py-24 md:px-6 md:py-28">
@@ -303,7 +276,7 @@ export default function LandingBeforeAfter() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white to-transparent" />
 
-      <div ref={ref} className="relative mx-auto max-w-7xl">
+      <div className="relative mx-auto max-w-7xl">
         <div
           className="mx-auto mb-12 max-w-3xl text-center"
           style={{

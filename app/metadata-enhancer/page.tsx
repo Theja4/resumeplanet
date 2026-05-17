@@ -5,22 +5,13 @@ import { FilePenLine, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Resume Metadata Enhancer | Rezoomed',
+  title: 'Resume Metadata Enhancer',
   description:
     'Improve PDF resume metadata like title, author, keywords, and language so your file is cleaner, more searchable, and recruiter-ready.',
-  keywords: [
-    'resume metadata enhancer',
-    'pdf resume metadata',
-    'resume metadata optimizer',
-    'resume pdf title author keywords',
-    'resume metadata tool',
-    'resume optimization',
-    'meta data enhancer',
-    'meta data optimizer',
-  ],
   alternates: {
     canonical: '/metadata-enhancer',
   },
@@ -154,6 +145,61 @@ export default async function PublicMetadataEnhancerPage() {
             </div>
           </div>
         </section>
+
+        <ToolPageContentSections
+          toolName="Resume metadata enhancer"
+          howItWorks={[
+            {
+              title: 'Upload your final resume PDF',
+              description:
+                'Drop in the PDF you plan to send. The metadata enhancer scans the file headers — Title, Author, Subject, Keywords — that ATS and recruiter tools read first.',
+            },
+            {
+              title: 'See what the file is silently saying',
+              description:
+                'Most resumes ship with leftover Word filenames, old templates, or blank metadata fields. We surface every weak signal in one view.',
+            },
+            {
+              title: 'Apply clean metadata and re-export',
+              description:
+                'Rezoomed writes a clean Title, Author, Subject, and a small set of accurate keywords, then exports a fresh PDF ready to attach.',
+            },
+          ]}
+          differentiators={[
+            {
+              title: 'Catches what ATS-only checkers miss',
+              description:
+                'Most resume checkers look at body text. We also fix the file properties that downstream tools quietly use to classify your resume.',
+            },
+            {
+              title: 'Honest keyword set',
+              description:
+                'We keep PDF keywords short and accurate so the file does not get flagged as keyword-stuffed metadata spam.',
+            },
+            {
+              title: 'Recruiter-friendly file names too',
+              description:
+                'The export uses a clean, professional filename pattern so what shows up in a recruiter inbox looks polished from the start.',
+            },
+          ]}
+          relatedReading={[
+            {
+              title: 'Resume metadata checklist before you apply',
+              description: 'Everything to verify in your PDF metadata before sending.',
+              href: '/blog/resume-metadata-checklist-before-you-apply',
+            },
+            {
+              title: 'How resume metadata affects job applications',
+              description: 'Why the hidden file properties matter as much as the visible content.',
+              href: '/blog/how-resume-metadata-affects-job-applications',
+            },
+            {
+              title: 'How to fix PDF resume title, author, and keywords',
+              description: 'The exact metadata fields to clean up and what to set them to.',
+              href: '/blog/how-to-fix-pdf-resume-title-author-and-keywords',
+            },
+          ]}
+        />
 
         <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>

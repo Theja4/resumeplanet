@@ -11,10 +11,10 @@ interface Props {
 
 export default function AnalyticsProviders({ children, analyticsEnabled }: Props) {
   return (
-    <PostHogProvider enabled={analyticsEnabled}>
-      <GoogleAnalyticsProvider enabled={analyticsEnabled}>
-        {children}
-      </GoogleAnalyticsProvider>
-    </PostHogProvider>
+    <>
+      <PostHogProvider enabled={analyticsEnabled} />
+      <GoogleAnalyticsProvider enabled={analyticsEnabled} />
+      {children}
+    </>
   )
 }

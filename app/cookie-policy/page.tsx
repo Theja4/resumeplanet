@@ -42,6 +42,7 @@ const cookieRows = [
 
 export const metadata = {
   title: 'Cookie Policy',
+  alternates: { canonical: '/cookie-policy' },
 }
 
 export default function CookiePolicyPage() {

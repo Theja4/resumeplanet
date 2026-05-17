@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { clearAnalyticsClientState } from '@/lib/analytics'
 import { COOKIE_CONSENT_COOKIE, type CookieConsentPreference } from '@/lib/cookie-consent'
 
 const CONSENT_COOKIE_MAX_AGE = 60 * 60 * 24 * 180
@@ -22,6 +21,7 @@ export default function CookieConsentBanner() {
     setSaving(preference)
 
     if (preference === 'essential') {
+      const { clearAnalyticsClientState } = await import('@/lib/analytics')
       await clearAnalyticsClientState()
     }
 

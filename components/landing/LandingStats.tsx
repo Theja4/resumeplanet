@@ -1,70 +1,11 @@
-'use client'
-
-import { useEffect, useRef, useState } from 'react'
-
-const E = 'cubic-bezier(0.22, 1, 0.36, 1)'
+import type { ReactNode } from 'react'
 
 function CountUp({ to, suffix = '', prefix = '', decimals = 0 }: { to: number; suffix?: string; prefix?: string; decimals?: number }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const [n, setN] = useState(0)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          const start = performance.now()
-          const dur = 1800
-          const step = (now: number) => {
-            const p = Math.min(1, (now - start) / dur)
-            const eased = 1 - Math.pow(1 - p, 4)
-            setN(to * eased)
-            if (p < 1) requestAnimationFrame(step)
-          }
-          requestAnimationFrame(step)
-          obs.disconnect()
-        }
-      },
-      { threshold: 0.3 },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [to])
-
-  return (
-    <span ref={ref}>
-      {prefix}{n.toFixed(decimals)}{suffix}
-    </span>
-  )
+  return <span>{prefix}{to.toFixed(decimals)}{suffix}</span>
 }
 
-function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [v, setV] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setV(true); obs.disconnect() } },
-      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' },
-    )
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: v ? 1 : 0,
-        transform: v ? 'translateY(0)' : 'translateY(36px)',
-        transition: `opacity 0.9s ${E} ${delay}ms, transform 0.9s ${E} ${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  )
+function Reveal({ children, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
+  return <div className={className}>{children}</div>
 }
 
 export default function LandingStats() {

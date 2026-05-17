@@ -5,21 +5,13 @@ import { Mail, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'AI Cover Letter Generator | Rezoomed',
+  title: 'AI Cover Letter Generator',
   description:
     'Generate a role-specific cover letter from your resume and target job description, then export a cleaner draft faster with Rezoomed.',
-  keywords: [
-    'ai cover letter generator',
-    'cover letter generator',
-    'job specific cover letter',
-    'cover letter from resume',
-    'ai cover letter tool',
-    'rezoomed cover letter',
-    'cover letter builder',
-  ],
   alternates: {
     canonical: '/cover-letter-generator',
   },
@@ -153,6 +145,61 @@ export default async function PublicCoverLetterGeneratorPage() {
             </div>
           </div>
         </section>
+
+        <ToolPageContentSections
+          toolName="AI cover letter generator"
+          howItWorks={[
+            {
+              title: 'Drop in the resume and the role',
+              description:
+                'Upload your resume and paste the job description so the generator has both the candidate context and the target role context before drafting.',
+            },
+            {
+              title: 'Generate a focused first draft',
+              description:
+                'Get a cover letter that opens with role-specific intent, weaves in evidence from the resume, and lands on a hire-me close that fits the role tone.',
+            },
+            {
+              title: 'Edit and ship',
+              description:
+                'Tighten one or two lines for voice, double-check the company name and hiring manager, then send. No starting from a blank page.',
+            },
+          ]}
+          differentiators={[
+            {
+              title: 'Resume-grounded, not generic',
+              description:
+                'The output pulls from your actual experience instead of producing the same template letter everyone else sends.',
+            },
+            {
+              title: 'Role-aware tone',
+              description:
+                'Engineering, finance, product, and creative roles get different defaults so the letter sounds like it belongs in that pipeline.',
+            },
+            {
+              title: 'One-job-at-a-time discipline',
+              description:
+                'No mass-personalization tricks. The generator is built for the specific job you actually want — and shows.',
+            },
+          ]}
+          relatedReading={[
+            {
+              title: 'AI cover letter generator: what good output looks like',
+              description: 'The signals that separate a usable AI cover letter from generic filler.',
+              href: '/blog/ai-cover-letter-generator-what-good-output-looks-like',
+            },
+            {
+              title: 'How to write a cover letter for a job you really want',
+              description: 'A structure for letters that land for roles you actually care about.',
+              href: '/blog/how-to-write-a-cover-letter-for-a-job-you-really-want',
+            },
+            {
+              title: 'How to follow up on a job application',
+              description: 'Templates and timing for the polite, well-judged follow-up note.',
+              href: '/blog/how-to-follow-up-on-a-job-application-templates-guide',
+            },
+          ]}
+        />
 
         <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>

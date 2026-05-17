@@ -5,21 +5,13 @@ import { Lock, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Resume Match Score | Rezoomed',
+  title: 'Resume Match Score',
   description:
     'Compare your resume against a job description, spot missing skills and weak evidence, and decide how to tailor before you apply.',
-  keywords: [
-    'resume match score',
-    'job description match',
-    'resume job match tool',
-    'resume tailoring tool',
-    'job description resume checker',
-    'resume optimization',
-    'job description match score',
-  ],
   alternates: {
     canonical: '/match-score',
   },
@@ -158,6 +150,61 @@ export default async function PublicMatchScorePage() {
               </div>
             </div>
           </section>
+
+          <ToolPageContentSections
+            toolName="Match Score"
+            howItWorks={[
+              {
+                title: 'Upload the resume and paste the JD',
+                description:
+                  'Drop in a PDF or DOCX resume, paste the full job description, and run the comparison. No reformatting needed.',
+              },
+              {
+                title: 'See where the resume aligns and where it falls short',
+                description:
+                  'Match Score highlights missing skills, weak evidence, and keyword gaps so you know exactly what to strengthen before applying.',
+              },
+              {
+                title: 'Tailor and re-score until the fit is real',
+                description:
+                  'Use the suggestions to rewrite specific bullets, then re-run Match Score to confirm the gap closed without padding or keyword stuffing.',
+              },
+            ]}
+            differentiators={[
+              {
+                title: 'Real-evidence scoring, not just keyword counting',
+                description:
+                  'We score based on whether your resume actually supports the role, not just whether the words appear somewhere in the file.',
+              },
+              {
+                title: 'Action-oriented gap analysis',
+                description:
+                  'Every missing signal comes with what to add, where to add it, and which phrasing keeps the resume honest.',
+              },
+              {
+                title: 'Linked directly to tailoring',
+                description:
+                  'When the score is low, jump straight into the tailoring workflow without re-uploading or restarting from scratch.',
+              },
+            ]}
+            relatedReading={[
+              {
+                title: 'Job description match score explained',
+                description: 'What your score actually measures and how to read the result.',
+                href: '/blog/job-description-match-score-explained',
+              },
+              {
+                title: 'Best resume keywords to match a JD',
+                description: 'How to identify the right keywords without crossing into keyword stuffing.',
+                href: '/blog/best-resume-keywords-to-match-a-job-description',
+              },
+              {
+                title: 'How to tailor your resume for each job',
+                description: 'A workflow for staying tailored without rebuilding the resume every time.',
+                href: '/blog/how-to-tailor-your-resume-for-each-job-without-starting-over',
+              },
+            ]}
+          />
 
           <section className="rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>

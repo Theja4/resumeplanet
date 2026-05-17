@@ -5,7 +5,6 @@ import { ArrowRight, Clock, Sparkles } from 'lucide-react'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { estimateReadTime, formatBlogDate, getBlogMediaFallback, getPublishedBlogPosts } from '@/lib/blog'
-import { buildBlogIndexKeywords } from '@/lib/blog/seo'
 import { getSiteUrl } from '@/lib/site'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,9 +14,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const image = featured?.cover_image_url || (featured ? getBlogMediaFallback(featured.slug)?.coverImage : null) || `${siteUrl}/icon.png`
 
   return {
-    title: 'Resume Advice & ATS Tips Blog | Rezoomed',
+    title: 'Resume Advice & ATS Tips Blog',
     description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
-    keywords: buildBlogIndexKeywords(posts),
     alternates: {
       canonical: '/blog',
     },

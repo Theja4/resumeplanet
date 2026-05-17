@@ -2,17 +2,18 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import {
-  Analytics,
-  getBlogAttributionEvent,
-  persistAnalyticsAttribution,
-} from '@/lib/analytics'
 
-function RouteAnalyticsTracker() {
+export default function PostHogProvider({
+  enabled = true,
+}: {
+  enabled?: boolean
+}) {
   const pathname = usePathname()
   const lastTrackedPathRef = useRef<string>('')
 
   useEffect(() => {
+    if (!enabled) return
+
     const searchParams = new URLSearchParams(window.location.search)
     const search = searchParams.toString()
     const trackedPath = search ? `${pathname}?${search}` : pathname
@@ -23,33 +24,26 @@ function RouteAnalyticsTracker() {
 
     lastTrackedPathRef.current = trackedPath
 
-    const referrer = typeof document !== 'undefined' ? document.referrer || undefined : undefined
-    const attribution = persistAnalyticsAttribution(searchParams, trackedPath, referrer)
+    const referrer = document.referrer || undefined
 
-    Analytics.pageViewed({
-      path: trackedPath,
-      referrer,
+    void import('@/lib/analytics').then(({
+      Analytics,
+      getBlogAttributionEvent,
+      persistAnalyticsAttribution,
+    }) => {
+      const attribution = persistAnalyticsAttribution(searchParams, trackedPath, referrer)
+
+      Analytics.pageViewed({
+        path: trackedPath,
+        referrer,
+      })
+
+      const blogAttributionEvent = getBlogAttributionEvent(pathname, attribution)
+      if (blogAttributionEvent) {
+        Analytics.capture(blogAttributionEvent.event, blogAttributionEvent.properties)
+      }
     })
-
-    const blogAttributionEvent = getBlogAttributionEvent(pathname, attribution)
-    if (blogAttributionEvent) {
-      Analytics.capture(blogAttributionEvent.event, blogAttributionEvent.properties)
-    }
-  }, [pathname])
+  }, [enabled, pathname])
 
   return null
-}
-
-export default function PostHogProvider({
-  children,
-}: {
-  children: React.ReactNode
-  enabled?: boolean
-}) {
-  return (
-    <>
-      <RouteAnalyticsTracker />
-      {children}
-    </>
-  )
 }

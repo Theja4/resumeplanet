@@ -21,7 +21,7 @@ export async function generateMetadata({
 
   if (!page) {
     return {
-      title: 'Resume Format | Rezoomed',
+      title: 'Resume Format',
     }
   }
 

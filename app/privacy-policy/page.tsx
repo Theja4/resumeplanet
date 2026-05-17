@@ -54,6 +54,7 @@ const processorRows = [
 
 export const metadata = {
   title: 'Privacy Policy',
+  alternates: { canonical: '/privacy-policy' },
 }
 
 export default function PrivacyPolicyPage() {

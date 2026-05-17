@@ -20,7 +20,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   if (!JOB_BOARD_ENABLED) {
     return {
-      title: 'Not Found | Rezoomed',
+      title: 'Not Found',
       robots: {
         index: false,
         follow: false,
@@ -33,19 +33,19 @@ export async function generateMetadata({
 
   if (!job) {
     return {
-      title: 'Jobs | Rezoomed',
+      title: 'Jobs',
     }
   }
 
   if (job.source_provider === 'manual') {
     return {
-      title: 'Tracked Job | Rezoomed',
+      title: 'Tracked Job',
       description: 'A manually tracked job in your Rezoomed workspace.',
     }
   }
 
   return {
-    title: `${job.title} at ${job.company_name} | Rezoomed`,
+    title: `${job.title} at ${job.company_name}`,
     description: job.description_text.slice(0, 160),
   }
 }

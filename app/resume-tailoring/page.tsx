@@ -5,22 +5,13 @@ import { Sparkles, WandSparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Resume Tailoring Tool | Rezoomed',
+  title: 'Resume Tailoring Tool',
   description:
     'Tailor your resume to a job description with Rezoomed, surface fit gaps, and rewrite the strongest sections for the target role.',
-  keywords: [
-    'resume tailoring tool',
-    'tailor resume to job description',
-    'ai resume tailoring',
-    'job description resume match',
-    'resume optimization',
-    'resume rewrite tool',
-    'job description tailor',
-    'job description optimizer',
-  ],
   alternates: {
     canonical: '/resume-tailoring',
   },
@@ -154,6 +145,61 @@ export default async function PublicResumeTailoringPage() {
             </div>
           </div>
         </section>
+
+        <ToolPageContentSections
+          toolName="Resume tailoring tool"
+          howItWorks={[
+            {
+              title: 'Bring in the resume and target job',
+              description:
+                'Upload the resume you want to tailor and paste the job description. Rezoomed locks onto the role context before suggesting changes.',
+            },
+            {
+              title: 'Spot fit gaps fast',
+              description:
+                'See exactly which experience signals are missing, weak, or buried — without losing the parts of your resume that are already working.',
+            },
+            {
+              title: 'Rewrite the strongest sections',
+              description:
+                'Apply targeted bullet and summary rewrites that mirror the role language while keeping every claim truthful and verifiable.',
+            },
+          ]}
+          differentiators={[
+            {
+              title: 'Tailoring without rewriting from scratch',
+              description:
+                'Preserve the existing structure, achievements, and tone. We change what needs to move, not the whole resume.',
+            },
+            {
+              title: 'Honesty-first rewrites',
+              description:
+                'Suggested edits never invent skills or experience. The goal is sharper signal from what you already have.',
+            },
+            {
+              title: 'Connected to match score',
+              description:
+                'Re-check the match score after each tailoring pass so you know the changes actually improved fit.',
+            },
+          ]}
+          relatedReading={[
+            {
+              title: 'How to tailor your resume for each job',
+              description: 'A practical workflow for staying tailored without restarting.',
+              href: '/blog/how-to-tailor-your-resume-for-each-job-without-starting-over',
+            },
+            {
+              title: 'Tailor your resume for software engineer roles',
+              description: 'What hiring teams expect in an engineering resume in 2026.',
+              href: '/blog/how-to-tailor-your-resume-for-software-engineer-jobs',
+            },
+            {
+              title: 'Tailor your resume for product manager roles',
+              description: 'How to position PM evidence so it lands with hiring teams.',
+              href: '/blog/how-to-tailor-your-resume-for-product-manager-jobs',
+            },
+          ]}
+        />
 
         <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>

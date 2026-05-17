@@ -5,20 +5,13 @@ import { FileText, Sparkles } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
+import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'AI Resume Builder | Rezoomed',
+  title: 'AI Resume Builder',
   description:
     'Build ATS-friendly resumes faster with Rezoomed AI resume builder, then refine, tailor, and export recruiter-ready versions.',
-  keywords: [
-    'ai resume builder',
-    'resume builder',
-    'ats resume builder',
-    'resume optimization tool',
-    'resume builder online',
-    'rezoomed resume builder',
-  ],
   alternates: {
     canonical: '/resume-builder',
   },
@@ -152,6 +145,61 @@ export default async function PublicResumeBuilderPage() {
             </div>
           </div>
         </section>
+
+        <ToolPageContentSections
+          toolName="AI resume builder"
+          howItWorks={[
+            {
+              title: 'Start a fresh draft',
+              description:
+                'Open the builder and start with a blank ATS-safe layout or import an existing PDF or DOCX resume. Section structure is already organized for parsing.',
+            },
+            {
+              title: 'Refine each section with AI guidance',
+              description:
+                'Rewrite summary lines, sharpen experience bullets, and structure skills using the in-product suggestions so the resume matches how recruiters actually read.',
+            },
+            {
+              title: 'Export and run an ATS check',
+              description:
+                'Export to PDF or DOCX, then run the resume through the ATS checker and match-score workflows before sending it to employers.',
+            },
+          ]}
+          differentiators={[
+            {
+              title: 'Built-in ATS workflow',
+              description:
+                'The builder connects directly to the ATS checker, match-score, and tailoring tools so you can stop juggling separate apps.',
+            },
+            {
+              title: 'Role-specific resume versions',
+              description:
+                'Maintain multiple targeted resumes per role direction without losing the original — no more overwriting your strongest version.',
+            },
+            {
+              title: 'Recruiter-grade export quality',
+              description:
+                'PDFs come out clean, ATS-readable, and metadata-safe so the file recruiters open matches what you see on screen.',
+            },
+          ]}
+          relatedReading={[
+            {
+              title: 'Best AI resume builder for job seekers',
+              description: 'What actually helps you get interviews vs. what just looks good.',
+              href: '/blog/best-ai-resume-builder-for-job-seekers',
+            },
+            {
+              title: 'Resume builder vs resume template',
+              description: 'Which is better for job applications and why most templates fail ATS.',
+              href: '/blog/resume-builder-vs-template-which-is-better',
+            },
+            {
+              title: 'ATS resume checker: what it tests',
+              description: 'Understand the ATS scoring layer your builder output will be measured against.',
+              href: '/blog/ats-resume-checker-what-it-tests-and-why-it-matters',
+            },
+          ]}
+        />
 
         <section className="mt-8 rounded-[2rem] border border-white/70 bg-white/88 p-8 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">FAQs</p>

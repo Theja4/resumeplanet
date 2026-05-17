@@ -9,36 +9,21 @@ import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Free ATS Resume Checker & Scanner | Rezoomed',
+  title: 'Free ATS Resume Checker & Scanner',
   description:
     'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
-  keywords: [
-    'free ats resume checker',
-    'ats resume checker',
-    'ats resume scanner',
-    'free ats scanner',
-    'ats checker',
-    'resume ats checker',
-    'resume ats scanner',
-    'ats score checker',
-    'resume keyword checker',
-    'resume checker',
-    'ats optimization',
-    'resume optimization',
-    'resume score',
-  ],
   alternates: {
     canonical: '/ats-checker',
   },
   openGraph: {
     type: 'website',
-    title: 'Free ATS Resume Checker & Scanner | Rezoomed',
+    title: 'Free ATS Resume Checker & Scanner',
     description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
     url: '/ats-checker',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free ATS Resume Checker & Scanner | Rezoomed',
+    title: 'Free ATS Resume Checker & Scanner',
     description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
   },
 }
@@ -151,30 +136,6 @@ export default async function PublicATSCheckerPage() {
       },
     })),
   }
-  const howToJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'HowTo',
-    name: 'How to use the Rezoomed ATS resume checker',
-    description:
-      'Upload your resume, review ATS issues, and tighten weak sections before applying.',
-    step: [
-      {
-        '@type': 'HowToStep',
-        name: 'Upload your resume',
-        text: 'Add a PDF or DOCX resume to the ATS checker.',
-      },
-      {
-        '@type': 'HowToStep',
-        name: 'Review the ATS findings',
-        text: 'Check the ATS score, structure issues, keyword gaps, and formatting weaknesses.',
-      },
-      {
-        '@type': 'HowToStep',
-        name: 'Fix the weakest sections',
-        text: 'Rewrite summary, skills, experience, or formatting issues before sending the file to employers.',
-      },
-    ],
-  }
   const softwareApplicationJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -201,10 +162,6 @@ export default async function PublicATSCheckerPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
       />
       <script
         type="application/ld+json"

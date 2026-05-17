@@ -43,3 +43,9 @@ next-env.d.ts
 # worktrees
 .worktrees/
 graphify-out/
+
+# claude code local config
+.claude/settings.local.json
+
+# seo audit output (generated reports, not source)
+/seo-audit-rezoomed/

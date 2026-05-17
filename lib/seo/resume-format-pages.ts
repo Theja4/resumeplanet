@@ -11,7 +11,8 @@ export type ResumeFormatPage = {
   path: string
   title: string
   description: string
-  keywords: string[]
+  /** @deprecated Removed from emitted metadata. Kept optional for back-compat with existing fixtures. */
+  keywords?: string[]
   eyebrow: string
   heading: string
   intro: string
@@ -92,15 +93,6 @@ export const RESUME_FORMAT_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Resume Format Guide: ATS-Safe Templates, Examples, and Rules | Rezoomed',
     description:
       'Choose the right resume format for job applications with ATS-safe rules, before-and-after examples, role templates, and builder-ready resume structure.',
-    keywords: [
-      'resume format',
-      'proper resume format',
-      'format of resume for job',
-      'job resume format',
-      'resume formatting',
-      'resume format examples',
-      'best resume format',
-    ],
     eyebrow: 'Resume format hub',
     heading: 'The resume format that is easiest for recruiters and ATS tools to read.',
     intro:
@@ -171,14 +163,6 @@ export const RESUME_FORMAT_PAGES: Record<string, ResumeFormatPage> = {
     title: 'US Resume Format: Best Practices, Examples, and ATS Rules | Rezoomed',
     description:
       'Use the correct U.S. resume format with section order, header rules, ATS-safe formatting, examples, and a builder-ready template.',
-    keywords: [
-      'us resume format',
-      'u.s. resume format',
-      'resume format for us jobs',
-      'american resume format',
-      'resume requirements',
-      'what format should a resume be in',
-    ],
     eyebrow: 'U.S. resume format',
     heading: 'A U.S. resume should be direct, searchable, and proof-heavy.',
     intro:
@@ -249,14 +233,6 @@ export const RESUME_FORMAT_PAGES: Record<string, ResumeFormatPage> = {
     title: 'ATS Resume Format: Safe Layout Rules and Examples | Rezoomed',
     description:
       'Build an ATS resume format that parses cleanly with safe headings, searchable text, keyword placement, examples, and a free ATS checker CTA.',
-    keywords: [
-      'ats resume format',
-      'ats friendly resume format',
-      'ats resume template',
-      'resume formatting ats',
-      'resume ats format',
-      'ats safe resume',
-    ],
     eyebrow: 'ATS resume format',
     heading: 'The safest ATS resume format is boring in the right places.',
     intro:
@@ -343,14 +319,6 @@ export const RESUME_FORMAT_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Resume Format for Job Applications: Templates, Examples, and ATS Tips | Rezoomed',
     description:
       'Use a cleaner resume format for job applications with ATS rules, role alignment, examples, and a workflow for checking before you submit.',
-    keywords: [
-      'resume format for job applications',
-      'format of resume for job',
-      'job resume format',
-      'jobs resume format',
-      'format a resume',
-      'resume guideline',
-    ],
     eyebrow: 'Job application format',
     heading: 'Format your resume for the application, not just the template preview.',
     intro:
@@ -424,7 +392,6 @@ const ROLE_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Software Engineer Resume Format: ATS-Safe Example and Template | Rezoomed',
     description:
       'Use a software engineer resume format that highlights shipped work, systems, tools, scale, and searchable technical skills.',
-    keywords: ['software engineer resume format', 'software developer resume format', 'engineering resume template', 'ats software engineer resume'],
     eyebrow: 'Role example',
     heading: 'Format a software engineer resume around shipped work and technical proof.',
     intro:
@@ -451,7 +418,6 @@ const ROLE_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Product Manager Resume Format: ATS-Safe PM Template and Examples | Rezoomed',
     description:
       'Use a product manager resume format that shows product scope, discovery, metrics, execution, and stakeholder leadership.',
-    keywords: ['product manager resume format', 'pm resume template', 'product resume example', 'ats product manager resume'],
     eyebrow: 'Role example',
     heading: 'Format a product manager resume around outcomes, scope, and decisions.',
     intro:
@@ -478,7 +444,6 @@ const ROLE_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Data Analyst Resume Format: ATS-Safe Example and Template | Rezoomed',
     description:
       'Use a data analyst resume format that highlights SQL, dashboards, metrics, business decisions, and measurable analysis impact.',
-    keywords: ['data analyst resume format', 'analytics resume template', 'sql resume format', 'ats data analyst resume'],
     eyebrow: 'Role example',
     heading: 'Format a data analyst resume around decisions your analysis improved.',
     intro:
@@ -505,7 +470,6 @@ const ROLE_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Finance Resume Format: ATS-Safe Template for Finance Roles | Rezoomed',
     description:
       'Use a finance resume format that highlights modeling, reporting, controls, analysis, transactions, and measurable business support.',
-    keywords: ['finance resume format', 'financial analyst resume format', 'investment banking resume format', 'ats finance resume'],
     eyebrow: 'Role example',
     heading: 'Format a finance resume around analysis, accuracy, and business decisions.',
     intro:
@@ -532,7 +496,6 @@ const ROLE_PAGES: Record<string, ResumeFormatPage> = {
     title: 'Marketing Resume Format: ATS-Safe Template and Examples | Rezoomed',
     description:
       'Use a marketing resume format that highlights channels, campaigns, creative testing, pipeline, content, and revenue impact.',
-    keywords: ['marketing resume format', 'digital marketing resume format', 'marketing resume template', 'ats marketing resume'],
     eyebrow: 'Role example',
     heading: 'Format a marketing resume around channels, experiments, and commercial impact.',
     intro:
@@ -572,23 +535,33 @@ export function getAllResumeFormatStaticPaths() {
   ]
 }
 
+function stripBrandSuffix(title: string) {
+  let cleaned = title.trim()
+  const suffix = ' | Rezoomed'
+  while (cleaned.toLowerCase().endsWith(suffix.toLowerCase())) {
+    cleaned = cleaned.slice(0, -suffix.length).trim()
+  }
+  return cleaned
+}
+
 export function buildResumeFormatMetadata(page: ResumeFormatPage): Metadata {
+  const cleanTitle = stripBrandSuffix(page.title)
+  const brandedTitle = `${cleanTitle} | Rezoomed`
   return {
-    title: page.title,
+    title: { absolute: brandedTitle },
     description: page.description,
-    keywords: page.keywords,
     alternates: {
       canonical: page.path,
     },
     openGraph: {
       type: 'website',
-      title: page.title,
+      title: brandedTitle,
       description: page.description,
       url: page.path,
     },
     twitter: {
       card: 'summary_large_image',
-      title: page.title,
+      title: brandedTitle,
       description: page.description,
     },
   }
