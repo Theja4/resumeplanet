@@ -58,7 +58,7 @@ export default function PublicSiteFooter() {
           <div className="flex shrink-0 items-center gap-3">
             <img src="/auth-login-logo.png" alt="Rezoomed" className="h-7 w-7 rounded-md object-contain" />
             <span className="text-sm font-semibold text-gray-900">
-              © {new Date().getFullYear()} Rezoomed AI.{' '}
+              © {new Date().getFullYear()} Rezoomed.{' '}
               <span className="font-normal text-gray-500">All rights reserved.</span>
             </span>
           </div>
