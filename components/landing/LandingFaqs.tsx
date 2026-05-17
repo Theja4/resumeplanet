@@ -93,7 +93,7 @@ export default function LandingFaqs() {
     <section className="bg-[#f8faf9] px-6 py-24 md:py-28">
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="space-y-3 text-center md:text-left">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">Support & Insights</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#006f33]">Support & Insights</p>
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
             Quick <span className="landing-italic-safe italic bg-gradient-to-r from-[#00a84d] to-[#026d32] bg-clip-text text-transparent">answers.</span>
           </h2>

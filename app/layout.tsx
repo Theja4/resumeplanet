@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { cookies, headers } from 'next/headers'
 import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
 import { getSiteUrl, SITE_NAME } from '@/lib/site'
 import { DEFAULT_OG_IMAGE, DEFAULT_SEO_DESCRIPTION, getAbsoluteUrl } from '@/lib/seo'
 import PromoBanner from '@/components/shared/PromoBanner'
-import PaddleProvider from '@/components/providers/PaddleProvider'
 import AnalyticsProviders from '@/components/providers/AnalyticsProviders'
 import AffiliateReferralTracker from '@/components/providers/AffiliateReferralTracker'
 import PendingJobApplyPrompt from '@/components/jobs/PendingJobApplyPrompt'
@@ -30,6 +30,13 @@ const geistSans = localFont({
 const geistMono = localFont({
   src: './fonts/geist-mono.woff2',
   variable: "--font-geist-mono",
+  display: 'swap',
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta-sans',
   display: 'swap',
 });
 
@@ -106,7 +113,7 @@ export default async function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
+      className={`${geistSans.variable} ${geistMono.variable} ${plusJakartaSans.variable} h-full antialiased scroll-smooth`}
       data-scroll-behavior="smooth"
       data-analytics-default={analyticsEnabled ? 'granted' : 'denied'}
     >
@@ -117,11 +124,9 @@ export default async function RootLayout({
         {showCookieConsentBanner ? <CookieConsentBanner /> : null}
         <AffiliateReferralTracker />
         <AnalyticsProviders analyticsEnabled={analyticsEnabled}>
-          <PaddleProvider>
-            {bannerPromo && <PromoBanner promo={bannerPromo} />}
-            {children}
-            {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
-          </PaddleProvider>
+          {bannerPromo && <PromoBanner promo={bannerPromo} />}
+          {children}
+          {JOB_BOARD_ENABLED ? <PendingJobApplyPrompt /> : null}
         </AnalyticsProviders>
       </body>
     </html>

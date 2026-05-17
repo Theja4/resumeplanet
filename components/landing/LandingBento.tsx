@@ -70,7 +70,7 @@ export default function LandingBento() {
       <div className="relative mx-auto max-w-7xl">
         <Reveal>
           <div className="mx-auto max-w-3xl text-center mb-10 md:mb-12">
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#00a84d]">
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#006f33]">
               Everything job seekers need
             </p>
             <h2 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter leading-[1.06] text-zinc-950">
