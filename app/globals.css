@@ -865,14 +865,17 @@
 .hero-typewriter-line {
   display: block;
   height: 1.28em;
-  min-width: min(8.9em, 100%);
-  max-width: 100%;
+  width: min(8.9em, 100%);
   position: relative;
   vertical-align: baseline;
   line-height: 1.08;
   overflow: visible;
   white-space: nowrap;
   contain: layout;
+  /* Fixed-width block centered on mobile; text grows leftward — no CLS */
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 @media (min-width: 1024px) {
@@ -881,9 +884,9 @@
   }
 
   .hero-typewriter-line {
-    display: block;
     width: 8.9em;
-    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
     white-space: nowrap;
   }
 }

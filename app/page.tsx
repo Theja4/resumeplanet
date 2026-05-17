@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { preload } from 'react-dom'
 import LogoMarqueeSection from '@/components/landing/LogoMarquee'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
@@ -34,6 +35,20 @@ export const metadata: Metadata = buildPublicMetadata({
 })
 
 export default async function LandingPage() {
+  preload(
+    '/_next/image?url=%2FBrands%2Fmascot-hero-pink.png&w=828&q=75',
+    {
+      as: 'image',
+      fetchPriority: 'high',
+      imageSrcSet:
+        '/_next/image?url=%2FBrands%2Fmascot-hero-pink.png&w=640&q=75 640w,' +
+        '/_next/image?url=%2FBrands%2Fmascot-hero-pink.png&w=828&q=75 828w,' +
+        '/_next/image?url=%2FBrands%2Fmascot-hero-pink.png&w=1080&q=75 1080w,' +
+        '/_next/image?url=%2FBrands%2Fmascot-hero-pink.png&w=1200&q=75 1200w',
+      imageSizes: '(max-width: 768px) 440px, (max-width: 1024px) 540px, 600px',
+    }
+  )
+
   const siteUrl = getAbsoluteUrl('/')
   
   // Define FAQ JSON-LD data for SEO (Server Side)
