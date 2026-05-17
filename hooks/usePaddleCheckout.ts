@@ -270,6 +270,8 @@ export function usePaddleCheckout() {
 
         window.location.href = redirectUrl
         params.onSuccess?.()
+        return
+      }
     } catch (err) {
       clearCheckoutContext()
       const message = err instanceof Error ? err.message : 'Checkout failed'
