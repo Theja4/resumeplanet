@@ -281,9 +281,9 @@ function SavedToast({ show }: { show: boolean }) {
 
   return (
     <div
-      className="fixed bottom-8 left-1/2 z-[9999] pointer-events-none"
+      className="fixed top-6 right-6 z-[9999] pointer-events-none"
       style={{
-        transform: `translateX(-50%) translateY(${visible ? '0px' : '14px'})`,
+        transform: `translateY(${visible ? '0px' : '-14px'})`,
         opacity: visible ? 1 : 0,
         transition: visible
           ? 'opacity 300ms ease, transform 450ms cubic-bezier(0.34,1.56,0.64,1)'
