@@ -1,13 +1,47 @@
 'use client'
 
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
-import Script from 'next/script'
 
 declare global {
   interface Window {
     dataLayer: unknown[]
     gtag?: (...args: unknown[]) => void
+    __rezoomedGaInitialized?: boolean
+    __rezoomedGaScriptLoading?: boolean
   }
+}
+
+const GA_LOAD_DELAY_MS = 12_000
+
+function scheduleAnalyticsScriptLoad(callback: () => void) {
+  let didRun = false
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
+
+  const cleanup = () => {
+    window.removeEventListener('pointerdown', run)
+    window.removeEventListener('keydown', run)
+    window.removeEventListener('touchstart', run)
+    window.removeEventListener('scroll', run)
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId)
+    }
+  }
+
+  const run = () => {
+    if (didRun) return
+    didRun = true
+    cleanup()
+    callback()
+  }
+
+  window.addEventListener('pointerdown', run, { once: true, passive: true })
+  window.addEventListener('keydown', run, { once: true })
+  window.addEventListener('touchstart', run, { once: true, passive: true })
+  window.addEventListener('scroll', run, { once: true, passive: true })
+  timeoutId = globalThis.setTimeout(run, GA_LOAD_DELAY_MS)
+
+  return cleanup
 }
 
 export default function GoogleAnalyticsProvider({
@@ -19,30 +53,31 @@ export default function GoogleAnalyticsProvider({
 }) {
   const gaId = process.env.NEXT_PUBLIC_GA4_ID
 
-  if (!enabled || !gaId) {
-    return <>{children}</>
-  }
+  useEffect(() => {
+    if (!enabled || !gaId) return
 
-  return (
-    <>
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-        strategy="lazyOnload"
-      />
-      <Script
-        id="ga4-init"
-        strategy="lazyOnload"
-        dangerouslySetInnerHTML={{
-          __html: `
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){window.dataLayer.push(arguments);}
-            window.gtag = gtag;
-            gtag('js', new Date());
-            gtag('config', '${gaId}', { send_page_view: false });
-          `,
-        }}
-      />
-      {children}
-    </>
-  )
+    window.dataLayer = window.dataLayer || []
+    window.gtag ??= (...args: unknown[]) => {
+      window.dataLayer.push(args)
+    }
+
+    if (!window.__rezoomedGaInitialized) {
+      window.gtag('js', new Date())
+      window.gtag('config', gaId, { send_page_view: false })
+      window.__rezoomedGaInitialized = true
+    }
+
+    return scheduleAnalyticsScriptLoad(() => {
+      if (window.__rezoomedGaScriptLoading) return
+      if (document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${gaId}"]`)) return
+
+      window.__rezoomedGaScriptLoading = true
+      const script = document.createElement('script')
+      script.async = true
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`
+      document.head.appendChild(script)
+    })
+  }, [enabled, gaId])
+
+  return <>{children}</>
 }

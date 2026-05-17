@@ -111,6 +111,8 @@ const SESSION_COOKIE_ATTRIBUTES = '; path=/; SameSite=Lax'
 let posthogPromise: Promise<{ default: PostHog }> | null = null
 let posthogInitPromise: Promise<PostHog | null> | null = null
 
+const THIRD_PARTY_ANALYTICS_DELAY_MS = 12_000
+
 type SearchParamsLike = {
   get(name: string): string | null
 }
@@ -137,15 +139,34 @@ function isAnalyticsAllowed() {
   return document.documentElement.dataset.analyticsDefault === 'granted'
 }
 
-function scheduleIdle(callback: () => void) {
+function scheduleThirdPartyAnalytics(callback: () => void) {
   if (!isBrowser()) return
 
-  if ('requestIdleCallback' in window) {
-    window.requestIdleCallback(callback, { timeout: 3000 })
-    return
+  let didRun = false
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null
+
+  const cleanup = () => {
+    window.removeEventListener('pointerdown', run)
+    window.removeEventListener('keydown', run)
+    window.removeEventListener('touchstart', run)
+    window.removeEventListener('scroll', run)
+    if (timeoutId !== null) {
+      globalThis.clearTimeout(timeoutId)
+    }
   }
 
-  globalThis.setTimeout(callback, 1800)
+  const run = () => {
+    if (didRun) return
+    didRun = true
+    cleanup()
+    callback()
+  }
+
+  window.addEventListener('pointerdown', run, { once: true, passive: true })
+  window.addEventListener('keydown', run, { once: true })
+  window.addEventListener('touchstart', run, { once: true, passive: true })
+  window.addEventListener('scroll', run, { once: true, passive: true })
+  timeoutId = globalThis.setTimeout(run, THIRD_PARTY_ANALYTICS_DELAY_MS)
 }
 
 function readCookie(name: string) {
@@ -224,7 +245,12 @@ async function getPostHogInstance() {
       capture_pageview: false,
       capture_pageleave: false,
       autocapture: false,
+      disable_external_dependency_loading: true,
       disable_session_recording: true,
+      disable_surveys: true,
+      disable_surveys_automatic_display: true,
+      disable_conversations: true,
+      disable_product_tours: true,
       capture_dead_clicks: false,
       capture_performance: false,
       advanced_disable_flags: true,
@@ -251,7 +277,7 @@ function queueBrowserAnalytics(
 ) {
   if (!isBrowser() || !isAnalyticsAllowed()) return
 
-  scheduleIdle(() => {
+  scheduleThirdPartyAnalytics(() => {
     void getPostHogInstance()
       .then(posthog => {
         if (!posthog) return

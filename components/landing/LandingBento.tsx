@@ -120,6 +120,8 @@ export default function LandingBento() {
                       alt="ATS scanner mascot"
                       width={500}
                       height={500}
+                      quality={65}
+                      sizes="(max-width: 767px) 310px, (max-width: 1023px) 360px, 400px"
                       className="relative h-[310px] w-[310px] md:h-[360px] md:w-[360px] lg:h-[400px] lg:w-[400px] object-contain drop-shadow-[0_18px_28px_rgba(0,0,0,0.22)]"
                     />
                   </div>
@@ -194,6 +196,8 @@ export default function LandingBento() {
                       alt="Match score mascot"
                       width={320}
                       height={320}
+                      quality={65}
+                      sizes="(max-width: 639px) 160px, (max-width: 767px) 190px, 220px"
                       className="relative h-[160px] w-[160px] sm:h-[190px] sm:w-[190px] md:h-[220px] md:w-[220px] object-contain drop-shadow-[0_12px_22px_rgba(163,255,179,0.18)]"
                     />
                   </div>
@@ -241,6 +245,8 @@ export default function LandingBento() {
                       alt="Resume builder mascot"
                       width={320}
                       height={320}
+                      quality={65}
+                      sizes="(max-width: 639px) 160px, (max-width: 767px) 180px, 210px"
                       className="relative h-[160px] w-[160px] sm:h-[180px] sm:w-[180px] md:h-[210px] md:w-[210px] object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.22)]"
                     />
                   </div>
@@ -293,6 +299,8 @@ export default function LandingBento() {
                       alt="Tailoring hero mascot"
                       width={400}
                       height={400}
+                      quality={65}
+                      sizes="(max-width: 639px) 180px, (max-width: 767px) 210px, (max-width: 1023px) 250px, 290px"
                       className="relative h-[180px] w-[180px] sm:h-[210px] sm:w-[210px] md:h-[250px] md:w-[250px] lg:h-[290px] lg:w-[290px] object-contain drop-shadow-[0_16px_28px_rgba(0,0,0,0.24)]"
                     />
                   </div>
@@ -341,6 +349,8 @@ export default function LandingBento() {
                       alt="Cover letter mascot"
                       width={320}
                       height={320}
+                      quality={65}
+                      sizes="(max-width: 767px) 180px, 210px"
                       className="relative h-[180px] w-[180px] md:h-[210px] md:w-[210px] object-contain drop-shadow-[0_14px_28px_rgba(10,46,168,0.22)]"
                     />
                   </div>

@@ -214,7 +214,7 @@ export default function LandingHeroV2() {
           </div>
 
           {/* ── Right: mascot stage ───────────────────────────────── */}
-          <div className="relative z-0 mx-auto h-[430px] w-full max-w-[560px] min-w-0 md:h-[540px] lg:h-[590px] lg:max-w-[680px]">
+          <div className="relative z-0 mx-auto h-[360px] w-full max-w-[560px] min-w-0 sm:h-[430px] md:h-[540px] lg:h-[590px] lg:max-w-[680px]">
             {/* Resume preview surface */}
             <div className="absolute inset-x-[5%] bottom-[8%] top-[18%] z-0 overflow-visible rounded-[2rem] border border-[#00a84d]/15 bg-white/70 shadow-[0_30px_80px_-40px_rgba(2,109,50,0.45)] backdrop-blur-sm">
               <div className="scan-pulse opacity-70" />
@@ -228,7 +228,7 @@ export default function LandingHeroV2() {
               </div>
               <Link
                 href="/auth/register"
-                className="absolute left-1/2 top-[43%] z-30 h-[440px] w-[440px] md:h-[540px] md:w-[540px] lg:h-[600px] lg:w-[600px] cursor-pointer"
+                className="absolute left-1/2 top-[43%] z-30 h-[340px] w-[340px] cursor-pointer sm:h-[420px] sm:w-[420px] md:h-[540px] md:w-[540px] lg:h-[600px] lg:w-[600px]"
                 style={{
                   transform: `translate(calc(-50% + ${parallax.x}px), calc(-50% + ${parallax.y}px))`,
                   transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
@@ -246,9 +246,10 @@ export default function LandingHeroV2() {
                     alt="Rezoomed mascot hero"
                     width={700}
                     height={700}
-                    priority
+                    preload
                     fetchPriority="high"
-                    sizes="(max-width: 768px) 440px, (max-width: 1024px) 540px, 600px"
+                    quality={70}
+                    sizes="(max-width: 640px) 340px, (max-width: 768px) 420px, (max-width: 1024px) 540px, 600px"
                     className="relative h-full w-full object-contain"
                     style={{
                       filter:

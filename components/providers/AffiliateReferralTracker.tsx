@@ -1,14 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import {
   AFFILIATE_REFERRAL_COOKIE,
   AFFILIATE_REFERRAL_COOKIE_MAX_AGE,
   isAffiliateReferralCode,
   normalizeAffiliateCode,
 } from '@/lib/affiliate'
-import { createClient } from '@/lib/supabase/client'
 
 const COOKIE_ATTRIBUTES = `; Max-Age=${AFFILIATE_REFERRAL_COOKIE_MAX_AGE}; Path=/; SameSite=Lax`
 
@@ -24,10 +22,8 @@ function readAffiliateReferralCodeFromDocumentCookie() {
 }
 
 export default function AffiliateReferralTracker() {
-  const searchParams = useSearchParams()
-
   useEffect(() => {
-    const supabase = createClient()
+    const searchParams = new URLSearchParams(window.location.search)
     const ref = searchParams.get('ref')
     const normalizedRef = isAffiliateReferralCode(ref) ? normalizeAffiliateCode(ref) : null
 
@@ -44,6 +40,9 @@ export default function AffiliateReferralTracker() {
     let isMounted = true
 
     async function persistAffiliateSource() {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -80,7 +79,7 @@ export default function AffiliateReferralTracker() {
     return () => {
       isMounted = false
     }
-  }, [searchParams])
+  }, [])
 
   return null
 }

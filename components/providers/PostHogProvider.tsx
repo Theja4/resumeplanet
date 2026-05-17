@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   Analytics,
   getBlogAttributionEvent,
@@ -10,10 +10,10 @@ import {
 
 function RouteAnalyticsTracker() {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const lastTrackedPathRef = useRef<string>('')
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
     const search = searchParams.toString()
     const trackedPath = search ? `${pathname}?${search}` : pathname
 
@@ -35,7 +35,7 @@ function RouteAnalyticsTracker() {
     if (blogAttributionEvent) {
       Analytics.capture(blogAttributionEvent.event, blogAttributionEvent.properties)
     }
-  }, [pathname, searchParams])
+  }, [pathname])
 
   return null
 }
