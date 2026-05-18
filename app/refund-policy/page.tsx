@@ -26,6 +26,8 @@ export const metadata = {
   alternates: { canonical: '/refund-policy' },
 }
 
+export const revalidate = 3600
+
 export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#f7fbf8_0%,#ffffff_52%,#f2f7f3_100%)] text-zinc-900">
