@@ -39,6 +39,7 @@ const geistMono = localFont({
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
+  style: ['normal', 'italic'],
   variable: '--font-plus-jakarta-sans',
   display: 'swap',
 });

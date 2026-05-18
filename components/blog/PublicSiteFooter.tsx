@@ -94,9 +94,9 @@ function FooterColumn({
 }) {
   return (
     <div>
-      <h4 className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
+      <h3 className="text-[11px] font-medium uppercase tracking-[0.18em] text-zinc-500">
         {title}
-      </h4>
+      </h3>
       <ul className="mt-5 flex flex-col gap-3">
         {links.map(({ label, href }) => (
           <li key={label}>
@@ -127,7 +127,7 @@ export default function PublicSiteFooter() {
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
             {/* Brand column */}
-            <div className="flex flex-col gap-5">
+            <div className="flex flex-col items-center gap-5 text-center md:items-start md:text-left">
               <Link href="/" className="inline-flex items-center gap-2.5">
                 <Image
                   src="/auth-login-logo.png"
@@ -180,12 +180,12 @@ export default function PublicSiteFooter() {
 
           {/* ── Copyright bar ─────────────────────────────────── */}
           <div className="mt-14 border-t border-zinc-900/[0.06] pt-6">
-            <div className="flex flex-col items-start justify-between gap-3 md:flex-row md:items-center">
+            <div className="flex flex-col items-center justify-between gap-3 text-center md:flex-row md:items-center md:text-left">
               <p className="text-xs text-zinc-500">
                 © {year} Rezoomed.{' '}
                 <span className="text-zinc-400">All rights reserved.</span>
               </p>
-              <p className="text-xs tracking-wide text-zinc-400">
+              <p className="text-xs tracking-wide text-zinc-400 md:text-right">
                 Made with care · Built for the 2026 job market
               </p>
             </div>
@@ -195,7 +195,7 @@ export default function PublicSiteFooter() {
 
       {/* ── Animated wordmark band ────────────────────────────── */}
       <div className="footer-wordmark-stage select-none">
-        <div className="relative mx-auto max-w-[1600px] px-6 pb-[0.04em]">
+        <div className="relative mx-auto flex max-w-[1600px] justify-center px-6 pb-[0.04em]">
           <span
             aria-hidden="true"
             className="footer-wordmark"

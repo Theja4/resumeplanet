@@ -118,7 +118,7 @@ export default function LandingHeroV2() {
               className="hero-text-rise mt-10 flex flex-col items-center gap-3 lg:flex-row lg:items-center lg:gap-4"
               style={{ animationDelay: '0.7s' }}
             >
-              <p className="text-[12px] uppercase tracking-[0.18em] font-medium text-zinc-400">
+              <p className="text-[12px] uppercase tracking-[0.18em] font-medium text-zinc-500">
                 Powered by
               </p>
               <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 lg:justify-start">
@@ -275,7 +275,7 @@ export default function LandingHeroV2() {
               {/* Floating ATS chip — top-left */}
               <div className="absolute -left-3 top-10 z-20 hidden md:block badge-drift-up">
                 <div className="landing-chip-floating">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                     ATS Score
                   </p>
                   <p className="mt-0.5 text-2xl font-semibold tracking-tight leading-none text-zinc-950">
@@ -313,7 +313,7 @@ export default function LandingHeroV2() {
                     <span>94</span>
                   </div>
                   <div>
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-zinc-500">
                       Match Score
                     </p>
                     <p className="mt-0.5 text-[13px] font-medium tracking-tight text-zinc-900 leading-tight">
