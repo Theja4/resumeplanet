@@ -1087,8 +1087,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const saveLockRef = useRef(false)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  const hasSaveableDraftContent =
+    resumeId !== 'draft' || Boolean(resumeData && !isResumeDataMeaningfullyEmpty(resumeData))
+
   const hasUnsavedChanges =
-    !!resumeData && (
+    !!resumeData && hasSaveableDraftContent && (
       JSON.stringify(resumeData) !== JSON.stringify(savedData) ||
       JSON.stringify(visibility) !== JSON.stringify(savedVisibility) ||
       JSON.stringify(templateConfig) !== JSON.stringify(savedTemplateConfig)
@@ -1119,17 +1122,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   async function forceSave() {
     if (!resumeData || !hasUnsavedChanges || isSaving || saveLockRef.current) return
 
-    // Define what constitutes a truly 'empty' resume to avoid ghost records on new drafts.
-    // If it's a new draft, we only save if the user has actually done something.
+    // A new draft becomes a library resume only after the final resume content has text.
+    // Empty section rows, ghost dismissals, visibility changes, and style tweaks are not enough.
     if (resumeId === 'draft') {
-      const isDataEmpty = isResumeDataMeaningfullyEmpty(resumeData)
-
-      const isTemplateDefault = 
-        JSON.stringify(templateConfig) === JSON.stringify(DEFAULT_UNIVERSAL_CONFIG) &&
-        JSON.stringify(visibility) === JSON.stringify(DEFAULT_VISIBILITY)
-
-      // If everything is untouched, don't create a database record yet
-      if (isDataEmpty && isTemplateDefault) return
+      if (isResumeDataMeaningfullyEmpty(resumeData)) return
     }
 
     saveLockRef.current = true
