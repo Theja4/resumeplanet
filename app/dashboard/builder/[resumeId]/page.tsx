@@ -35,7 +35,7 @@ import TailorPanel from '@/components/builder/TailorPanel'
 import AIInsightsPanel from '@/components/builder/AIInsightsPanel'
 import SectionList from '@/components/builder/SectionList'
 import { getVisibleResumeData, getOrderedSections, getOrderedSidebarSections } from '@/lib/visibilityUtils'
-import type { BuilderVisibility, UniversalConfig } from '@/types'
+import type { BuilderVisibility, GhostResumeSectionId, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY, DEFAULT_UNIVERSAL_CONFIG, EMPTY_RESUME_DATA } from '@/types'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
 import { generateDOCX } from '@/lib/docxGenerator'
@@ -67,6 +67,23 @@ const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
 const MIN_PREVIEW_SLICE_HEIGHT = 120
 const PAGE_BREAK_LOOKBACK = 96
+const DEFAULT_LEFT_PANEL_WIDTH = 420
+const DEFAULT_RIGHT_PANEL_WIDTH = 380
+const COLLAPSED_PANEL_WIDTH = 48
+const BUILDER_PREVIEW_WIDTH = 794
+const BUILDER_LAYOUT_GUTTER = 160
+const LEGACY_DEFAULT_SECTION_ORDER = ['summary', 'experience', 'education', 'projects', 'volunteer']
+const LEGACY_DEFAULT_SIDEBAR_SECTION_ORDER = [
+  'skills',
+  'certifications',
+  'languages',
+  'interests',
+  'awards',
+  'publications',
+  'references',
+]
+const GHOST_RESUME_SECTION_IDS = ['summary', 'experience', 'education', 'skills'] as const satisfies readonly GhostResumeSectionId[]
+const GHOST_DISMISSAL_STORAGE_PREFIX = 'rezoomed:builder:ghost-dismissed'
 
 function normalizeResumeTitle(title: string) {
   const trimmed = title.trim()
@@ -122,6 +139,21 @@ function appendMissingDefaultSectionIds(
   savedPrimary: string[] | undefined,
   savedSidebar: string[] | undefined
 ) {
+  const savedPrimaryWithoutContact = (savedPrimary ?? []).filter(id => id !== 'contact')
+  const savedSidebarWithoutContact = (savedSidebar ?? []).filter(id => id !== 'contact')
+  const hasLegacyVolunteerOrder =
+    savedPrimaryWithoutContact.length === LEGACY_DEFAULT_SECTION_ORDER.length &&
+    savedPrimaryWithoutContact.every((sectionId, index) => sectionId === LEGACY_DEFAULT_SECTION_ORDER[index]) &&
+    savedSidebarWithoutContact.length === LEGACY_DEFAULT_SIDEBAR_SECTION_ORDER.length &&
+    savedSidebarWithoutContact.every((sectionId, index) => sectionId === LEGACY_DEFAULT_SIDEBAR_SECTION_ORDER[index])
+
+  if (hasLegacyVolunteerOrder) {
+    return {
+      primary: [...DEFAULT_VISIBILITY.sectionOrder],
+      sidebar: [...(DEFAULT_VISIBILITY.sidebarSectionOrder ?? [])],
+    }
+  }
+
   const primary: string[] = []
   const sidebar: string[] = []
   const seen = new Set<string>()
@@ -269,6 +301,17 @@ function hasMeaningfulEducationItem(item: ResumeData['education'][number]) {
   )
 }
 
+function hasMeaningfulSkillData(data: ResumeData) {
+  return (
+    getResumeSkills(data).length > 0 ||
+    (data.skillSections ?? []).some(section =>
+      hasMeaningfulText(section.title) ||
+      hasMeaningfulText(section.tag) ||
+      (section.skills ?? []).some(hasMeaningfulText)
+    )
+  )
+}
+
 function hasMeaningfulProjectItem(item: ResumeData['projects'][number]) {
   return (
     hasMeaningfulText(item.name) ||
@@ -289,6 +332,70 @@ function hasMeaningfulCustomSection(section: NonNullable<ResumeData['customSecti
   return false
 }
 
+function isGhostResumeSectionId(sectionId: string): sectionId is GhostResumeSectionId {
+  return (GHOST_RESUME_SECTION_IDS as readonly string[]).includes(sectionId)
+}
+
+function getChangedGhostResumeSections(previous: ResumeData, updated: ResumeData) {
+  const changedSections: GhostResumeSectionId[] = []
+
+  if (previous.summary !== updated.summary) changedSections.push('summary')
+  if (JSON.stringify(previous.experience) !== JSON.stringify(updated.experience)) changedSections.push('experience')
+  if (JSON.stringify(previous.education) !== JSON.stringify(updated.education)) changedSections.push('education')
+  if (
+    JSON.stringify(previous.skills) !== JSON.stringify(updated.skills) ||
+    JSON.stringify(previous.skillSections ?? []) !== JSON.stringify(updated.skillSections ?? [])
+  ) {
+    changedSections.push('skills')
+  }
+
+  return changedSections
+}
+
+function shouldPersistGhostDismissals(resumeId: string) {
+  return resumeId !== 'draft' && resumeId !== 'new'
+}
+
+function getGhostDismissalStorageKey(resumeId: string) {
+  return `${GHOST_DISMISSAL_STORAGE_PREFIX}:${resumeId}`
+}
+
+function readGhostDismissalsFromStorage(resumeId: string) {
+  if (typeof window === 'undefined' || !shouldPersistGhostDismissals(resumeId)) {
+    return new Set<GhostResumeSectionId>()
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getGhostDismissalStorageKey(resumeId))
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    if (!Array.isArray(parsed)) return new Set<GhostResumeSectionId>()
+
+    return new Set(parsed.filter((sectionId): sectionId is GhostResumeSectionId =>
+      typeof sectionId === 'string' && isGhostResumeSectionId(sectionId)
+    ))
+  } catch {
+    return new Set<GhostResumeSectionId>()
+  }
+}
+
+function writeGhostDismissalsToStorage(resumeId: string, dismissedSections: Set<GhostResumeSectionId>) {
+  if (typeof window === 'undefined' || !shouldPersistGhostDismissals(resumeId)) return
+
+  try {
+    const key = getGhostDismissalStorageKey(resumeId)
+    const values = Array.from(dismissedSections)
+
+    if (values.length === 0) {
+      window.localStorage.removeItem(key)
+      return
+    }
+
+    window.localStorage.setItem(key, JSON.stringify(values))
+  } catch {
+    // Local storage is best-effort; the in-memory dismissal still protects the current edit session.
+  }
+}
+
 function isResumeDataMeaningfullyEmpty(resumeData: ResumeData) {
   return (
     !hasMeaningfulText(resumeData.name) &&
@@ -301,7 +408,7 @@ function isResumeDataMeaningfullyEmpty(resumeData: ResumeData) {
     !hasMeaningfulText(resumeData.website) &&
     !resumeData.experience.some(hasMeaningfulExperienceItem) &&
     !resumeData.education.some(hasMeaningfulEducationItem) &&
-    getResumeSkills(resumeData).length === 0 &&
+    !hasMeaningfulSkillData(resumeData) &&
     !resumeData.projects.some(hasMeaningfulProjectItem) &&
     !resumeData.certifications.some(hasMeaningfulCertificationItem) &&
     !resumeData.languages.some(hasMeaningfulText) &&
@@ -457,15 +564,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isTailoring, setIsTailoring] = useState(false)
   const [tailorError, setTailorError] = useState<string | null>(null)
   const [sectionHints, setSectionHints] = useState<Set<string>>(new Set())
+  const [dismissedGhostSections, setDismissedGhostSections] = useState<Set<GhostResumeSectionId>>(
+    () => readGhostDismissalsFromStorage(resumeId)
+  )
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isPageWarningDismissed, setIsPageWarningDismissed] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window === 'undefined' ? 0 : window.innerWidth
+  )
   const [visibility, setVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedVisibility, setSavedVisibility] = useState<BuilderVisibility>(DEFAULT_VISIBILITY)
   const [savedTemplateConfig, setSavedTemplateConfig] = useState<UniversalConfig | null>(null)
   const resumeRef = useRef<HTMLDivElement>(null)
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const dismissedGhostSectionsRef = useRef(dismissedGhostSections)
 
   const hasTriggeredAutoPdfDownloadRef = useRef(false)
   const consumedTailorJobKeyRef = useRef<string | null>(null)
@@ -508,6 +622,20 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   } | null>(null)
   const previousTemplateIdRef = useRef<string | null>(null)
 
+  const ghostSections = useMemo<Partial<Record<GhostResumeSectionId, boolean>>>(() => {
+    if (!resumeData) return {}
+
+    const isSectionAvailable = (sectionId: GhostResumeSectionId) =>
+      visibility.sections[sectionId] !== false && !dismissedGhostSections.has(sectionId)
+
+    return {
+      summary: isSectionAvailable('summary') && !hasMeaningfulText(resumeData.summary),
+      experience: isSectionAvailable('experience') && !resumeData.experience.some(hasMeaningfulExperienceItem),
+      education: isSectionAvailable('education') && !resumeData.education.some(hasMeaningfulEducationItem),
+      skills: isSectionAvailable('skills') && !hasMeaningfulSkillData(resumeData),
+    }
+  }, [dismissedGhostSections, resumeData, visibility.sections])
+
   const applyUrlTemplateOverrides = useCallback((baseConfig: Partial<UniversalConfig> | null | undefined) => {
     const config: UniversalConfig = sanitizeUniversalConfig(baseConfig)
 
@@ -532,6 +660,26 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   useEffect(() => {
     setVisibility(prev => ({ ...prev, density: templateConfig.density }))
   }, [templateConfig.density])
+
+  useEffect(() => {
+    function handleResize() {
+      setViewportWidth(window.innerWidth)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  useEffect(() => {
+    const storedDismissals = readGhostDismissalsFromStorage(resumeId)
+    dismissedGhostSectionsRef.current = storedDismissals
+    setDismissedGhostSections(storedDismissals)
+  }, [resumeId])
+
+  useEffect(() => {
+    dismissedGhostSectionsRef.current = dismissedGhostSections
+  }, [dismissedGhostSections])
 
   useEffect(() => {
     if (requestedMode !== 'tailor') {
@@ -756,7 +904,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       recomputeResumeHeight()
     })
     return () => window.cancelAnimationFrame(id)
-  }, [recomputeResumeHeight, resumeData, visibility, templateConfig])
+  }, [recomputeResumeHeight, resumeData, visibility, templateConfig, ghostSections])
 
   // Run a layout-synced pagination pass after density/layout/content changes.
   // Two RAFs gives the browser a chance to settle wrapping before measuring.
@@ -777,7 +925,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       window.cancelAnimationFrame(frame1)
       window.cancelAnimationFrame(frame2)
     }
-  }, [recomputeResumeHeight, recomputePageBreak, recomputePreviewFocusFrame, resumeData, visibility, templateConfig])
+  }, [recomputeResumeHeight, recomputePageBreak, recomputePreviewFocusFrame, resumeData, visibility, templateConfig, ghostSections])
 
   useEffect(() => {
     if (resumeHeight === 0) return
@@ -803,7 +951,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }, 180)
 
     return () => window.clearTimeout(id)
-  }, [visibility, templateConfig])
+  }, [visibility, templateConfig, ghostSections])
 
   const MAX_PAGES = 5
   const RECOMMENDED_PAGES = 2
@@ -946,6 +1094,28 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       JSON.stringify(templateConfig) !== JSON.stringify(savedTemplateConfig)
     )
 
+  const dismissGhostSections = useCallback((sections: GhostResumeSectionId | GhostResumeSectionId[]) => {
+    const sectionList = Array.isArray(sections) ? sections : [sections]
+    if (sectionList.length === 0) return
+
+    setDismissedGhostSections(previous => {
+      const next = new Set(previous)
+      let changed = false
+
+      for (const sectionId of sectionList) {
+        if (next.has(sectionId)) continue
+        next.add(sectionId)
+        changed = true
+      }
+
+      if (!changed) return previous
+
+      dismissedGhostSectionsRef.current = next
+      writeGhostDismissalsToStorage(resumeId, next)
+      return next
+    })
+  }, [resumeId])
+
   async function forceSave() {
     if (!resumeData || !hasUnsavedChanges || isSaving || saveLockRef.current) return
 
@@ -994,6 +1164,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           setSavedData(resumeData)
           setSavedVisibility(visibility)
           setSavedTemplateConfig(templateConfig)
+          writeGhostDismissalsToStorage(data.id, dismissedGhostSectionsRef.current)
           router.replace(`/dashboard/builder/${data.id}`)
         }
       } else {
@@ -1036,13 +1207,26 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }
 
   // ── Resizable Panels ────────────────────────────────────────────────────────
-  const [leftWidth, setLeftWidth] = useState(420)
-  const [rightWidth, setRightWidth] = useState(380)
+  const [leftWidth, setLeftWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH)
+  const [rightWidth, setRightWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH)
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
-  const [isRightCollapsed, setIsRightCollapsed] = useState(false)
-  const builderPanelWidthsRef = useRef({ left: 420, right: 380 })
+  const [isRightCollapsed, setIsRightCollapsed] = useState(() => isPro)
+  const builderPanelWidthsRef = useRef({
+    left: DEFAULT_LEFT_PANEL_WIDTH,
+    right: DEFAULT_RIGHT_PANEL_WIDTH,
+  })
+  const expandedBuilderWidth =
+    (isLeftCollapsed ? COLLAPSED_PANEL_WIDTH : leftWidth) +
+    rightWidth +
+    (BUILDER_PREVIEW_WIDTH * effectiveScale) +
+    BUILDER_LAYOUT_GUTTER
+  const shouldSuppressBuilderInsights =
+    activeMode === 'builder' &&
+    !isPro &&
+    viewportWidth > 0 &&
+    viewportWidth < expandedBuilderWidth
 
   useEffect(() => {
     if (isOverRecommendedPages && !isPageWarningDismissed) {
@@ -1157,9 +1341,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       return
     }
 
+    const hiddenGhostSections = GHOST_RESUME_SECTION_IDS.filter(
+      sectionId => visibility.sections[sectionId] !== false && trimmedStep.nextVisibility.sections[sectionId] === false
+    )
+    if (hiddenGhostSections.length > 0) dismissGhostSections(hiddenGhostSections)
+
     setResumeData(trimmedStep.nextResumeData)
     setVisibility(trimmedStep.nextVisibility)
-  }, [needsOverflowTrim, resumeData, visibility, isLoading, isPaginationSettling, isOverPageLimit])
+  }, [dismissGhostSections, needsOverflowTrim, resumeData, visibility, isLoading, isPaginationSettling, isOverPageLimit])
 
   // ── beforeunload guard ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -1172,12 +1361,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   function handleDataChange(updated: ResumeData) {
     if (resumeData) history.pushHistory(resumeData, visibility)
+    if (resumeData) {
+      const changedGhostSections = getChangedGhostResumeSections(resumeData, updated)
+      if (changedGhostSections.length > 0) dismissGhostSections(changedGhostSections)
+    }
     builderAnalytics.trackSectionEdit(expandedSection ?? 'contact', 'edit')
     setResumeData(updated)
   }
 
   function handleVisibilityChange(updated: BuilderVisibility) {
     if (resumeData) history.pushHistory(resumeData, visibility)
+
+    const hiddenGhostSections = GHOST_RESUME_SECTION_IDS.filter(
+      sectionId => visibility.sections[sectionId] !== false && updated.sections[sectionId] === false
+    )
+    if (hiddenGhostSections.length > 0) dismissGhostSections(hiddenGhostSections)
 
     const toggledSection = Object.keys(updated.sections).find(
       sectionId => updated.sections[sectionId] !== visibility.sections[sectionId]
@@ -1266,6 +1464,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   function handleNavigateToField(path: string) {
     const sectionId = getSectionIdForFieldPath(path)
     if (!sectionId) return
+    if (isGhostResumeSectionId(sectionId)) {
+      dismissGhostSections(sectionId)
+    }
 
     const indexedFieldMatch = path.match(/^(experience|education|projects)\.(\d+)\./)
     const customIndexedMatch = path.match(/^(custom_[a-z0-9]+)\.items\.(\d+)\./)
@@ -1409,6 +1610,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
     history.pushHistory(resumeData, visibility)
     builderAnalytics.trackSectionEdit(sectionId, 'edit')
+    if (isGhostResumeSectionId(sectionId)) {
+      dismissGhostSections(sectionId)
+    }
     setResumeData(result.data)
     setSectionHints(prev => new Set(prev).add(sectionId))
   }
@@ -1423,6 +1627,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     result.touchedSections.forEach(sectionId => {
       builderAnalytics.trackSectionEdit(sectionId, 'edit')
     })
+    const touchedGhostSections = result.touchedSections.filter(isGhostResumeSectionId)
+    if (touchedGhostSections.length > 0) {
+      dismissGhostSections(touchedGhostSections)
+    }
     setResumeData(result.data)
     setSectionHints(prev => {
       const next = new Set(prev)
@@ -1447,6 +1655,9 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       if (updated === previous) return previous
       history.pushHistory(previous, visibility)
       builderAnalytics.trackSectionEdit(suggestion.sectionHint, 'edit')
+      if (isGhostResumeSectionId(suggestion.sectionHint)) {
+        dismissGhostSections(suggestion.sectionHint)
+      }
       
       // Expand and scroll to the section being fixed
       setExpandedSection(suggestion.sectionHint)
@@ -1675,19 +1886,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       <div className="bg-background font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
         
         {/* ── TopNavBar ── */}
-        <header className="fixed top-0 w-full z-50 glass-nav border-b border-outline-variant/10 flex justify-between items-center px-6 py-3">
-          <div className="flex items-center gap-4">
+        <header className="fixed top-0 w-full z-50 glass-nav border-b border-outline-variant/10 flex items-center gap-4 px-4 py-3 lg:px-6">
+          <div className="flex min-w-0 flex-1 items-center gap-3 lg:gap-4">
             <Link href="/dashboard/resumes" className="flex items-center gap-2 text-zinc-500 hover:text-zinc-800 transition-colors text-sm font-medium">
               <ArrowLeft size={16} />
               <span>Back</span>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 min-[1180px]:flex">
               <Image src="/auth-login-logo.png" alt="Rezoomed logo" width={32} height={32} className="h-8 w-8 object-contain" />
               <span className="text-xl font-bold text-emerald-900 tracking-tight font-headline">Rezoomed</span>
             </div>
-            <div className="w-px h-4 bg-zinc-200" />
+            <div className="hidden h-4 w-px bg-zinc-200 min-[1180px]:block" />
             <div
-              className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-all ${
+              className={`flex min-w-0 items-center gap-2 rounded-xl border px-3 py-1.5 transition-all ${
                 isTitleFocused
                   ? 'border-emerald-300 bg-white shadow-[0_12px_30px_rgba(16,185,129,0.14)] ring-2 ring-emerald-100'
                   : 'border-emerald-100 bg-gradient-to-br from-white to-emerald-50/80 shadow-[0_8px_24px_rgba(16,185,129,0.08)]'
@@ -1724,18 +1935,18 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     .eq('user_id', userId)
                 }}
                 placeholder="Untitled Resume"
-                className={`w-56 rounded-lg border-none px-2 py-1.5 text-sm font-semibold text-emerald-950 outline-none transition-all placeholder:font-normal placeholder:text-emerald-400 ${
+                className={`w-40 rounded-lg border-none px-2 py-1.5 text-sm font-semibold text-emerald-950 outline-none transition-all placeholder:font-normal placeholder:text-emerald-400 lg:w-48 2xl:w-56 ${
                   isTitleFocused ? 'bg-white shadow-[inset_0_0_0_1px_rgba(16,185,129,0.12)]' : 'bg-transparent'
                 }`}
               />
             </div>
             
             {/* Save Status Indicator */}
-            <div className="flex items-center gap-2 px-1">
+            <div className="hidden shrink-0 items-center gap-2 px-1 xl:flex">
               {isSaving ? (
                 <div className="flex items-center gap-1.5 text-zinc-400 animate-pulse">
                   <Loader2 size={12} className="animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Saving...</span>
+                  <span className="hidden text-[10px] font-bold uppercase tracking-wider min-[1500px]:inline">Saving...</span>
                 </div>
               ) : saveFailed ? (
                 <button 
@@ -1743,24 +1954,24 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 transition-colors"
                 >
                   <CloudOff size={12} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Save Failed</span>
+                  <span className="hidden text-[10px] font-bold uppercase tracking-wider min-[1500px]:inline">Save Failed</span>
                 </button>
               ) : hasUnsavedChanges ? (
                 <div className="flex items-center gap-1.5 text-amber-500">
                   <div className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Unsaved</span>
+                  <span className="hidden text-[10px] font-bold uppercase tracking-wider min-[1500px]:inline">Unsaved</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 text-emerald-500/60">
                   <Check size={12} strokeWidth={3} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Saved</span>
+                  <span className="hidden text-[10px] font-bold uppercase tracking-wider min-[1500px]:inline">Saved</span>
                 </div>
               )}
             </div>
           </div>
           
           {/* Builder / Tailor Toggle */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex bg-surface-container-low p-1 rounded-full">
+          <div className="flex shrink-0 bg-surface-container-low p-1 rounded-full">
             <button
               onClick={() => setBuilderMode('builder')}
               className={`px-6 py-1.5 text-xs font-bold tracking-tight rounded-full transition-all ${
@@ -1784,7 +1995,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             </button>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:gap-3">
             {/* Style button — prominent green glass */}
             <button
               onClick={() => setIsTemplateModalOpen(true)}
@@ -2020,11 +2231,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               isEditing={false}
               showEmptyStateGuidance
               highlightedSectionId={null}
+              ghostSections={ghostSections}
               onFieldChange={() => {}}
               sectionOrder={orderedSections}
               sidebarSectionOrder={orderedSidebarSections}
               config={templateConfig}
-              onNavigateToField={handleNavigateToField}
               showEditingBadge={false}
             />
             </div>
@@ -2126,6 +2337,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                             isEditing={false}
                             showEmptyStateGuidance
                             highlightedSectionId={null}
+                            ghostSections={ghostSections}
                             onFieldChange={() => {}}
                             sectionOrder={orderedSections}
                             sidebarSectionOrder={orderedSidebarSections}
@@ -2183,7 +2395,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </section>
 
           {/* Right Handle */}
-          {!isRightCollapsed && (
+          {!shouldSuppressBuilderInsights && !isRightCollapsed && (
             <div 
               className="w-1 bg-transparent hover:bg-emerald-500/30 cursor-col-resize z-10 shrink-0 select-none scale-x-150 transition-colors"
               onMouseDown={() => setIsDraggingRight(true)}
@@ -2191,10 +2403,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           )}
 
           {/* Right Sidebar: AI INSIGHTS / TAILOR */}
-          <aside 
-            style={{ width: isRightCollapsed ? 48 : rightWidth }} 
-            className="bg-surface-container-lowest border-l border-outline-variant/10 flex flex-col shrink-0 relative transition-all duration-300"
-          >
+          {!shouldSuppressBuilderInsights ? (
+            <aside
+              style={{ width: isRightCollapsed ? COLLAPSED_PANEL_WIDTH : rightWidth }}
+              className="bg-surface-container-lowest border-l border-outline-variant/10 flex flex-col shrink-0 relative transition-all duration-300"
+            >
             {/* Collapse Toggle */}
             <button
               onClick={() => setIsRightCollapsed(!isRightCollapsed)}
@@ -2268,7 +2481,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 )
               )}
             </div>
-          </aside>
+            </aside>
+          ) : null}
           
         </main>
       </div>

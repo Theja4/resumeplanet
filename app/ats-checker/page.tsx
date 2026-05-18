@@ -8,23 +8,27 @@ import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import { getSiteUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
-  title: 'Free ATS Resume Checker & Scanner',
+  // CTR-tuned: lead with the pain ("rejected by ATS"), follow with the speed and the free promise.
+  // GSC data showed 4.28% CTR at position 2.48 — well below the ~15% expected at that rank.
+  title: 'Free ATS Resume Checker — See Why Your Resume Gets Rejected',
   description:
-    'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
+    'Upload your resume and get a free ATS score in 30 seconds. Catches the parsing errors, missing keywords, and formatting traps that cause auto-rejection — before you send it to a real employer. Works with PDF or DOCX.',
   alternates: {
     canonical: '/ats-checker',
   },
   openGraph: {
     type: 'website',
-    title: 'Free ATS Resume Checker & Scanner',
-    description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
+    title: 'Free ATS Resume Checker — See Why Your Resume Gets Rejected',
+    description:
+      'Upload your resume and get a free ATS score in 30 seconds. Catches the parsing errors, missing keywords, and formatting traps that cause auto-rejection — before you send it to a real employer.',
     url: '/ats-checker',
     images: ['/opengraph-image'],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free ATS Resume Checker & Scanner',
-    description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
+    title: 'Free ATS Resume Checker — See Why Your Resume Gets Rejected',
+    description:
+      'Upload your resume and get a free ATS score in 30 seconds. Catches the parsing errors, missing keywords, and formatting traps that cause auto-rejection.',
     images: ['/opengraph-image'],
   },
 }

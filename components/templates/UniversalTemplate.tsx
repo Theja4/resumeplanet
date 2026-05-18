@@ -81,6 +81,7 @@ export default function UniversalTemplate({
   isEditing,
   showEmptyStateGuidance,
   highlightedSectionId,
+  ghostSections,
   onFieldChange,
   sectionOrder,
   sidebarSectionOrder,
@@ -132,6 +133,8 @@ export default function UniversalTemplate({
         : 'text-sm'
   const shouldShowSectionGuidance = (sectionId: string) =>
     Boolean(showEmptyStateGuidance && highlightedSectionId === sectionId)
+  const shouldShowGhostSection = (sectionId: 'summary' | 'experience' | 'education' | 'skills') =>
+    Boolean(ghostSections?.[sectionId])
   const normalizedSkillSections = normalizeSkillSections(data.skillSections, data.skills)
 
   function renderSectionFrame(
@@ -763,6 +766,16 @@ export default function UniversalTemplate({
               />
             </div>
           </div>
+        ) : shouldShowGhostSection('summary') ? (
+          <div data-resume-ghost-section="summary">
+            {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} navigatePath="summary" onNavigateToField={onNavigateToField}>
+              Product-focused professional with 4+ years of experience improving workflows, customer outcomes, and team execution across fast-moving projects.
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="summary" onNavigateToField={onNavigateToField}>
+              Known for turning ambiguous problems into clear plans, coordinating stakeholders, and measuring impact with practical metrics.
+            </GhostHintText>
+          </div>
         ) : shouldRenderGuidance ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
@@ -798,6 +811,30 @@ export default function UniversalTemplate({
                   />
                 ) : null
               )}
+            </div>
+          </div>
+        ) : shouldShowGhostSection('experience') ? (
+          <div data-resume-ghost-section="experience">
+            {isSidebarContext ? <SidebarLabel text="Work Experience" accent={accent} /> : <SectionHeading title="Work Experience" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <div className={isCompressed ? 'space-y-2' : 'space-y-3'}>
+              <div>
+                <GhostHintText isSidebarContext={isSidebarContext} className="font-semibold" navigatePath="experience.0.title" onNavigateToField={onNavigateToField}>
+                  Target Role or Most Recent Job Title
+                </GhostHintText>
+                <GhostHintText isSidebarContext={isSidebarContext} className="mt-0.5" navigatePath="experience.0.company" onNavigateToField={onNavigateToField}>
+                  Company Name · City, ST · Jan 2022 - Present
+                </GhostHintText>
+                <GhostHintList
+                  isSidebarContext={isSidebarContext}
+                  navigatePath="experience.0.bullets.0"
+                  onNavigateToField={onNavigateToField}
+                  items={[
+                    'Improved a key workflow by X% by identifying bottlenecks, aligning stakeholders, and shipping a simpler process.',
+                    'Built a reporting or documentation system that helped the team make faster, more consistent decisions.',
+                    'Partnered across teams to deliver a project on time while reducing manual follow-up and rework.',
+                  ]}
+                />
+              </div>
             </div>
           </div>
         ) : shouldRenderGuidance ? (
@@ -901,6 +938,19 @@ export default function UniversalTemplate({
             </div>
             )}
           </div>
+        ) : shouldShowGhostSection('education') ? (
+          <div data-resume-ghost-section="education">
+            {isSidebarContext ? <SidebarLabel text="Education" accent={accent} /> : <SectionHeading title="Education" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} className="font-semibold" navigatePath="education.0.institution" onNavigateToField={onNavigateToField}>
+              University or School Name
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-0.5" navigatePath="education.0.degree" onNavigateToField={onNavigateToField}>
+              Degree or Certificate, Field of Study
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="education.0.endDate" onNavigateToField={onNavigateToField}>
+              Graduation Year or Expected Graduation Date
+            </GhostHintText>
+          </div>
         ) : shouldRenderGuidance ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Education" accent={accent} /> : <SectionHeading title="Education" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
@@ -923,6 +973,16 @@ export default function UniversalTemplate({
             <div className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-relaxed`}>
               {renderSkills(normalizedSkillSections, isSidebarContext, accent)}
             </div>
+          </div>
+        ) : shouldShowGhostSection('skills') ? (
+          <div data-resume-ghost-section="skills">
+            {isSidebarContext ? <SidebarLabel text="Skills" accent={accent} /> : <SectionHeading title="Skills" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
+            <GhostHintText isSidebarContext={isSidebarContext} navigatePath="skillSections.0.skills.0" onNavigateToField={onNavigateToField}>
+              Core: Stakeholder Management, Process Improvement, Data Analysis, Customer Research
+            </GhostHintText>
+            <GhostHintText isSidebarContext={isSidebarContext} className="mt-1" navigatePath="skillSections.0.skills.0" onNavigateToField={onNavigateToField}>
+              Tools: Excel, SQL, Jira, Salesforce, Figma, Google Analytics
+            </GhostHintText>
           </div>
         ) : null
 

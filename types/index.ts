@@ -424,11 +424,14 @@ export interface APIResponse<T> {
 
 // ─── Template Rendering ───────────────────────────────────────────────────────
 
+export type GhostResumeSectionId = 'summary' | 'experience' | 'education' | 'skills'
+
 export interface TemplateProps {
   data: ResumeData
   isEditing?: boolean
   showEmptyStateGuidance?: boolean
   highlightedSectionId?: string | null
+  ghostSections?: Partial<Record<GhostResumeSectionId, boolean>>
   onFieldChange?: (path: string, value: string) => void
   sectionOrder?: string[]
   sidebarSectionOrder?: string[]
@@ -600,14 +603,15 @@ export const DEFAULT_VISIBILITY: BuilderVisibility = {
     education: [],
     projects: [],
     certifications: [],
+    volunteer: [],
   },
   sectionOrder: [
     'summary', 'experience', 'education',
-    'projects', 'volunteer'
+    'projects'
   ],
   sidebarSectionOrder: [
     'skills', 'certifications', 'languages',
-    'interests', 'awards', 'publications', 'references'
+    'interests', 'awards', 'publications', 'references', 'volunteer'
   ],
   density: 'relaxed',
 }

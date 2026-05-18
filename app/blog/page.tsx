@@ -14,22 +14,27 @@ export async function generateMetadata(): Promise<Metadata> {
   const image = featured?.cover_image_url || (featured ? getBlogMediaFallback(featured.slug)?.coverImage : null) || `${siteUrl}/icon.png`
 
   return {
-    title: 'Resume Advice & ATS Tips Blog',
-    description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
+    // CTR-tuned: name the actual content categories. GSC showed 0 clicks on 854 impressions
+    // at position 2.85 — generic "Blog" title gave searchers no reason to choose Rezoomed.
+    title: 'ATS Guides, Resume Teardowns & Company Hiring Playbooks',
+    description:
+      'Real resume teardowns, ATS optimization guides, and step-by-step playbooks for landing jobs at Google, Meta, Stripe, and 40+ other companies. New articles every week.',
     alternates: {
       canonical: '/blog',
     },
     openGraph: {
       type: 'website',
-      title: 'Resume Advice & ATS Tips Blog | Rezoomed',
-      description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
+      title: 'ATS Guides, Resume Teardowns & Company Hiring Playbooks | Rezoomed',
+      description:
+        'Real resume teardowns, ATS optimization guides, and step-by-step playbooks for landing jobs at Google, Meta, Stripe, and 40+ other companies. New articles every week.',
       url: `${siteUrl}/blog`,
       images: [{ url: image }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Resume Advice & ATS Tips Blog | Rezoomed',
-      description: 'Resume advice, ATS tips, job search strategies, and career insights to help you get more interviews.',
+      title: 'ATS Guides, Resume Teardowns & Company Hiring Playbooks | Rezoomed',
+      description:
+        'Real resume teardowns, ATS optimization guides, and step-by-step playbooks for landing jobs at Google, Meta, Stripe, and 40+ other companies.',
       images: [image],
     },
   }

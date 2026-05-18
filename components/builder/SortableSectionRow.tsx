@@ -297,8 +297,8 @@ export default function SortableSectionRow({
           )}
 
           {/* Icon & Label */}
-          <div className={`flex-1 flex items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
-            <Icon size={18} className={isExpanded ? 'text-primary' : ''} />
+          <div className={`flex min-w-0 flex-1 items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
+            <Icon size={18} className={`shrink-0 ${isExpanded ? 'text-primary' : ''}`} />
             {isEditingTitle && isCustom ? (
               <input 
                 value={label}
@@ -313,7 +313,7 @@ export default function SortableSectionRow({
               />
             ) : (
               <div className="flex-1 flex items-center gap-2 group/title min-w-0 overflow-hidden">
-                <span className={`text-sm break-all ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
+                <span className={`min-w-0 text-sm break-words ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
                 {isExpanded && isCustom && (
                   <button
                     onClick={(e) => {
