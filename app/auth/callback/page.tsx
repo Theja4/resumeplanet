@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Analytics, clearAuthIntent, readAuthIntent } from '@/lib/analytics'
@@ -9,6 +9,17 @@ import Image from 'next/image'
 const MIN_LOADER_MS = 950
 
 export default function AuthCallbackPage() {
+  // Wrap in Suspense so the page can build statically — useSearchParams()
+  // requires a Suspense boundary now that the root layout no longer forces
+  // every page dynamic via cookies()/headers().
+  return (
+    <Suspense fallback={null}>
+      <AuthCallbackInner />
+    </Suspense>
+  )
+}
+
+function AuthCallbackInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 

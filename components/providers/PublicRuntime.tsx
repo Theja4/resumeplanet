@@ -10,6 +10,11 @@ type CookieConsentBannerComponent = ComponentType
 type PromoBannerComponent = ComponentType<{ promo: PromoConfig }>
 type PendingJobApplyPromptComponent = ComponentType
 
+type RuntimeConfig = {
+  analyticsEnabled: boolean
+  showCookieConsentBanner: boolean
+}
+
 function scheduleOptionalImport(callback: () => void) {
   if ('requestIdleCallback' in window) {
     const idleId = window.requestIdleCallback(callback, { timeout: 4000 })
@@ -21,16 +26,21 @@ function scheduleOptionalImport(callback: () => void) {
 }
 
 export default function PublicRuntime({
-  analyticsEnabled,
   bannerPromo,
   jobBoardEnabled,
-  showCookieConsentBanner,
 }: {
-  analyticsEnabled: boolean
   bannerPromo: PromoConfig | null
   jobBoardEnabled: boolean
-  showCookieConsentBanner: boolean
 }) {
+  // analyticsEnabled and showCookieConsentBanner depend on per-request cookie
+  // state and IP-derived country. Fetching them client-side keeps RootLayout
+  // static-shape so marketing pages can be edge-cached via next.config.ts.
+  // Default to analytics disabled until we hear back — fail-closed for privacy.
+  const [runtime, setRuntime] = useState<RuntimeConfig>({
+    analyticsEnabled: false,
+    showCookieConsentBanner: false,
+  })
+
   const [CookieConsentBanner, setCookieConsentBanner] =
     useState<CookieConsentBannerComponent | null>(null)
   const [PromoBanner, setPromoBanner] = useState<PromoBannerComponent | null>(null)
@@ -38,7 +48,22 @@ export default function PublicRuntime({
     useState<PendingJobApplyPromptComponent | null>(null)
 
   useEffect(() => {
-    if (!showCookieConsentBanner) return
+    let cancelled = false
+    fetch('/api/runtime-config', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data: RuntimeConfig | null) => {
+        if (!cancelled && data) setRuntime(data)
+      })
+      .catch(() => {
+        // Network error — keep defaults (analytics off, no banner).
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!runtime.showCookieConsentBanner) return
 
     let isMounted = true
     void import('@/components/shared/CookieConsentBanner').then(module => {
@@ -48,7 +73,7 @@ export default function PublicRuntime({
     return () => {
       isMounted = false
     }
-  }, [showCookieConsentBanner])
+  }, [runtime.showCookieConsentBanner])
 
   useEffect(() => {
     if (!bannerPromo) return
@@ -83,8 +108,8 @@ export default function PublicRuntime({
     <>
       {CookieConsentBanner ? <CookieConsentBanner /> : null}
       <AffiliateReferralTracker />
-      <PostHogProvider enabled={analyticsEnabled} />
-      <GoogleAnalyticsProvider enabled={analyticsEnabled} />
+      <PostHogProvider enabled={runtime.analyticsEnabled} />
+      <GoogleAnalyticsProvider enabled={runtime.analyticsEnabled} />
       {bannerPromo && PromoBanner ? <PromoBanner promo={bannerPromo} /> : null}
       {PendingJobApplyPrompt ? <PendingJobApplyPrompt /> : null}
     </>

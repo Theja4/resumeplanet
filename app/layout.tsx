@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Plus_Jakarta_Sans } from 'next/font/google'
-import { cookies, headers } from 'next/headers'
 import "./globals.css";
 import { getActiveBannerPromo } from '@/lib/pricing'
 import { getOrganizationSameAsLinks, getSiteUrl, SITE_NAME } from '@/lib/site'
@@ -16,13 +15,6 @@ import {
 import PublicRuntime from '@/components/providers/PublicRuntime'
 
 import { JOB_BOARD_ENABLED } from '@/lib/featureFlags'
-import {
-  COOKIE_CONSENT_COOKIE,
-  detectRequestCountry,
-  parseCookieConsentPreference,
-  shouldEnableAnalyticsForRequest,
-  shouldShowCookieConsentBanner,
-} from '@/lib/cookie-consent'
 
 const geistSans = localFont({
   src: './fonts/geist-sans.woff2',
@@ -92,27 +84,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Pure date-based check (no cookies/headers) — keeps RootLayout static so
+  // marketing pages can be edge-cached. Cookie consent + country detection
+  // happens client-side via /api/runtime-config (see PublicRuntime).
   const bannerPromo = getActiveBannerPromo()
-  const cookieStore = await cookies()
-  const headerStore = await headers()
-  const countryCode = detectRequestCountry(headerStore)
-  const cookieConsentPreference = parseCookieConsentPreference(
-    cookieStore.get(COOKIE_CONSENT_COOKIE)?.value
-  )
-  const analyticsEnabled = shouldEnableAnalyticsForRequest({
-    countryCode,
-    consentPreference: cookieConsentPreference,
-  })
-  const showCookieConsentBanner = shouldShowCookieConsentBanner({
-    countryCode,
-    consentPreference: cookieConsentPreference,
-  })
-
   const organizationJsonLd = buildOrganizationJsonLd(getOrganizationSameAsLinks())
   const websiteJsonLd = buildWebsiteJsonLd()
 
@@ -122,7 +102,6 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${plusJakartaSans.variable} h-full antialiased scroll-smooth`}
       data-scroll-behavior="smooth"
-      data-analytics-default={analyticsEnabled ? 'granted' : 'denied'}
     >
       <head>
         <link rel="preconnect" href="https://cdn.simpleicons.org" crossOrigin="" />
@@ -137,13 +116,11 @@ export default async function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className={`min-h-full flex flex-col ${showCookieConsentBanner ? 'pt-28 sm:pt-24 lg:pt-20' : ''}`}
+        className="min-h-full flex flex-col"
       >
         <PublicRuntime
-          analyticsEnabled={analyticsEnabled}
           bannerPromo={bannerPromo}
           jobBoardEnabled={JOB_BOARD_ENABLED}
-          showCookieConsentBanner={showCookieConsentBanner}
         />
         {children}
       </body>
