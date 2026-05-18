@@ -102,7 +102,7 @@ export function getBlogMediaFallback(slug: string) {
     const inlineImages = slug.startsWith('how-to-land-a-job-at-')
       ? [`/blog/${slug}-mascot.svg`]
       : slug.startsWith('rezoomed-vs-')
-        ? []
+        ? [`/blog/${slug}-logos.svg`, `/blog/${slug}-graphic.svg`]
         : [`/blog/${slug}-inline.${ext}`]
 
     return {
