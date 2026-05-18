@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'AI Resume Builder | Rezoomed',
     description: 'Build ATS-friendly resumes faster with Rezoomed AI resume builder, then refine, tailor, and export recruiter-ready versions.',
+    images: ['/opengraph-image'],
   },
 }
 

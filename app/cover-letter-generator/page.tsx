@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'AI Cover Letter Generator | Rezoomed',
     description: 'Generate a role-specific cover letter from your resume and target job description, then export a cleaner draft faster with Rezoomed.',
+    images: ['/opengraph-image'],
   },
 }
 

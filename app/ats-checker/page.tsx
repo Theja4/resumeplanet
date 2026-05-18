@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Free ATS Resume Checker & Scanner',
     description: 'Use Rezoomed free ATS resume checker to scan for parsing issues, keyword gaps, formatting problems, and recruiter-readability weaknesses before you apply.',
+    images: ['/opengraph-image'],
   },
 }
 

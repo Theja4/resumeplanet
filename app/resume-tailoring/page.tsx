@@ -26,6 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Resume Tailoring Tool | Rezoomed',
     description: 'Tailor your resume to a job description with Rezoomed, surface fit gaps, and rewrite the strongest sections for the target role.',
+    images: ['/opengraph-image'],
   },
 }
 

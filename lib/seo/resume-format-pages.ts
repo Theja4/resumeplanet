@@ -558,11 +558,13 @@ export function buildResumeFormatMetadata(page: ResumeFormatPage): Metadata {
       title: brandedTitle,
       description: page.description,
       url: page.path,
+      images: ['/opengraph-image'],
     },
     twitter: {
       card: 'summary_large_image',
       title: brandedTitle,
       description: page.description,
+      images: ['/opengraph-image'],
     },
   }
 }
