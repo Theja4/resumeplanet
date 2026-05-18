@@ -5,6 +5,34 @@ import { fileURLToPath } from "node:url";
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const nodeModulesRoot = join(projectRoot, "node_modules");
 
+// Allowlists derived from real third parties used on the site:
+//   - Paddle (checkout)
+//   - PayPal (alt checkout)
+//   - Razorpay (India checkout)
+//   - Polar (orders)
+//   - Supabase (auth + storage)
+//   - PostHog (analytics)
+//   - Google Tag Manager + Analytics
+//   - simpleicons.org (logo strip)
+//   - Vercel insights
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self' https://*.paddle.com https://*.paypal.com https://*.razorpay.com https://*.polar.sh",
+  "frame-ancestors 'self'",
+  // 'unsafe-inline' + 'unsafe-eval' are required by Next.js, GTM, and Paddle/Stripe SDKs.
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.paddle.com https://*.paypal.com https://*.razorpay.com https://*.polar.sh https://*.posthog.com https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://www.googletagmanager.com https://www.google-analytics.com https://*.vercel-insights.com https://*.vercel-scripts.com",
+  "script-src-elem 'self' 'unsafe-inline' https://*.paddle.com https://*.paypal.com https://*.razorpay.com https://*.polar.sh https://*.posthog.com https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://www.googletagmanager.com https://www.google-analytics.com https://*.vercel-insights.com https://*.vercel-scripts.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https://cdn.simpleicons.org https://*.supabase.co https://*.googleusercontent.com https://www.googletagmanager.com https://www.google-analytics.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.paddle.com https://*.paypal.com https://*.razorpay.com https://*.polar.sh https://*.posthog.com https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://www.googletagmanager.com https://www.google-analytics.com https://*.vercel-insights.com https://vitals.vercel-analytics.com",
+  "frame-src 'self' https://*.paddle.com https://*.paypal.com https://*.razorpay.com https://*.polar.sh",
+  "worker-src 'self' blob:",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
+].join('; ')
+
 const SECURITY_HEADERS = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
@@ -13,6 +41,8 @@ const SECURITY_HEADERS = [
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   },
+  // Report-Only first — switch to enforcing once Vercel logs show no false-positive blocks.
+  { key: 'Content-Security-Policy-Report-Only', value: CSP_DIRECTIVES },
 ]
 
 // Routes that are public marketing pages — safe to cache at the edge for short windows.
@@ -56,6 +86,11 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfjs-dist', 'mammoth'],
   outputFileTracingIncludes: {
     '/api/resume/pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+  },
+  images: {
+    // Serve AVIF when the browser supports it, fall back to WebP otherwise.
+    // Cuts hero-image bytes ~15-25% beyond WebP, which moves real LCP.
+    formats: ['image/avif', 'image/webp'],
   },
   async headers() {
     return [

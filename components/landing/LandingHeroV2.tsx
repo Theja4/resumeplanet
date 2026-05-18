@@ -259,7 +259,7 @@ export default function LandingHeroV2() {
               >
                 <div className="mascot-bob relative h-[78%] w-[78%]">
                   <Image
-                    src="/Brands/mascot-hero-pink.png"
+                    src="/Brands/mascot-hero-pink.webp"
                     alt="Rezoomed mascot"
                     width={700}
                     height={700}
