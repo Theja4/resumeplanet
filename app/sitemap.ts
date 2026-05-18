@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { getPublishedBlogPosts } from '@/lib/blog'
+import { getAllAuthors, getAuthorSlug } from '@/lib/blog/authors'
 import { getBlogMediaFallback } from '@/lib/blog/shared'
 import { getAllAtsTestingStaticPaths } from '@/lib/seo/ats-testing-pages'
 import { getAllResumeFormatStaticPaths } from '@/lib/seo/resume-format-pages'
@@ -86,5 +87,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ],
   }))
 
-  return [...staticRoutes, ...blogRoutes]
+  const authorRoutes: MetadataRoute.Sitemap = getAllAuthors().map(author => ({
+    url: `${siteUrl}/authors/${getAuthorSlug(author)}`,
+    lastModified: now,
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }))
+
+  return [...staticRoutes, ...blogRoutes, ...authorRoutes]
 }

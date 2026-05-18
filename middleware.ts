@@ -48,11 +48,34 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/blog/',
   '/resume-format/',
   '/r/',
+  '/authors/',
 ]
 
 function isPublicMarketingPath(pathname: string): boolean {
   if (PUBLIC_MARKETING_EXACT.has(pathname)) return true
   return PUBLIC_MARKETING_PREFIXES.some((p) => pathname.startsWith(p))
+}
+
+// Tool pages that redirect logged-in users to their dashboard equivalent.
+// Doing this redirect in middleware (cookie presence check, no session
+// validation) lets the marketing landing page stay edge-cacheable for
+// anonymous visitors — the vast majority of traffic.
+const TOOL_PAGE_DASHBOARD_REDIRECTS: Record<string, string> = {
+  '/ats-checker': '/dashboard/ats-checker',
+  '/resume-builder': '/dashboard/builder',
+  '/match-score': '/dashboard/match-score',
+  '/resume-tailoring': '/dashboard/builder?mode=tailor',
+  '/cover-letter-generator': '/dashboard/cv-generator',
+  '/metadata-enhancer': '/dashboard/metadata-enhancer',
+}
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith('sb-') && cookie.name.endsWith('-auth-token')) {
+      return true
+    }
+  }
+  return false
 }
 
 export async function middleware(request: NextRequest) {
@@ -61,6 +84,17 @@ export async function middleware(request: NextRequest) {
   // Bypass auth for public routes
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next()
+  }
+
+  // Tool-page logged-in redirect: cheap cookie presence check, no session
+  // refresh. Anonymous visitors fall through to the cached static page.
+  const dashboardTarget = TOOL_PAGE_DASHBOARD_REDIRECTS[pathname]
+  if (dashboardTarget && hasSupabaseAuthCookie(request)) {
+    const url = request.nextUrl.clone()
+    const [path, search] = dashboardTarget.split('?')
+    url.pathname = path
+    url.search = search ? `?${search}` : ''
+    return NextResponse.redirect(url)
   }
 
   // Bypass session refresh for marketing pages so they're bfcache-eligible

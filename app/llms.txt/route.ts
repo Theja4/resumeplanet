@@ -1,4 +1,5 @@
 import { getPublishedBlogPosts } from '@/lib/blog'
+import { getAllAuthors, getAuthorSlug } from '@/lib/blog/authors'
 import { getAllAtsTestingStaticPaths } from '@/lib/seo/ats-testing-pages'
 import { getAllResumeFormatStaticPaths } from '@/lib/seo/resume-format-pages'
 import { getSiteUrl } from '@/lib/site'
@@ -41,6 +42,9 @@ export async function GET() {
     '',
     '## ATS guides',
     ...atsPaths.map(path => `- ${siteUrl}${path}`),
+    '',
+    '## Editorial team',
+    ...getAllAuthors().map(a => `- ${a.name} — ${a.title}: ${siteUrl}/authors/${getAuthorSlug(a)}`),
     '',
     '## Blog posts',
     ...posts.map(post => `- ${post.title}: ${siteUrl}/blog/${post.slug}`),

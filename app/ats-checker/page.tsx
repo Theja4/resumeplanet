@@ -1,8 +1,7 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { ArrowRight, CheckCircle2, FileText, Sparkles } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import ATSCheckerClient from '@/app/dashboard/(shell)/ats-checker/ATSCheckerClient'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
@@ -29,6 +28,9 @@ export const metadata: Metadata = {
     images: ['/opengraph-image'],
   },
 }
+
+// Marketing page — Vercel can serve this from the edge cache for anonymous visitors.
+export const revalidate = 300
 
 const FAQS = [
   {
@@ -107,16 +109,7 @@ const NEXT_STEPS = [
   },
 ] as const
 
-export default async function PublicATSCheckerPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (user) {
-    redirect('/dashboard/ats-checker')
-  }
-
+export default function PublicATSCheckerPage() {
   const siteUrl = getSiteUrl()
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -205,7 +198,9 @@ export default async function PublicATSCheckerPage() {
         </section>
 
         <section className="mt-6">
-          <ATSCheckerClient resumes={[]} profile={null} publicMode mode="ats" showIntro={false} />
+          <Suspense fallback={null}>
+            <ATSCheckerClient resumes={[]} profile={null} publicMode mode="ats" showIntro={false} />
+          </Suspense>
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)]">

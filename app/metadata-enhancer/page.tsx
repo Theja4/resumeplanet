@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { FilePenLine, Sparkles } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
 import ToolPageContentSections from '@/components/seo/ToolPageContentSections'
@@ -30,6 +28,9 @@ export const metadata: Metadata = {
   },
 }
 
+// Marketing page — Vercel can serve this from the edge cache for anonymous visitors.
+export const revalidate = 300
+
 const FAQS = [
   {
     question: 'What resume metadata does Rezoomed check?',
@@ -48,16 +49,7 @@ const FAQS = [
   },
 ] as const
 
-export default async function PublicMetadataEnhancerPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (user) {
-    redirect('/dashboard/metadata-enhancer')
-  }
-
+export default function PublicMetadataEnhancerPage() {
   const siteUrl = getSiteUrl()
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',

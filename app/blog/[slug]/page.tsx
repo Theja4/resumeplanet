@@ -25,7 +25,7 @@ import {
 import { getCompanyJobGuideBySlug } from '@/lib/blog/company-job-guides'
 import { getBlogResumeExampleForSlug } from '@/lib/blog/resume-examples'
 import { getSiteUrl } from '@/lib/site'
-import { getAuthorForSlug } from '@/lib/blog/authors'
+import { getAuthorForSlug, getAuthorSlug } from '@/lib/blog/authors'
 
 const GOOGLE_JOB_FAQS = [
   {
@@ -327,10 +327,11 @@ export default async function BlogPostPage({
     dateModified: post.updated_at,
     author: {
       '@type': 'Person',
-      '@id': `${siteUrl}/#author-${post.author_name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      '@id': `${siteUrl}/authors/${getAuthorSlug(author)}#person`,
       name: post.author_name,
       jobTitle: author.title,
       description: author.bio,
+      url: `${siteUrl}/authors/${getAuthorSlug(author)}`,
       worksFor: { '@type': 'Organization', '@id': `${siteUrl}/#organization` },
     },
     publisher: { '@id': `${siteUrl}/#organization` },
@@ -451,15 +452,19 @@ export default async function BlogPostPage({
               </p>
 
               <div className="flex flex-wrap items-center gap-5">
-                <div className="flex items-center gap-3">
+                <Link
+                  href={`/authors/${getAuthorSlug(author)}`}
+                  className="group flex items-center gap-3 rounded-full transition-colors hover:bg-white/5"
+                  rel="author"
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-[11px] font-black text-[#022c14] shadow-sm">
                     {post.author_name.charAt(0)}
                   </div>
                   <div>
-                    <p className="text-sm font-black text-white/90">{post.author_name}</p>
-                    <p className="text-[11px] text-white/35">{author.title}</p>
+                    <p className="text-sm font-black text-white/90 group-hover:text-white">{post.author_name}</p>
+                    <p className="text-[11px] text-white/35 group-hover:text-white/55">{author.title}</p>
                   </div>
-                </div>
+                </Link>
                 <span className="text-white/20">·</span>
                 <span className="text-xs font-medium text-white/40">{formatBlogDate(post.published_at)}</span>
                 <span className="text-white/20">·</span>
@@ -557,9 +562,21 @@ export default async function BlogPostPage({
                   {author.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-base font-black text-zinc-900">{author.name}</p>
+                  <Link
+                    href={`/authors/${getAuthorSlug(author)}`}
+                    className="text-base font-black text-zinc-900 transition-colors hover:text-[#026d32]"
+                    rel="author"
+                  >
+                    {author.name}
+                  </Link>
                   <p className="mb-3 text-sm font-semibold text-[#026d32]">{author.title}</p>
                   <p className="text-sm leading-6 text-zinc-600">{author.bio}</p>
+                  <Link
+                    href={`/authors/${getAuthorSlug(author)}`}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-[#026d32] hover:underline"
+                  >
+                    More from {author.name.split(' ')[0]} <ArrowRight size={12} />
+                  </Link>
                 </div>
               </div>
             </div>

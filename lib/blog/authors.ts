@@ -2,26 +2,47 @@ export type Author = {
   name: string
   title: string
   bio: string
+  slug: string
+}
+
+function nameToSlug(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+export function getAuthorSlug(author: Pick<Author, 'name' | 'slug'>) {
+  return author.slug ?? nameToSlug(author.name)
+}
+
+export function getAuthorBySlug(slug: string): Author | undefined {
+  return Object.values(AUTHORS).find(a => a.slug === slug)
+}
+
+export function getAllAuthors(): Author[] {
+  return Object.values(AUTHORS)
 }
 
 export const AUTHORS: Record<string, Author> = {
   'Sarah Chen': {
     name: 'Sarah Chen',
+    slug: 'sarah-chen',
     title: 'Senior Career Strategist',
     bio: 'Sarah has 8 years of experience in talent acquisition and career coaching, with prior roles at Google and LinkedIn where she reviewed over 4,000 resumes. She specialises in ATS optimisation, resume positioning, and modern job search strategy for mid-level to senior professionals.',
   },
   'Marcus Williams': {
     name: 'Marcus Williams',
+    slug: 'marcus-williams',
     title: 'Technical Recruiting Lead',
     bio: 'Marcus spent 10 years leading technical recruiting at Meta, Stripe, and Shopify, where he built and managed ATS workflows for high-volume engineering hiring. He now advises job seekers on navigating applicant tracking systems and standing out in competitive tech pipelines.',
   },
   'Priya Nair': {
     name: 'Priya Nair',
+    slug: 'priya-nair',
     title: 'Career Development Expert & Resume Coach',
     bio: 'Priya is a Certified Professional Resume Writer (CPRW) with 7 years as an HR Director across the tech industry. She has coached over 2,000 professionals on resume positioning, cover letters, and job search strategy, with a focus on product, design, and general management roles.',
   },
   'James Okafor': {
     name: 'James Okafor',
+    slug: 'james-okafor',
     title: 'Finance & Investment Banking Career Specialist',
     bio: 'James spent 6 years in VP-level recruiting at Goldman Sachs and Morgan Stanley before transitioning to independent career consulting. He specialises in finance sector hiring, front-office resume positioning, and interview preparation for investment banking, asset management, and capital markets roles.',
   },
