@@ -49,6 +49,7 @@ const PUBLIC_MARKETING_PREFIXES = [
   '/resume-format/',
   '/r/',
   '/authors/',
+  '/from/',
 ]
 
 function isPublicMarketingPath(pathname: string): boolean {
