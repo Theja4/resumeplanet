@@ -43,20 +43,24 @@ export default function PromoCodeInput({ onApply, autoFillCode, compact = false 
     setResult(null)
 
     try {
-      const res = await fetch('/api/paddle/validate-promo', {
+      const res = await fetch('/api/validate-promo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: target }),
       })
-      const data: PromoValidationResult = await res.json()
+      const data: PromoValidationResult = await res.json().catch(() => ({
+        valid: false,
+        errorMessage: 'Could not reach the promo service. Try again in a moment.',
+      }))
       setResult(data)
       if (data.valid) {
         onApply(data)
       }
-    } catch {
+    } catch (e) {
+      console.error('[promo] apply failed', e)
       const errorResult: PromoValidationResult = {
         valid: false,
-        errorMessage: 'Something went wrong. Please try again.',
+        errorMessage: 'Could not reach the promo service. Try again in a moment.',
       }
       setResult(errorResult)
     } finally {
