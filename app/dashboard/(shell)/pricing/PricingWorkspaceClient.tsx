@@ -42,7 +42,10 @@ function CompetitionStrip() {
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
       </span>
-      <span className="text-zinc-400"><strong className="text-white">{count.toLocaleString()}</strong> resumes upgraded this month</span>
+      {/* Explicit en-US locale — toLocaleString() defaults differ between Vercel
+          (en-US → "284,700") and Indian browsers (en-IN → "2,84,700") and trips
+          React hydration. Lock to US grouping so SSR + client match. */}
+      <span className="text-zinc-400"><strong className="text-white">{count.toLocaleString('en-US')}</strong> resumes upgraded this month</span>
       <span className="text-zinc-600">—</span>
       <span className="font-semibold text-amber-300">your competition is optimizing right now</span>
     </div>
