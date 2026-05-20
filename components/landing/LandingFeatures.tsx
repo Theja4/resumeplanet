@@ -120,7 +120,7 @@ function CountUp({ to, suffix = '' }: { to: number; suffix?: string }) {
     return () => { cancelled = true }
   }, [v, to])
 
-  return <span ref={ref}>{n.toLocaleString()}{suffix}</span>
+  return <span ref={ref}>{n.toLocaleString('en-US')}{suffix}</span>
 }
 
 // ─── ATS Score mock ───────────────────────────────────────────────────────────

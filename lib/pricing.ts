@@ -702,6 +702,38 @@ export const PROMOTIONS: PromoConfig[] = [
     bannerTextColor: undefined,
   },
 
+  // ── NEERAJA50 ────────────────────────
+  // Correct spelling. NEEAJA50 above is kept as an accepted alias so customers
+  // who typo'd the original creator name still get the discount applied.
+  {
+    id: 'neeraja50',
+    name: 'NEERAJA50 Partner Offer',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_NEERAJA50 ?? '',
+    paddleDiscountCode: 'NEERAJA50',
+    discountType: 'percent',
+    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_NEERAJA50_PERCENT', 50),
+    appliesTo: 'all',
+    overrideDisplay: {
+      displayPrice: 0,
+      actualPrice: 0,
+    },
+    label: 'NEERAJA50',
+    badge: '50% OFF',
+    bannerEmoji: undefined,
+    headline: 'NEERAJA50 partner offer',
+    subheadline: 'Use NEERAJA50 to unlock 50% off Rezoomed Pro.',
+    ctaLabel: 'Claim NEERAJA50',
+    disclaimerText: '50% off applies at checkout using NEERAJA50.',
+    startDate: undefined,
+    endDate: undefined,
+    isExitIntent: false,
+    isBanner: false,
+    isAutoApply: false,
+    exitIntentTimerSeconds: 600,
+    bannerBgColor: undefined,
+    bannerTextColor: undefined,
+  },
+
   // ── JOBS50 ────────────────────────
   {
     id: 'jobs50',

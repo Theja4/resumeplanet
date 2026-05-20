@@ -220,7 +220,7 @@ export default function OneClickOptimizeModal({
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
               <span className="text-on-surface-variant">
-                <strong className="text-zinc-800">{liveCount.toLocaleString()}</strong> job seekers fixed their resume today
+                <strong className="text-zinc-800">{liveCount.toLocaleString('en-US')}</strong> job seekers fixed their resume today
               </span>
             </div>
 
@@ -289,7 +289,7 @@ export default function OneClickOptimizeModal({
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
               <span className="text-on-surface-variant">
-                <strong className="text-zinc-800">{liveCount.toLocaleString()}</strong> people upgraded today
+                <strong className="text-zinc-800">{liveCount.toLocaleString('en-US')}</strong> people upgraded today
               </span>
             </div>
 
