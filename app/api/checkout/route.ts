@@ -35,6 +35,14 @@ function ok(data: Record<string, unknown>) {
 }
 
 function err(message: string, status = 400) {
+  // Log every failure server-side so it shows up in Vercel runtime logs.
+  // Status >= 500 is logged as console.error (visible at Error level filter),
+  // 4xx is console.warn so it's distinguishable from real exceptions.
+  if (status >= 500) {
+    console.error('[checkout] error', { status, message })
+  } else {
+    console.warn('[checkout] rejected', { status, message })
+  }
   return NextResponse.json({ success: false, error: message }, { status })
 }
 

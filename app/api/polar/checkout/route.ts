@@ -19,6 +19,8 @@ function ok(data: Record<string, unknown>) {
 }
 
 function err(message: string, status = 400) {
+  if (status >= 500) console.error('[polar/checkout] error', { status, message })
+  else console.warn('[polar/checkout] rejected', { status, message })
   return NextResponse.json({ success: false, error: message }, { status })
 }
 

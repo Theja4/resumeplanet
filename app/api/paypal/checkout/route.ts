@@ -24,6 +24,8 @@ function ok(data: Record<string, unknown>) {
 }
 
 function err(message: string, status = 400) {
+  if (status >= 500) console.error('[paypal/checkout] error', { status, message })
+  else console.warn('[paypal/checkout] rejected', { status, message })
   return NextResponse.json({ success: false, error: message }, { status })
 }
 
