@@ -25,7 +25,11 @@ const POLAR_PRODUCT_BY_INTERVAL: Record<PolarInterval, string | undefined> = {
 const POLAR_DISCOUNT_BY_CODE: Record<string, string | undefined> = {
   CAREER50: process.env.POLAR_DISCOUNT_CAREER50_ID,
   JOBS50: process.env.POLAR_DISCOUNT_JOBS50_ID,
+  NEHA50: process.env.POLAR_DISCOUNT_NEHA50_ID,
   NEERAJA50: process.env.POLAR_DISCOUNT_NEERAJA50_ID,
+  // NEEAJA50 is a typo'd alias of NEERAJA50; share the same Polar discount ID
+  // so customers who entered either spelling reach the same offer.
+  NEEAJA50: process.env.POLAR_DISCOUNT_NEERAJA50_ID,
 }
 
 function getPolarEnvironment(): PolarEnvironment {
