@@ -672,6 +672,36 @@ export const PROMOTIONS: PromoConfig[] = [
     bannerTextColor: undefined,
   },
 
+  // ── NEEAJA50 ────────────────────────
+  {
+    id: 'neeaja50',
+    name: 'NEEAJA50 Partner Offer',
+    paddleDiscountId: process.env.PADDLE_DISCOUNT_NEEAJA50 ?? '',
+    paddleDiscountCode: 'NEEAJA50',
+    discountType: 'percent',
+    discountValue: readNumberEnv('NEXT_PUBLIC_PROMO_NEEAJA50_PERCENT', 50),
+    appliesTo: 'all',
+    overrideDisplay: {
+      displayPrice: 0,
+      actualPrice: 0,
+    },
+    label: 'NEEAJA50',
+    badge: '50% OFF',
+    bannerEmoji: undefined,
+    headline: 'NEEAJA50 partner offer',
+    subheadline: 'Use NEEAJA50 to unlock 50% off Rezoomed Pro.',
+    ctaLabel: 'Claim NEEAJA50',
+    disclaimerText: '50% off applies at checkout using NEEAJA50.',
+    startDate: undefined,
+    endDate: undefined,
+    isExitIntent: false,
+    isBanner: false,
+    isAutoApply: false,
+    exitIntentTimerSeconds: 600,
+    bannerBgColor: undefined,
+    bannerTextColor: undefined,
+  },
+
   // ── JOBS50 ────────────────────────
   {
     id: 'jobs50',
