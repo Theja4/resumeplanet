@@ -33,14 +33,14 @@ export default function CancelSubscriptionButton({ provider, className }: Props)
       }
 
       if (provider === 'polar' || process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar') {
-        const res = await fetch('/api/polar/portal', { method: 'POST' })
+        const res = await fetch('/api/polar/subscription/cancel', { method: 'POST' })
         const json = await res.json()
-        const url = json.data?.portalUrl
-        if (url) {
-          window.location.href = url
+        if (json.success) {
+          setSuccess(true)
+          setTimeout(() => window.location.reload(), 3000)
           return
         }
-        setError(json.error ?? 'Failed to open billing portal. Please try again.')
+        setError(json.error ?? 'Failed to cancel subscription. Please contact support@rezoomed.com.')
         setLoading(false)
         return
       }

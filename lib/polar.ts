@@ -17,6 +17,22 @@ interface PolarCustomerSessionResponse {
   customer_portal_url?: string
 }
 
+export interface PolarSubscription {
+  id: string
+  status: string
+  customer_id?: string | null
+  product_id?: string | null
+  recurring_interval?: string | null
+  current_period_start?: string | null
+  current_period_end?: string | null
+  ends_at?: string | null
+  ended_at?: string | null
+  cancel_at_period_end?: boolean | null
+  customer?: {
+    external_id?: string | null
+  } | null
+}
+
 const POLAR_PRODUCT_BY_INTERVAL: Record<PolarInterval, string | undefined> = {
   monthly: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID,
   annual: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID,
@@ -97,6 +113,17 @@ async function polarFetch<T>(path: string, init: RequestInit) {
   return body
 }
 
+function parsePolarSubscriptionList(
+  body:
+    | { items?: PolarSubscription[]; result?: { items?: PolarSubscription[] } }
+    | PolarSubscription[]
+    | null
+) {
+  if (!body) return []
+  if (Array.isArray(body)) return body
+  return body.items ?? body.result?.items ?? []
+}
+
 export async function createPolarCheckout(params: {
   userId: string
   userEmail: string
@@ -137,14 +164,52 @@ export async function createPolarCheckout(params: {
 }
 
 export async function createPolarCustomerPortalSession(params: {
-  externalCustomerId: string
+  customerId?: string | null
+  externalCustomerId?: string | null
   returnUrl: string
 }) {
   return polarFetch<PolarCustomerSessionResponse>('/customer-sessions', {
     method: 'POST',
     body: JSON.stringify({
-      external_customer_id: params.externalCustomerId,
+      customer_id: params.customerId || undefined,
+      external_customer_id: params.customerId ? undefined : params.externalCustomerId || undefined,
       return_url: params.returnUrl,
+    }),
+  })
+}
+
+export async function listPolarSubscriptions(params: {
+  customerId?: string | null
+  externalCustomerId?: string | null
+}) {
+  const query = new URLSearchParams()
+
+  if (params.customerId) {
+    query.set('customer_id', params.customerId)
+  } else if (params.externalCustomerId) {
+    query.set('external_customer_id', params.externalCustomerId)
+  }
+
+  const queryString = query.toString()
+  const suffix = queryString ? `?${queryString}` : ''
+  const body = await polarFetch<
+    | { items?: PolarSubscription[]; result?: { items?: PolarSubscription[] } }
+    | PolarSubscription[]
+  >(`/subscriptions${suffix}`, {
+    method: 'GET',
+  })
+
+  return parsePolarSubscriptionList(body)
+}
+
+export async function updatePolarSubscription(params: {
+  subscriptionId: string
+  cancelAtPeriodEnd?: boolean
+}) {
+  return polarFetch<PolarSubscription>(`/subscriptions/${params.subscriptionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      cancel_at_period_end: params.cancelAtPeriodEnd,
     }),
   })
 }
