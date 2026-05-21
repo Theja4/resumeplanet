@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', Icon: LayoutDashboard },
   { href: '/admin/analytics', label: 'Analytics', Icon: BarChart3 },
   { href: '/admin/billing', label: 'Billing', Icon: CreditCard },
-  { href: '/admin/influencers', label: 'Influencers', Icon: Users },
+  { href: '/admin/affiliates', label: 'Affiliates', Icon: Users },
   { href: '/admin/payouts', label: 'Payouts', Icon: Wallet },
   { href: '/admin/blog', label: 'Blog', Icon: FilePenLine },
 ]

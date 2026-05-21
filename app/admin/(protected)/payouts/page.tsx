@@ -1,9 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getAllPayouts, updatePayoutStatus } from '@/lib/affiliate-server'
 import { DashboardSurface } from '@/components/layout/DashboardSurface'
+import { getAdminSession } from '@/lib/admin-auth'
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString('en-US', {
@@ -19,18 +21,34 @@ function formatUsd(amount: number) {
 
 async function markPaid(formData: FormData) {
   'use server'
+  const adminSession = await getAdminSession()
+  if (!adminSession) {
+    redirect('/admin/login')
+  }
+
   const id = formData.get('id') as string
   const supabase = createServiceRoleClient()
   await updatePayoutStatus(supabase, id, 'paid')
   revalidatePath('/admin/payouts')
+  revalidatePath('/admin/affiliates')
+  revalidatePath('/admin/influencers')
+  revalidatePath('/affiliate/dashboard')
 }
 
 async function markRejected(formData: FormData) {
   'use server'
+  const adminSession = await getAdminSession()
+  if (!adminSession) {
+    redirect('/admin/login')
+  }
+
   const id = formData.get('id') as string
   const supabase = createServiceRoleClient()
   await updatePayoutStatus(supabase, id, 'rejected')
   revalidatePath('/admin/payouts')
+  revalidatePath('/admin/affiliates')
+  revalidatePath('/admin/influencers')
+  revalidatePath('/affiliate/dashboard')
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -44,7 +62,6 @@ export default async function AdminPayoutsPage() {
   const payouts = await getAllPayouts(supabase)
 
   const pending = payouts.filter(p => p.status === 'pending')
-  const others = payouts.filter(p => p.status !== 'pending')
   const totalPending = pending.reduce((sum, p) => sum + p.amount, 0)
 
   return (

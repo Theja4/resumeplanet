@@ -1,8 +1,25 @@
 import Link from 'next/link'
-import { ArrowRight, BarChart3, CreditCard, FilePenLine, ShieldCheck, Users } from 'lucide-react'
+import { ArrowRight, BarChart3, CreditCard, FilePenLine, ShieldCheck, Users, Wallet } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
-export default function AdminOverviewPage() {
+function formatUsd(amount: number) {
+  return `$${amount.toFixed(2)}`
+}
+
+export default async function AdminOverviewPage() {
+  const supabase = createServiceRoleClient()
+  const { data: pendingPayouts } = await supabase
+    .from('payouts')
+    .select('amount')
+    .eq('status', 'pending')
+
+  const pendingPayoutCount = pendingPayouts?.length ?? 0
+  const pendingPayoutAmount = (pendingPayouts ?? []).reduce(
+    (sum, payout) => sum + Number(payout.amount ?? 0),
+    0
+  )
+
   return (
     <div className="space-y-6">
       <DashboardPageIntro
@@ -24,7 +41,12 @@ export default function AdminOverviewPage() {
         {[
           { label: 'Admin auth', value: 'Active', tone: 'text-primary' },
           { label: 'Analytics panel', value: 'Ready for data', tone: 'text-zinc-900' },
-          { label: 'Influencer panel', value: 'Live data', tone: 'text-zinc-900' },
+          { label: 'Affiliate panel', value: 'Live data', tone: 'text-zinc-900' },
+          {
+            label: 'Pending payouts',
+            value: `${pendingPayoutCount} / ${formatUsd(pendingPayoutAmount)}`,
+            tone: pendingPayoutCount > 0 ? 'text-amber-600' : 'text-zinc-900',
+          },
           { label: 'Blog CMS', value: 'Ready for CRUD', tone: 'text-zinc-900' },
         ].map(item => (
           <DashboardSurface key={item.label} variant="subtle" className="px-5 py-5">
@@ -76,12 +98,12 @@ export default function AdminOverviewPage() {
                 <Users size={20} />
               </div>
               <div>
-                <p className="text-lg font-black tracking-tight text-on-background">Influencers</p>
+                <p className="text-lg font-black tracking-tight text-on-background">Affiliates</p>
                 <p className="text-sm text-on-surface-variant">Signup attribution, Pro upgrades, and payout performance.</p>
               </div>
             </div>
-            <Link href="/admin/influencers" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
-              Open influencer panel <ArrowRight size={14} />
+            <Link href="/admin/affiliates" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+              Open affiliate panel <ArrowRight size={14} />
             </Link>
           </div>
         </DashboardSurface>
@@ -103,6 +125,25 @@ export default function AdminOverviewPage() {
           </div>
         </DashboardSurface>
       </div>
+
+      <DashboardSurface variant="default" className="px-6 py-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] bg-amber-100 text-amber-700">
+              <Wallet size={20} />
+            </div>
+            <div>
+              <p className="text-lg font-black tracking-tight text-on-background">Payout requests</p>
+              <p className="text-sm text-on-surface-variant">
+                {pendingPayoutCount} pending requests totaling {formatUsd(pendingPayoutAmount)}.
+              </p>
+            </div>
+          </div>
+          <Link href="/admin/payouts" className="inline-flex items-center gap-2 text-sm font-bold text-primary hover:underline">
+            Review payouts <ArrowRight size={14} />
+          </Link>
+        </div>
+      </DashboardSurface>
 
       <DashboardSurface variant="subtle" className="px-6 py-6">
         <div className="flex items-start gap-3">

@@ -1,4 +1,4 @@
-import { ArrowUpRight, DollarSign, TicketPercent, TrendingUp, Users } from 'lucide-react'
+import { ArrowUpRight, DollarSign, TicketPercent, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import { formatUsdCurrency, normalizeAffiliateCode } from '@/lib/affiliate'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
@@ -37,7 +37,7 @@ type PayoutRow = {
   status: 'pending' | 'paid' | 'rejected'
 }
 
-type InfluencerPerformance = {
+type AffiliatePerformance = {
   id: string
   name: string
   email: string
@@ -83,7 +83,7 @@ function StatCard({
   label: string
   value: string
   helper: string
-  icon: typeof Users
+  icon: LucideIcon
 }) {
   return (
     <DashboardSurface variant="subtle" className="px-5 py-5">
@@ -101,7 +101,7 @@ function StatCard({
   )
 }
 
-export default async function AdminInfluencersPage() {
+export default async function AdminAffiliatesPage() {
   const supabase = createServiceRoleClient()
 
   const [affiliatesResult, profilesResult, referralsResult, commissionsResult, payoutsResult] =
@@ -126,7 +126,7 @@ export default async function AdminInfluencersPage() {
     ])
 
   if (affiliatesResult.error) {
-    throw new Error(`Failed to load influencers: ${affiliatesResult.error.message}`)
+    throw new Error(`Failed to load affiliates: ${affiliatesResult.error.message}`)
   }
 
   if (profilesResult.error) {
@@ -134,15 +134,15 @@ export default async function AdminInfluencersPage() {
   }
 
   if (referralsResult.error) {
-    throw new Error(`Failed to load influencer referrals: ${referralsResult.error.message}`)
+    throw new Error(`Failed to load affiliate referrals: ${referralsResult.error.message}`)
   }
 
   if (commissionsResult.error) {
-    throw new Error(`Failed to load influencer commissions: ${commissionsResult.error.message}`)
+    throw new Error(`Failed to load affiliate commissions: ${commissionsResult.error.message}`)
   }
 
   if (payoutsResult.error) {
-    throw new Error(`Failed to load influencer payouts: ${payoutsResult.error.message}`)
+    throw new Error(`Failed to load affiliate payouts: ${payoutsResult.error.message}`)
   }
 
   const signupMap = new Map<string, { signupCount: number; proUpgradeCount: number; lastSignupAt: string | null }>()
@@ -205,8 +205,8 @@ export default async function AdminInfluencersPage() {
     )
   }
 
-  const influencerPerformance = ((affiliatesResult.data ?? []) as AffiliateRow[])
-    .map((affiliate): InfluencerPerformance => {
+  const affiliatePerformance = ((affiliatesResult.data ?? []) as AffiliateRow[])
+    .map((affiliate): AffiliatePerformance => {
       const signupStats = signupMap.get(affiliate.discount_code) ?? {
         signupCount: 0,
         proUpgradeCount: 0,
@@ -243,31 +243,33 @@ export default async function AdminInfluencersPage() {
       return right.totalEarned - left.totalEarned
     })
 
-  const totals = influencerPerformance.reduce(
-    (summary, influencer) => ({
-      influencers: summary.influencers + 1,
-      signups: summary.signups + influencer.signupCount,
-      proUpgrades: summary.proUpgrades + influencer.proUpgradeCount,
-      activeSubscriptions: summary.activeSubscriptions + influencer.activeSubscriptionCount,
-      totalEarned: roundAmount(summary.totalEarned + influencer.totalEarned),
+  const totals = affiliatePerformance.reduce(
+    (summary, affiliate) => ({
+      affiliates: summary.affiliates + 1,
+      signups: summary.signups + affiliate.signupCount,
+      proUpgrades: summary.proUpgrades + affiliate.proUpgradeCount,
+      activeSubscriptions: summary.activeSubscriptions + affiliate.activeSubscriptionCount,
+      totalEarned: roundAmount(summary.totalEarned + affiliate.totalEarned),
+      pendingPayout: roundAmount(summary.pendingPayout + affiliate.pendingPayout),
     }),
     {
-      influencers: 0,
+      affiliates: 0,
       signups: 0,
       proUpgrades: 0,
       activeSubscriptions: 0,
       totalEarned: 0,
+      pendingPayout: 0,
     }
   )
 
-  const topPerformer = influencerPerformance[0] ?? null
+  const topPerformer = affiliatePerformance[0] ?? null
 
   return (
     <div className="space-y-6">
       <DashboardPageIntro
-        kicker="Influencer Performance"
-        title="See which influencers are driving signups and Pro upgrades."
-        description="This view rolls up attributed account signups, Pro upgrades, active paid subscriptions, and earnings for every influencer code in one place."
+        kicker="Affiliate Performance"
+        title="See which affiliates are driving signups and Pro upgrades."
+        description="This view rolls up attributed account signups, Pro upgrades, active paid subscriptions, total earned, pending payout, and paid-out reserves for every affiliate code in one place."
         aside={
           topPerformer ? (
             <div className="space-y-2">
@@ -281,37 +283,43 @@ export default async function AdminInfluencersPage() {
             <div className="space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Attribution logic</p>
               <p className="text-sm leading-6 text-on-surface-variant">
-                Signups are counted from profiles attributed to an influencer link or code. Pro upgrades are the attributed users currently on the Pro plan.
+                Signups are counted from profiles attributed to an affiliate link or code. Pro upgrades are the attributed users currently on the Pro plan.
               </p>
             </div>
           )
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
-          label="Influencers"
-          value={String(totals.influencers)}
+          label="Affiliates"
+          value={String(totals.affiliates)}
           helper="Total activated affiliate profiles."
           icon={Users}
         />
         <StatCard
           label="Attributed Signups"
           value={String(totals.signups)}
-          helper="Accounts created from influencer attribution."
+          helper="Accounts created from affiliate attribution."
           icon={TrendingUp}
         />
         <StatCard
-          label="Pro Upgrades"
-          value={String(totals.proUpgrades)}
-          helper="Attributed users currently on Pro."
+          label="Active Subs"
+          value={String(totals.activeSubscriptions)}
+          helper="Active paid subscriptions recorded from referred users."
           icon={TicketPercent}
         />
         <StatCard
-          label="Commission Earned"
+          label="Total Earned"
           value={formatUsdCurrency(totals.totalEarned)}
-          helper="Recorded influencer commission across all billing events."
+          helper="Commission earned before pending or paid payout reserves."
           icon={DollarSign}
+        />
+        <StatCard
+          label="Pending Payout"
+          value={formatUsdCurrency(totals.pendingPayout)}
+          helper="Available commission after pending and paid payout records."
+          icon={Wallet}
         />
       </div>
 
@@ -321,7 +329,7 @@ export default async function AdminInfluencersPage() {
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Leaderboard</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-on-background">
-                Influencer-by-influencer breakdown
+                Affiliate-by-affiliate breakdown
               </h2>
             </div>
             <p className="text-sm text-on-surface-variant">
@@ -330,16 +338,16 @@ export default async function AdminInfluencersPage() {
           </div>
         </div>
 
-        {influencerPerformance.length === 0 ? (
+        {affiliatePerformance.length === 0 ? (
           <div className="px-6 py-10 text-sm text-on-surface-variant">
-            No influencers have activated the program yet.
+            No affiliates have activated the program yet.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="border-b border-black/6 bg-black/[0.02]">
-                  <th className="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Influencer</th>
+                  <th className="px-6 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Affiliate</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Code</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Signups</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Pro Upgrades</th>
@@ -351,46 +359,46 @@ export default async function AdminInfluencersPage() {
                 </tr>
               </thead>
               <tbody>
-                {influencerPerformance.map((influencer, index) => {
+                {affiliatePerformance.map((affiliate, index) => {
                   const upgradeRate =
-                    influencer.signupCount > 0
-                      ? (influencer.proUpgradeCount / influencer.signupCount) * 100
+                    affiliate.signupCount > 0
+                      ? (affiliate.proUpgradeCount / affiliate.signupCount) * 100
                       : 0
 
                   return (
-                    <tr key={influencer.id} className={index % 2 === 0 ? 'bg-white/70' : 'bg-transparent'}>
+                    <tr key={affiliate.id} className={index % 2 === 0 ? 'bg-white/70' : 'bg-transparent'}>
                       <td className="px-6 py-4 align-top">
                         <div className="space-y-1">
-                          <p className="font-bold tracking-tight text-on-background">{influencer.name}</p>
-                          <p className="text-xs text-on-surface-variant">{influencer.email}</p>
+                          <p className="font-bold tracking-tight text-on-background">{affiliate.name}</p>
+                          <p className="text-xs text-on-surface-variant">{affiliate.email}</p>
                           <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-400">
-                            Joined {formatDate(influencer.joinedAt)}
+                            Joined {formatDate(affiliate.joinedAt)}
                           </p>
                         </div>
                       </td>
                       <td className="px-4 py-4 align-top">
                         <div className="space-y-1">
                           <span className="inline-flex rounded-full border border-primary/10 bg-primary-container/35 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-on-primary-container">
-                            {influencer.discountCode}
+                            {affiliate.discountCode}
                           </span>
                           <p className="text-xs text-on-surface-variant">
-                            {influencer.discountPercent}% off / {influencer.commissionPercent}% commission
+                            {affiliate.discountPercent}% off / {affiliate.commissionPercent}% commission
                           </p>
                         </div>
                       </td>
-                      <td className="px-4 py-4 align-top font-bold text-on-background">{influencer.signupCount}</td>
-                      <td className="px-4 py-4 align-top font-bold text-on-background">{influencer.proUpgradeCount}</td>
+                      <td className="px-4 py-4 align-top font-bold text-on-background">{affiliate.signupCount}</td>
+                      <td className="px-4 py-4 align-top font-bold text-on-background">{affiliate.proUpgradeCount}</td>
                       <td className="px-4 py-4 align-top">
                         <span className="inline-flex items-center gap-1 rounded-full border border-black/6 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700">
                           {formatPercent(upgradeRate)}
                           <ArrowUpRight size={12} className="text-primary" />
                         </span>
                       </td>
-                      <td className="px-4 py-4 align-top font-bold text-on-background">{influencer.activeSubscriptionCount}</td>
-                      <td className="px-4 py-4 align-top font-bold text-on-background">{formatUsdCurrency(influencer.totalEarned)}</td>
-                      <td className="px-4 py-4 align-top font-bold text-on-background">{formatUsdCurrency(influencer.pendingPayout)}</td>
+                      <td className="px-4 py-4 align-top font-bold text-on-background">{affiliate.activeSubscriptionCount}</td>
+                      <td className="px-4 py-4 align-top font-bold text-on-background">{formatUsdCurrency(affiliate.totalEarned)}</td>
+                      <td className="px-4 py-4 align-top font-bold text-on-background">{formatUsdCurrency(affiliate.pendingPayout)}</td>
                       <td className="px-6 py-4 align-top text-on-surface-variant">
-                        {influencer.lastSignupAt ? formatDate(influencer.lastSignupAt) : 'No attributed signups yet'}
+                        {affiliate.lastSignupAt ? formatDate(affiliate.lastSignupAt) : 'No attributed signups yet'}
                       </td>
                     </tr>
                   )
