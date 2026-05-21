@@ -33,10 +33,6 @@ export default function AffiliateReferralTracker() {
 
     const referralCode = normalizedRef ?? readAffiliateReferralCodeFromDocumentCookie()
 
-    if (!referralCode) {
-      return
-    }
-
     let isMounted = true
 
     async function persistAffiliateSource() {
@@ -51,7 +47,9 @@ export default function AffiliateReferralTracker() {
         return
       }
 
-      const syncKey = `rezoomed_affiliate_source_synced:${user.id}:${referralCode}`
+      const syncKey = referralCode
+        ? `rezoomed_affiliate_source_synced:${user.id}:${referralCode}`
+        : `rezoomed_affiliate_source_synced:${user.id}:server-cookie`
 
       if (window.sessionStorage.getItem(syncKey) === '1') {
         return
@@ -63,7 +61,7 @@ export default function AffiliateReferralTracker() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: referralCode,
+          ...(referralCode ? { code: referralCode } : {}),
         }),
       })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { syncRazorpaySubscriptionAccess } from '@/lib/razorpay-subscription-access'
+import { recordAffiliateConversionForUser } from '@/lib/affiliate-server'
 import {
   fetchRazorpaySubscription,
   verifyRazorpayWebhookSignature,
@@ -120,6 +121,22 @@ export async function POST(request: NextRequest) {
         event: eventType,
       },
     })
+
+    try {
+      await recordAffiliateConversionForUser(serviceSupabase, {
+        userId: storedSubscription.user_id,
+        provider: 'razorpay',
+        subscriptionId,
+        transactionId: payment.id,
+        planName: `Razorpay Pro ${interval}`,
+        status: 'active',
+        grossAmount: (payment.amount ?? 0) / 100,
+        currencyCode: payment.currency ?? 'INR',
+        interval,
+      })
+    } catch (affiliateError) {
+      console.error('Razorpay affiliate conversion recording failed:', affiliateError)
+    }
 
     return NextResponse.json({ success: true })
   }

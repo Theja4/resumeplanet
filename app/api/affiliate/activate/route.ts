@@ -7,6 +7,11 @@ import {
   buildActivatedAffiliateCode,
   isValidAffiliateActivationBaseCode,
 } from '@/lib/affiliate'
+import {
+  createPolarPercentageDiscount,
+  getPolarConfigurationError,
+  getPolarProductId,
+} from '@/lib/polar'
 import { PROMOTIONS } from '@/lib/pricing'
 
 function errorResponse(message: string, status = 400) {
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const [profileResult, affiliateResult] = await Promise.all([
     supabase.from('profiles').select('id, email, full_name, plan').eq('id', user.id).single(),
-    supabase.from('affiliates').select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, paypal_email').eq('user_id', user.id).maybeSingle(),
+    supabase.from('affiliates').select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, polar_discount_id, paypal_email').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (profileResult.error) {
@@ -80,6 +85,30 @@ export async function POST(request: NextRequest) {
 
   const profile = profileResult.data
   const affiliateName = profile.full_name?.trim() || profile.email.split('@')[0] || 'Affiliate'
+  let polarDiscountId: string | null = null
+
+  if (!getPolarConfigurationError()) {
+    try {
+      const monthlyProductId = getPolarProductId('monthly')
+      const annualProductId = getPolarProductId('annual')
+      const polarDiscount = await createPolarPercentageDiscount({
+        code: discountCode,
+        percent: AFFILIATE_ACTIVATION_DISCOUNT_PERCENT,
+        name: `Affiliate ${discountCode}`,
+        productIds: [monthlyProductId, annualProductId].filter(
+          (value): value is string => Boolean(value)
+        ),
+        metadata: {
+          source: 'affiliate_program',
+          affiliate_user_id: user.id,
+        },
+      })
+      polarDiscountId = polarDiscount.id
+    } catch (error) {
+      console.error('Affiliate Polar discount creation failed:', error)
+      return errorResponse('Could not create the checkout discount for that code right now.', 502)
+    }
+  }
 
   const { data: affiliate, error: insertError } = await serviceSupabase
     .from('affiliates')
@@ -89,11 +118,12 @@ export async function POST(request: NextRequest) {
       email: profile.email,
       discount_code: discountCode,
       paddle_discount_id: null,
+      polar_discount_id: polarDiscountId,
       discount_percent: AFFILIATE_ACTIVATION_DISCOUNT_PERCENT,
       commission_percent: AFFILIATE_ACTIVATION_COMMISSION_PERCENT,
       paypal_email: null,
     })
-    .select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, paypal_email')
+    .select('id, user_id, discount_code, commission_percent, discount_percent, paddle_discount_id, polar_discount_id, paypal_email')
     .single()
 
   if (insertError || !affiliate) {

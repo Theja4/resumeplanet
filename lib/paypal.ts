@@ -50,6 +50,19 @@ export interface PayPalOrderResponse {
   purchase_units?: Array<{
     reference_id?: string
     custom_id?: string
+    amount?: {
+      currency_code?: string
+      value?: string
+    }
+    payments?: {
+      captures?: Array<{
+        id?: string
+        amount?: {
+          currency_code?: string
+          value?: string
+        }
+      }>
+    }
   }>
 }
 

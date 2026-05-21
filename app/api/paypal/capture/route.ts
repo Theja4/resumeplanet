@@ -7,6 +7,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getSiteUrl } from '@/lib/site'
+import { recordAffiliateConversionForUser } from '@/lib/affiliate-server'
 
 function redirectWithStatus(path: string) {
   return NextResponse.redirect(`${getSiteUrl()}${path}`)
@@ -104,6 +105,25 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('PayPal profile upgrade failed:', error)
       return redirectWithStatus('/dashboard/pricing?paypal_error=profile_update_failed')
+    }
+
+    const capture = purchaseUnit?.payments?.captures?.[0]
+    const amount = Number(capture?.amount?.value ?? purchaseUnit?.amount?.value ?? 0)
+
+    try {
+      await recordAffiliateConversionForUser(serviceSupabase, {
+        userId,
+        provider: 'paypal',
+        subscriptionId: orderId,
+        transactionId: capture?.id ?? orderId,
+        planName: `PayPal Pro ${subscriptionInterval}`,
+        status: 'active',
+        grossAmount: Number.isFinite(amount) ? amount : 0,
+        currencyCode: capture?.amount?.currency_code ?? purchaseUnit?.amount?.currency_code ?? 'USD',
+        interval: subscriptionInterval,
+      })
+    } catch (affiliateError) {
+      console.error('PayPal affiliate conversion recording failed:', affiliateError)
     }
 
     return redirectWithStatus('/dashboard/pricing?upgraded=true&provider=paypal')

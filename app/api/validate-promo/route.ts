@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: affiliate, error } = await supabase
       .from('affiliates')
-      .select('id, discount_code, discount_percent, status')
+      .select('id, discount_code, discount_percent')
       .eq('discount_code', code)
       .maybeSingle()
 
     if (error) {
       console.error('[validate-promo] affiliate lookup failed', { code, error })
       // Fall through to "invalid" — don't 500 the user because of a DB hiccup.
-    } else if (affiliate && (affiliate as { status?: string }).status !== 'inactive') {
+    } else if (affiliate) {
       const discountValue = Number((affiliate as { discount_percent: number }).discount_percent ?? 0)
       return reply({
         valid: true,

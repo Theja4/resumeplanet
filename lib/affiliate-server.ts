@@ -304,12 +304,23 @@ export async function getAffiliateStats(
   supabase: ServiceRoleClient,
   affiliateId: string
 ): Promise<AffiliateDashboardStats> {
+  const affiliate = await getAffiliateById(supabase, affiliateId)
+  const affiliateCode = affiliate?.discount_code ?? null
   const start = new Date()
   start.setUTCDate(1)
   start.setUTCHours(0, 0, 0, 0)
   start.setUTCMonth(start.getUTCMonth() - 5)
 
-  const [referralsCountResult, activeCountResult, commissions, payouts, monthlyReferralsResult] =
+  const [
+    referralsCountResult,
+    activeCountResult,
+    attributedProfilesResult,
+    activeProfilesResult,
+    commissions,
+    payouts,
+    monthlyReferralsResult,
+    monthlyProfilesResult,
+  ] =
     await Promise.all([
       supabase
         .from('referrals')
@@ -320,6 +331,19 @@ export async function getAffiliateStats(
         .select('id', { count: 'exact', head: true })
         .eq('affiliate_id', affiliateId)
         .eq('status', 'active'),
+      affiliateCode
+        ? supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('affiliate_source_code', affiliateCode)
+        : Promise.resolve({ count: 0, error: null }),
+      affiliateCode
+        ? supabase
+            .from('profiles')
+            .select('id', { count: 'exact', head: true })
+            .eq('affiliate_source_code', affiliateCode)
+            .eq('plan', 'pro')
+        : Promise.resolve({ count: 0, error: null }),
       getAffiliateCommissions(supabase, affiliateId),
       getAffiliatePayouts(supabase, affiliateId),
       supabase
@@ -327,6 +351,13 @@ export async function getAffiliateStats(
         .select('created_at')
         .eq('affiliate_id', affiliateId)
         .gte('created_at', start.toISOString()),
+      affiliateCode
+        ? supabase
+            .from('profiles')
+            .select('created_at')
+            .eq('affiliate_source_code', affiliateCode)
+            .gte('created_at', start.toISOString())
+        : Promise.resolve({ data: [], error: null }),
     ])
 
   if (referralsCountResult.error) {
@@ -337,8 +368,20 @@ export async function getAffiliateStats(
     throw new Error(`Failed to load affiliate active referral count: ${activeCountResult.error.message}`)
   }
 
+  if (attributedProfilesResult.error) {
+    throw new Error(`Failed to load affiliate attributed signup count: ${attributedProfilesResult.error.message}`)
+  }
+
+  if (activeProfilesResult.error) {
+    throw new Error(`Failed to load affiliate active profile count: ${activeProfilesResult.error.message}`)
+  }
+
   if (monthlyReferralsResult.error) {
     throw new Error(`Failed to load affiliate referral chart data: ${monthlyReferralsResult.error.message}`)
+  }
+
+  if (monthlyProfilesResult.error) {
+    throw new Error(`Failed to load affiliate signup chart data: ${monthlyProfilesResult.error.message}`)
   }
 
   const totalEarned = roundCurrencyAmount(
@@ -352,12 +395,13 @@ export async function getAffiliateStats(
   const pendingPayout = roundCurrencyAmount(Math.max(totalEarned - reservedPayouts, 0))
 
   return {
-    totalSignups: referralsCountResult.count ?? 0,
-    activeSubscriptions: activeCountResult.count ?? 0,
+    totalSignups: Math.max(referralsCountResult.count ?? 0, attributedProfilesResult.count ?? 0),
+    activeSubscriptions: Math.max(activeCountResult.count ?? 0, activeProfilesResult.count ?? 0),
     totalEarned,
     pendingPayout,
     monthlySignups: buildMonthlySignupSeries(
-      (monthlyReferralsResult.data ?? []).map(row => String(row.created_at))
+      (monthlyProfilesResult.data?.length ? monthlyProfilesResult.data : monthlyReferralsResult.data ?? [])
+        .map(row => String(row.created_at))
     ),
   }
 }
@@ -416,6 +460,141 @@ export async function createAffiliatePayoutRequest(
   }
 
   return parsePayoutRow(firstRow as Record<string, unknown>)
+}
+
+async function getLatestFxRateToUsd(
+  supabase: ServiceRoleClient,
+  currencyCode: string
+) {
+  if (currencyCode === 'USD') {
+    return { rate: 1, provider: 'usd', rateDate: new Date().toISOString().slice(0, 10) }
+  }
+
+  const { data, error } = await supabase
+    .from('fx_rates')
+    .select('rate_to_usd, provider, rate_date')
+    .eq('currency_code', currencyCode)
+    .order('rate_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    logAffiliateInfrastructureError('affiliate-fx-rate-lookup', error)
+  }
+
+  const row = data as Record<string, unknown> | null
+  const rate = Number(row?.rate_to_usd ?? 0)
+
+  return {
+    rate: Number.isFinite(rate) && rate > 0 ? rate : 1,
+    provider: row?.provider ? String(row.provider) : 'fallback',
+    rateDate: row?.rate_date ? String(row.rate_date) : new Date().toISOString().slice(0, 10),
+  }
+}
+
+export async function recordAffiliateConversionForUser(
+  supabase: ServiceRoleClient,
+  params: {
+    userId: string
+    provider: 'paypal' | 'polar' | 'razorpay'
+    subscriptionId?: string | null
+    transactionId?: string | null
+    planName: string
+    status?: AffiliateReferral['status']
+    grossAmount?: number | null
+    currencyCode?: string | null
+    interval?: 'monthly' | 'annual' | null
+    discountCode?: string | null
+  }
+) {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('email, affiliate_source_code')
+    .eq('id', params.userId)
+    .maybeSingle()
+
+  if (profileError) {
+    throw new Error(`Failed to load affiliate conversion profile: ${profileError.message}`)
+  }
+
+  const sourceCode = normalizeAffiliateCode(
+    params.discountCode ?? (profile as { affiliate_source_code?: string | null } | null)?.affiliate_source_code
+  )
+
+  if (!sourceCode) {
+    return null
+  }
+
+  const affiliate = await findAffiliateByDiscountCode(supabase, sourceCode)
+
+  if (!affiliate || affiliate.user_id === params.userId) {
+    return null
+  }
+
+  const currencyCode = (params.currencyCode ?? 'USD').trim().toUpperCase()
+  const grossAmountOriginal = roundCurrencyAmount(Math.max(0, params.grossAmount ?? 0))
+  const fx = await getLatestFxRateToUsd(supabase, currencyCode)
+  const grossAmountUsd = roundCurrencyAmount(grossAmountOriginal * fx.rate)
+  const commissionAmountOriginal = roundCurrencyAmount(
+    grossAmountOriginal * (affiliate.commission_percent / 100)
+  )
+  const commissionAmountUsd = roundCurrencyAmount(
+    grossAmountUsd * (affiliate.commission_percent / 100)
+  )
+  const mrr =
+    params.interval === 'annual'
+      ? roundCurrencyAmount(grossAmountUsd / 12)
+      : grossAmountUsd
+  const subscriptionId = params.subscriptionId
+    ? `${params.provider}:${params.subscriptionId}`
+    : `${params.provider}:user:${params.userId}`
+
+  const referral = await upsertAffiliateReferral(supabase, {
+    affiliateId: affiliate.id,
+    referredUserEmail: String((profile as { email?: string | null } | null)?.email ?? ''),
+    paddleSubscriptionId: subscriptionId,
+    planName: params.planName,
+    status: params.status ?? 'active',
+    mrr,
+  })
+
+  if (!params.transactionId || grossAmountOriginal <= 0 || commissionAmountUsd <= 0) {
+    return { affiliate, referral, commission: null }
+  }
+
+  const { data: commission, error: commissionError } = await supabase
+    .from('affiliate_commissions')
+    .upsert(
+      {
+        affiliate_id: affiliate.id,
+        referral_id: referral.id,
+        paddle_transaction_id: `${params.provider}:${params.transactionId}`,
+        gross_amount: grossAmountUsd,
+        commission_amount: commissionAmountUsd,
+        discount_code: affiliate.discount_code,
+        currency_code: currencyCode,
+        gross_amount_original: grossAmountOriginal,
+        commission_amount_original: commissionAmountOriginal,
+        fx_rate_to_usd: fx.rate,
+        gross_amount_usd: grossAmountUsd,
+        commission_amount_usd: commissionAmountUsd,
+        fx_rate_date: fx.rateDate,
+        fx_provider: fx.provider,
+      },
+      { onConflict: 'paddle_transaction_id' }
+    )
+    .select('*')
+    .single()
+
+  if (commissionError) {
+    throw new Error(`Failed to record affiliate commission: ${commissionError.message}`)
+  }
+
+  return {
+    affiliate,
+    referral,
+    commission: parseCommissionRow(commission as Record<string, unknown>),
+  }
 }
 
 function buildMonthlySignupSeries(createdAtValues: string[]): AffiliateMonthlySignup[] {

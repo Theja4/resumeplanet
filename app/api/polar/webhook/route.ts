@@ -4,6 +4,7 @@ import {
   getPolarIntervalFromProductId,
   verifyPolarWebhookSignature,
 } from '@/lib/polar'
+import { recordAffiliateConversionForUser } from '@/lib/affiliate-server'
 import { isPeriodEndInFuture, normalizeIsoDate } from '@/lib/subscriptionPeriod'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
@@ -21,6 +22,11 @@ function asRecord(value: unknown): PolarWebhookData | null {
 
 function getString(value: unknown) {
   return typeof value === 'string' ? value : null
+}
+
+function getNumber(value: unknown) {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(numeric) ? numeric : null
 }
 
 function getCustomerExternalId(data: PolarWebhookData) {
@@ -74,6 +80,15 @@ function hasPolarProAccess(status: string, data: PolarWebhookData) {
 
 function getStatus(data: PolarWebhookData, fallback = 'active') {
   return getString(data.status) ?? fallback
+}
+
+function getPolarPaidAmount(data: PolarWebhookData) {
+  const rawAmount =
+    getNumber(data.total_amount) ??
+    getNumber(data.amount) ??
+    getNumber(data.subtotal_amount)
+
+  return rawAmount == null ? 0 : rawAmount / 100
 }
 
 function shouldDowngradeForStatus(status: string) {
@@ -224,6 +239,26 @@ export async function POST(request: NextRequest) {
       case 'order.paid':
         if (getString(data.subscription_id)) {
           await upsertActiveSubscription(data, 'active')
+          const userId = getCustomerExternalId(data)
+          if (userId) {
+            const subscriptionId = getString(data.subscription_id) ?? getString(data.id)
+            const interval = getSubscriptionInterval(data)
+            try {
+              await recordAffiliateConversionForUser(createServiceRoleClient(), {
+                userId,
+                provider: 'polar',
+                subscriptionId,
+                transactionId: getString(data.id) ?? subscriptionId,
+                planName: `Polar Pro ${interval ?? 'subscription'}`,
+                status: 'active',
+                grossAmount: getPolarPaidAmount(data),
+                currencyCode: getString(data.currency) ?? 'USD',
+                interval,
+              })
+            } catch (affiliateError) {
+              console.error('Polar affiliate conversion recording failed:', affiliateError)
+            }
+          }
         }
         break
       case 'subscription.past_due':

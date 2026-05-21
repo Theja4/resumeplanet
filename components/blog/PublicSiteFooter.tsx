@@ -73,6 +73,7 @@ const TOOL_LINKS = [
 
 const RESOURCE_LINKS = [
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Affiliate Program', href: '/affiliate/dashboard' },
   { label: 'Blog', href: '/blog' },
   { label: 'ATS Resume Test', href: '/ats-resume-test' },
   { label: 'Resume Formats', href: '/resume-format' },

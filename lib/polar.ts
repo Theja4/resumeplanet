@@ -13,6 +13,11 @@ interface PolarCheckoutResponse {
   currency?: string
 }
 
+interface PolarDiscountResponse {
+  id: string
+  code?: string | null
+}
+
 interface PolarCustomerSessionResponse {
   customer_portal_url?: string
 }
@@ -159,6 +164,32 @@ export async function createPolarCheckout(params: {
         price_id: params.priceOption.id,
         currency: params.priceOption.display.currency,
       },
+    }),
+  })
+}
+
+export async function createPolarPercentageDiscount(params: {
+  code: string
+  percent: number
+  name: string
+  productIds?: string[]
+  metadata?: Record<string, string | number | boolean>
+}) {
+  const basisPoints = Math.round(Math.max(0, Math.min(100, params.percent)) * 100)
+  const productIds = params.productIds?.filter(Boolean)
+  const organizationId = process.env.POLAR_ORGANIZATION_ID
+
+  return polarFetch<PolarDiscountResponse>('/discounts', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: params.name,
+      code: params.code,
+      type: 'percentage',
+      duration: 'forever',
+      basis_points: basisPoints,
+      products: productIds && productIds.length > 0 ? productIds : undefined,
+      organization_id: organizationId || undefined,
+      metadata: params.metadata,
     }),
   })
 }

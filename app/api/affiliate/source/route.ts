@@ -53,6 +53,10 @@ export async function POST(request: NextRequest) {
     return ok(null, false)
   }
 
+  if (affiliate.user_id === user.id) {
+    return ok(null, false)
+  }
+
   const { data: profile, error: profileError } = await serviceSupabase
     .from('profiles')
     .select('affiliate_source_code')

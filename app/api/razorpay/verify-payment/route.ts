@@ -8,6 +8,7 @@ import {
 } from '@/lib/razorpay'
 import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { createClient } from '@/lib/supabase/server'
+import { recordAffiliateConversionForUser } from '@/lib/affiliate-server'
 
 function ok(data: Record<string, unknown>) {
   return NextResponse.json({ success: true, data })
@@ -90,6 +91,22 @@ export async function POST(request: NextRequest) {
       source: 'checkout_callback',
     },
   })
+
+  try {
+    await recordAffiliateConversionForUser(serviceSupabase, {
+      userId: user.id,
+      provider: 'razorpay',
+      subscriptionId,
+      transactionId: paymentId,
+      planName: `Razorpay Pro ${interval}`,
+      status: access.isActiveAccess ? 'active' : 'trialing',
+      grossAmount: payment.amount / 100,
+      currencyCode: payment.currency,
+      interval,
+    })
+  } catch (affiliateError) {
+    console.error('Razorpay affiliate conversion recording failed:', affiliateError)
+  }
 
   return ok({
     provider: 'razorpay',
