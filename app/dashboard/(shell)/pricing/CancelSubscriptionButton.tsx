@@ -18,42 +18,20 @@ export default function CancelSubscriptionButton({ provider, className }: Props)
     setLoading(true)
     setError(null)
     try {
-      if (provider === 'razorpay') {
-        const res = await fetch('/api/razorpay/subscription/cancel', { method: 'POST' })
-        const json = await res.json()
-
-        if (json.success) {
-          setSuccess(true)
-          setTimeout(() => window.location.reload(), 3000)
-        } else {
-          setError(json.error ?? 'Failed to cancel subscription. Please try again.')
-          setLoading(false)
-        }
-        return
-      }
-
-      if (provider === 'polar' || process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'polar') {
-        const res = await fetch('/api/polar/subscription/cancel', { method: 'POST' })
-        const json = await res.json()
-        if (json.success) {
-          setSuccess(true)
-          setTimeout(() => window.location.reload(), 3000)
-          return
-        }
-        setError(json.error ?? 'Failed to cancel subscription. Please contact support@rezoomed.com.')
-        setLoading(false)
-        return
-      }
-
-      const res = await fetch('/api/paddle/subscription/cancel', { method: 'POST' })
-      const json = await res.json()
+      const res = await fetch('/api/subscription/cancel', { method: 'POST' })
+      const json = await res.json().catch(() => null) as
+        | { success?: boolean; error?: string }
+        | null
       
-      if (json.success) {
+      if (res.ok && json?.success) {
         setSuccess(true)
-        // Refresh the page after a short delay to reflect the scheduled cancellation state
         setTimeout(() => window.location.reload(), 3000)
       } else {
-        setError(json.error ?? 'Failed to cancel subscription. Please try again.')
+        const fallback =
+          provider === 'polar'
+            ? 'Failed to cancel subscription. Please contact support@rezoomed.com.'
+            : 'Failed to cancel subscription. Please try again.'
+        setError(json?.error ?? fallback)
         setLoading(false)
       }
     } catch {

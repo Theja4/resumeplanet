@@ -37,7 +37,12 @@ export async function POST() {
     .eq('id', user.id)
     .single()
 
-  if (profileError || profile?.payment_provider !== 'polar' || profile.plan !== 'pro') {
+  const hasPolarSubscription =
+    Boolean(profile?.polar_subscription_id) ||
+    Boolean(profile?.polar_customer_id) ||
+    profile?.payment_provider === 'polar'
+
+  if (profileError || !hasPolarSubscription || profile.plan !== 'pro') {
     return NextResponse.json(
       { success: false, error: 'No active Polar subscription found' },
       { status: 400 }
