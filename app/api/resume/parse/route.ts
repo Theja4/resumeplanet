@@ -8,8 +8,17 @@ import { syncResumeData } from '@/lib/resume-data'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 import { withAuth } from '@/lib/api-middleware'
 
-const ALLOWED_MIME_TYPE = 'application/pdf'
+const PDF_MIME_TYPE = 'application/pdf'
+const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const ALLOWED_MIME_TYPES = new Set([PDF_MIME_TYPE, DOCX_MIME_TYPE])
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
+
+function detectFileType(file: File): string | null {
+  const lowerName = file.name.toLowerCase()
+  if (file.type === PDF_MIME_TYPE || lowerName.endsWith('.pdf')) return PDF_MIME_TYPE
+  if (file.type === DOCX_MIME_TYPE || lowerName.endsWith('.docx')) return DOCX_MIME_TYPE
+  return null
+}
 
 export const POST = withAuth(async (request, { user, supabase }) => {
   // ── Rate Limit ─────────────────────────────────────────────────────────────
@@ -44,8 +53,9 @@ export const POST = withAuth(async (request, { user, supabase }) => {
     )
   }
 
-  // Validate file type (PDF only)
-  if (file.type !== ALLOWED_MIME_TYPE && !file.name.toLowerCase().endsWith('.pdf')) {
+  // Validate file type: PDF or DOCX (the underlying parser supports both).
+  const detectedType = detectFileType(file)
+  if (!detectedType || !ALLOWED_MIME_TYPES.has(detectedType)) {
     return NextResponse.json<APIResponse<never>>(
       { success: false, error: 'INVALID_FILE_TYPE' },
       { status: 400 }
@@ -72,10 +82,35 @@ export const POST = withAuth(async (request, { user, supabase }) => {
 
   const originalFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
   const buffer = Buffer.from(await file.arrayBuffer())
-  const fileType = file.type || ALLOWED_MIME_TYPE
+  const fileType = detectedType
 
   // Content-based duplicate detection
   const fileHash = createHash('sha256').update(buffer).digest('hex')
+
+  let robustResult: Awaited<ReturnType<typeof parseResumeRobustly>>
+  try {
+    robustResult = await parseResumeRobustly({
+      buffer,
+      fileType,
+      clientParsedData,
+    })
+  } catch (parseError) {
+    const msg = parseError instanceof Error ? parseError.message : String(parseError)
+    if (msg === 'SCANNED_PDF_NO_TEXT') {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'SCANNED_PDF_NO_TEXT' },
+        { status: 422 },
+      )
+    }
+    if (msg === 'PASSWORD_PROTECTED_PDF') {
+      return NextResponse.json<APIResponse<never>>(
+        { success: false, error: 'PASSWORD_PROTECTED_PDF' },
+        { status: 422 },
+      )
+    }
+    throw parseError
+  }
+
   const {
     markerSnapshot,
     selectedCandidate,
@@ -84,11 +119,7 @@ export const POST = withAuth(async (request, { user, supabase }) => {
     repairCandidate,
     repairAttempted,
     sourceTextLength,
-  } = await parseResumeRobustly({
-    buffer,
-    fileType,
-    clientParsedData,
-  })
+  } = robustResult
 
   if (!selectedCandidate) {
     return NextResponse.json<APIResponse<never>>(

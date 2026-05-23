@@ -204,14 +204,20 @@ function detectSection(line: string): SectionName | null {
 // ─── Regex field extractors ───────────────────────────────────────────────────
 
 const EMAIL_RE = /[\w.+\-]+@[\w\-]+\.[\w.]+/
-const PHONE_RE = /(\+?\d[\d\s()\-.]{7,}\d)/
+// Phone regex: must contain at least one of (+, parens, or dash) so we don't
+// match raw year ranges like "2019 2022 4". Plus, accept country-code form.
+const PHONE_RE = /(\+?\d[\d\s()\-.]{6,}\d|\(\d{2,5}\)[\d\s\-.]{6,}\d|\d{3}[\s\-.]\d{3}[\s\-.]\d{4})/
 const LINKEDIN_RE = /linkedin\.com\/in\/([\w\-]+)/i
 const WEBSITE_EXCLUDE = /gmail|outlook|yahoo|apple\.com|google\.com|microsoft|linkedin/i
 const URL_RE = /https?:\/\/[\w\-._~:/?#[\]@!$&'()*+,;=%]+/gi
 const DATE_MONTH_RE = /(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)[a-z]*[\s,]+\d{4}/i
-const DATE_NUMERIC_RE = /\b\d{1,2}\/\d{4}\b/i
-const DATE_YEAR_RANGE_RE = /\d{4}\s*[-–—]\s*(\d{4}|Present|Current|Now)/i
-const DATE_NUMERIC_RANGE_RE = /\b\d{1,2}\/\d{4}\s*[-–—]\s*(?:\d{1,2}\/\d{4}|Present|Current|Now)\b/i
+// Numeric "month/year" — accept /, -, . separators so 01/2022, 01-2022, 01.2022 all parse.
+const DATE_NUMERIC_RE = /\b\d{1,2}[/\-.]\d{4}\b/i
+// Year ranges like "2019 - 2022" or "2019-Present" with relaxed whitespace + lower-case present.
+const DATE_YEAR_RANGE_RE = /\d{4}\s*[-–—]\s*(\d{4}|present|current|now|ongoing)/i
+const DATE_NUMERIC_RANGE_RE = /\b\d{1,2}[/\-.]\d{4}\s*[-–—]\s*(?:\d{1,2}[/\-.]\d{4}|present|current|now|ongoing)\b/i
+// ISO-like 2022-03 (year-month, common in EU resumes)
+const DATE_ISO_RE = /\b(19|20)\d{2}-(0[1-9]|1[0-2])\b/
 const YEAR_RE = /\b(19|20)\d{2}\b/
 const LOCATION_RE = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?,\s*(?:[A-Z]{2}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/
 const HEADER_SPLIT_RE = /\s+\|\s+|\s+[–—]\s+|\s+@\s+|\s+\bat\b\s+/i
@@ -238,7 +244,13 @@ function extractWebsite(text: string): string {
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function isLikelyDateLine(text: string): boolean {
-  return DATE_NUMERIC_RANGE_RE.test(text) || DATE_YEAR_RANGE_RE.test(text) || DATE_MONTH_RE.test(text) || DATE_NUMERIC_RE.test(text)
+  return (
+    DATE_NUMERIC_RANGE_RE.test(text) ||
+    DATE_YEAR_RANGE_RE.test(text) ||
+    DATE_MONTH_RE.test(text) ||
+    DATE_NUMERIC_RE.test(text) ||
+    DATE_ISO_RE.test(text)
+  )
 }
 
 function extractDateRange(text: string): { start: string; end: string } {

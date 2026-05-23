@@ -42,14 +42,29 @@ export interface ExtractedPDFMetadata {
   } | null
 }
 
+// Path to pdfjs's bundled cmaps + standard PDF fonts. These are required to
+// extract text from PDFs that use CIDFonts (CJK, Devanagari, Arabic, Hebrew,
+// Thai, etc.). Without them, text comes back as garbage CIDs and downstream
+// resume parsing produces empty/wrong fields for non-Latin resumes.
+const PDFJS_CMAP_PATH = resolve(process.cwd(), 'node_modules/pdfjs-dist/cmaps/')
+const PDFJS_STANDARD_FONT_PATH = resolve(
+  process.cwd(),
+  'node_modules/pdfjs-dist/standard_fonts/'
+)
+
 async function createLoadingTask(buffer: Buffer) {
   const pdfjsLib = await loadPdfjs()
   const uint8Array = new Uint8Array(buffer)
 
   return pdfjsLib.getDocument({
     data: uint8Array,
-    useSystemFonts: true,
+    // Server-side: keep disableFontFace true (no rendering canvas anyway).
+    // The real CJK fix is supplying CMap data + standard PDF font fallbacks.
+    useSystemFonts: false,
     disableFontFace: true,
+    cMapUrl: `${PDFJS_CMAP_PATH}/`,
+    cMapPacked: true,
+    standardFontDataUrl: `${PDFJS_STANDARD_FONT_PATH}/`,
     verbosity: 0,
   })
 }
@@ -147,6 +162,12 @@ export async function extractPDFItems(buffer: Buffer): Promise<ExtractedPage[]> 
     })
   }
 
+  // Scanned / image-only PDF detection: every page extracted but no items
+  // anywhere. Surface a specific error so the UI can suggest uploading DOCX.
+  if (pdf.numPages > 0 && pages.every(p => p.items.length === 0)) {
+    throw new Error('SCANNED_PDF_NO_TEXT')
+  }
+
   return pages
 }
 
@@ -179,7 +200,11 @@ export function pagesToLines(pages: ExtractedPage[]): Array<{
     pageNumber: number
   }> = []
 
-  const bulletOnlyText = (text: string) => /^[•●◦▪▫‣∙·]$/.test(text.trim())
+  // Expanded bullet character set — covers Word's default dot/dash bullets,
+  // common Unicode glyphs used in modern templates, and the ASCII "-" / "*"
+  // markers favoured by markdown-style resumes. Previously bullets typed as
+  // "-" or "*" would be merged into the preceding line.
+  const bulletOnlyText = (text: string) => /^[•●◦▪▫‣∙·►▶■□◆◇★☆▴▾◾◽\-*+→»]$/.test(text.trim())
 
   const getClusterText = (cluster: TextItem[]) =>
     cluster.map(item => item.text).join('').trim()

@@ -25,7 +25,10 @@ export function getAdminSessionCookieOptions() {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
+    // strict — admin endpoints should never receive this cookie via cross-site
+    // navigation. Defends against CSRF without needing a double-submit token.
+    // Admins always come in via the /admin login flow which is same-origin.
+    sameSite: 'strict' as const,
     path: '/',
     maxAge: 60 * 60 * 24 * 14,
   }

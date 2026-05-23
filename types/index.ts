@@ -121,6 +121,7 @@ export interface ExperienceItem {
   bullets: string[]
   bulletVisibility?: boolean[]
   summary?: string
+  url?: string
 }
 
 export interface EducationItem {
@@ -131,6 +132,7 @@ export interface EducationItem {
   endDate?: string
   graduationDate?: string
   gpa: string
+  url?: string
 }
 
 export interface SkillSection {
@@ -143,6 +145,7 @@ export interface CertificationItem {
   name: string
   issuer: string
   date: string
+  url?: string
 }
 
 export interface ProjectItem {
@@ -150,21 +153,24 @@ export interface ProjectItem {
   description: string
   bullets?: string[]
   technologies: string[]
+  url?: string
 }
 
 export interface AwardItem {
   title: string
   issuer: string
   date: string
+  url?: string
 }
 
 export interface PublicationItem {
   title: string
   publisher: string
   date: string
+  url?: string
 }
 
-export type CustomSectionType = 'text' | 'tags' | 'complex'
+export type CustomSectionType = 'text' | 'tags' | 'complex' | 'pageBreak'
 
 export interface CustomSection {
   id: string
@@ -458,6 +464,15 @@ export type UniversalContactStyle = 'inline' | 'stacked'
 export type UniversalDateLayout = 'right' | 'inline'
 export type UniversalNameSize = 'standard' | 'large' | 'hero'
 
+export type UniversalLineSpacing = 'compact' | 'normal' | 'relaxed' | 'loose'
+
+export const LINE_SPACING_MULTIPLIERS: Record<UniversalLineSpacing, number> = {
+  compact: 0.9,
+  normal: 1.0,
+  relaxed: 1.18,
+  loose: 1.35,
+}
+
 export interface UniversalConfig {
   layout: UniversalLayout // legacy sidebar values are sanitized back to single-column
   headerStyle: UniversalHeaderStyle
@@ -470,7 +485,27 @@ export interface UniversalConfig {
   accentColor: string
   fontFamily: string
   density: 'compressed' | 'relaxed'
+  // Per-field hyperlink toggle for the contact header. Each key (linkedin,
+  // website, email, phone) can independently render as a clickable <a> in
+  // preview/PDF/DOCX or stay plain text. Default: all undefined → plain text
+  // for everyone. Backward-compat: a legacy `true` boolean (old schema)
+  // expands to all four set to true.
+  contactLinksClickable?: ContactLinkToggles | boolean
+  // Body-text line spacing. Multiplies the line-height of paragraph text
+  // (bullets, summary, project descriptions, custom text). Section headings
+  // and date labels keep their tight design line-heights regardless.
+  lineSpacing?: UniversalLineSpacing
 }
+
+export interface ContactLinkToggles {
+  linkedin?: boolean
+  website?: boolean
+  email?: boolean
+  phone?: boolean
+}
+
+export const CONTACT_LINK_FIELDS = ['linkedin', 'website', 'email', 'phone'] as const
+export type ContactLinkField = (typeof CONTACT_LINK_FIELDS)[number]
 
 export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
   layout: 'single-column',
@@ -484,6 +519,8 @@ export const DEFAULT_UNIVERSAL_CONFIG: UniversalConfig = {
   accentColor: '#026d32', // Forest green preset
   fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
   density: 'relaxed',
+  contactLinksClickable: {},
+  lineSpacing: 'normal',
 }
 
 

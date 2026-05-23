@@ -8,12 +8,22 @@ import { resumeDataToPlainText } from '@/lib/resume-data'
 import { parseResumeRobustly } from '@/lib/serverResumeParsing'
 
 const MAX_FILE_SIZE = MAX_RESUME_UPLOAD_BYTES
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-]
+const PDF_MIME_TYPE = 'application/pdf'
+const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const DOC_MIME_TYPE = 'application/msword'
+const TXT_MIME_TYPE = 'text/plain'
+const ALLOWED_TYPES = [PDF_MIME_TYPE, DOCX_MIME_TYPE, DOC_MIME_TYPE, TXT_MIME_TYPE]
 
 const resumeDataToText = resumeDataToPlainText
+
+function detectFileType(file: File): string | null {
+  const lowerName = file.name.toLowerCase()
+  if (file.type === PDF_MIME_TYPE || lowerName.endsWith('.pdf')) return PDF_MIME_TYPE
+  if (file.type === DOCX_MIME_TYPE || lowerName.endsWith('.docx')) return DOCX_MIME_TYPE
+  if (file.type === DOC_MIME_TYPE || lowerName.endsWith('.doc')) return DOC_MIME_TYPE
+  if (file.type === TXT_MIME_TYPE || lowerName.endsWith('.txt')) return TXT_MIME_TYPE
+  return null
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -45,7 +55,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 })
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  const detectedType = detectFileType(file)
+  if (!detectedType || !ALLOWED_TYPES.includes(detectedType)) {
     return NextResponse.json({ success: false, error: 'INVALID_FILE_TYPE' }, { status: 400 })
   }
 
@@ -54,20 +65,34 @@ export async function POST(request: NextRequest) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const fileType = file.type
+  const fileType = detectedType
 
   let extractedText: string
   let pageCount = 1
   try {
-    if (fileType === 'application/pdf') {
+    if (fileType === PDF_MIME_TYPE) {
       const pages = await extractPDFItems(buffer)
       pageCount = pages.length || 1
       extractedText = pagesToLines(pages).map(line => line.text).join('\n')
-    } else {
+    } else if (fileType === DOCX_MIME_TYPE) {
       extractedText = await extractDocxText(buffer)
+    } else if (fileType === TXT_MIME_TYPE) {
+      extractedText = buffer.toString('utf8')
+    } else {
+      // Legacy .doc — mammoth doesn't parse it. Best-effort raw extraction
+      // (strips control characters); fall through to robust parser if it's
+      // too sparse.
+      extractedText = buffer.toString('utf8').replace(/[\x00-\x08\x0E-\x1F]/g, ' ')
     }
   } catch (err) {
     console.error('Text extraction error:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg === 'SCANNED_PDF_NO_TEXT') {
+      return NextResponse.json({ success: false, error: 'SCANNED_PDF_NO_TEXT' }, { status: 422 })
+    }
+    if (msg === 'PASSWORD_PROTECTED_PDF') {
+      return NextResponse.json({ success: false, error: 'PASSWORD_PROTECTED_PDF' }, { status: 422 })
+    }
     return NextResponse.json({ success: false, error: 'EXTRACTION_FAILED' }, { status: 500 })
   }
 

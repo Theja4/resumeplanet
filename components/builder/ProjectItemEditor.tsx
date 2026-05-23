@@ -1,7 +1,8 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { X, Link as LinkIcon } from 'lucide-react'
 import type { ProjectItem } from '@/types'
+import AutoGrowTextarea from './AutoGrowTextarea'
 
 interface Props {
   item: ProjectItem
@@ -9,34 +10,65 @@ interface Props {
   onChange: (updated: ProjectItem) => void
 }
 
-function InputField({ label, path, value, onChange, placeholder }: {
-  label: string; path: string; value: string; onChange: (v: string) => void; placeholder?: string
+function InputField({ label, path, value, onChange, placeholder, labelIcon }: {
+  label: string; path: string; value: string; onChange: (v: string) => void; placeholder?: string; labelIcon?: React.ReactNode
 }) {
+  const inputId = `field-${path.replace(/[^a-zA-Z0-9]+/g, '-')}`
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <label htmlFor={inputId} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1.5">
+        {labelIcon}
+        {label}
+      </label>
       <div className="relative">
-        <input data-field-path={path} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 pr-7 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" />
-        {value && <button onClick={() => onChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"><X size={13} /></button>}
+        <input
+          id={inputId}
+          data-field-path={path}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        />
+        {value && (
+          <button
+            aria-label="Clear field"
+            onClick={() => onChange('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
     </div>
   )
 }
 
 export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props) {
+  const descId = `field-${pathPrefix.replace(/[^a-zA-Z0-9]+/g, '-')}-description`
+  const techId = `field-${pathPrefix.replace(/[^a-zA-Z0-9]+/g, '-')}-technologies`
+  const bulletsId = `field-${pathPrefix.replace(/[^a-zA-Z0-9]+/g, '-')}-bullets`
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <InputField label="Project Name" path={`${pathPrefix}.name`} value={item.name} onChange={v => onChange({ ...item, name: v })} placeholder="My Project" />
+      <InputField label="Link (optional)" path={`${pathPrefix}.url`} value={item.url ?? ''} onChange={v => onChange({ ...item, url: v })} placeholder="https://github.com/you/project" labelIcon={<LinkIcon size={13} className="text-gray-400" />} />
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Description</label>
-        <textarea data-field-path={`${pathPrefix}.description`} value={item.description} onChange={e => onChange({ ...item, description: e.target.value })}
-          rows={2} placeholder="What does this project do?"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+        <label htmlFor={descId} className="block text-sm font-medium text-gray-600 mb-1.5">Description</label>
+        <AutoGrowTextarea
+          id={descId}
+          data-field-path={`${pathPrefix}.description`}
+          value={item.description}
+          maxLength={2000}
+          onChange={e => onChange({ ...item, description: e.target.value })}
+          placeholder="What does this project do?"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          minHeight={42}
+        />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Technologies (comma separated)</label>
+        <label htmlFor={techId} className="block text-sm font-medium text-gray-600 mb-1.5">Technologies (comma separated)</label>
         <input
+          id={techId}
           data-field-path={`${pathPrefix}.technologies`}
           value={(item.technologies ?? []).join(', ')}
           onChange={e => onChange({
@@ -44,21 +76,23 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
             technologies: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
           })}
           placeholder="React, Next.js, Tailwind..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
         />
       </div>
       <div>
-        <label className="block text-xs text-gray-500 mb-1">Key Achievements (one per line)</label>
-        <textarea
+        <label htmlFor={bulletsId} className="block text-sm font-medium text-gray-600 mb-1.5">Key Achievements (one per line)</label>
+        <AutoGrowTextarea
+          id={bulletsId}
           data-field-path={`${pathPrefix}.bullets`}
           value={(item.bullets ?? []).join('\n')}
+          maxLength={6000}
           onChange={e => onChange({
             ...item,
             bullets: e.target.value.split('\n').map(b => b.trim()).filter(Boolean)
           })}
-          rows={3}
           placeholder="Describe your contributions..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          minHeight={42}
         />
       </div>
     </div>

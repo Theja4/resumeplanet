@@ -7,7 +7,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -77,6 +78,7 @@ function SortableTagChip({
           autoFocus
           data-field-path={`${sectionId}.tags.${tagIndex}`}
           value={draftValue}
+          maxLength={80}
           onChange={(event) => onDraftChange(event.target.value)}
           onBlur={onCommitEdit}
           onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
@@ -176,8 +178,11 @@ export default function CustomTagsEditor({ sectionId, data, onChange, focusPath,
   const skipNextEditCommitRef = useRef(false)
   const [activeDragIndex, setActiveDragIndex] = useState<number | null>(null)
 
+  // Split sensors so iPad vertical scrolling inside the tag chip list still
+  // works. Long-press initiates drag on touch.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -321,6 +326,7 @@ export default function CustomTagsEditor({ sectionId, data, onChange, focusPath,
       <input
         data-field-path={`${sectionId}.tags`}
         value={input}
+        maxLength={80}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
           if (e.key === 'Enter' || e.key === ',') {

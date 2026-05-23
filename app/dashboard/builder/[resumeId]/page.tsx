@@ -43,7 +43,7 @@ import { useUndoHistory } from '@/lib/undoHistory'
 import { applyInsightSuggestionToResumeData, type InsightSuggestionLike } from '@/lib/ai-insights'
 import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/tailorResume'
 import { readTailorJobTransfer } from '@/lib/tailorJobTransfer'
-import { scoreResume } from '@/lib/ats-scorer'
+import { scoreResume, SCORER_VERSION } from '@/lib/ats-scorer'
 import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
 import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
@@ -67,7 +67,7 @@ const CONTINUATION_PAGE_CONTENT_H =
   PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
 const MIN_PREVIEW_SLICE_HEIGHT = 120
 const PAGE_BREAK_LOOKBACK = 96
-const DEFAULT_LEFT_PANEL_WIDTH = 420
+const DEFAULT_LEFT_PANEL_WIDTH = 480
 const DEFAULT_RIGHT_PANEL_WIDTH = 380
 const COLLAPSED_PANEL_WIDTH = 48
 const BUILDER_PREVIEW_WIDTH = 794
@@ -356,6 +356,102 @@ function shouldPersistGhostDismissals(resumeId: string) {
   return resumeId !== 'draft' && resumeId !== 'new'
 }
 
+// ─── Draft recovery (mobile suspension / browser crash safety net) ──────────
+//
+// `forceSave` is async. On mobile Safari the OS can suspend the tab before
+// our Supabase RPC completes — meaning the user's last few edits are gone
+// without warning. As a defensive layer, we snapshot the in-memory resume to
+// sessionStorage on every `visibilitychange:hidden` event when there are
+// unsaved changes. Next page load (still same tab) checks for that snapshot
+// and offers to restore it.
+//
+// sessionStorage is per-tab, so this doesn't leak across users / browser
+// profiles. It clears automatically when the tab is finally closed.
+
+interface DraftRecoverySnapshot {
+  resumeData: ResumeData
+  visibility: BuilderVisibility
+  templateConfig: UniversalConfig
+  title: string
+  savedAt: number
+}
+
+const DRAFT_RECOVERY_PREFIX = 'rezoomed:builder:recovery'
+const DRAFT_RECOVERY_MAX_AGE_MS = 1000 * 60 * 60 * 24 // 24h
+
+function getDraftRecoveryKey(resumeId: string) {
+  return `${DRAFT_RECOVERY_PREFIX}:${resumeId}`
+}
+
+// When a /draft INSERT succeeds we stash the new resume id here before
+// replacing the visible URL. If the user navigates back to /draft, we redirect
+// them to the row they already created — preventing duplicate INSERTs of the
+// same draft from one tab.
+const DRAFT_PROMOTED_ID_KEY = 'rezoomed:builder:draft-promoted-id'
+
+function readDraftPromotedId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return window.sessionStorage.getItem(DRAFT_PROMOTED_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
+function writeDraftPromotedId(id: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(DRAFT_PROMOTED_ID_KEY, id)
+  } catch {
+    // sessionStorage may be full or disabled; the duplicate-INSERT guard
+    // simply degrades to current behaviour.
+  }
+}
+
+function clearDraftPromotedId() {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(DRAFT_PROMOTED_ID_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+function writeDraftRecovery(resumeId: string, snapshot: DraftRecoverySnapshot) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.setItem(getDraftRecoveryKey(resumeId), JSON.stringify(snapshot))
+  } catch {
+    // sessionStorage may be full or disabled; best-effort only.
+  }
+}
+
+function readDraftRecovery(resumeId: string): DraftRecoverySnapshot | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.sessionStorage.getItem(getDraftRecoveryKey(resumeId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as DraftRecoverySnapshot
+    if (!parsed || typeof parsed.savedAt !== 'number') return null
+    if (Date.now() - parsed.savedAt > DRAFT_RECOVERY_MAX_AGE_MS) {
+      window.sessionStorage.removeItem(getDraftRecoveryKey(resumeId))
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function clearDraftRecovery(resumeId: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.sessionStorage.removeItem(getDraftRecoveryKey(resumeId))
+  } catch {
+    // ignore
+  }
+}
+
 function getGhostDismissalStorageKey(resumeId: string) {
   return `${GHOST_DISMISSAL_STORAGE_PREFIX}:${resumeId}`
 }
@@ -486,16 +582,13 @@ function applyOverflowTrimStep(resumeData: ResumeData, visibility: BuilderVisibi
   const nextResumeData = structuredClone(resumeData)
   const nextVisibility = structuredClone(visibility)
 
+  // Conservative trim: only hide trailing bullets. We deliberately do NOT
+  // hide entire items or whole sections automatically — silently removing a
+  // user's Education or Volunteer block was a major trust-breaker. If a
+  // resume is still over the page limit after every trailing bullet is
+  // hidden, we return null and the caller surfaces a warning toast instead.
   for (const sectionId of [...getRenderableSectionIds(nextVisibility)].reverse()) {
     if (trimLastVisibleBullet(nextResumeData, nextVisibility, sectionId)) {
-      return { nextResumeData, nextVisibility }
-    }
-
-    if (hideLastVisibleSectionItem(nextResumeData, nextVisibility, sectionId)) {
-      return { nextResumeData, nextVisibility }
-    }
-
-    if (hideVisibleSection(nextVisibility, sectionId)) {
       return { nextResumeData, nextVisibility }
     }
   }
@@ -535,14 +628,32 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const headerParam = searchParams.get('header')
   const bulletParam = searchParams.get('bullet')
   const densityParam = searchParams.get('density')
-  const downloadParam = searchParams.get('download')
-  const autoOptimizeParam = searchParams.get('autoOptimize') === '1'
-  const tailorJobKeyParam = searchParams.get('tailorJobKey')
-  const autoTailorParam = searchParams.get('autoTailor') === '1'
+
+  // Side-effecting URL params (auto-download, auto-optimize, auto-tailor)
+  // burn the user's AI/PDF quota on page load. To prevent a phishing vector
+  // where a malicious link triggers these without user intent, we ONLY honor
+  // them when the navigation originated from the same origin (or was typed
+  // directly into the address bar, which gives an empty referrer).
+  const isSameOriginNavigation = (() => {
+    if (typeof window === 'undefined') return true
+    const referrer = document.referrer
+    if (!referrer) return true // typed URL or bookmark — trusted
+    try {
+      return new URL(referrer).origin === window.location.origin
+    } catch {
+      return false
+    }
+  })()
+
+  const downloadParam = isSameOriginNavigation ? searchParams.get('download') : null
+  const autoOptimizeParam = isSameOriginNavigation && searchParams.get('autoOptimize') === '1'
+  const tailorJobKeyParam = isSameOriginNavigation ? searchParams.get('tailorJobKey') : null
+  const autoTailorParam = isSameOriginNavigation && searchParams.get('autoTailor') === '1'
   const ignoreTemplateQueryOverrides = shouldIgnoreTemplateQueryOverrides(sourceParam)
 
   const { requirePro, blockedFeature, clearBlockedFeature } = useProGate()
 
+  const [persistedResumeId, setPersistedResumeId] = useState(resumeId)
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
   const [savedData, setSavedData] = useState<ResumeData | null>(null)
   const [resumeTitle, setResumeTitle] = useState('')
@@ -570,6 +681,20 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [zoomDelta, setZoomDelta] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isPageWarningDismissed, setIsPageWarningDismissed] = useState(false)
+  const [scoreShift, setScoreShift] = useState<{ from: number; to: number } | null>(null)
+  // Optimistic concurrency token — the updated_at value from the most recent
+  // successful load or save. Every UPDATE includes it in the WHERE clause; if
+  // it no longer matches, another tab/device wrote first and we surface a
+  // "conflict — refresh" toast instead of clobbering their changes.
+  const lastSavedAtRef = useRef<string | null>(null)
+  const [conflictDetected, setConflictDetected] = useState(false)
+  // True when the conservative auto-trim couldn't get the resume back under
+  // the page limit. We show a banner so the user knows their resume is too
+  // long instead of silently hiding sections like we used to.
+  const [overflowTrimUnresolved, setOverflowTrimUnresolved] = useState(false)
+  // Recovery snapshot offer — only set if sessionStorage has a snapshot that's
+  // strictly newer than what we just loaded from Supabase.
+  const [recoveryOffer, setRecoveryOffer] = useState<DraftRecoverySnapshot | null>(null)
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === 'undefined' ? 0 : window.innerWidth
   )
@@ -580,6 +705,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const downloadMenuRef = useRef<HTMLDivElement>(null)
   const titleInputRef = useRef<HTMLInputElement>(null)
   const dismissedGhostSectionsRef = useRef(dismissedGhostSections)
+  const skipLoadForPromotedResumeIdRef = useRef<string | null>(null)
+  const latestBuilderStateRef = useRef<DraftRecoverySnapshot | null>(null)
 
   const hasTriggeredAutoPdfDownloadRef = useRef(false)
   const consumedTailorJobKeyRef = useRef<string | null>(null)
@@ -682,6 +809,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [dismissedGhostSections])
 
   useEffect(() => {
+    setPersistedResumeId(resumeId)
+  }, [resumeId])
+
+  useEffect(() => {
+    if (!resumeData) return
+
+    latestBuilderStateRef.current = {
+      resumeData,
+      visibility,
+      templateConfig,
+      title: resumeTitle,
+      savedAt: Date.now(),
+    }
+  }, [resumeData, resumeTitle, templateConfig, visibility])
+
+  useEffect(() => {
     if (requestedMode !== 'tailor') {
       setActiveMode('builder')
       return
@@ -767,20 +910,25 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     if (!container) return
 
     const containerTop = container.getBoundingClientRect().top
-    const elements = container.querySelectorAll(
-      '[data-resume-path], [data-resume-page-break], li, p, h1, h2, h3, h4, div[class*="text-"], div[class*="mb-"]'
-    )
+    const elements = container.querySelectorAll<HTMLElement>('*')
     const lineCandidateElements = container.querySelectorAll<HTMLElement>(
       'span[data-resume-path], a[data-resume-path], em[data-resume-path], strong[data-resume-path]'
     )
     const blockCandidateElements = container.querySelectorAll<HTMLElement>(
       '[data-resume-page-break], [data-resume-section-heading], h2'
     )
+    const hardBreakElements = container.querySelectorAll<HTMLElement>(
+      '[data-resume-page-break-hard]'
+    )
 
     let contentBottom = 0
     for (const el of Array.from(elements)) {
+      if (el.closest('[data-pdf-ignore]')) continue
       const rect = el.getBoundingClientRect()
+      const top = rect.top - containerTop
       const bottom = rect.bottom - containerTop
+      if (rect.width <= 0 || rect.height <= 0) continue
+      if (el.parentElement === container && top <= 1 && bottom >= PAGE_H - 1) continue
       if (bottom > contentBottom) {
         contentBottom = bottom
       }
@@ -798,7 +946,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       .sort((a, b) => a.top - b.top)
 
     const blockBreakCandidates = Array.from(blockCandidateElements)
-      .filter(el => !el.dataset.resumeSectionFrame)
       .map((el) => {
         const rect = el.getBoundingClientRect()
         return {
@@ -809,13 +956,52 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       .filter(candidate => candidate.bottom - candidate.top > 2)
       .sort((a, b) => a.top - b.top)
 
+    // Dedupe consecutive hard breaks within ~24px so two adjacent pageBreak
+    // sections don't produce two blank pages.
+    const HARD_BREAK_MERGE_PX = 24
+    const dedupedHardBreaks: number[] = []
+    for (const y of Array.from(hardBreakElements)
+      .map(el => Math.max(0, el.getBoundingClientRect().top - containerTop))
+      .filter(y => y > 0)
+      .sort((a, b) => a - b)) {
+      const prev = dedupedHardBreaks[dedupedHardBreaks.length - 1]
+      if (prev === undefined || y - prev > HARD_BREAK_MERGE_PX) {
+        dedupedHardBreaks.push(y)
+      }
+    }
+    const hardBreakYs = dedupedHardBreaks
+
     const nextPageSlices: PreviewPageSlice[] = []
     let pageStartY = 0
 
-    while (pageStartY < resolvedContentBottom - 1 && nextPageSlices.length < 20) {
+    while (pageStartY < resolvedContentBottom - 1 && nextPageSlices.length < 30) {
       const isFirstPage = nextPageSlices.length === 0
       const pageCapacity = isFirstPage ? FIRST_PAGE_CONTENT_H : CONTINUATION_PAGE_CONTENT_H
       const pageLimitY = pageStartY + pageCapacity
+
+      // Forced break: if the user inserted a manual page break between
+      // pageStartY and the page limit, honor it before the capacity logic.
+      // Skip nearly-empty slices (page break placed at the top would emit a
+      // blank leading page otherwise).
+      const forcedBreakY = hardBreakYs.find(y => y > pageStartY + 1 && y <= pageLimitY)
+      if (forcedBreakY !== undefined) {
+        const sliceHeight = forcedBreakY - pageStartY
+        const hasContentAfterForcedBreak =
+          lineBreakCandidates.some(candidate => candidate.bottom > forcedBreakY + 2) ||
+          blockBreakCandidates.some(candidate => candidate.bottom > forcedBreakY + 2)
+
+        if (pageStartY === 0 && sliceHeight < MIN_PREVIEW_SLICE_HEIGHT) {
+          pageStartY = forcedBreakY
+        } else {
+          nextPageSlices.push({
+            startY: pageStartY,
+            height: Math.max(1, sliceHeight),
+          })
+          if (!hasContentAfterForcedBreak) break
+          pageStartY = forcedBreakY
+        }
+        continue
+      }
 
       if (resolvedContentBottom <= pageLimitY + 1) {
         nextPageSlices.push({
@@ -939,8 +1125,57 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const ZOOM_STEP = 0.05
   const effectiveScale = Math.min(1.5, Math.max(0.3, 1.0 + zoomDelta))
 
-  // When layout density/visibility changes, optimistically collapse to one page
-  // until the hidden print wrapper finishes remeasuring.
+  // When layout density / visibility / ghost-section state changes, briefly
+  // collapse to a single page so the hidden print wrapper can re-measure.
+  //
+  // We deliberately depend on *stable scalar keys* — not the full object
+  // references — so a normal keystroke (which produces a new resumeData
+  // reference, which produces a new ghostSections memo reference) does NOT
+  // re-trigger the 180ms collapse. Only changes that actually affect the
+  // layout (section order, density, ghost on/off, template choice) reset it.
+  const ghostSectionsKey = useMemo(
+    () =>
+      Object.entries(ghostSections)
+        .map(([id, on]) => `${id}:${on ? 1 : 0}`)
+        .sort()
+        .join('|'),
+    [ghostSections]
+  )
+  const visibilityKey = useMemo(
+    () =>
+      JSON.stringify({
+        sections: visibility.sections,
+        sectionOrder: visibility.sectionOrder,
+        sidebarSectionOrder: visibility.sidebarSectionOrder,
+        density: visibility.density,
+      }),
+    [visibility.sections, visibility.sectionOrder, visibility.sidebarSectionOrder, visibility.density]
+  )
+  const templateConfigKey = useMemo(
+    () =>
+      [
+        templateConfig.layout,
+        templateConfig.headerStyle,
+        templateConfig.density,
+        templateConfig.bulletStyle,
+        templateConfig.sectionHeadingStyle,
+        templateConfig.skillsStyle,
+        templateConfig.dateLayout,
+        templateConfig.contactStyle,
+        templateConfig.fontFamily,
+        templateConfig.nameSize,
+        templateConfig.accentColor,
+        // Stable string of per-field link toggles so pagination resettles when
+        // a contact-link toggle flips (an underlined hyperlink may wrap
+        // differently from plain text in tight cases).
+        typeof templateConfig.contactLinksClickable === 'object' && templateConfig.contactLinksClickable !== null
+          ? JSON.stringify(templateConfig.contactLinksClickable)
+          : String(templateConfig.contactLinksClickable ?? ''),
+        templateConfig.lineSpacing ?? 'normal',
+      ].join(':'),
+    [templateConfig]
+  )
+
   useEffect(() => {
     setIsPaginationSettling(true)
     setPageSlices([{ startY: 0, height: FIRST_PAGE_CONTENT_H }])
@@ -951,7 +1186,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }, 180)
 
     return () => window.clearTimeout(id)
-  }, [visibility, templateConfig, ghostSections])
+  }, [visibilityKey, templateConfigKey, ghostSectionsKey])
 
   const MAX_PAGES = 5
   const RECOMMENDED_PAGES = 2
@@ -967,9 +1202,29 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   useEffect(() => {
     async function load() {
       if (resumeId === 'new') {
+        // The user explicitly asked for a brand-new resume — clear any stale
+        // draft-promotion marker so we don't redirect them back into the last
+        // resume they created from this tab.
+        clearDraftPromotedId()
         const query = searchParams.toString()
         router.replace(`/dashboard/builder/draft${query ? `?${query}` : ''}`)
         return
+      }
+
+      if (resumeId === 'draft' && persistedResumeId !== 'draft') {
+        setIsLoading(false)
+        return
+      }
+
+      // If this tab already promoted a /draft to a real resume during a
+      // prior save, reuse that id instead of starting a fresh draft.
+      // Prevents a second INSERT for the same conceptual draft.
+      if (resumeId === 'draft') {
+        const promoted = readDraftPromotedId()
+        if (promoted) {
+          router.replace(`/dashboard/builder/${promoted}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`)
+          return
+        }
       }
 
       if (resumeId === 'draft') {
@@ -1013,6 +1268,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         return
       }
 
+      if (
+        skipLoadForPromotedResumeIdRef.current === resumeId &&
+        latestBuilderStateRef.current?.resumeData
+      ) {
+        // A /draft insert just succeeded in this tab. Keep the live editor
+        // state mounted instead of reloading the newly inserted DB snapshot,
+        // because the user may have typed more while the insert was in flight.
+        skipLoadForPromotedResumeIdRef.current = null
+        if (readDraftPromotedId() === resumeId) {
+          clearDraftPromotedId()
+        }
+        setIsLoading(false)
+        return
+      }
+
       const { data: resume, error } = await supabase
         .from('resumes')
         .select('*')
@@ -1029,6 +1299,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setResumeData(data)
       setSavedData(data)
       setResumeTitle(normalizeResumeTitle(resume.title ?? ''))
+      lastSavedAtRef.current =
+        typeof (resume as Record<string, unknown>).updated_at === 'string'
+          ? (resume as { updated_at: string }).updated_at
+          : null
 
       // Load saved template config from DB
       const savedTemplateConfig = (resume as Record<string, unknown>).template_config as UniversalConfig | null
@@ -1042,10 +1316,62 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       const mergedVisibility = mergeBuilderVisibilityWithDefaults(savedVis)
       setVisibility(mergedVisibility)
       setSavedVisibility(mergedVisibility)
+
+      // Defensive draft recovery: if sessionStorage has a snapshot newer than
+      // the row we just loaded, the previous tab's forceSave was likely
+      // interrupted (mobile suspension, crash). Offer to restore.
+      try {
+        const snapshot = readDraftRecovery(resumeId)
+        const dbUpdatedAtMs = typeof (resume as { updated_at?: string }).updated_at === 'string'
+          ? new Date((resume as { updated_at: string }).updated_at).getTime()
+          : 0
+        const wasPromotedInThisTab = readDraftPromotedId() === resumeId
+        if (snapshot && wasPromotedInThisTab && snapshot.savedAt > dbUpdatedAtMs) {
+          setResumeData(snapshot.resumeData)
+          setVisibility(snapshot.visibility)
+          setTemplateConfig(snapshot.templateConfig)
+          setResumeTitle(snapshot.title)
+        } else if (snapshot && snapshot.savedAt > dbUpdatedAtMs + 1000) {
+          setRecoveryOffer(snapshot)
+        } else if (snapshot) {
+          // Snapshot is older than the DB → already persisted. Clean up.
+          clearDraftRecovery(resumeId)
+        }
+      } catch {
+        // Recovery is best-effort; never block load.
+      }
+
+      // Detect scoring-formula shift: if the saved score is stale relative to
+      // the new scorer version, surface a one-time banner so the user knows
+      // why their number moved.
+      try {
+        const ackKey = `rezoomed:scorer-update-acknowledged:v${SCORER_VERSION}`
+        const acknowledged = typeof window !== 'undefined' && window.localStorage.getItem(ackKey) === '1'
+        const savedScore = typeof (resume as Record<string, unknown>).ats_score === 'number'
+          ? (resume as { ats_score: number }).ats_score
+          : null
+        if (!acknowledged && savedScore !== null) {
+          const liveScore = scoreResume(getVisibleResumeData(data, mergedVisibility)).score
+          if (Math.abs(liveScore - savedScore) >= 3) {
+            setScoreShift({ from: savedScore, to: liveScore })
+          }
+        }
+      } catch {
+        // Banner is best-effort; never block the load on it.
+      }
+
+      // We've successfully landed on a real resume id — the draft promotion
+      // ran to completion, so clear the redirect marker. A genuinely new
+      // /draft visit later (e.g., from "New Resume") will then get a fresh
+      // INSERT instead of being redirected to this resume.
+      if (readDraftPromotedId() === resumeId) {
+        clearDraftPromotedId()
+      }
+
       setIsLoading(false)
     }
     load()
-  }, [applyUrlTemplateOverrides, resumeId, router, searchParams, supabase, userId])
+  }, [applyUrlTemplateOverrides, persistedResumeId, resumeId, router, searchParams, supabase, userId])
 
   const setBuilderMode = useCallback((mode: BuilderMode) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -1085,17 +1411,37 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   }, [autoTailorParam, pathname, router, searchParams, tailorJobKeyParam])
 
   const saveLockRef = useRef(false)
+  // Holds the pre-batch ResumeData snapshot during an Apply-All run so we
+  // push exactly ONE undo entry for the whole batch instead of N. Cleared on
+  // the final (non-silent) apply.
+  const applyAllOriginRef = useRef<ResumeData | null>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const hasSaveableDraftContent =
-    resumeId !== 'draft' || Boolean(resumeData && !isResumeDataMeaningfullyEmpty(resumeData))
+    persistedResumeId !== 'draft' || Boolean(resumeData && !isResumeDataMeaningfullyEmpty(resumeData))
 
-  const hasUnsavedChanges =
-    !!resumeData && hasSaveableDraftContent && (
+  // Two-phase comparison:
+  //   1. Reference equality (free) — after every successful save we point the
+  //      saved* state at the very same object that lives in the live state,
+  //      so the common "no unsaved changes" case short-circuits here.
+  //   2. JSON.stringify deep diff — only runs when references differ AND the
+  //      memo dependencies change, so we don't stringify ~50KB on every
+  //      render of a senior resume.
+  const hasUnsavedChanges = useMemo(() => {
+    if (!resumeData || !hasSaveableDraftContent) return false
+    if (
+      resumeData === savedData &&
+      visibility === savedVisibility &&
+      templateConfig === savedTemplateConfig
+    ) {
+      return false
+    }
+    return (
       JSON.stringify(resumeData) !== JSON.stringify(savedData) ||
       JSON.stringify(visibility) !== JSON.stringify(savedVisibility) ||
       JSON.stringify(templateConfig) !== JSON.stringify(savedTemplateConfig)
     )
+  }, [resumeData, savedData, visibility, savedVisibility, templateConfig, savedTemplateConfig, hasSaveableDraftContent])
 
   const dismissGhostSections = useCallback((sections: GhostResumeSectionId | GhostResumeSectionId[]) => {
     const sectionList = Array.isArray(sections) ? sections : [sections]
@@ -1122,10 +1468,19 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   async function forceSave() {
     if (!resumeData || !hasUnsavedChanges || isSaving || saveLockRef.current) return
 
+    // Snapshot the state at the moment we begin saving. If the user keeps
+    // typing during the round trip, hasUnsavedChanges will correctly remain
+    // true because the snapshot — not the freshly-mutated state — is what
+    // we mark as "saved" once the round trip completes.
+    const dataSnapshot = resumeData
+    const visibilitySnapshot = visibility
+    const templateConfigSnapshot = templateConfig
+    const titleSnapshot = resumeTitle
+
     // A new draft becomes a library resume only after the final resume content has text.
     // Empty section rows, ghost dismissals, visibility changes, and style tweaks are not enough.
-    if (resumeId === 'draft') {
-      if (isResumeDataMeaningfullyEmpty(resumeData)) return
+    if (persistedResumeId === 'draft') {
+      if (isResumeDataMeaningfullyEmpty(dataSnapshot)) return
     }
 
     saveLockRef.current = true
@@ -1135,67 +1490,129 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       clearTimeout(saveTimerRef.current)
       saveTimerRef.current = undefined
     }
-    const visibleResumeData = getVisibleResumeData(resumeData, visibility)
+    const visibleResumeData = getVisibleResumeData(dataSnapshot, visibilitySnapshot)
     const atsScore = scoreResume(visibleResumeData).score
 
     try {
-      if (resumeId === 'draft') {
+      if (persistedResumeId === 'draft') {
+        const insertedAt = new Date().toISOString()
         const { data, error } = await supabase
           .from('resumes')
           .insert({
             user_id: userId,
-            title: resumeTitle || 'Untitled Resume',
-            parsed_data: resumeData,
+            title: titleSnapshot || 'Untitled Resume',
+            parsed_data: dataSnapshot,
             ats_score: atsScore,
-            builder_visibility: visibility,
-            template_config: templateConfig,
-            updated_at: new Date().toISOString(),
+            builder_visibility: visibilitySnapshot,
+            template_config: templateConfigSnapshot,
+            updated_at: insertedAt,
           })
-          .select('id')
+          .select('id, updated_at')
           .single()
 
         if (error) throw error
 
         if (data) {
-          setSavedData(resumeData)
-          setSavedVisibility(visibility)
-          setSavedTemplateConfig(templateConfig)
+          setSavedData(dataSnapshot)
+          setSavedVisibility(visibilitySnapshot)
+          setSavedTemplateConfig(templateConfigSnapshot)
+          lastSavedAtRef.current =
+            typeof (data as { updated_at?: string }).updated_at === 'string'
+              ? (data as { updated_at: string }).updated_at
+              : insertedAt
           writeGhostDismissalsToStorage(data.id, dismissedGhostSectionsRef.current)
-          router.replace(`/dashboard/builder/${data.id}`)
+          clearDraftRecovery(resumeId)
+          const latestSnapshot = latestBuilderStateRef.current ?? {
+            resumeData: dataSnapshot,
+            visibility: visibilitySnapshot,
+            templateConfig: templateConfigSnapshot,
+            title: titleSnapshot,
+            savedAt: Date.now(),
+          }
+          const hasNewerLocalDraftChanges =
+            JSON.stringify(latestSnapshot.resumeData) !== JSON.stringify(dataSnapshot) ||
+            JSON.stringify(latestSnapshot.visibility) !== JSON.stringify(visibilitySnapshot) ||
+            JSON.stringify(latestSnapshot.templateConfig) !== JSON.stringify(templateConfigSnapshot) ||
+            latestSnapshot.title !== titleSnapshot
+          if (hasNewerLocalDraftChanges) {
+            writeDraftRecovery(data.id, {
+              ...latestSnapshot,
+              savedAt: Date.now(),
+            })
+          }
+          // Stash the new id before replacing the visible URL so a browser
+          // back-navigation that returns to /draft can redirect here instead
+          // of inserting again.
+          writeDraftPromotedId(data.id)
+          skipLoadForPromotedResumeIdRef.current = data.id
+          setPersistedResumeId(data.id)
+          if (typeof window !== 'undefined') {
+            window.history.replaceState(null, '', `/dashboard/builder/${data.id}`)
+          }
         }
       } else {
-        const { error } = await supabase
+        const nextUpdatedAt = new Date().toISOString()
+        const expectedUpdatedAt = lastSavedAtRef.current
+
+        let updateQuery = supabase
           .from('resumes')
           .update({
-            title: resumeTitle || 'Untitled Resume',
-            parsed_data: resumeData,
+            title: titleSnapshot || 'Untitled Resume',
+            parsed_data: dataSnapshot,
             ats_score: atsScore,
-            builder_visibility: visibility,
-            template_config: templateConfig,
-            updated_at: new Date().toISOString(),
+            builder_visibility: visibilitySnapshot,
+            template_config: templateConfigSnapshot,
+            updated_at: nextUpdatedAt,
           })
-          .eq('id', resumeId)
+          .eq('id', persistedResumeId)
           .eq('user_id', userId)
+
+        // Optimistic concurrency: only update if the row hasn't been written
+        // by another tab/device since we last saw it. Empty results signal
+        // a conflict.
+        if (expectedUpdatedAt) {
+          updateQuery = updateQuery.eq('updated_at', expectedUpdatedAt)
+        }
+
+        const { data: updatedRows, error } = await updateQuery.select('updated_at')
 
         if (error) throw error
 
-        setSavedData(resumeData)
-        setSavedVisibility(visibility)
-        setSavedTemplateConfig(templateConfig)
+        if (!updatedRows || updatedRows.length === 0) {
+          // No row updated — either the row no longer exists OR someone else
+          // wrote it. Surface a conflict so the user knows to refresh.
+          setConflictDetected(true)
+          throw new Error('CONCURRENT_EDIT_CONFLICT')
+        }
+
+        const written = updatedRows[0] as { updated_at?: string }
+        lastSavedAtRef.current = written.updated_at ?? nextUpdatedAt
+        setSavedData(dataSnapshot)
+        setSavedVisibility(visibilitySnapshot)
+        setSavedTemplateConfig(templateConfigSnapshot)
+        clearDraftRecovery(persistedResumeId)
       }
     } catch (err: unknown) {
-      setSaveFailed(true)
       const errorDetails =
         err && typeof err === 'object'
           ? (err as { message?: string; details?: string; hint?: string; code?: string })
           : {}
-      console.error('Persistence Error Details:', {
-        message: errorDetails.message,
-        details: errorDetails.details,
-        hint: errorDetails.hint,
-        code: errorDetails.code,
-        fullError: err
-      })
+
+      // CONCURRENT_EDIT_CONFLICT isn't an error per se — another tab won.
+      // We already set conflictDetected before throwing; don't show the
+      // generic "Save Failed" indicator on top of the conflict banner.
+      if (errorDetails.message === 'CONCURRENT_EDIT_CONFLICT') {
+        console.warn('Save blocked by concurrent edit; conflict banner shown.')
+      } else {
+        setSaveFailed(true)
+        console.error('Persistence Error Details:', {
+          message: errorDetails.message,
+          details: errorDetails.details,
+          hint: errorDetails.hint,
+          code: errorDetails.code,
+          fullError: err
+        })
+      }
     } finally {
       setIsSaving(false)
       saveLockRef.current = false
@@ -1317,23 +1734,34 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
   // ── Instant auto-save on clicking out of section ─────────────────────────────
   useEffect(() => {
+    // Do not promote a brand-new /draft just because the user switched
+    // sections. Let the normal debounced save capture the current editing
+    // burst; otherwise the route can promote from an older snapshot and
+    // overwrite edits typed immediately after the section switch.
+    if (persistedResumeId === 'draft') return
+
     if (hasUnsavedChanges && !needsOverflowTrim) {
       forceSave()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expandedSection, needsOverflowTrim])
+  }, [expandedSection, needsOverflowTrim, persistedResumeId])
 
   useEffect(() => {
     if (!needsOverflowTrim || !resumeData || isLoading || isPaginationSettling) return
 
     if (!isOverPageLimit) {
       setNeedsOverflowTrim(false)
+      setOverflowTrimUnresolved(false)
       return
     }
 
     const trimmedStep = applyOverflowTrimStep(resumeData, visibility)
     if (!trimmedStep) {
+      // Trim conservatively only touches trailing bullets. If we're still over
+      // the limit after every trailing bullet is hidden, we surface a warning
+      // banner instead of silently hiding entire sections.
       setNeedsOverflowTrim(false)
+      setOverflowTrimUnresolved(true)
       return
     }
 
@@ -1346,14 +1774,48 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     setVisibility(trimmedStep.nextVisibility)
   }, [dismissGhostSections, needsOverflowTrim, resumeData, visibility, isLoading, isPaginationSettling, isOverPageLimit])
 
-  // ── beforeunload guard ──────────────────────────────────────────────────────
+  // ── beforeunload + visibility-change guards ────────────────────────────────
+  // beforeunload: when the tab is closing, prompt the user if there are unsaved
+  // changes so the browser gives us a small grace period to persist the buffer.
+  // visibilitychange: when the tab goes to background or is being put to sleep
+  // (mobile / pwa lifecycle), fire forceSave eagerly — this is the modern
+  // best-practice trigger that fires more reliably than beforeunload.
   useEffect(() => {
-    function handleUnload() {
-      clearTimeout(saveTimerRef.current)
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnsavedChanges) return
+      // Best-effort: fire the save (async); browsers won't wait for the
+      // promise but will let the queued microtasks run during unload.
+      void forceSave()
+      // Prompts the "Leave site?" dialog in most browsers; the actual text
+      // is browser-controlled — `returnValue` only needs to be truthy.
+      event.preventDefault()
+      event.returnValue = ''
     }
-    window.addEventListener('beforeunload', handleUnload)
-    return () => window.removeEventListener('beforeunload', handleUnload)
-  }, [resumeId, userId, supabase, hasUnsavedChanges])
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden' && hasUnsavedChanges && resumeData) {
+        // Defensive: stash a recovery snapshot to sessionStorage. If the OS
+        // suspends the tab before the async forceSave RPC completes, the
+        // next time the user opens this resume we can offer to restore.
+        writeDraftRecovery(resumeId, {
+          resumeData,
+          visibility,
+          templateConfig,
+          title: resumeTitle,
+          savedAt: Date.now(),
+        })
+        void forceSave()
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges])
 
   function handleDataChange(updated: ResumeData) {
     if (resumeData) history.pushHistory(resumeData, visibility)
@@ -1477,11 +1939,13 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         const currentItems = previous[indexedSectionId]
         if (currentItems.length > requestedIndex) return previous
 
-        const nextItems = [...currentItems]
-        while (nextItems.length <= requestedIndex) {
-          nextItems.push(createEmptySectionItem(indexedSectionId))
-        }
+        // Only honour click-to-create for the NEXT slot (index === length).
+        // Stale clicks on already-deleted items used to silently spawn
+        // multiple empty entries — e.g. click "experience.5.title" with 0
+        // items used to create 5 empty entries. Now we no-op those.
+        if (requestedIndex !== currentItems.length) return previous
 
+        const nextItems = [...currentItems, createEmptySectionItem(indexedSectionId)]
         return {
           ...previous,
           [indexedSectionId]: nextItems,
@@ -1500,12 +1964,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
 
         const currentItems = customSections[idx].items || []
         if (currentItems.length > requestedIndex) return previous
+        // Same guard as above — only allow appending one entry at the tail.
+        if (requestedIndex !== currentItems.length) return previous
 
-        const nextItems = [...currentItems]
-        while (nextItems.length <= requestedIndex) {
-          nextItems.push({ company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] })
-        }
-
+        const nextItems = [...currentItems, { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }]
         customSections[idx] = { ...customSections[idx], items: nextItems }
         return { ...previous, customSections }
       })
@@ -1555,6 +2017,38 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       setTailorError('Job description must contain at least 20 words.')
       return
     }
+
+    // sessionStorage cache: keyed by (resumeId, intensity, resume signature,
+    // JD hash). Identical re-runs skip the network round trip and don't burn
+    // AI tokens — common when the user goes back to the tailor panel after
+    // applying suggestions to read them again.
+    const cacheKey = (() => {
+      try {
+        const resumeSig = JSON.stringify(visibleData)
+        const jdHash = jobDescription.trim().slice(0, 4000)
+        return `rezoomed:tailor-cache:${resumeId}:${tailorIntensity}:${resumeSig.length}:${jdHash.length}:${jdHash.slice(0, 80)}`
+      } catch {
+        return null
+      }
+    })()
+
+    if (cacheKey && typeof window !== 'undefined') {
+      try {
+        const cached = window.sessionStorage.getItem(cacheKey)
+        if (cached) {
+          const parsed = JSON.parse(cached) as { savedAt: number; analysis: TailorAnalysis }
+          if (Date.now() - parsed.savedAt < 1000 * 60 * 30) {
+            setTailorError(null)
+            setTailorAnalysis(parsed.analysis)
+            return
+          }
+          window.sessionStorage.removeItem(cacheKey)
+        }
+      } catch {
+        // Ignore cache read failures.
+      }
+    }
+
     setTailorError(null)
     setIsTailoring(true)
     try {
@@ -1574,6 +2068,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
       }
       if (json.success) {
         setTailorAnalysis(json.data)
+        if (cacheKey && typeof window !== 'undefined') {
+          try {
+            window.sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({ savedAt: Date.now(), analysis: json.data })
+            )
+          } catch {
+            // sessionStorage may be full; cache is best-effort.
+          }
+        }
       } else {
         setTailorError(json.error ?? 'Tailor analysis failed.')
       }
@@ -1644,23 +2148,53 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     }
   }
 
-  function handleApplyAIInsightFix(suggestion: InsightSuggestionLike) {
+  function handleApplyAIInsightFix(
+    suggestion: InsightSuggestionLike,
+    options?: { silent?: boolean }
+  ) {
+    // Functional updater so Apply-All can chain suggestions correctly (each
+    // build on the previous one's result, not the pre-loop snapshot).
+    let didApply = false
+    let appliedPrevious: ResumeData | null = null
     setResumeData(previous => {
       if (!previous) return previous
       const updated = applyInsightSuggestionToResumeData(previous, suggestion)
       if (updated === previous) return previous
-      history.pushHistory(previous, visibility)
-      builderAnalytics.trackSectionEdit(suggestion.sectionHint, 'edit')
-      if (isGhostResumeSectionId(suggestion.sectionHint)) {
-        dismissGhostSections(suggestion.sectionHint)
-      }
-      
-      // Expand and scroll to the section being fixed
-      setExpandedSection(suggestion.sectionHint)
-      scrollToSection(suggestion.sectionHint)
-
+      didApply = true
+      appliedPrevious = previous
       return updated
     })
+
+    if (!didApply) return
+
+    // Push ONE undo entry per Apply-All run (only on the first silent apply or
+    // a non-silent single apply). For the silent intermediates we skip the
+    // push so "undo" cleanly reverts the entire Apply-All in one keystroke
+    // instead of N keystrokes through each suggestion.
+    const isSilent = options?.silent === true
+    if (!isSilent && appliedPrevious) {
+      history.pushHistory(appliedPrevious, visibility)
+    } else if (isSilent && appliedPrevious && !applyAllOriginRef.current) {
+      // First silent apply in the batch — record the pre-batch state so undo
+      // restores it in one go.
+      applyAllOriginRef.current = appliedPrevious
+      history.pushHistory(appliedPrevious, visibility)
+    }
+    // After a non-silent apply (the last one in a batch, or a one-off), clear
+    // the batch-origin ref so the next Apply-All starts fresh.
+    if (!isSilent) {
+      applyAllOriginRef.current = null
+    }
+
+    builderAnalytics.trackSectionEdit(suggestion.sectionHint, 'edit')
+    if (isGhostResumeSectionId(suggestion.sectionHint)) {
+      dismissGhostSections(suggestion.sectionHint)
+    }
+
+    if (!isSilent) {
+      setExpandedSection(suggestion.sectionHint)
+      scrollToSection(suggestion.sectionHint)
+    }
   }
 
   const visibleData = useMemo(
@@ -1876,7 +2410,40 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         .resume-canvas {
             box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
         }
+
+        /* Cmd-P / browser native print would render the editor chrome, not the
+           resume — and the output looks broken. Intercept print and show a
+           single instruction page directing users to the Download PDF button. */
+        @media print {
+          body > *:not(#builder-print-notice) { display: none !important; }
+          #builder-print-notice { display: flex !important; }
+        }
       `}</style>
+
+      {/* Hidden by default; shown only when the browser enters print mode. */}
+      <div
+        id="builder-print-notice"
+        style={{
+          display: 'none',
+          position: 'fixed',
+          inset: 0,
+          background: '#fff',
+          color: '#0f172a',
+          padding: '4rem',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          fontFamily: 'system-ui, sans-serif',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}
+      >
+        <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Use the Download button</h1>
+        <p style={{ fontSize: '14px', maxWidth: '480px', lineHeight: 1.5, color: '#475569' }}>
+          Browser print would output the editor, not your resume. Cancel this dialog and click the
+          <strong> Download </strong> button at the top right to export a clean ATS-friendly PDF.
+        </p>
+      </div>
       
       {/* ── Optic Curator Layout Root ── */}
       <div className="bg-background font-body text-on-surface selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
@@ -1917,17 +2484,22 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 ref={titleInputRef}
                 type="text"
                 value={resumeTitle}
+                maxLength={120}
                 onChange={e => setResumeTitle(normalizeResumeTitle(e.target.value))}
                 onFocus={() => setIsTitleFocused(true)}
                 onBlur={async () => {
                   setIsTitleFocused(false)
                   const normalizedTitle = normalizeResumeTitle(resumeTitle)
                   setResumeTitle(normalizedTitle)
-                  if (resumeId === 'draft') return
+                  if (persistedResumeId === 'draft') return
+                  // If an autosave is mid-flight we'd race against forceSave,
+                  // so defer until the lock is clear. forceSave will also
+                  // pick up the new title from titleSnapshot.
+                  if (saveLockRef.current) return
                   await supabase
                     .from('resumes')
                     .update({ title: normalizedTitle || 'Untitled Resume' })
-                    .eq('id', resumeId)
+                    .eq('id', persistedResumeId)
                     .eq('user_id', userId)
                 }}
                 placeholder="Untitled Resume"
@@ -2084,8 +2656,16 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </div>
         </header>
 
+        {/* Banner priority (only one shown at a time so they don't stack on
+            top of each other at the same fixed position):
+              1. Conflict (must refresh)
+              2. Recovery (restore unsaved edits)
+              3. Overflow unresolved (resume too long after trim)
+              4. Page-count warning (>2 pages)
+              5. Score shift (scorer migration) */}
+
         {/* Page-count warning banner */}
-        {isOverRecommendedPages && !isPageWarningDismissed && (
+        {!conflictDetected && !recoveryOffer && !overflowTrimUnresolved && isOverRecommendedPages && !isPageWarningDismissed && (
           <div className="fixed top-[57px] left-0 right-0 z-40 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-semibold px-4 py-1.5 flex items-center justify-center gap-2">
             <span>Your resume is {pageCount} pages. For best results, keep it to 1-2 pages.</span>
             <button onClick={() => setIsPageWarningDismissed(true)} className="p-0.5 hover:bg-amber-200/50 rounded-full transition-colors" aria-label="Dismiss warning">
@@ -2094,8 +2674,116 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </div>
         )}
 
+        {/* Overflow auto-trim couldn't bring the resume under the page limit.
+            We no longer hide sections silently; we tell the user what's left
+            to manually shorten. */}
+        {!conflictDetected && !recoveryOffer && overflowTrimUnresolved && (
+          <div className="fixed top-[57px] left-0 right-0 z-40 bg-rose-50 border-b border-rose-200 text-rose-900 text-xs font-semibold px-4 py-1.5 flex items-center justify-center gap-3">
+            <span>
+              Your resume is still over {MAX_PAGES} pages even after auto-trimming. Manually shorten experience bullets, hide a section, or split into multiple resumes.
+            </span>
+            <button
+              onClick={() => setOverflowTrimUnresolved(false)}
+              className="p-0.5 hover:bg-rose-200/50 rounded-full transition-colors"
+              aria-label="Dismiss overflow warning"
+            >
+              <X size={14} className="opacity-70 hover:opacity-100" />
+            </button>
+          </div>
+        )}
+
+        {/* Draft recovery offer — fires when sessionStorage holds a snapshot
+            newer than the DB row (last edit session was interrupted before
+            its autosave RPC completed). */}
+        {recoveryOffer && !conflictDetected && (
+          <div className="fixed top-[57px] left-0 right-0 z-50 bg-blue-50 border-b border-blue-200 text-blue-900 text-xs font-semibold px-4 py-2 flex items-center justify-center gap-3">
+            <span>
+              We found unsaved edits from {new Date(recoveryOffer.savedAt).toLocaleTimeString()}. Restore them?
+            </span>
+            <button
+              onClick={() => {
+                setResumeData(recoveryOffer.resumeData)
+                setVisibility(recoveryOffer.visibility)
+                setTemplateConfig(recoveryOffer.templateConfig)
+                setResumeTitle(recoveryOffer.title)
+                clearDraftRecovery(resumeId)
+                setRecoveryOffer(null)
+              }}
+              className="rounded-full bg-blue-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-blue-700 transition-colors"
+            >
+              Restore
+            </button>
+            <button
+              onClick={() => {
+                clearDraftRecovery(resumeId)
+                setRecoveryOffer(null)
+              }}
+              className="rounded-full border border-blue-300 bg-white px-3 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        )}
+
+        {/* Concurrent-edit conflict banner — fires when optimistic concurrency
+            detects that another tab/device wrote this resume after we loaded it. */}
+        {conflictDetected && (
+          <div className="fixed top-[57px] left-0 right-0 z-50 bg-rose-50 border-b border-rose-200 text-rose-900 text-xs font-semibold px-4 py-2 flex items-center justify-center gap-3">
+            <span>
+              This resume was edited from another tab or device. Refresh to see the latest version. (Your unsaved changes here will be lost.)
+            </span>
+            <button
+              onClick={() => window.location.reload()}
+              className="rounded-full bg-rose-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-rose-700 transition-colors"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => setConflictDetected(false)}
+              className="p-0.5 hover:bg-rose-200/50 rounded-full transition-colors"
+              aria-label="Dismiss conflict banner"
+            >
+              <X size={14} className="opacity-70 hover:opacity-100" />
+            </button>
+          </div>
+        )}
+
+        {/* Scorer-version migration banner — shown once after we update the
+            scoring methodology so users understand why their number moved. */}
+        {scoreShift && !isOverRecommendedPages && !conflictDetected && !recoveryOffer && !overflowTrimUnresolved && (
+          <div className="fixed top-[57px] left-0 right-0 z-40 bg-emerald-50 border-b border-emerald-200 text-emerald-900 text-xs font-semibold px-4 py-1.5 flex items-center justify-center gap-3">
+            <span>
+              ATS scoring updated — your score moved from <span className="font-bold">{scoreShift.from}</span> to <span className="font-bold">{scoreShift.to}</span>. The new model gives more credit for project & volunteer work and catches keyword stuffing.
+            </span>
+            <button
+              onClick={() => {
+                try {
+                  window.localStorage.setItem(`rezoomed:scorer-update-acknowledged:v${SCORER_VERSION}`, '1')
+                } catch {
+                  // Ignore localStorage failures; banner just reappears next load.
+                }
+                setScoreShift(null)
+              }}
+              className="p-0.5 hover:bg-emerald-200/50 rounded-full transition-colors"
+              aria-label="Dismiss scoring update banner"
+            >
+              <X size={14} className="opacity-70 hover:opacity-100" />
+            </button>
+          </div>
+        )}
+
         {/* ── Main Workspace ── */}
-        <main className={`flex h-screen ${(isOverRecommendedPages && !isPageWarningDismissed) ? 'pt-[88px]' : 'pt-16'}`}>
+        {/* Any active top banner needs ~32px of extra padding so the editor
+            chrome below isn't hidden under it. */}
+        <main className={`flex h-screen ${
+          conflictDetected ||
+          recoveryOffer ||
+          overflowTrimUnresolved ||
+          (isOverRecommendedPages && !isPageWarningDismissed) ||
+          scoreShift
+            ? 'pt-[88px]'
+            : 'pt-16'
+        }`}>
           
           {/* Left Sidebar: EDITOR SECTIONS */}
           <aside style={{ width: isLeftCollapsed ? 48 : leftWidth }} className="bg-surface-container-low border-r border-outline-variant/10 flex flex-col shrink-0 relative transition-[width] duration-300">
@@ -2124,7 +2812,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 </button>
               ) : (
                 <div
-                  className="flex-1 overflow-y-auto"
+                  className="flex-1 overflow-y-auto rezoomed-thin-scrollbar"
                   onFocusCapture={() => setIsEditorFocused(true)}
                   onBlurCapture={(event) => {
                     const nextTarget = event.relatedTarget
@@ -2148,6 +2836,14 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                     onSectionAction={(sectionType, action) => builderAnalytics.trackSectionEdit(sectionType, action)}
                     onSubSectionEditorOpened={(sectionType, subSectionId) =>
                       builderAnalytics.trackSubSectionEditorOpened(sectionType, subSectionId)
+                    }
+                    contactLinkToggles={
+                      typeof templateConfig.contactLinksClickable === 'object' && templateConfig.contactLinksClickable !== null
+                        ? templateConfig.contactLinksClickable
+                        : undefined
+                    }
+                    onContactLinkTogglesChange={(toggles) =>
+                      setTemplateConfig({ ...templateConfig, contactLinksClickable: toggles })
                     }
                   />
                 </div>
@@ -2227,7 +2923,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               isEditing={false}
               showEmptyStateGuidance
               highlightedSectionId={null}
-              ghostSections={ghostSections}
+              /* Ghost sections deliberately omitted from the measurement
+                 wrapper — they're editor-only guidance and don't appear in
+                 the downloaded PDF, so measuring with them would produce a
+                 preview page count that doesn't match the export. */
               onFieldChange={() => {}}
               sectionOrder={orderedSections}
               sidebarSectionOrder={orderedSidebarSections}
@@ -2333,7 +3032,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                             isEditing={false}
                             showEmptyStateGuidance
                             highlightedSectionId={null}
-                            ghostSections={ghostSections}
+                            /* No ghostSections in visible preview either —
+                               WYSIWYG with the downloaded PDF. The section
+                               list in the editor sidebar already surfaces
+                               which sections are empty. */
                             onFieldChange={() => {}}
                             sectionOrder={orderedSections}
                             sidebarSectionOrder={orderedSidebarSections}
@@ -2490,6 +3192,8 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         onConfigChange={setTemplateConfig}
         onClose={() => setIsTemplateModalOpen(false)}
         resumeData={visibleData ?? resumeData}
+        sectionOrder={orderedSections}
+        sidebarSectionOrder={orderedSidebarSections}
       />
       <ProGateModal feature={blockedFeature} onClose={clearBlockedFeature} />
     </>
@@ -2519,9 +3223,21 @@ export default function BuilderPage() {
   const resumeId = params.resumeId as string
   const [profileState, setProfileState] = useState<Profile | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
-  const [isMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false) // Updated breakpoint to handle 3 columns comfortably
+  // Track viewport reactively so rotation / window-resize doesn't strand the
+  // user on the mobile dead-end after they widen their window.
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 1024 : false
+  )
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 1024)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     async function checkAuth() {
@@ -2543,17 +3259,20 @@ export default function BuilderPage() {
     )
   }
 
-  if (isMobile) {
-    return <MobileFallback />
-  }
-
+  // BuilderInner stays mounted even when the viewport is too small — we just
+  // overlay the MobileFallback on top via CSS. Rotating tablet/phone from
+  // landscape→portrait and back used to unmount BuilderInner and discard the
+  // user's undo history + unsaved buffer. Keeping it mounted preserves state.
   return (
     <PlanProvider isPro={profileState.plan === 'pro'} profile={profileState}>
-      <BuilderInner
-        resumeId={resumeId}
-        isPro={profileState.plan === 'pro'}
-        profile={profileState}
-      />
+      <div className={isMobile ? 'pointer-events-none invisible h-0 overflow-hidden' : ''}>
+        <BuilderInner
+          resumeId={resumeId}
+          isPro={profileState.plan === 'pro'}
+          profile={profileState}
+        />
+      </div>
+      {isMobile && <MobileFallback />}
     </PlanProvider>
   )
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Link as LinkIcon } from 'lucide-react'
 import type { ResumeData, AwardItem } from '@/types'
 import { useFocusFieldPath } from './useFocusFieldPath'
 
@@ -38,6 +38,7 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
           <input
             type="text"
             value={award.title}
+            maxLength={200}
             data-field-path={`awards.${i}.title`}
             onChange={(e) => updateItem(i, { ...award, title: e.target.value })}
             placeholder="Award title"
@@ -46,6 +47,7 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
           <input
             type="text"
             value={award.issuer}
+            maxLength={200}
             data-field-path={`awards.${i}.issuer`}
             onChange={(e) => updateItem(i, { ...award, issuer: e.target.value })}
             placeholder="Issuer"
@@ -54,6 +56,7 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
           <input
             type="text"
             value={award.date}
+            maxLength={32}
             data-field-path={`awards.${i}.date`}
             onChange={(e) => updateItem(i, { ...award, date: e.target.value })}
             placeholder="Year"
@@ -62,6 +65,18 @@ export default function AwardsEditor({ data, onChange, focusPath, onFocusHandled
           <button onClick={() => removeItem(i)} className="col-span-2 mt-1 text-gray-300 hover:text-red-500 transition-colors justify-self-end md:col-span-1" aria-label="Remove">
             <X size={13} />
           </button>
+          <div className="col-span-12 relative">
+            <LinkIcon size={13} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="url"
+              value={award.url ?? ''}
+              maxLength={500}
+              data-field-path={`awards.${i}.url`}
+              onChange={(e) => updateItem(i, { ...award, url: e.target.value })}
+              placeholder="Link (optional)"
+              className="w-full min-w-0 rounded border border-gray-200 pl-7 pr-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
         </div>
       ))}
       <button

@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, X, ChevronDown, ChevronUp, Link as LinkIcon } from 'lucide-react'
 import type { ResumeData, ExperienceItem } from '@/types'
 import { useFocusFieldPath } from './useFocusFieldPath'
+import AutoGrowTextarea from './AutoGrowTextarea'
 
 interface EditorProps {
   data: ResumeData
@@ -104,19 +105,25 @@ export default function VolunteerEditor({ data, onChange, focusPath, onFocusHand
             <div className="px-3 pb-3 pt-1 space-y-2 border-t border-gray-100">
               {(
                 [
-                  ['title', 'Role Title'],
-                  ['company', 'Organisation'],
-                  ['location', 'Location'],
-                  ['startDate', 'Start Date'],
-                  ['endDate', 'End Date'],
-                ] as [keyof ExperienceItem, string][]
-              ).map(([key, label]) => (
+                  ['title', 'Role Title', null],
+                  ['company', 'Organisation', null],
+                  ['location', 'Location', null],
+                  ['startDate', 'Start Date', null],
+                  ['endDate', 'End Date', null],
+                  ['url', 'Link (optional)', <LinkIcon key="link-icon" size={11} className="text-gray-400" />],
+                ] as [keyof ExperienceItem, string, React.ReactNode][]
+              ).map(([key, label, icon]) => (
                 <div key={key}>
-                  <label className="block text-xs text-gray-500 mb-0.5">{label}</label>
+                  <label className="flex items-center gap-1 text-xs text-gray-500 mb-0.5">
+                    {icon}
+                    {label}
+                  </label>
                   <input
-                    type="text"
+                    type={key === 'url' ? 'url' : 'text'}
                     value={(role[key] as string) ?? ''}
                     data-field-path={`volunteer.${i}.${key}`}
+                    placeholder={key === 'url' ? 'https://organization.org' : undefined}
+                    maxLength={key === 'url' ? 500 : undefined}
                     onChange={(e) => updateItem(i, { ...role, [key]: e.target.value })}
                     className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
@@ -127,12 +134,13 @@ export default function VolunteerEditor({ data, onChange, focusPath, onFocusHand
                 <div className="space-y-1">
                   {role.bullets.map((bullet, bi) => (
                     <div key={bi} className="flex items-start gap-1">
-                      <textarea
+                      <AutoGrowTextarea
                         value={bullet}
                         data-field-path={`volunteer.${i}.bullets.${bi}`}
                         onChange={(e) => updateBullet(i, bi, e.target.value)}
-                        rows={2}
-                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        maxLength={2000}
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        minHeight={36}
                       />
                       <button onClick={() => removeBullet(i, bi)} className="mt-1 text-gray-300 hover:text-red-500 transition-colors" aria-label="Remove bullet">
                         <X size={13} />

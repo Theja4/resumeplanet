@@ -286,7 +286,9 @@ export function verifyPolarWebhookSignature(params: {
   }
 
   const timestampMs = Number(webhookTimestamp) * 1000
-  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 5 * 60 * 1000) {
+  // 10 minute tolerance — Vercel function container clocks can drift a few
+  // seconds. 5min was rejecting valid webhooks during retry storms.
+  if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > 10 * 60 * 1000) {
     return false
   }
 

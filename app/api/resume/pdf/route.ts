@@ -1,12 +1,24 @@
 import { existsSync } from 'node:fs'
 import { NextRequest, NextResponse } from 'next/server'
-import chromium from '@sparticuz/chromium'
-import puppeteer from 'puppeteer-core'
 import { PDFDocument } from 'pdf-lib'
 import { buildFirstPartyResumeMetadata } from '@/lib/firstPartyResumeMarker'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { ResumeData, UniversalConfig } from '@/types'
+
+// Puppeteer + chromium are heavy (~50 MB each). Dynamic-import inside the
+// handler so any unrelated route that touches this file's siblings doesn't
+// pay the cold-start cost.
+type ChromiumModule = typeof import('@sparticuz/chromium')['default']
+type PuppeteerModule = typeof import('puppeteer-core')['default']
+
+async function loadChromiumDeps(): Promise<{ chromium: ChromiumModule; puppeteer: PuppeteerModule }> {
+  const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
+    import('@sparticuz/chromium'),
+    import('puppeteer-core'),
+  ])
+  return { chromium, puppeteer }
+}
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -56,7 +68,7 @@ function findLocalChromeExecutable() {
   return candidates.find(candidate => existsSync(candidate)) ?? null
 }
 
-async function getExecutablePath() {
+async function getExecutablePath(chromium: ChromiumModule) {
   const localChrome = findLocalChromeExecutable()
 
   if (localChrome) {
@@ -114,10 +126,11 @@ export async function POST(request: NextRequest) {
   const config = sanitizeUniversalConfig(payload.config)
   const origin = getRequestOrigin(request)
   const filename = sanitizeFilename(payload.filename, payload.data.name || 'resume')
+  const { chromium, puppeteer } = await loadChromiumDeps()
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null
 
   try {
-    const executablePath = await getExecutablePath()
+    const executablePath = await getExecutablePath(chromium)
     const isLocal = Boolean(findLocalChromeExecutable())
 
     browser = await puppeteer.launch({

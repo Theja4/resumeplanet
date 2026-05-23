@@ -86,6 +86,17 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['pdfjs-dist', 'mammoth'],
   outputFileTracingIncludes: {
     '/api/resume/pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+    // pdfjs needs the bundled CMap tables + standard PDF fonts to extract
+    // text from CJK / Devanagari / Arabic / Thai / Hebrew resumes correctly.
+    // Without these, non-Latin text comes back as unmapped CIDs.
+    '/api/resume/parse': [
+      './node_modules/pdfjs-dist/cmaps/**/*',
+      './node_modules/pdfjs-dist/standard_fonts/**/*',
+    ],
+    '/api/ats/extract-text': [
+      './node_modules/pdfjs-dist/cmaps/**/*',
+      './node_modules/pdfjs-dist/standard_fonts/**/*',
+    ],
   },
   images: {
     // Serve AVIF when the browser supports it, fall back to WebP otherwise.

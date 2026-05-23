@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, List, AlignLeft, Tags, Loader2, User, GripVertical } from 'lucide-react'
+import { X, List, AlignLeft, Tags, Loader2, User, GripVertical, SeparatorHorizontal } from 'lucide-react'
 import type { CustomSectionType } from '@/types'
 import {
   DndContext, DragOverlay, closestCorners,
-  KeyboardSensor, PointerSensor, useSensor, useSensors, useDroppable,
+  KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, useDroppable,
   type DragStartEvent, type DragEndEvent, type DragOverEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext, sortableKeyboardCoordinates,
   verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
-import type { ResumeData, BuilderVisibility, UniversalConfig } from '@/types'
+import type { ContactLinkToggles, ResumeData, BuilderVisibility, UniversalConfig } from '@/types'
 import { DEFAULT_VISIBILITY } from '@/types'
 import SortableSectionRow from './SortableSectionRow'
 import ContactEditor from './ContactEditor'
@@ -49,6 +49,11 @@ interface Props {
     action: 'edit' | 'reorder' | 'toggle_visibility' | 'add' | 'delete'
   ) => void
   onSubSectionEditorOpened?: (sectionType: string, subSectionId: string) => void
+  // Per-field contact-link toggles (rendered as inline link buttons in
+  // ContactEditor). Optional — when omitted the toggles still draw but the
+  // buttons are non-functional. Builder passes them in normally.
+  contactLinkToggles?: ContactLinkToggles
+  onContactLinkTogglesChange?: (toggles: ContactLinkToggles) => void
 }
 
 // Thin droppable wrappers — needed so empty columns can receive cross-column drops
@@ -75,9 +80,16 @@ export default function SectionList({
   isDisabled = false,
   onSectionAction,
   onSubSectionEditorOpened,
+  contactLinkToggles,
+  onContactLinkTogglesChange,
 }: Props) {
+  // Separate mouse + touch sensors. The PointerSensor's distance:5 activation
+  // hijacks vertical scrolling on iPad — any 5px swipe became a drag. Splitting
+  // by input type lets us use long-press for touch (250ms) and stay snappy on
+  // mouse (5px distance).
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -88,22 +100,51 @@ export default function SectionList({
 
   const isSidebarLayout = layout?.startsWith('sidebar')
 
+  function getLocalOrdersFromVisibility(currentVisibility: BuilderVisibility) {
+    const primary = (currentVisibility.sectionOrder || []).filter(id => id !== 'contact')
+    const secondary = (currentVisibility.sidebarSectionOrder || []).filter(id => id !== 'contact')
+
+    if (isSidebarLayout) {
+      return { primary, secondary }
+    }
+
+    const seen = new Set<string>()
+    const singleColumn = [...primary, ...secondary].filter(id => {
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+
+    return { primary: singleColumn, secondary: [] }
+  }
+
   // Local ordering state — mirrors props when idle, mutated during within-column drag
   const [localPrimary, setLocalPrimary] = useState<string[]>(() =>
-    (visibility.sectionOrder || []).filter(id => id !== 'contact')
+    getLocalOrdersFromVisibility(visibility).primary
   )
   const [localSecondary, setLocalSecondary] = useState<string[]>(() =>
-    (visibility.sidebarSectionOrder || []).filter(id => id !== 'contact')
+    getLocalOrdersFromVisibility(visibility).secondary
   )
 
-  // Sync from props whenever not mid-drag
+  // Sync from props whenever not mid-drag. If a drag never ends cleanly (e.g.
+  // the user releases over a non-droppable area, browser tab-switch quirk),
+  // activeId can stick and freeze the section list out of sync with the
+  // parent. Safety net below in useEffect-cleanup form clears activeId after
+  // 5s of inactivity so the list eventually resyncs.
   useEffect(() => {
     if (!activeId) {
+      const nextOrders = getLocalOrdersFromVisibility(visibility)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalPrimary((visibility.sectionOrder || []).filter(id => id !== 'contact'))
-      setLocalSecondary((visibility.sidebarSectionOrder || []).filter(id => id !== 'contact'))
+      setLocalPrimary(nextOrders.primary)
+      setLocalSecondary(nextOrders.secondary)
     }
-  }, [visibility.sectionOrder, visibility.sidebarSectionOrder, activeId])
+  }, [visibility, activeId, isSidebarLayout])
+
+  useEffect(() => {
+    if (!activeId) return
+    const timeoutId = window.setTimeout(() => setActiveId(null), 5000)
+    return () => window.clearTimeout(timeoutId)
+  }, [activeId])
 
   function getSectionLabel(id: string): string {
     if (id.startsWith('custom_')) {
@@ -156,6 +197,7 @@ export default function SectionList({
 
   function handleDragOver({ active, over }: DragOverEvent) {
     if (!over) return
+    if (!isSidebarLayout) return
 
     const aId = active.id as string
     const oId = over.id as string
@@ -183,18 +225,35 @@ export default function SectionList({
 
     const oId = over.id as string
 
-    // Single-column: treat all sections as one flat list
+    // Single-column: treat all sections as one flat list visually, but
+    // preserve the underlying primary/secondary partition from the
+    // persisted visibility. Without this, switching from sidebar→single-
+    // column→sidebar would silently empty the sidebar permanently after the
+    // first drag.
     if (!isSidebarLayout) {
       const combined = [...localPrimary, ...localSecondary]
       const from = combined.indexOf(aId)
       const to = combined.indexOf(oId)
       if (from === -1 || to === -1) return
       const reordered = arrayMove(combined, from, to)
-      // Preserve which IDs belong to primary vs secondary, just in new order
-      const primarySet = new Set(localPrimary)
-      const finalPrimary = reordered.filter(id => primarySet.has(id))
-      const secondarySet = new Set(localSecondary)
-      const finalSecondary = reordered.filter(id => secondarySet.has(id))
+
+      const persistedPrimary = new Set(
+        (visibility.sectionOrder || []).filter(id => id !== 'contact')
+      )
+      const persistedSecondary = new Set(
+        (visibility.sidebarSectionOrder || []).filter(id => id !== 'contact')
+      )
+
+      // For any id that doesn't appear in EITHER set (newly added section),
+      // default it to primary so it shows up if the user later switches to
+      // sidebar layout.
+      const finalPrimary = reordered.filter(
+        id => persistedPrimary.has(id) || !persistedSecondary.has(id)
+      )
+      const finalSecondary = reordered.filter(id => persistedSecondary.has(id))
+
+      setLocalPrimary(reordered)
+      setLocalSecondary([])
       onVisibilityChange({
         ...visibility,
         sectionOrder: finalPrimary,
@@ -238,13 +297,15 @@ export default function SectionList({
   }
 
   function handleAddCustom() {
-    if (!newTitle.trim()) return
+    // Page break sections don't need a title — they're invisible markers.
+    if (newType !== 'pageBreak' && !newTitle.trim()) return
     const id = `custom_${crypto.randomUUID().split('-')[0]}`
+    const title = newType === 'pageBreak' ? 'Page break' : newTitle.trim()
     onDataChange({
       ...resumeData,
       customSections: [
         ...(resumeData.customSections || []),
-        { id, title: newTitle.trim(), type: newType, text: '', tags: [], items: [] }
+        { id, title, type: newType, text: '', tags: [], items: [] }
       ]
     })
     onVisibilityChange({
@@ -255,7 +316,7 @@ export default function SectionList({
     setNewType('complex')
     setIsAdding(false)
     onSectionAction?.(id, 'add')
-    onExpandSection(id)
+    if (newType !== 'pageBreak') onExpandSection(id)
   }
 
   function handleResetOrder() {
@@ -345,7 +406,14 @@ export default function SectionList({
             {expandedSection === 'contact' && (
               <div className="bg-white border-x border-b border-emerald-200 rounded-b-xl shadow-sm animate-in slide-in-from-top-1 duration-200 overflow-hidden">
                 <div className="bg-emerald-50/30">
-                  <ContactEditor data={resumeData} onChange={onDataChange} focusPath={focusedFieldPath} onFocusHandled={onFocusedFieldHandled} />
+                  <ContactEditor
+                    data={resumeData}
+                    onChange={onDataChange}
+                    focusPath={focusedFieldPath}
+                    onFocusHandled={onFocusedFieldHandled}
+                    contactLinkToggles={contactLinkToggles}
+                    onContactLinkTogglesChange={onContactLinkTogglesChange}
+                  />
                 </div>
               </div>
             )}
@@ -447,14 +515,17 @@ export default function SectionList({
                 <X size={16} />
               </button>
             </div>
-            <input
-              type="text"
-              autoFocus
-              placeholder="E.g. Leadership, Memberships..."
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full px-3.5 py-2 text-sm font-medium border-zinc-200 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 mb-3 placeholder:font-normal"
-            />
+            {newType !== 'pageBreak' && (
+              <input
+                type="text"
+                autoFocus
+                placeholder="E.g. Leadership, Memberships..."
+                value={newTitle}
+                maxLength={80}
+                onChange={(e) => setNewTitle(e.target.value)}
+                className="w-full px-3.5 py-2 text-sm font-medium border-zinc-200 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 mb-3 placeholder:font-normal"
+              />
+            )}
             <div className="flex flex-col gap-2 mb-4">
               <button
                 onClick={() => setNewType('complex')}
@@ -486,13 +557,23 @@ export default function SectionList({
                   <div className="text-[10px] text-zinc-500">Like Summary — Paragraph of custom text</div>
                 </div>
               </button>
+              <button
+                onClick={() => setNewType('pageBreak')}
+                className={`flex gap-3 text-left p-2.5 rounded-lg border transition-all ${newType === 'pageBreak' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900' : 'border-zinc-200 bg-white hover:bg-zinc-50'}`}
+              >
+                <SeparatorHorizontal size={18} className={`shrink-0 ${newType === 'pageBreak' ? 'text-emerald-500' : 'text-zinc-400'}`} />
+                <div>
+                  <div className="text-xs font-bold">Page Break</div>
+                  <div className="text-[10px] text-zinc-500">Force content after this point onto a new page</div>
+                </div>
+              </button>
             </div>
             <button
               onClick={handleAddCustom}
-              disabled={!newTitle.trim()}
+              disabled={newType !== 'pageBreak' && !newTitle.trim()}
               className="w-full py-2.5 bg-primary text-white rounded-lg text-xs font-bold tracking-wide uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
             >
-              Construct Section
+              {newType === 'pageBreak' ? 'Insert Page Break' : 'Construct Section'}
             </button>
           </div>
         )}

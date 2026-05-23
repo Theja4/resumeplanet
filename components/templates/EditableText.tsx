@@ -12,6 +12,12 @@ interface EditableTextProps {
   style?: React.CSSProperties
   as?: React.ElementType
   fallback?: string
+  /**
+   * When true, preserves user-typed newlines (renders with white-space: pre-wrap)
+   * so paragraph text and bullets show line breaks the way the user typed them.
+   * Default: false — keeps the legacy single-line collapse behaviour.
+   */
+  preserveWhitespace?: boolean
 }
 
 export default function EditableText({
@@ -24,15 +30,29 @@ export default function EditableText({
   style,
   as: Tag = 'span',
   fallback,
+  preserveWhitespace = false,
 }: EditableTextProps) {
   if (!value && !fallback) return null
 
   const displayValue = value || fallback || ''
+  const mergedStyle: React.CSSProperties = {
+    ...(isEditing ? style : { ...style, cursor: onNavigateToField ? 'text' : style?.cursor }),
+    ...(preserveWhitespace
+      ? {
+          whiteSpace: 'pre-wrap' as const,
+          // Force-break in the middle of unbreakable strings (long URLs pasted
+          // without spaces) so a single GitHub URL doesn't overflow the page
+          // width and clip in the PDF.
+          overflowWrap: 'anywhere' as const,
+          wordBreak: 'break-word' as const,
+        }
+      : {}),
+  }
 
   return (
     <Tag
       className={className}
-      style={isEditing ? style : { ...style, cursor: onNavigateToField ? 'text' : style?.cursor }}
+      style={mergedStyle}
       data-resume-path={path}
       contentEditable={isEditing || undefined}
       suppressContentEditableWarning

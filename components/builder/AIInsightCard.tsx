@@ -99,20 +99,20 @@ export default function AIInsightCard({ suggestion, onApply, onUndo, isApplied, 
   if (isApplied) {
     return (
       <div
-        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all duration-300 ${accent.appliedBg} ${accent.appliedBorder}`}
+        className={`flex items-center gap-3 p-4 rounded-2xl border transition-all duration-300 ${accent.appliedBg} ${accent.appliedBorder}`}
       >
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/80 shadow-sm shrink-0">
-          <CheckCircle2 size={14} className="text-emerald-500" />
+        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/80 shadow-sm shrink-0">
+          <CheckCircle2 size={16} className="text-emerald-500" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[12px] font-semibold truncate ${accent.appliedText}`}>{suggestion.title}</p>
-          <p className="text-[10px] text-zinc-400 mt-0.5">Fix applied successfully</p>
+          <p className={`text-sm font-semibold truncate ${accent.appliedText}`}>{suggestion.title}</p>
+          <p className="text-xs text-zinc-500 mt-0.5">Fix applied successfully</p>
         </div>
         <button
           onClick={onUndo}
-          className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-500 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 hover:border-zinc-300 hover:text-zinc-700 active:scale-[0.97] transition-all shadow-sm"
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-zinc-600 bg-white border border-zinc-200 rounded-xl hover:bg-zinc-50 hover:border-zinc-300 hover:text-zinc-800 active:scale-[0.97] transition-all shadow-sm"
         >
-          <RotateCcw size={10} />
+          <RotateCcw size={12} />
           Undo
         </button>
       </div>
@@ -132,52 +132,52 @@ export default function AIInsightCard({ suggestion, onApply, onUndo, isApplied, 
         style={{ backgroundColor: accent.bar }}
       />
 
-      <div className="pl-5 pr-4 pt-4 pb-4">
+      <div className="pl-6 pr-5 pt-5 pb-5">
         {/* Header */}
-        <div className="flex items-start gap-2.5 mb-3.5">
+        <div className="flex items-start gap-3 mb-4">
           <div
-            className={`flex items-center justify-center w-8 h-8 rounded-xl shrink-0 transition-transform duration-200 group-hover:scale-110 ${accent.iconBg} ${accent.iconColor}`}
+            className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-transform duration-200 group-hover:scale-110 ${accent.iconBg} ${accent.iconColor}`}
           >
-            <Sparkles size={14} />
+            <Sparkles size={16} />
           </div>
           <div className="flex-1 min-w-0">
             <span
-              className={`inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border mb-1.5 ${colorClass}`}
+              className={`inline-flex items-center text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border mb-2 ${colorClass}`}
             >
               {label}
             </span>
-            <h3 className="text-[13px] font-bold text-zinc-800 leading-snug">{suggestion.title}</h3>
-            <div className="mt-1 flex items-center gap-2 text-[10px]">
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">
+            <h3 className="text-base font-bold text-zinc-900 leading-snug">{suggestion.title}</h3>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 font-bold text-emerald-700">
                 +{suggestion.estimatedPoints} pts
               </span>
-              <span className="text-zinc-400">{suggestion.reasoning}</span>
+              <span className="text-zinc-500 leading-relaxed">{suggestion.reasoning}</span>
             </div>
           </div>
         </div>
 
         {/* Before → After comparison */}
         {suggestion.beforeText && suggestion.afterText && (
-          <div className="space-y-1 mb-4">
+          <div className="space-y-1.5 mb-5">
             {/* Before */}
-            <div className="rounded-xl px-3 py-2.5 bg-zinc-50 border border-zinc-100">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Before</p>
-              <p className="text-[11px] leading-relaxed text-zinc-400 line-through decoration-zinc-300">
+            <div className="rounded-xl px-4 py-3 bg-zinc-50 border border-zinc-100">
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Before</p>
+              <p className="text-sm leading-relaxed text-zinc-500 line-through decoration-zinc-300">
                 {suggestion.beforeText}
               </p>
             </div>
 
             {/* Arrow */}
-            <div className="flex justify-center py-0.5">
-              <div className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-100">
-                <ArrowDown size={11} className="text-zinc-400" />
+            <div className="flex justify-center py-1">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100">
+                <ArrowDown size={13} className="text-zinc-400" />
               </div>
             </div>
 
             {/* After */}
-            <div className={`rounded-xl px-3 py-2.5 border ${accent.afterBg}`}>
-              <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1">After</p>
-              <p className={`text-[11px] leading-relaxed font-semibold ${accent.afterText}`}>
+            <div className={`rounded-xl px-4 py-3 border ${accent.afterBg}`}>
+              <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1.5">After</p>
+              <p className={`text-sm leading-relaxed font-semibold ${accent.afterText}`}>
                 {suggestion.afterText}
               </p>
             </div>
@@ -187,14 +187,14 @@ export default function AIInsightCard({ suggestion, onApply, onUndo, isApplied, 
         {/* Apply button */}
         <button
           onClick={onApply}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-primary text-white text-xs font-bold rounded-xl
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white text-sm font-bold rounded-xl
             hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/25
             active:scale-[0.98] active:shadow-none
             group-hover:shadow-md group-hover:shadow-primary/15
             transition-all duration-150
             disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
-          <Sparkles size={12} className="transition-transform duration-200 group-hover:rotate-12" />
+          <Sparkles size={14} className="transition-transform duration-200 group-hover:rotate-12" />
           Apply Fix
         </button>
       </div>

@@ -7,7 +7,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -234,12 +235,16 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   const titleRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const focusSectionIndex = focusPath?.startsWith('skillSections.') ? parseInt(focusPath.split('.')[1], 10) : null
 
+  // Split mouse + touch sensors so iPad scrolling inside the skill list isn't
+  // hijacked into drag mode. Long-press initiates drag on touch.
   const chipSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
   const sectionSensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 

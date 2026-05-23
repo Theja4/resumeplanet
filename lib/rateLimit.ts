@@ -14,6 +14,20 @@ type RateLimitScope =
   | 'metadata_audit_authenticated'
   | 'ats_insights_authenticated'
   | 'ats_optimise_authenticated'
+  | 'ats_tailor_authenticated'
+
+// Scopes guarding expensive AI calls. We fail CLOSED on Supabase RPC errors for
+// these to prevent unbounded LLM token spend if the rate-limit RPC is down.
+const AI_SCOPES = new Set<RateLimitScope>([
+  'ats_score_authenticated',
+  'ats_score_anonymous',
+  'match_score_authenticated',
+  'cover_letter_generate_authenticated',
+  'metadata_audit_authenticated',
+  'ats_insights_authenticated',
+  'ats_optimise_authenticated',
+  'ats_tailor_authenticated',
+])
 
 interface ConsumeRateLimitOptions {
   request: NextRequest
@@ -84,10 +98,14 @@ export async function consumeRateLimit({
   })
 
   if (error) {
-    console.error('Rate limit RPC failed (failing open):', error)
+    const failClosed = AI_SCOPES.has(scope)
+    console.error(
+      `Rate limit RPC failed (${failClosed ? 'failing CLOSED' : 'failing open'}) scope=${scope}:`,
+      error
+    )
     return {
-      allowed: true,
-      remaining: limit,
+      allowed: !failClosed,
+      remaining: failClosed ? 0 : limit,
       resetAt: new Date(Date.now() + windowSeconds * 1000).toISOString(),
     }
   }

@@ -37,6 +37,14 @@ interface RoadmapBlueprint {
 
 const ROADMAP_TARGET_SCORE = 90
 
+// Bump whenever the scoring formula changes in a way that can shift a user's
+// number. The builder reads this on load and shows a one-time banner if the
+// stored score (cached at the version below) disagrees with the live score.
+// 1 = original scoring (pre-2026-05).
+// 2 = synonym matching + project/volunteer evidence + smoothed keyword curve
+//     + stuffing penalty + stop-word filtering.
+export const SCORER_VERSION = 2
+
 const ROADMAP_BLUEPRINTS: Record<string, RoadmapBlueprint> = {
   contact: {
     lane: 'fixable_now',
@@ -184,6 +192,98 @@ const SCOPE_PATTERNS = [
 const VAGUE_TERMS_PATTERN = /\b(various|multiple|several|many|different|miscellaneous|etc\.?)\b/i
 const PLACEHOLDER_PATTERN = /\[[^\]]+\]|\b(?:TBD|to be determined|placeholder)\b/i
 
+// ─── Skill synonym / alias map ──────────────────────────────────────────────
+// Each entry maps a normalized "canonical" key to the list of textual variants
+// we accept as evidence of that skill in resume content. Normalization strips
+// punctuation/whitespace so "Node.js", "NodeJS", "node js" all collapse to
+// the same key "nodejs". Matching is loose by design: a candidate who lists
+// "React" should get credit if their bullet mentions "ReactJS" or "React.js".
+const SKILL_ALIASES: ReadonlyArray<readonly string[]> = [
+  ['javascript', 'js'],
+  ['typescript', 'ts'],
+  ['nodejs', 'node', 'node.js', 'node js'],
+  ['reactjs', 'react', 'react.js', 'react js'],
+  ['vuejs', 'vue', 'vue.js'],
+  ['angularjs', 'angular'],
+  ['nextjs', 'next', 'next.js'],
+  ['nuxtjs', 'nuxt'],
+  ['expressjs', 'express'],
+  ['nestjs', 'nest'],
+  ['html5', 'html'],
+  ['css3', 'css'],
+  ['tailwindcss', 'tailwind'],
+  ['python3', 'python', 'py'],
+  ['cplusplus', 'c++', 'cpp'],
+  ['csharp', 'c#'],
+  ['golang', 'go'],
+  ['ruby', 'rb'],
+  ['rubyonrails', 'rails', 'ruby on rails', 'ror'],
+  ['postgresql', 'postgres', 'pg'],
+  ['mysql'],
+  ['mongodb', 'mongo'],
+  ['microsoftsqlserver', 'mssql', 'sql server', 'sqlserver'],
+  ['kubernetes', 'k8s'],
+  ['amazonwebservices', 'aws'],
+  ['googlecloudplatform', 'gcp', 'google cloud'],
+  ['microsoftazure', 'azure'],
+  ['continuousintegration', 'ci'],
+  ['continuousdelivery', 'cd', 'continuous deployment'],
+  ['cicd', 'ci/cd', 'ci-cd'],
+  ['machinelearning', 'ml'],
+  ['artificialintelligence', 'ai'],
+  ['naturallanguageprocessing', 'nlp'],
+  ['computervision', 'cv'],
+  ['userexperience', 'ux'],
+  ['userinterface', 'ui'],
+  ['searchengineoptimization', 'seo'],
+  ['searchenginemarketing', 'sem'],
+  ['testdrivendevelopment', 'tdd'],
+  ['behaviordrivendevelopment', 'bdd'],
+  ['restfulapi', 'rest api', 'rest', 'restful'],
+  ['graphql', 'gql'],
+  ['objectorientedprogramming', 'oop'],
+  ['functionalprogramming', 'fp'],
+  ['domaindrivendesign', 'ddd'],
+  ['solidprinciples', 'solid'],
+  ['scrum', 'agile scrum'],
+  ['agile', 'agile methodology'],
+  ['kanban'],
+  ['waterfall'],
+  ['safe', 'scaled agile'],
+  ['microsoftexcel', 'excel'],
+  ['microsoftword', 'word'],
+  ['microsoftpowerpoint', 'powerpoint', 'ppt'],
+  ['googleworkspace', 'g suite', 'gsuite', 'google docs'],
+  ['microsoft365', 'office 365', 'o365'],
+] as const
+
+function normalizeSkillKey(value: string): string {
+  return value.toLowerCase().replace(/[\s._\-/\\]+/g, '').replace(/[^a-z0-9+#]/g, '')
+}
+
+const SKILL_ALIAS_INDEX = (() => {
+  const index = new Map<string, string[]>()
+  for (const group of SKILL_ALIASES) {
+    const variants = Array.from(new Set(group.flatMap(v => [v, normalizeSkillKey(v)])))
+    for (const variant of group) {
+      const key = normalizeSkillKey(variant)
+      if (key) index.set(key, variants)
+    }
+  }
+  return index
+})()
+
+function getSkillVariants(skill: string): string[] {
+  const key = normalizeSkillKey(skill)
+  const aliasGroup = SKILL_ALIAS_INDEX.get(key)
+  if (aliasGroup) {
+    const variants = new Set<string>(aliasGroup)
+    variants.add(skill)
+    return Array.from(variants).filter(v => v.trim().length > 0)
+  }
+  return [skill]
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function wordCount(text: string): number {
@@ -245,17 +345,84 @@ function bulletHasScopeSignal(bullet: string): boolean {
   return SCOPE_PATTERNS.some(pattern => pattern.test(bullet))
 }
 
+// Stop-words and obvious abuse tokens that should NEVER count as skill matches.
+// Without this filter, a user listing "the" or "a" as a skill would match every
+// bullet and game the keyword score to 100%.
+const SKILL_STOP_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'is', 'it', 'in', 'on', 'of', 'to',
+  'for', 'at', 'by', 'with', 'as', 'be', 'this', 'that', 'than', 'then',
+  'i', 'me', 'my', 'we', 'us', 'our', 'you', 'your', 'they', 'them',
+  'do', 'did', 'has', 'have', 'had', 'will', 'can',
+  'x', 'y', 'z',
+])
+
+// Real single-letter / short technologies that should still match. Keep this
+// list deliberately small so we don't accidentally let abuse through.
+const ALLOWED_SHORT_SKILLS = new Set([
+  'c', 'r', 'go', 'js', 'ts', 'ai', 'ml', 'ui', 'ux', 'qa', 'ci', 'cd',
+  'aws', 'gcp', 'sql', 'php', 'css', 'seo', 'sem', 'tdd', 'bdd', 'api',
+  'cms', 'crm', 'erp', 'orm', 'nlp', 'rpa', 'kpi', 'roi', 'b2b', 'b2c',
+])
+
+function isUsableSkillToken(skill: string): boolean {
+  const trimmed = skill.trim().toLowerCase()
+  if (!trimmed) return false
+  if (SKILL_STOP_WORDS.has(trimmed)) return false
+  // Skills shorter than 2 chars are only accepted if they're a known tech.
+  if (trimmed.length < 2 && !ALLOWED_SHORT_SKILLS.has(trimmed)) return false
+  return true
+}
+
+function buildSkillMatchPattern(skill: string): RegExp | null {
+  if (!skill.trim()) return null
+  if (!isUsableSkillToken(skill)) return null
+  const variants = getSkillVariants(skill)
+    .map(v => v.trim())
+    .filter(Boolean)
+    .map(escapeRegex)
+  if (variants.length === 0) return null
+  // Use a non-word-boundary on the right side for tokens ending in special
+  // characters like `C++` or `C#` (which \b would not anchor), but keep word
+  // boundaries on the left. (?<![\w]) and (?![\w]) approximate this safely.
+  return new RegExp(`(?<![A-Za-z0-9])(?:${variants.join('|')})(?![A-Za-z0-9])`, 'i')
+}
+
 function skillAppearsInBullets(skill: string, bullets: string[]): boolean {
-  const pattern = new RegExp(`\\b${escapeRegex(skill)}\\b`, 'i')
+  const pattern = buildSkillMatchPattern(skill)
+  if (!pattern) return false
   return bullets.some(b => pattern.test(b))
 }
 
 function bulletHasSkillSignal(bullet: string, skills: string[]): boolean {
   return skills.some(skill => {
-    if (!skill.trim()) return false
-    const pattern = new RegExp(`\\b${escapeRegex(skill)}\\b`, 'i')
+    const pattern = buildSkillMatchPattern(skill)
+    if (!pattern) return false
     return pattern.test(bullet)
   })
+}
+
+// Aggregate ALL bullets the candidate can legitimately use to demonstrate a
+// skill: experience, volunteer roles, projects, and (lightly) the summary.
+// Previously the scorer only searched data.experience.bullets, which unfairly
+// penalised career-changers, new grads, and project-heavy portfolios.
+function getAllEvidenceBullets(data: ResumeData): string[] {
+  const evidence: string[] = []
+  for (const exp of data.experience) {
+    evidence.push(exp.summary ?? '')
+    evidence.push(...exp.bullets)
+  }
+  for (const vol of data.volunteer) {
+    evidence.push(vol.summary ?? '')
+    evidence.push(...vol.bullets)
+  }
+  for (const proj of data.projects) {
+    evidence.push(proj.description)
+    evidence.push(...getProjectBullets(proj))
+    if (proj.technologies?.length) evidence.push(proj.technologies.join(', '))
+  }
+  if (data.summary?.trim()) evidence.push(data.summary)
+  if (data.currentRole?.trim()) evidence.push(data.currentRole)
+  return evidence.filter(b => b && b.trim().length > 0)
 }
 
 function bulletHasConcreteImpact(bullet: string, skills: string[]): boolean {
@@ -740,30 +907,49 @@ function scoreEducation(data: ResumeData): { score: number; max: number; details
 function scoreKeywords(data: ResumeData): { score: number; max: number; details: string; unmatchedSkills: string[] } {
   const max = 10
   const skills = getResumeSkills(data).filter(s => s.trim())
-  const bullets = getAllBullets(data)
+  // Broadened evidence pool: experience + volunteer + projects + summary.
+  // This used to only check data.experience.bullets, which penalised people
+  // with strong portfolio / volunteer evidence.
+  const evidence = getAllEvidenceBullets(data)
 
-  if (skills.length === 0 || bullets.length === 0) {
+  if (skills.length === 0 || evidence.length === 0) {
     return {
       score: 0,
       max,
-      details: skills.length === 0 ? 'No skills to check' : 'No experience bullets to check against',
+      details: skills.length === 0 ? 'No skills to check' : 'No experience/project bullets to check against',
       unmatchedSkills: skills,
     }
   }
 
-  const matched = skills.filter(s => skillAppearsInBullets(s, bullets))
-  const unmatched = skills.filter(s => !skillAppearsInBullets(s, bullets))
+  const matched = skills.filter(s => skillAppearsInBullets(s, evidence))
+  const unmatched = skills.filter(s => !skillAppearsInBullets(s, evidence))
   const pct = (matched.length / skills.length) * 100
 
-  let score: number
-  if (pct >= 60) score = 10
-  else if (pct >= 40) score = 7
-  else if (pct >= 20) score = 4
-  else score = 1
+  // Smoother curve so one unmatched skill no longer drops a full bracket.
+  // Floor at 1 to avoid punishing partial-but-real evidence.
+  const score = Math.max(1, Math.min(max, Math.round((pct / 100) * max)))
 
-  const details = `${matched.length}/${skills.length} skills (${Math.round(pct)}%) appear in experience bullets`
+  const details = `${matched.length}/${skills.length} skills (${Math.round(pct)}%) appear in your experience, projects, or summary`
 
   return { score, max, details, unmatchedSkills: unmatched }
+}
+
+function detectKeywordStuffing(data: ResumeData): string[] {
+  // A keyword is "stuffed" if it appears more than 6 times across all bullets
+  // AND its mentions cluster in the skills section/short list (not absorbed in
+  // narrative). This catches users who paste the same skill 20 times to "beat"
+  // an ATS — a tactic that real ATSes downrank.
+  const skills = getResumeSkills(data).filter(s => s.trim())
+  const bullets = getAllBullets(data).join(' ')
+  const stuffed: string[] = []
+  for (const skill of skills) {
+    const pattern = buildSkillMatchPattern(skill)
+    if (!pattern) continue
+    const globalPattern = new RegExp(pattern.source, 'gi')
+    const matchCount = bullets.match(globalPattern)?.length ?? 0
+    if (matchCount > 6) stuffed.push(skill)
+  }
+  return stuffed
 }
 
 function scorePolish(data: ResumeData): { score: number; max: number; details: string } {
@@ -808,6 +994,13 @@ function scorePolish(data: ResumeData): { score: number; max: number; details: s
     score += 2
   } else {
     parts.push(`${placeholderCount} unresolved placeholder(s) found`)
+  }
+
+  // Penalise keyword stuffing (-1, capped). Modern ATSes detect spam.
+  const stuffed = detectKeywordStuffing(data)
+  if (stuffed.length > 0) {
+    score = Math.max(0, score - 1)
+    parts.push(`Possible keyword stuffing: ${stuffed.slice(0, 3).join(', ')}${stuffed.length > 3 ? '…' : ''}`)
   }
 
   const details = parts.length === 0

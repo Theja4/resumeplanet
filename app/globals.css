@@ -1929,3 +1929,104 @@
     animation: none !important;
   }
 }
+
+/* AutoGrowTextarea — make the manual resize handle visually obvious so
+ * users see it's draggable. Default browser handle is a tiny ~7px chevron
+ * in the corner; we replace it with a larger striped corner via the
+ * pseudo-element supported in WebKit/Chromium. */
+.agt-textarea {
+  background-image:
+    linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 65%,
+      rgba(82, 82, 91, 0.35) 65%,
+      rgba(82, 82, 91, 0.35) 70%,
+      transparent 70%,
+      transparent 78%,
+      rgba(82, 82, 91, 0.35) 78%,
+      rgba(82, 82, 91, 0.35) 84%,
+      transparent 84%,
+      transparent 92%,
+      rgba(82, 82, 91, 0.35) 92%,
+      rgba(82, 82, 91, 0.35) 100%
+    );
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  background-size: 18px 18px;
+}
+.agt-textarea:hover,
+.agt-textarea:focus {
+  background-image:
+    linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 65%,
+      rgba(16, 185, 129, 0.55) 65%,
+      rgba(16, 185, 129, 0.55) 70%,
+      transparent 70%,
+      transparent 78%,
+      rgba(16, 185, 129, 0.55) 78%,
+      rgba(16, 185, 129, 0.55) 84%,
+      transparent 84%,
+      transparent 92%,
+      rgba(16, 185, 129, 0.55) 92%,
+      rgba(16, 185, 129, 0.55) 100%
+    );
+}
+.agt-textarea::-webkit-resizer {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0,
+      transparent 25%,
+      rgba(82, 82, 91, 0.55) 25%,
+      rgba(82, 82, 91, 0.55) 35%,
+      transparent 35%,
+      transparent 50%,
+      rgba(82, 82, 91, 0.55) 50%,
+      rgba(82, 82, 91, 0.55) 60%,
+      transparent 60%,
+      transparent 75%,
+      rgba(82, 82, 91, 0.55) 75%,
+      rgba(82, 82, 91, 0.55) 85%,
+      transparent 85%
+    );
+  border-bottom-right-radius: 0.5rem;
+}
+
+/* Thin auto-hiding scrollbar for the builder editor pane.
+ * - Track is invisible until the user hovers / scrolls.
+ * - Thumb is 6px wide so it doesn't crowd the left pane.
+ * - `overflow-y: auto` already hides the scrollbar when content fits, but
+ *   Windows/Linux browsers reserve gutter space for `scroll` containers;
+ *   `scrollbar-gutter: stable` is intentionally NOT set so the gutter
+ *   collapses when no scrolling is needed.
+ */
+.rezoomed-thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.rezoomed-thin-scrollbar:hover,
+.rezoomed-thin-scrollbar:focus-within {
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+.rezoomed-thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.rezoomed-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.rezoomed-thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+  transition: background-color 200ms;
+}
+.rezoomed-thin-scrollbar:hover::-webkit-scrollbar-thumb,
+.rezoomed-thin-scrollbar:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.5);
+}
+.rezoomed-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 116, 139, 0.75);
+}

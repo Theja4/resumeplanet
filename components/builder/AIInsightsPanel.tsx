@@ -33,7 +33,14 @@ interface InsightsData {
 
 interface Props {
   resumeData: ResumeData | null
-  onApplyFix: (suggestion: Suggestion) => void
+  /**
+   * `silent` (default false) tells the parent to skip side effects like
+   * scroll-into-view and section-expand. Apply-All passes `silent: true` for
+   * the first N-1 suggestions so the preview doesn't scroll-thrash through
+   * every fix, then sends the last one normally to end up at a sensible scroll
+   * position.
+   */
+  onApplyFix: (suggestion: Suggestion, options?: { silent?: boolean }) => void
   onUndoFix: () => void
   onStartTailoring: () => void
   resumeId: string
@@ -529,23 +536,23 @@ function ReviewChangesSection({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-zinc-50 transition-colors"
       >
-        <div className="w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
-          <Wand2 size={14} className="text-zinc-600" />
+        <div className="w-9 h-9 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
+          <Wand2 size={16} className="text-zinc-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-zinc-800">Review changes</p>
-          <p className="text-[11px] text-zinc-400 mt-0.5">{summaryText}</p>
+          <p className="text-sm font-bold text-zinc-900">Review changes</p>
+          <p className="text-xs text-zinc-500 mt-0.5">{summaryText}</p>
         </div>
         {isOpen
-          ? <ChevronUp size={14} className="text-zinc-400 shrink-0" />
-          : <ChevronDown size={14} className="text-zinc-400 shrink-0" />
+          ? <ChevronUp size={16} className="text-zinc-400 shrink-0" />
+          : <ChevronDown size={16} className="text-zinc-400 shrink-0" />
         }
       </button>
 
       {isOpen && (
         <div className="px-4 pb-4 space-y-3">
           {staleSuggestionCount > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[11px] font-medium text-amber-800">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
               {staleSuggestionCount} stale — re-optimize to refresh
             </div>
           )}
@@ -870,9 +877,14 @@ export default function AIInsightsPanel({
     }
 
     setIsApplyingAll(true)
-    for (const suggestion of accepted) {
+    // Apply the first N-1 silently (no scroll, no expand) so the preview
+    // doesn't bounce around for every fix. The final apply runs normally so
+    // we end at a sensible scroll position.
+    for (let i = 0; i < accepted.length; i++) {
+      const suggestion = accepted[i]
       setAppliedIds(prev => new Set(prev).add(suggestion.id))
-      onApplyFix(suggestion)
+      const isLast = i === accepted.length - 1
+      onApplyFix(suggestion, { silent: !isLast })
     }
 
     const scoreAfter = scoreResume(workingData).score
@@ -1007,7 +1019,7 @@ export default function AIInsightsPanel({
 
   if (!hasStarted && !insights) {
     return (
-      <div className="flex flex-col h-full overflow-y-auto">
+      <div className="flex flex-col h-full overflow-y-auto rezoomed-thin-scrollbar">
         <div className="p-6 flex-1 flex flex-col">
           {/* Score preview */}
           {previewScore !== null && (
@@ -1040,8 +1052,8 @@ export default function AIInsightsPanel({
 
           {/* CTA */}
           <div className="text-center mb-6">
-            <h3 className="text-base font-black text-zinc-800 mb-2">Optimize with AI</h3>
-            <p className="text-xs text-zinc-500 leading-relaxed max-w-[260px] mx-auto">
+            <h3 className="text-lg font-black text-zinc-900 mb-2">Optimize with AI</h3>
+            <p className="text-sm text-zinc-600 leading-relaxed max-w-[280px] mx-auto">
               One click. AI rewrites weak bullets, fixes formatting, and boosts keywords — only safe, verified changes.
             </p>
           </div>
@@ -1049,16 +1061,16 @@ export default function AIInsightsPanel({
           <button
             onClick={handleStartInsightsClick}
             disabled={!resumeData || isLoading}
-            className="w-full py-3.5 text-white text-sm font-bold rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-lg hover:shadow-emerald-600/20"
+            className="w-full py-4 text-white text-base font-bold rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-lg hover:shadow-emerald-600/20"
             style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
           >
             <span className="flex items-center justify-center gap-2">
-              <Sparkles size={16} />
+              <Sparkles size={18} />
               Optimize My Resume
             </span>
           </button>
 
-          <p className="mt-3 text-[11px] text-zinc-400 text-center">Takes 1–3 minutes. You can undo any change.</p>
+          <p className="mt-3 text-xs text-zinc-500 text-center">Takes 1–3 minutes. You can undo any change.</p>
 
           {/* Tailor nudge */}
           <div className="mt-auto pt-6">
@@ -1067,12 +1079,12 @@ export default function AIInsightsPanel({
               disabled={!resumeData || isLoading}
               className="w-full flex items-center gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
             >
-              <div className="w-9 h-9 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
-                <Target size={16} className="text-white" />
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
+                <Target size={18} className="text-white" />
               </div>
               <div>
-                <p className="text-xs font-bold text-zinc-800">Tailor for a specific job</p>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Match keywords to a job description</p>
+                <p className="text-sm font-bold text-zinc-900">Tailor for a specific job</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Match keywords to a job description</p>
               </div>
             </button>
           </div>
@@ -1088,7 +1100,7 @@ export default function AIInsightsPanel({
   const hasRemainingRoadmap = Boolean(liveRoadmap && liveRoadmap.truthfulCeiling > displayScore)
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-full overflow-y-auto rezoomed-thin-scrollbar">
       <div className="p-6 flex-1">
 
         {toastMessage && (
@@ -1130,24 +1142,24 @@ export default function AIInsightsPanel({
                 {optimizeResult && optimizeResult.appliedCount > 0 ? (
                   <div className="relative z-10 w-full">
                     <div className="flex items-center justify-center gap-2 mb-4">
-                      <CheckCircle2 size={16} className="text-emerald-500" />
-                      <span className="text-sm font-bold text-zinc-800">
+                      <CheckCircle2 size={18} className="text-emerald-500" />
+                      <span className="text-base font-bold text-zinc-900">
                         {optimizeResult.appliedCount} improvement{optimizeResult.appliedCount !== 1 ? 's' : ''} applied
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-center gap-4">
+                    <div className="flex items-center justify-center gap-5">
                       {/* Before */}
                       <div className="text-center">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Before</p>
-                        <span className="text-3xl font-black text-zinc-300 tracking-tighter">{optimizeResult.scoreBefore}</span>
+                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1">Before</p>
+                        <span className="text-4xl font-black text-zinc-300 tracking-tighter">{optimizeResult.scoreBefore}</span>
                       </div>
 
                       {/* Arrow + delta */}
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-1.5">
                         <div className="w-8 h-[2px] bg-zinc-200 rounded-full" />
                         {optimizeResult.scoreAfter > optimizeResult.scoreBefore && (
-                          <span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
                             +{optimizeResult.scoreAfter - optimizeResult.scoreBefore}
                           </span>
                         )}
@@ -1155,25 +1167,25 @@ export default function AIInsightsPanel({
 
                       {/* After */}
                       <div className="text-center">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-emerald-600 mb-1">Now</p>
-                        <span className="text-3xl font-black tracking-tighter" style={{ color: scoreColor(displayScore) }}>
+                        <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-1">Now</p>
+                        <span className="text-4xl font-black tracking-tighter" style={{ color: scoreColor(displayScore) }}>
                           {displayScore}
                         </span>
                       </div>
                     </div>
 
                     {optimizeResult.skippedCount > 0 && (
-                      <p className="mt-3 text-[10px] text-zinc-400 text-center">{optimizeResult.skippedCount} unsafe change{optimizeResult.skippedCount !== 1 ? 's' : ''} skipped</p>
+                      <p className="mt-3 text-xs text-zinc-500 text-center">{optimizeResult.skippedCount} unsafe change{optimizeResult.skippedCount !== 1 ? 's' : ''} skipped</p>
                     )}
 
                     {insights.summary && (
-                      <p className="mt-3 text-[11px] text-zinc-500 text-center leading-relaxed px-1">{insights.summary}</p>
+                      <p className="mt-3 text-sm text-zinc-600 text-center leading-relaxed px-1">{insights.summary}</p>
                     )}
                   </div>
                 ) : (
                   /* Score ring when no optimization yet (cached insights) */
                   <div className="relative z-10 flex flex-col items-center">
-                    <svg width="96" height="96" viewBox="0 0 100 100" className="-rotate-90">
+                    <svg width="112" height="112" viewBox="0 0 100 100" className="-rotate-90">
                       <circle cx="50" cy="50" r="38" fill="none" stroke="#e4e4e7" strokeWidth="7" />
                       <circle
                         cx="50" cy="50" r="38" fill="none"
@@ -1185,16 +1197,16 @@ export default function AIInsightsPanel({
                         style={{ transition: 'stroke-dashoffset 1s ease-out' }}
                       />
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ top: 0, bottom: 'auto', height: 96 }}>
-                      <span className="text-2xl font-black text-zinc-800 tracking-tighter leading-none">{displayScore}</span>
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">/ 100</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ top: 0, bottom: 'auto', height: 112 }}>
+                      <span className="text-3xl font-black text-zinc-900 tracking-tighter leading-none">{displayScore}</span>
+                      <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider mt-1">/ 100</span>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: scoreColor(displayScore) }} />
-                      <span className="text-[13px] font-bold text-zinc-700">{displayLabel}</span>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: scoreColor(displayScore) }} />
+                      <span className="text-sm font-bold text-zinc-800">{displayLabel}</span>
                     </div>
                     {insights.summary && (
-                      <p className="mt-2 text-[11px] text-zinc-500 text-center leading-relaxed px-1">{insights.summary}</p>
+                      <p className="mt-3 text-sm text-zinc-600 text-center leading-relaxed px-1">{insights.summary}</p>
                     )}
                   </div>
                 )}
@@ -1202,8 +1214,8 @@ export default function AIInsightsPanel({
                 {/* Chips */}
                 <div className="mt-3 flex items-center gap-2 flex-wrap justify-center relative z-10">
                   {appliedIds.size > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-[10px] font-bold text-emerald-700">
-                      <CheckCircle2 size={10} className="text-emerald-500" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-bold text-emerald-700">
+                      <CheckCircle2 size={12} className="text-emerald-500" />
                       {appliedIds.size} applied
                     </span>
                   )}
@@ -1214,14 +1226,14 @@ export default function AIInsightsPanel({
                   <button
                     onClick={handleApplyAllWithResult}
                     disabled={isApplyingAll}
-                    className="mt-4 w-full relative z-10 flex items-center justify-center gap-2 py-2.5 text-white text-xs font-bold rounded-xl
+                    className="mt-4 w-full relative z-10 flex items-center justify-center gap-2 py-3 text-white text-sm font-bold rounded-xl
                       hover:brightness-110 hover:shadow-lg hover:shadow-primary/20
                       active:scale-[0.98] active:brightness-95
                       transition-all duration-150
                       disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
                     style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
                   >
-                    <Sparkles size={13} />
+                    <Sparkles size={15} />
                     {optimizeResult ? 'Apply Remaining Fixes' : 'Apply All Fixes'}
                   </button>
                 )}
@@ -1235,14 +1247,14 @@ export default function AIInsightsPanel({
                 <button
                   onClick={handleRescanClick}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
-                    {isLoading ? <Loader2 size={14} className="text-white animate-spin" /> : <RefreshCw size={14} className="text-white" />}
+                  <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                    {isLoading ? <Loader2 size={16} className="text-white animate-spin" /> : <RefreshCw size={16} className="text-white" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-emerald-800">Re-optimize</p>
-                    <p className="text-[11px] text-emerald-600 mt-0.5">Resume changed — run AI again</p>
+                    <p className="text-sm font-bold text-emerald-800">Re-optimize</p>
+                    <p className="text-xs text-emerald-700 mt-0.5">Resume changed — run AI again</p>
                   </div>
                 </button>
               )}
@@ -1251,14 +1263,14 @@ export default function AIInsightsPanel({
               <button
                 onClick={onStartTailoring}
                 disabled={!resumeData || isLoading}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
               >
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center shrink-0">
-                  <Target size={14} className="text-white" />
+                <div className="w-9 h-9 rounded-lg bg-zinc-900 flex items-center justify-center shrink-0">
+                  <Target size={16} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-zinc-800">Tailor for a job</p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">Match keywords to a specific posting</p>
+                  <p className="text-sm font-bold text-zinc-900">Tailor for a job</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">Match keywords to a specific posting</p>
                 </div>
               </button>
             </div>
@@ -1277,7 +1289,7 @@ export default function AIInsightsPanel({
             )}
 
             {suggestionsWithLiveImpact.length === 0 && (
-              <p className="text-xs text-zinc-400 text-center py-4">
+              <p className="text-sm text-zinc-500 text-center py-5 leading-relaxed">
                 {insights.score >= 80 && !hasRemainingRoadmap
                   ? 'No suggestions — your resume looks good!'
                   : 'No safe auto-fixes found. Try editing manually or tailoring for a specific job.'}
@@ -1287,17 +1299,17 @@ export default function AIInsightsPanel({
             {/* ── Evidence blockers (subtle) ── */}
             {liveRoadmap && liveRoadmap.evidenceBlockers.length > 0 && (
               <details className="group">
-                <summary className="flex items-center gap-2 cursor-pointer py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-400 hover:text-zinc-500 transition-colors select-none list-none">
-                  <ShieldAlert size={12} className="text-amber-400" />
+                <summary className="flex items-center gap-2 cursor-pointer py-2 text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-700 transition-colors select-none list-none">
+                  <ShieldAlert size={14} className="text-amber-500" />
                   <span>What AI can&apos;t fix ({liveRoadmap.evidenceBlockers.length})</span>
-                  <ChevronDown size={12} className="ml-auto group-open:hidden" />
-                  <ChevronUp size={12} className="ml-auto hidden group-open:block" />
+                  <ChevronDown size={14} className="ml-auto group-open:hidden" />
+                  <ChevronUp size={14} className="ml-auto hidden group-open:block" />
                 </summary>
                 <div className="mt-2 space-y-2 pb-2">
                   {liveRoadmap.evidenceBlockers.slice(0, 4).map(action => (
-                    <div key={action.criterionId} className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-2.5">
-                      <p className="text-[11px] font-semibold text-zinc-600">{action.title}</p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5 leading-relaxed">{action.reason}</p>
+                    <div key={action.criterionId} className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3">
+                      <p className="text-sm font-semibold text-zinc-800">{action.title}</p>
+                      <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{action.reason}</p>
                     </div>
                   ))}
                 </div>

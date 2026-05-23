@@ -431,7 +431,7 @@ export default function TailorPanel({
   }, [tailoringAnimation.visible])
 
   return (
-    <div ref={panelScrollRef} className="flex h-full flex-col overflow-y-auto bg-[linear-gradient(180deg,#f8fbf8_0%,#ffffff_28%)]">
+    <div ref={panelScrollRef} className="flex h-full flex-col overflow-y-auto rezoomed-thin-scrollbar bg-[linear-gradient(180deg,#f8fbf8_0%,#ffffff_28%)]">
       <div className="border-b border-black/6 px-5 py-5">
         <div className="space-y-2">
           <span className="inline-flex items-center rounded-full bg-primary-container/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-on-primary-container">

@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Eye, EyeOff, Trash2, Pencil,
   User, AlignLeft, Briefcase, GraduationCap, Zap,
   Code, Award, Heart, Globe, Star, Trophy, BookOpen, Users,
-  List, Tags, Component
+  List, Tags, Component, SeparatorHorizontal
 } from 'lucide-react'
 import type { ResumeData, BuilderVisibility } from '@/types'
 import ContactEditor from './ContactEditor'
@@ -46,6 +46,7 @@ function sectionHasData(sectionId: string, data: ResumeData): boolean {
     if (custom.type === 'text') return !!custom.text?.trim()
     if (custom.type === 'tags') return !!custom.tags && custom.tags.length > 0
     if (custom.type === 'complex') return !!custom.items && custom.items.length > 0
+    if (custom.type === 'pageBreak') return true // marker is always "active"
     return false
   }
 
@@ -139,6 +140,7 @@ export default function SortableSectionRow({
     if (customConfig.type === 'complex') Icon = List
     else if (customConfig.type === 'tags') Icon = Tags
     else if (customConfig.type === 'text') Icon = AlignLeft
+    else if (customConfig.type === 'pageBreak') Icon = SeparatorHorizontal
   } else {
     const config = SECTION_CONFIG[sectionId]
     if (!config) return null
@@ -167,7 +169,11 @@ export default function SortableSectionRow({
 
   function handleDeleteSection() {
     if (!isCustom) return
-    if (!window.confirm(`Are you sure you want to delete the "${label}" section and all its contents?`)) return
+    // Page break is a single invisible marker — no "contents" to warn about,
+    // and the confirm prompt sounds overdramatic for a one-click action.
+    if (customConfig?.type !== 'pageBreak') {
+      if (!window.confirm(`Are you sure you want to delete the "${label}" section and all its contents?`)) return
+    }
     
     // 1. Remove from data.customSections
     const newCustom = (resumeData.customSections || []).filter(c => c.id !== sectionId)
@@ -223,6 +229,12 @@ export default function SortableSectionRow({
             focusPath={focusPath}
             onFocusHandled={onFocusHandled}
           />
+        )
+      } else if (customConfig?.type === 'pageBreak') {
+        return (
+          <div className="p-4 text-sm text-zinc-600 bg-zinc-50/60 rounded-lg border border-dashed border-zinc-200">
+            Content after this marker will start on a new page. Drag this row to position the break, or delete it to remove.
+          </div>
         )
       } else {
         return (
@@ -300,8 +312,9 @@ export default function SortableSectionRow({
           <div className={`flex min-w-0 flex-1 items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
             <Icon size={18} className={`shrink-0 ${isExpanded ? 'text-primary' : ''}`} />
             {isEditingTitle && isCustom ? (
-              <input 
+              <input
                 value={label}
+                maxLength={80}
                 onChange={(e) => handleTitleChange(e.target.value)}
                 onBlur={() => setIsEditingTitle(false)}
                 onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingTitle(false) }}
@@ -337,18 +350,23 @@ export default function SortableSectionRow({
 
         {/* Right actions */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Visibility toggle */}
-          <button
-            onClick={toggleVisibility}
-            data-action="prevent-expand"
-            className="p-1 rounded-md hover:bg-black/5 transition-colors"
-            title={isHidden ? 'Show section' : 'Hide section'}
-          >
-            {isHidden
-              ? <EyeOff size={15} className="text-zinc-400" />
-              : <Eye size={15} className="text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-            }
-          </button>
+          {/* Visibility toggle — hidden for page-break markers because a hidden
+              page break is an invisible time bomb: the user can't see why their
+              pagination is behaving oddly. Page breaks are delete-only. */}
+          {customConfig?.type !== 'pageBreak' && (
+            <button
+              onClick={toggleVisibility}
+              data-action="prevent-expand"
+              className="p-1 rounded-md hover:bg-black/5 transition-colors"
+              title={isHidden ? 'Show section' : 'Hide section'}
+              aria-label={isHidden ? 'Show section' : 'Hide section'}
+            >
+              {isHidden
+                ? <EyeOff size={15} className="text-zinc-400" />
+                : <Eye size={15} className="text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              }
+            </button>
+          )}
 
           {/* Delete button (only for custom sections) */}
           {isCustom && (

@@ -7,11 +7,14 @@ import type { ResumeData, BuilderVisibility, ExperienceItem } from '@/types'
 function filterBullets(item: ExperienceItem): ExperienceItem {
   const bulletVis = item.bulletVisibility ?? []
   const bullets = Array.isArray(item.bullets) ? item.bullets : []
+  // Preserve item.summary — earlier versions stripped it because the per-role
+  // summary field wasn't rendered by any template. The template now renders
+  // exp.summary above the bullets, so stripping it here would silently
+  // erase user-typed content from the preview AND the saved data.
   return {
     ...item,
     bullets: bullets.filter((_, bi) => bulletVis[bi] !== false),
     bulletVisibility: undefined,
-    summary: undefined,
   }
 }
 

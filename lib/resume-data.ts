@@ -1,5 +1,80 @@
 import type { EducationItem, ExperienceItem, ProjectItem, ResumeData, SkillSection } from '@/types'
 
+// ─── Unicode safety ──────────────────────────────────────────────────────────
+//
+// Resumes are shown in many contexts (preview, PDF, recruiter's ATS, the user's
+// own email). Two Unicode patterns can break layout or actively mislead readers:
+//
+//  1. Bidi override characters (LRO U+202D, RLO U+202E). These actively flip
+//     the visual order of text without changing the logical order — perfect
+//     for spoofing. A name like "John‮kraD" renders mirrored. We strip
+//     ONLY these two; legitimate embedding (LRE/RLE/PDF) and isolate (LRI/RLI
+//     /FSI/PDI) chars are preserved for users with mixed-direction names.
+//
+//  2. Zalgo: arbitrarily long stacks of combining marks on one base character.
+//     This makes a single line render hundreds of pixels tall, blowing up
+//     pagination measurements. We cap to 4 combining marks per base.
+//
+//  3. Zero-width characters (U+200B ZWSP, U+200C ZWNJ, U+200D ZWJ, U+FEFF BOM,
+//     U+2060 WJ). These let attackers smuggle invisible content past
+//     trim()-based empty-field validation, so a field "looks empty" but
+//     stores hidden text. ZWNJ/ZWJ are legitimate in some scripts (Persian,
+//     Hindi) so we only strip them at field-start/end, leaving them mid-word.
+const BIDI_OVERRIDE_CHARS = /[‭‮]/g
+const ZERO_WIDTH_BOUNDARY_CHARS = /[​‌‍⁠﻿]+/g
+const COMBINING_MARK = /\p{M}/gu
+
+function capCombiningMarks(text: string, maxPerBase = 4): string {
+  // Walk graphemes; if a base char has more than maxPerBase combining marks
+  // following it, drop the excess. Cheap, ASCII-safe-by-default.
+  let result = ''
+  let runCount = 0
+  for (const ch of text) {
+    if (COMBINING_MARK.test(ch)) {
+      runCount += 1
+      if (runCount <= maxPerBase) result += ch
+    } else {
+      runCount = 0
+      result += ch
+    }
+    COMBINING_MARK.lastIndex = 0
+  }
+  return result
+}
+
+export function sanitizeUserText(value: string | null | undefined): string {
+  if (!value) return ''
+  // 1. Strip explicit bidi override chars (security).
+  // 2. Strip zero-width chars at the start/end so trim()-based validation
+  //    sees the field as truly empty when the user means it to be.
+  // 3. Cap Zalgo stacks so pagination stays sane.
+  // 4. Leave everything else alone so legitimate multilingual content survives.
+  const noBidi = value.replace(BIDI_OVERRIDE_CHARS, '')
+  const trimmedZW = noBidi
+    .replace(new RegExp(`^${ZERO_WIDTH_BOUNDARY_CHARS.source}`), '')
+    .replace(new RegExp(`${ZERO_WIDTH_BOUNDARY_CHARS.source}$`), '')
+  return capCombiningMarks(trimmedZW)
+}
+
+/**
+ * Apply sanitizeUserText recursively to every string in the ResumeData tree.
+ * Cheap — runs only on load/save (via syncResumeData), not per-keystroke.
+ * Anything that isn't a string (numbers, booleans, nested objects, arrays) is
+ * walked but otherwise untouched.
+ */
+function sanitizeResumeDataDeep<T>(value: T): T {
+  if (typeof value === 'string') return sanitizeUserText(value) as unknown as T
+  if (Array.isArray(value)) return value.map(sanitizeResumeDataDeep) as unknown as T
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = sanitizeResumeDataDeep(val)
+    }
+    return result as T
+  }
+  return value
+}
+
 function dedupe(values: string[]) {
   const seen = new Set<string>()
   const result: string[] = []
@@ -328,7 +403,7 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
       ? experience[0].title
       : currentRole
 
-  return {
+  const synced: ResumeData = {
     name: data.name ?? '',
     email: data.email ?? '',
     phone: data.phone ?? '',
@@ -355,6 +430,9 @@ export function syncResumeData(data: Partial<ResumeData>): ResumeData {
         : section,
     ),
   }
+  // Final safety pass — strip dangerous bidi-override codepoints and cap
+  // Zalgo. Cheap because it only runs on load/save (not per keystroke).
+  return sanitizeResumeDataDeep(synced)
 }
 
 export function resumeDataToPlainText(data: ResumeData | null | undefined): string {

@@ -34,6 +34,14 @@ interface Props {
   onConfigChange: (config: UniversalConfig) => void
   onClose: () => void
   resumeData?: ResumeData | null
+  /**
+   * Live section ordering from the builder. Without these the modal preview
+   * silently falls back to default section order and diverges from both the
+   * live preview and the downloaded PDF — confusing when the user has
+   * dragged sections around.
+   */
+  sectionOrder?: string[]
+  sidebarSectionOrder?: string[]
 }
 
 interface ChoiceGridProps<T extends string> {
@@ -160,6 +168,8 @@ export default function TemplateCustomizerModal({
   onConfigChange,
   onClose,
   resumeData = SAMPLE_RESUME,
+  sectionOrder,
+  sidebarSectionOrder,
 }: Props) {
   const baseConfig = sanitizeUniversalConfig(config)
   const initialOrganizationPresetId = findMatchingOrganizationTemplatePreset(baseConfig)
@@ -434,6 +444,48 @@ export default function TemplateCustomizerModal({
                         onSelect={(dateLayout) => updateConfig({ dateLayout })}
                         columns="grid-cols-2"
                       />
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard
+                  title="Advanced"
+                  description="Power-user options. Defaults are safe for most ATS workflows."
+                >
+                  <div className="space-y-5">
+                    <div>
+                      <div className="mb-2">
+                        <ControlHeading title="Line Spacing" />
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(
+                          [
+                            { id: 'compact', label: 'Compact' },
+                            { id: 'normal', label: 'Normal' },
+                            { id: 'relaxed', label: 'Relaxed' },
+                            { id: 'loose', label: 'Loose' },
+                          ] as const
+                        ).map((opt) => {
+                          const isSelected = (localConfig.lineSpacing ?? 'normal') === opt.id
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => updateConfig({ lineSpacing: opt.id })}
+                              className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition-all ${
+                                isSelected
+                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                                  : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300'
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-zinc-500 leading-relaxed">
+                        Scales the line-height of body text (bullets, summary, descriptions). Headings stay tight.
+                      </p>
                     </div>
                   </div>
                 </SectionCard>
@@ -750,6 +802,8 @@ export default function TemplateCustomizerModal({
                       isEditing={false}
                       onFieldChange={() => {}}
                       config={localConfig}
+                      sectionOrder={sectionOrder}
+                      sidebarSectionOrder={sidebarSectionOrder}
                     />
                   </div>
                 </div>
