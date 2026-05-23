@@ -303,7 +303,6 @@ export default function UniversalTemplate({
     const normalizedSections = normalizeSkillSections(sections)
     const isLatexSkills = !isSidebarContext && isLatexStyle
     const separator = skillsStyle === 'divider' ? ' • ' : ', '
-    const sectionSeparator = skillsStyle === 'divider' ? '  |  ' : '; '
     const titleClassName = isLatexSkills
       ? 'font-bold text-black'
       : `${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`
@@ -316,13 +315,13 @@ export default function UniversalTemplate({
         ? 'text-[11px] text-gray-700'
         : 'text-sm text-gray-700'
     const wrapperClassName = isLatexSkills
-      ? 'mt-0.5 text-[13px] leading-[1.25] text-black'
-      : 'mt-1 text-gray-700'
+      ? 'mt-0.5 space-y-[1px] text-[13px] leading-[1.25] text-black'
+      : 'mt-1 space-y-1 text-gray-700'
 
     return (
-      <div className={wrapperClassName} data-resume-page-break>
+      <div className={wrapperClassName}>
         {normalizedSections.map((section, sectionIndex) => (
-          <React.Fragment key={sectionIndex}>
+          <div key={sectionIndex} data-resume-page-break>
             {section.title && (
               <>
                 <EditableText
@@ -365,8 +364,7 @@ export default function UniversalTemplate({
                 {skillIndex < section.skills.length - 1 && <span className="text-gray-400">{separator}</span>}
               </React.Fragment>
             ))}
-            {sectionIndex < normalizedSections.length - 1 && <span className="text-gray-400">{sectionSeparator}</span>}
-          </React.Fragment>
+          </div>
         ))}
       </div>
     )

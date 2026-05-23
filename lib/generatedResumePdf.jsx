@@ -906,18 +906,13 @@ function renderSkillsSection(writer, data) {
   writer.writeSectionHeading('Skills', writer.sectionHeadingStyle)
 
   const separator = writer.skillsStyle === 'divider' ? '  •  ' : ', '
-  const sectionSeparator = writer.skillsStyle === 'divider' ? '  |  ' : '; '
-  const line = sections
-    .map(section => {
+
+  for (const section of sections) {
     const label = section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}` : ''
     const skills = section.skills ?? []
-      if (!skills.length && !label) return ''
-      return label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
-    })
-    .filter(Boolean)
-    .join(sectionSeparator)
+    if (!skills.length && !label) continue
+    const line = label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
 
-  if (line) {
     writer.writeWrappedText(line, {
       fontSize: writer.tokens.bodyFontSize,
       color: writer.isLatexStyle ? [0, 0, 0] : [55, 65, 81],

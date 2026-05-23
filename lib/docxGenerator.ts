@@ -62,7 +62,6 @@ export async function generateDOCX(
   const headerAlignment = safeConfig.headerStyle === 'centered' || safeConfig.headerStyle === 'timeless' ? AlignmentType.CENTER : AlignmentType.LEFT
   const nameSize = safeConfig.headerStyle === 'timeless' ? 50 : safeConfig.nameSize === 'hero' ? 56 : safeConfig.nameSize === 'large' ? 48 : 42
   const skillSeparator = safeConfig.skillsStyle === 'divider' ? '  •  ' : ', '
-  const skillSectionSeparator = safeConfig.skillsStyle === 'divider' ? '  |  ' : '; '
 
   // ── Style helpers ──────────────────────────────────────────────────────────
 
@@ -258,15 +257,12 @@ export async function generateDOCX(
 
       case 'skills':
         if (!getResumeSkills(data).length) return []
-        const skillsLine = normalizeSkillSections(data.skillSections, getResumeSkills(data))
-          .map(section =>
-            `${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join(skillSeparator)}`
-          )
+        const skillLines = normalizeSkillSections(data.skillSections, getResumeSkills(data))
+          .map(section => `${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join(skillSeparator)}`)
           .filter(Boolean)
-          .join(skillSectionSeparator)
         return [
           sectionHeading('Skills'),
-          ...(skillsLine ? [body(skillsLine)] : []),
+          ...skillLines.map(line => body(line)),
           gap(),
         ]
 
