@@ -1255,8 +1255,8 @@ export default function UniversalTemplate({
                     {(proj.bullets?.length ?? 0) > 0 && (
                       <div className="mt-1.5 space-y-1">
                         {(proj.bullets ?? []).map((bullet, bulletIndex) => (
-                          <div key={bulletIndex} className="relative pl-[1.125rem]">
-                            <span style={{ color: accent, opacity: 0.7 }} className="absolute left-0 text-xs leading-5">•</span>
+                          <div key={bulletIndex} style={{ lineHeight: lhRelaxed }}>
+                            <span style={{ color: accent + 'B3' }}>{'•'} </span>
                             <EditableText
                               value={bullet}
                               path={`projects.${i}.bullets.${bulletIndex}`}
@@ -1627,11 +1627,10 @@ function GhostHintList({
   return (
     <ul aria-hidden={isInteractive ? undefined : 'true'} className={`${isSidebarContext ? 'mt-1 space-y-1' : 'mt-1.5 space-y-1'}`}>
       {items.map((item) => (
-        <li key={item} className="relative pl-[1.125rem]">
-          <span className="absolute left-0 text-gray-300">•</span>
+        <li key={item}>
+          <span className="text-gray-300">{'•'} </span>
           <GhostHintText
             isSidebarContext={isSidebarContext}
-            className="min-w-0"
             navigatePath={navigatePath}
             onNavigateToField={onNavigateToField}
           >
@@ -1926,8 +1925,8 @@ function ExperienceItem({
       {exp.bullets && exp.bullets.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.bullets.map((b: string, bi: number) => (
-            <li key={bi} className="relative pl-[1.125rem]" style={{ lineHeight: isCompressed ? lhTight : lhNormal }}>
-              <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
+            <li key={bi} style={{ lineHeight: isCompressed ? lhTight : lhNormal, paddingLeft: '1rem', textIndent: '-1rem' }}>
+              <span style={{ color: accent + 'B3' }}>{bulletMarker}  </span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-700 break-words" style={{ lineHeight: isCompressed ? lhTight : lhNormal }} preserveWhitespace />
             </li>
           ))}
@@ -1936,8 +1935,8 @@ function ExperienceItem({
       {exp.highlights && exp.highlights.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.highlights.map((b: string, bi: number) => (
-            <li key={bi} className="relative pl-[1.125rem]" style={{ lineHeight: isCompressed ? lhTight : lhNormal }}>
-              <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
+            <li key={bi} style={{ lineHeight: isCompressed ? lhTight : lhNormal, paddingLeft: '1rem', textIndent: '-1rem' }}>
+              <span style={{ color: accent + 'B3' }}>{bulletMarker}  </span>
               <EditableText value={b} path={`${pathPrefix}.${ei}.highlights.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-700 break-words" style={{ lineHeight: isCompressed ? lhTight : lhNormal }} preserveWhitespace />
             </li>
           ))}

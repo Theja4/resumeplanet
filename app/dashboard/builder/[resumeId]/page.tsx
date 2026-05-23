@@ -45,6 +45,12 @@ import { applyTailorAnalysisToResumeData, canApplyTailorSection } from '@/lib/ta
 import { readTailorJobTransfer } from '@/lib/tailorJobTransfer'
 import { scoreResume, SCORER_VERSION } from '@/lib/ats-scorer'
 import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
+import {
+  RESUME_FIRST_PAGE_CONTENT_HEIGHT_PX as FIRST_PAGE_CONTENT_H,
+  RESUME_PAGE_HEIGHT_PX as PAGE_H,
+  computeResumePageSlices,
+  type ResumePageSlice as PreviewPageSlice,
+} from '@/lib/resumePagination'
 import type { ResumeData, BuilderMode, TailorAnalysis, TailorIntensity, Profile } from '@/types'
 import { useBuilderAnalytics } from '@/hooks/useBuilderAnalytics'
 import type { BuilderSource } from '@/lib/analytics'
@@ -58,15 +64,6 @@ interface StoredBlogResumeExampleRecord {
   builder_visibility: Partial<BuilderVisibility> | null
 }
 
-const PAGE_H = 1123 // A4 at 96 DPI
-const PAGE_GAP = 24
-const PAGE_BOTTOM_PADDING = 48 // ~12.7mm (0.5in) bottom margin
-const CONTINUATION_PAGE_TOP_PADDING = 48 // ~12.7mm (0.5in) top margin on pages 2+
-const FIRST_PAGE_CONTENT_H = PAGE_H - PAGE_BOTTOM_PADDING
-const CONTINUATION_PAGE_CONTENT_H =
-  PAGE_H - PAGE_BOTTOM_PADDING - CONTINUATION_PAGE_TOP_PADDING
-const MIN_PREVIEW_SLICE_HEIGHT = 120
-const PAGE_BREAK_LOOKBACK = 96
 const DEFAULT_LEFT_PANEL_WIDTH = 480
 const DEFAULT_RIGHT_PANEL_WIDTH = 380
 const COLLAPSED_PANEL_WIDTH = 48
@@ -606,14 +603,6 @@ interface BuilderInnerProps {
 }
 
 type ActiveDownloadFormat = 'pdf' | 'docx' | null
-type PreviewPageSlice = {
-  startY: number
-  height: number
-}
-type PreviewBreakCandidate = {
-  top: number
-  bottom: number
-}
 
 function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const pathname = usePathname()
@@ -908,137 +897,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const recomputePageBreak = useCallback(() => {
     const container = resumeRef.current
     if (!container) return
-
-    const containerTop = container.getBoundingClientRect().top
-    const elements = container.querySelectorAll<HTMLElement>('*')
-    const lineCandidateElements = container.querySelectorAll<HTMLElement>(
-      'span[data-resume-path], a[data-resume-path], em[data-resume-path], strong[data-resume-path]'
-    )
-    const blockCandidateElements = container.querySelectorAll<HTMLElement>(
-      '[data-resume-page-break], [data-resume-section-heading], h2'
-    )
-    const hardBreakElements = container.querySelectorAll<HTMLElement>(
-      '[data-resume-page-break-hard]'
-    )
-
-    let contentBottom = 0
-    for (const el of Array.from(elements)) {
-      if (el.closest('[data-pdf-ignore]')) continue
-      const rect = el.getBoundingClientRect()
-      const top = rect.top - containerTop
-      const bottom = rect.bottom - containerTop
-      if (rect.width <= 0 || rect.height <= 0) continue
-      if (el.parentElement === container && top <= 1 && bottom >= PAGE_H - 1) continue
-      if (bottom > contentBottom) {
-        contentBottom = bottom
-      }
-    }
-
-    const resolvedContentBottom = contentBottom > 0 ? contentBottom : container.scrollHeight
-    const lineBreakCandidates = Array.from(lineCandidateElements)
-      .flatMap((el) => {
-        return Array.from(el.getClientRects()).map((rect) => ({
-          top: Math.max(0, rect.top - containerTop),
-          bottom: Math.max(0, rect.bottom - containerTop),
-        }))
-      })
-      .filter(candidate => candidate.bottom - candidate.top > 2)
-      .sort((a, b) => a.top - b.top)
-
-    const blockBreakCandidates = Array.from(blockCandidateElements)
-      .map((el) => {
-        const rect = el.getBoundingClientRect()
-        return {
-          top: Math.max(0, rect.top - containerTop),
-          bottom: Math.max(0, rect.bottom - containerTop),
-        }
-      })
-      .filter(candidate => candidate.bottom - candidate.top > 2)
-      .sort((a, b) => a.top - b.top)
-
-    // Dedupe consecutive hard breaks within ~24px so two adjacent pageBreak
-    // sections don't produce two blank pages.
-    const HARD_BREAK_MERGE_PX = 24
-    const dedupedHardBreaks: number[] = []
-    for (const y of Array.from(hardBreakElements)
-      .map(el => Math.max(0, el.getBoundingClientRect().top - containerTop))
-      .filter(y => y > 0)
-      .sort((a, b) => a - b)) {
-      const prev = dedupedHardBreaks[dedupedHardBreaks.length - 1]
-      if (prev === undefined || y - prev > HARD_BREAK_MERGE_PX) {
-        dedupedHardBreaks.push(y)
-      }
-    }
-    const hardBreakYs = dedupedHardBreaks
-
-    const nextPageSlices: PreviewPageSlice[] = []
-    let pageStartY = 0
-
-    while (pageStartY < resolvedContentBottom - 1 && nextPageSlices.length < 30) {
-      const isFirstPage = nextPageSlices.length === 0
-      const pageCapacity = isFirstPage ? FIRST_PAGE_CONTENT_H : CONTINUATION_PAGE_CONTENT_H
-      const pageLimitY = pageStartY + pageCapacity
-
-      // Forced break: if the user inserted a manual page break between
-      // pageStartY and the page limit, honor it before the capacity logic.
-      // Skip nearly-empty slices (page break placed at the top would emit a
-      // blank leading page otherwise).
-      const forcedBreakY = hardBreakYs.find(y => y > pageStartY + 1 && y <= pageLimitY)
-      if (forcedBreakY !== undefined) {
-        const sliceHeight = forcedBreakY - pageStartY
-        const hasContentAfterForcedBreak =
-          lineBreakCandidates.some(candidate => candidate.bottom > forcedBreakY + 2) ||
-          blockBreakCandidates.some(candidate => candidate.bottom > forcedBreakY + 2)
-
-        if (pageStartY === 0 && sliceHeight < MIN_PREVIEW_SLICE_HEIGHT) {
-          pageStartY = forcedBreakY
-        } else {
-          nextPageSlices.push({
-            startY: pageStartY,
-            height: Math.max(1, sliceHeight),
-          })
-          if (!hasContentAfterForcedBreak) break
-          pageStartY = forcedBreakY
-        }
-        continue
-      }
-
-      if (resolvedContentBottom <= pageLimitY + 1) {
-        nextPageSlices.push({
-          startY: pageStartY,
-          height: Math.max(1, resolvedContentBottom - pageStartY),
-        })
-        break
-      }
-
-      const crossingLineCandidate = lineBreakCandidates.find(candidate =>
-        candidate.bottom > pageLimitY &&
-        candidate.top > pageStartY + MIN_PREVIEW_SLICE_HEIGHT &&
-        candidate.top < pageLimitY
-      )
-      const crossingBlockCandidate = blockBreakCandidates.find(candidate =>
-        candidate.bottom > pageLimitY &&
-        candidate.top > Math.max(pageStartY + MIN_PREVIEW_SLICE_HEIGHT, pageLimitY - PAGE_BREAK_LOOKBACK) &&
-        candidate.top < pageLimitY
-      )
-      const crossingCandidate: PreviewBreakCandidate | undefined =
-        crossingLineCandidate ?? crossingBlockCandidate
-      const safeBreakY = crossingCandidate
-        ? Math.max(pageStartY + 1, Math.floor(crossingCandidate.top) - 1)
-        : pageLimitY
-      const nextBreakY =
-        safeBreakY - pageStartY >= MIN_PREVIEW_SLICE_HEIGHT
-          ? safeBreakY
-          : pageLimitY
-
-      nextPageSlices.push({
-        startY: pageStartY,
-        height: Math.max(1, nextBreakY - pageStartY),
-      })
-      pageStartY = nextBreakY
-    }
-
-    setPageSlices(nextPageSlices.length > 0 ? nextPageSlices : [{ startY: 0, height: FIRST_PAGE_CONTENT_H }])
+    setPageSlices(computeResumePageSlices(container))
   }, [])
 
   const recomputePreviewFocusFrame = useCallback(() => {
@@ -1110,6 +969,35 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     return () => {
       window.cancelAnimationFrame(frame1)
       window.cancelAnimationFrame(frame2)
+    }
+  }, [recomputeResumeHeight, recomputePageBreak, recomputePreviewFocusFrame, resumeData, visibility, templateConfig, ghostSections])
+
+  useEffect(() => {
+    let cancelled = false
+    let frame = 0
+
+    async function recomputeAfterFonts() {
+      try {
+        if (document.fonts && typeof document.fonts.ready?.then === 'function') {
+          await document.fonts.ready
+        }
+      } catch {
+        // Ignore font readiness failures and use the current layout metrics.
+      }
+
+      if (cancelled) return
+      frame = window.requestAnimationFrame(() => {
+        recomputeResumeHeight()
+        recomputePageBreak()
+        recomputePreviewFocusFrame()
+      })
+    }
+
+    void recomputeAfterFonts()
+
+    return () => {
+      cancelled = true
+      window.cancelAnimationFrame(frame)
     }
   }, [recomputeResumeHeight, recomputePageBreak, recomputePreviewFocusFrame, resumeData, visibility, templateConfig, ghostSections])
 
@@ -1191,10 +1079,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const MAX_PAGES = 5
   const RECOMMENDED_PAGES = 2
   const pageCount = isPaginationSettling ? 1 : pageSlices.length
-  const renderedPageSlices = isPaginationSettling
-    ? [{ startY: 0, height: FIRST_PAGE_CONTENT_H }]
-    : pageSlices.slice(0, MAX_PAGES)
-  const renderedPageCount = renderedPageSlices.length
   const isOverPageLimit = pageCount > MAX_PAGES
   const isOverRecommendedPages = pageCount > RECOMMENDED_PAGES
 
@@ -2935,139 +2819,138 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
             />
             </div>
 
-            {/* Word-like paged preview + undo/redo to the right */}
+            {/* Word-like paged preview + undo/redo to the right.
+
+               Architecture note: the resume is rendered ONCE as a single
+               continuous DOM. Page boundaries are decorative overlays
+               positioned at the Y values produced by computeResumePageSlices.
+               We deliberately avoid the old approach (N clipped copies of the
+               template), because duplicate DOM nodes broke text selection —
+               selecting across a "page boundary" was actually selecting
+               across two stacked copies of the entire resume, so copy/paste
+               returned text from sections the user never touched. */}
             <div className="flex items-start gap-3 min-w-max">
-            <div
-              className="print:hidden relative"
-              style={{
-                width: 794 * effectiveScale,
-                height: ((renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)) * effectiveScale,
-              }}
-            >
-              <div
-                className="builder-preview-transition"
-                style={{
-                  width: '794px',
-                  height: `${(renderedPageCount * PAGE_H) + (Math.max(0, renderedPageCount - 1) * PAGE_GAP)}px`,
-                  transform: `scale(${effectiveScale})`,
-                  transformOrigin: 'top left',
-                }}
-              >
-                {renderedPageSlices.map((pageSlice, pageIndex) => {
-                  const pageTopPadding = pageIndex === 0 ? 0 : CONTINUATION_PAGE_TOP_PADDING
-                  const pageContentHeight = pageSlice.height
-                  const pageContentStartY = pageSlice.startY
-                  const pageContentEndY = pageContentStartY + pageContentHeight
-                  const hasFocusFrame =
-                    Boolean(previewFocusFrame) &&
-                    previewFocusFrame!.top + previewFocusFrame!.height > pageContentStartY &&
-                    previewFocusFrame!.top < pageContentEndY
-                  const focusInsetX = 16
-                  const focusInsetY = 12
-                  const focusLeft = previewFocusFrame
-                    ? Math.max(12, previewFocusFrame.left - focusInsetX)
-                    : 0
-                  const focusWidth = previewFocusFrame
-                    ? Math.min(794 - focusLeft - 12, previewFocusFrame.width + focusInsetX * 2)
-                    : 0
-                  const focusRawTop = previewFocusFrame
-                    ? pageTopPadding + previewFocusFrame.top - pageContentStartY - focusInsetY
-                    : 0
-                  const focusRawBottom = previewFocusFrame
-                    ? pageTopPadding + previewFocusFrame.top + previewFocusFrame.height - pageContentStartY + focusInsetY
-                    : 0
-                  const focusTop = Math.max(pageTopPadding + 6, focusRawTop)
-                  const focusBottom = Math.min(PAGE_H - PAGE_BOTTOM_PADDING + 2, focusRawBottom)
-                  const focusHeight = Math.max(34, focusBottom - focusTop)
+            {(() => {
+              const previewContentHeight = Math.max(resumeHeight || 0, PAGE_H)
+              const visibleBreakYs = isPaginationSettling
+                ? []
+                : pageSlices
+                    .slice(1, MAX_PAGES)
+                    .map(slice => slice.startY)
+                    .filter(y => y > 0 && y < previewContentHeight)
+              const focusInsetX = 16
+              const focusInsetY = 12
+              const focusLeft = previewFocusFrame
+                ? Math.max(12, previewFocusFrame.left - focusInsetX)
+                : 0
+              const focusWidth = previewFocusFrame
+                ? Math.min(794 - focusLeft - 12, previewFocusFrame.width + focusInsetX * 2)
+                : 0
+              const focusTop = previewFocusFrame
+                ? Math.max(6, previewFocusFrame.top - focusInsetY)
+                : 0
+              const focusHeight = previewFocusFrame
+                ? Math.max(34, previewFocusFrame.height + focusInsetY * 2)
+                : 0
 
-                  return (
-                    <div
-                      key={`page-${pageIndex}`}
-                      data-resume-preview-page="true"
-                      className="absolute left-0 bg-white"
-                      style={{
-                        top: pageIndex * (PAGE_H + PAGE_GAP),
-                        width: '794px',
-                        height: `${PAGE_H}px`,
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
-                      }}
-                    >
-                      {/* Full-page template shell so page styling continues to page bottom */}
-                      {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
-                        <div
-                          className="absolute inset-0 pointer-events-none z-0"
-                        >
-                          <div
-                            className="absolute top-0 bottom-0"
-                            style={{
-                              width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
-                              backgroundColor: accentToSidebarFill(templateConfig.accentColor),
-                              ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
-                            }}
-                          />
-                        </div>
-                      )}
-
-                      <div data-pdf-ignore="true" className="absolute top-2 right-2 z-20 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80">
-                        Page {pageIndex + 1}
-                      </div>
-
+              return (
+                <div
+                  className="print:hidden relative"
+                  style={{
+                    width: 794 * effectiveScale,
+                    height: previewContentHeight * effectiveScale,
+                  }}
+                >
+                  <div
+                    className="builder-preview-transition relative bg-white"
+                    data-resume-preview-content="true"
+                    style={{
+                      width: '794px',
+                      height: `${previewContentHeight}px`,
+                      transform: `scale(${effectiveScale})`,
+                      transformOrigin: 'top left',
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                    }}
+                  >
+                    {/* Sidebar background — spans the full continuous card */}
+                    {(templateConfig.layout === 'sidebar' || templateConfig.layout === 'sidebar-left' || templateConfig.layout === 'sidebar-right') && (
                       <div
-                        className="relative overflow-hidden w-full z-10"
+                        className="absolute top-0 bottom-0 z-0 pointer-events-none"
                         style={{
-                          height: `${pageContentHeight}px`,
-                          marginTop: `${pageTopPadding}px`,
+                          width: `${templateConfig.density === 'compressed' ? 192 : 256}px`,
+                          backgroundColor: accentToSidebarFill(templateConfig.accentColor),
+                          ...(templateConfig.layout === 'sidebar-right' ? { right: 0 } : { left: 0 }),
                         }}
+                      />
+                    )}
+
+                    {/* Single continuous resume DOM */}
+                    <div className="relative z-10" style={{ width: '794px' }}>
+                      <TemplateComponent
+                        key={`preview-${previewVersion}`}
+                        data={visibleData ?? resumeData}
+                        isEditing={false}
+                        showEmptyStateGuidance
+                        highlightedSectionId={null}
+                        /* No ghostSections in visible preview — WYSIWYG with
+                           the downloaded PDF. The section list in the editor
+                           sidebar already surfaces empty sections. */
+                        onFieldChange={() => {}}
+                        sectionOrder={orderedSections}
+                        sidebarSectionOrder={orderedSidebarSections}
+                        config={templateConfig}
+                        onNavigateToField={handleNavigateToField}
+                        showEditingBadge={false}
+                      />
+                    </div>
+
+                    {/* Page 1 badge */}
+                    <div
+                      data-pdf-ignore="true"
+                      className="absolute top-2 right-2 z-30 text-[10px] font-bold uppercase tracking-widest bg-white/90 text-zinc-500 px-2 py-0.5 rounded-full border border-zinc-200/80 pointer-events-none select-none"
+                    >
+                      Page 1
+                    </div>
+
+                    {/* Page break markers — dashed divider + Page N badge at each break Y */}
+                    {visibleBreakYs.map((breakY, breakIdx) => (
+                      <div
+                        key={`page-break-${breakIdx}`}
+                        data-pdf-ignore="true"
+                        className="absolute left-0 right-0 z-20 pointer-events-none select-none"
+                        style={{ top: `${breakY}px` }}
                       >
                         <div
-                          style={{
-                            width: '794px',
-                            transform: `translateY(-${pageContentStartY}px)`,
-                            transformOrigin: 'top left',
-                          }}
-                        >
-                          <TemplateComponent
-                            key={`preview-${previewVersion}-${pageIndex}`}
-                            data={visibleData ?? resumeData}
-                            isEditing={false}
-                            showEmptyStateGuidance
-                            highlightedSectionId={null}
-                            /* No ghostSections in visible preview either —
-                               WYSIWYG with the downloaded PDF. The section
-                               list in the editor sidebar already surfaces
-                               which sections are empty. */
-                            onFieldChange={() => {}}
-                            sectionOrder={orderedSections}
-                            sidebarSectionOrder={orderedSidebarSections}
-                            config={templateConfig}
-                            onNavigateToField={handleNavigateToField}
-                            showEditingBadge={false}
-                          />
+                          className="border-t border-dashed border-emerald-400/60"
+                          style={{ width: '100%' }}
+                        />
+                        <div className="absolute right-2 -top-3 text-[10px] font-bold uppercase tracking-widest bg-white/95 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-300/60 shadow-sm">
+                          Page {breakIdx + 2}
                         </div>
                       </div>
+                    ))}
 
-                      {hasFocusFrame && (
-                        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
-                          <div
-                            className="absolute rounded-[22px] border border-emerald-300/80 bg-emerald-50/60 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_16px_36px_rgba(16,185,129,0.12)]"
-                            style={{
-                              left: `${focusLeft}px`,
-                              top: `${focusTop}px`,
-                              width: `${focusWidth}px`,
-                              height: `${focusHeight}px`,
-                            }}
-                          >
-                            <span className="absolute right-3 top-2 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
-                              Editing
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+                    {/* Focus frame — single overlay, no per-page clipping */}
+                    {previewFocusFrame && (
+                      <div
+                        data-pdf-ignore="true"
+                        className="pointer-events-none absolute z-30 rounded-[22px] border border-emerald-300/80 bg-emerald-50/60 shadow-[0_0_0_1px_rgba(16,185,129,0.12),0_16px_36px_rgba(16,185,129,0.12)]"
+                        style={{
+                          left: `${focusLeft}px`,
+                          top: `${focusTop}px`,
+                          width: `${focusWidth}px`,
+                          height: `${focusHeight}px`,
+                        }}
+                      >
+                        <span className="absolute right-3 top-2 rounded-full bg-emerald-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-sm">
+                          Editing
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
               {/* Undo/Redo — sticky alongside the preview */}
               <div className="sticky top-8 flex flex-col gap-2">

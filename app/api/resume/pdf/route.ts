@@ -1,24 +1,12 @@
 import { existsSync } from 'node:fs'
 import { NextRequest, NextResponse } from 'next/server'
+import chromium from '@sparticuz/chromium'
+import puppeteer from 'puppeteer-core'
 import { PDFDocument } from 'pdf-lib'
 import { buildFirstPartyResumeMetadata } from '@/lib/firstPartyResumeMarker'
 import { createClient } from '@/lib/supabase/server'
 import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import type { ResumeData, UniversalConfig } from '@/types'
-
-// Puppeteer + chromium are heavy (~50 MB each). Dynamic-import inside the
-// handler so any unrelated route that touches this file's siblings doesn't
-// pay the cold-start cost.
-type ChromiumModule = typeof import('@sparticuz/chromium')['default']
-type PuppeteerModule = typeof import('puppeteer-core')['default']
-
-async function loadChromiumDeps(): Promise<{ chromium: ChromiumModule; puppeteer: PuppeteerModule }> {
-  const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
-    import('@sparticuz/chromium'),
-    import('puppeteer-core'),
-  ])
-  return { chromium, puppeteer }
-}
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -46,11 +34,7 @@ function sanitizeFilename(value: string | undefined, fallback: string) {
 function getRequestOrigin(request: NextRequest) {
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host')
   const protocol = request.headers.get('x-forwarded-proto') ?? 'http'
-
-  if (!host) {
-    return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  }
-
+  if (!host) return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
   return `${protocol}://${host}`
 }
 
@@ -64,24 +48,17 @@ function findLocalChromeExecutable() {
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
   ].filter((candidate): candidate is string => Boolean(candidate))
-
   return candidates.find(candidate => existsSync(candidate)) ?? null
 }
 
-async function getExecutablePath(chromium: ChromiumModule) {
+async function getExecutablePath() {
   const localChrome = findLocalChromeExecutable()
-
-  if (localChrome) {
-    return localChrome
-  }
-
+  if (localChrome) return localChrome
   return chromium.executablePath()
 }
 
 async function applyMetadata(pdfBytes: Uint8Array, payload: PdfRequestPayload, config: UniversalConfig) {
-  if (!payload.data) {
-    return pdfBytes
-  }
+  if (!payload.data) return pdfBytes
 
   const metadata = buildFirstPartyResumeMetadata({
     data: payload.data,
@@ -124,13 +101,13 @@ export async function POST(request: NextRequest) {
   }
 
   const config = sanitizeUniversalConfig(payload.config)
-  const origin = getRequestOrigin(request)
   const filename = sanitizeFilename(payload.filename, payload.data.name || 'resume')
-  const { chromium, puppeteer } = await loadChromiumDeps()
+  const origin = getRequestOrigin(request)
+
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null
 
   try {
-    const executablePath = await getExecutablePath(chromium)
+    const executablePath = await getExecutablePath()
     const isLocal = Boolean(findLocalChromeExecutable())
 
     browser = await puppeteer.launch({
@@ -151,15 +128,13 @@ export async function POST(request: NextRequest) {
     await page.evaluate((renderPayload) => {
       window.__REZOOMED_PDF_PAYLOAD__ = renderPayload
       window.dispatchEvent(
-        new CustomEvent('rezoomed:pdf-payload', {
-          detail: renderPayload,
-        })
+        new CustomEvent('rezoomed:pdf-payload', { detail: renderPayload })
       )
     }, {
       data: payload.data,
       config,
-      sectionOrder: payload.sectionOrder,
-      sidebarSectionOrder: payload.sidebarSectionOrder,
+      sectionOrder: payload.sectionOrder ?? [],
+      sidebarSectionOrder: payload.sidebarSectionOrder ?? [],
     })
     await page.waitForFunction(
       () => document.documentElement.dataset.rezoomedPdfReady === '1',
@@ -172,7 +147,8 @@ export async function POST(request: NextRequest) {
       printBackground: true,
       preferCSSPageSize: true,
     })
-    const finalPdfBytes = await applyMetadata(pdfBytes, payload, config)
+
+    const finalPdfBytes = await applyMetadata(new Uint8Array(pdfBytes), payload, config)
 
     return new NextResponse(new Uint8Array(finalPdfBytes), {
       headers: {
