@@ -176,12 +176,14 @@ function ExperiencePreview({
     return (
       <div className="space-y-0.5 pl-1.5 font-serif text-black">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 text-[6px] font-bold leading-tight text-black">Senior Product Manager</div>
-          <div className="shrink-0 text-[5.5px] leading-tight text-black">{dateText}</div>
-        </div>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 text-[5px] italic leading-tight text-black">Northwind Systems</div>
-          <div className="shrink-0 text-[5px] italic leading-tight text-black">Seattle, WA</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[6px] font-bold leading-tight text-black">Senior Product Manager</div>
+            <div className="text-[5px] italic leading-tight text-black">Northwind Systems</div>
+          </div>
+          <div className="shrink-0 text-right">
+            <div className="text-[5.5px] leading-tight text-black">{dateText}</div>
+            <div className="text-[5px] italic leading-tight text-black">Seattle, WA</div>
+          </div>
         </div>
         <div className="space-y-0 pl-2">
           {['Scaled onboarding conversion', 'Reduced manual reporting'].map((line) => (
@@ -203,12 +205,18 @@ function ExperiencePreview({
           <div className="text-[5px] text-zinc-500">Northwind Systems</div>
         </div>
         {config.dateLayout === 'right' && (
-          <div className="shrink-0 text-[4.5px] uppercase tracking-[0.12em] text-zinc-400">{dateText}</div>
+          <div className="shrink-0 text-right text-[4.5px] uppercase tracking-[0.12em] text-zinc-400">
+            <div>{dateText}</div>
+            <div>Seattle, WA</div>
+          </div>
         )}
       </div>
 
       {config.dateLayout === 'inline' && (
-        <div className="text-[4.5px] uppercase tracking-[0.12em] text-zinc-400">{dateText}</div>
+        <div className="text-[4.5px] uppercase tracking-[0.12em] text-zinc-400">
+          <div>{dateText}</div>
+          <div>Seattle, WA</div>
+        </div>
       )}
 
       <div className="space-y-0.5">
@@ -230,16 +238,6 @@ function SkillsPreview({
 }: {
   config: UniversalConfig
 }) {
-  if (config.skillsStyle === 'stacked') {
-    return (
-      <div className="space-y-0.5 text-[5px] text-zinc-500">
-        <div>SQL</div>
-        <div>Figma</div>
-        <div>Python</div>
-      </div>
-    )
-  }
-
   return (
     <div className="text-[5px] leading-[1.35] text-zinc-500">
       {config.skillsStyle === 'divider' ? 'SQL • Figma • Python' : 'SQL, Figma, Python'}

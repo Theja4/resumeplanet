@@ -21,9 +21,36 @@ export async function generateDOCX(
 ): Promise<void> {
   const {
     AlignmentType,
-    Document, Packer, Paragraph, TextRun,
+    Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, WidthType,
     BorderStyle,
+    ExternalHyperlink,
   } = await import('docx')
+
+  function normalizeHref(raw: string | null | undefined): string | null {
+    if (!raw) return null
+    const value = raw.trim()
+    if (!value) return null
+
+    // Strict scheme allowlist — same rules as the template renderer to keep
+    // PDF, preview, and DOCX behaviour identical.
+    if (/^[a-z][a-z0-9+.\-]*:/i.test(value)) {
+      const lower = value.toLowerCase()
+      if (
+        lower.startsWith('http:') ||
+        lower.startsWith('https:') ||
+        lower.startsWith('mailto:') ||
+        lower.startsWith('tel:')
+      ) {
+        return value
+      }
+      return null
+    }
+
+    return `https://${value.replace(/^\/+/, '')}`
+  }
+
+  type ParagraphRun = InstanceType<typeof TextRun> | InstanceType<typeof ExternalHyperlink>
+  type BodyBlock = InstanceType<typeof Paragraph> | InstanceType<typeof Table>
 
   const safeConfig = sanitizeUniversalConfig(config)
   const accent = hexToDocx(safeConfig.accentColor ?? '#026d32')
@@ -35,6 +62,7 @@ export async function generateDOCX(
   const headerAlignment = safeConfig.headerStyle === 'centered' || safeConfig.headerStyle === 'timeless' ? AlignmentType.CENTER : AlignmentType.LEFT
   const nameSize = safeConfig.headerStyle === 'timeless' ? 50 : safeConfig.nameSize === 'hero' ? 56 : safeConfig.nameSize === 'large' ? 48 : 42
   const skillSeparator = safeConfig.skillsStyle === 'divider' ? '  •  ' : ', '
+  const skillSectionSeparator = safeConfig.skillsStyle === 'divider' ? '  |  ' : '; '
 
   // ── Style helpers ──────────────────────────────────────────────────────────
 
@@ -74,14 +102,53 @@ export async function generateDOCX(
     })
 
   const gap = () => new Paragraph({ children: [new TextRun({ text: '' })], spacing: { after: spacingAfter } })
+  const noCellBorders = {
+    top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+  }
+
+  function buildHyperlinkRun(text: string, url: string | null | undefined, runOpts: { bold?: boolean; italic?: boolean; size?: number; color?: string } = {}): ParagraphRun {
+    const href = normalizeHref(url)
+    const linkColor = `#${accent}`
+    if (!href) {
+      return new TextRun({ text, font, size: runOpts.size ?? 20, bold: runOpts.bold, italics: runOpts.italic, color: runOpts.color })
+    }
+    return new ExternalHyperlink({
+      link: href,
+      children: [new TextRun({
+        text,
+        font,
+        size: runOpts.size ?? 20,
+        bold: runOpts.bold,
+        italics: runOpts.italic,
+        color: linkColor.replace('#', ''),
+        underline: { type: 'single', color: linkColor.replace('#', '') },
+      })],
+    })
+  }
+
+  // Hard page break paragraph for the pageBreak custom section type.
+  const pageBreak = () => new Paragraph({
+    children: [new TextRun({ text: '' })],
+    pageBreakBefore: true,
+  })
 
   // ── Section renderers ──────────────────────────────────────────────────────
 
-  function renderSection(id: string): Array<InstanceType<typeof Paragraph>> {
+  function renderSection(id: string): BodyBlock[] {
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
       if (!custom) return []
-        const out: Array<InstanceType<typeof Paragraph>> = [sectionHeading(custom.title)]
+
+      // Page break is an invisible marker — emit only a paragraph that forces
+      // a hard page break, no heading, no body. Matches the live preview.
+      if (custom.type === 'pageBreak') {
+        return [pageBreak()]
+      }
+
+      const out: Array<InstanceType<typeof Paragraph>> = [sectionHeading(custom.title)]
       if (custom.type === 'text' && custom.text) out.push(body(custom.text))
       if (custom.type === 'tags' && custom.tags?.length) out.push(body(custom.tags.join(', ')))
       if (custom.type === 'complex' && custom.items?.length) {
@@ -104,21 +171,72 @@ export async function generateDOCX(
         if (!data.experience.length) return []
         return [
           sectionHeading('Work Experience'),
-          ...data.experience.flatMap(exp => [
-            new Paragraph({
-              children: [
-                new TextRun({ text: exp.title, bold: true, font, size: 20 }),
-                ...(exp.company ? [new TextRun({ text: `  ·  ${exp.company}`, font, size: 20, color: '555555' })] : []),
-                ...(exp.startDate ? [new TextRun({ text: `  ${exp.startDate}${exp.endDate ? ` – ${exp.endDate}` : ''}`, font, size: 18, color: '888888' })] : []),
-              ],
-              spacing: { before: isCompressed ? 80 : 120, after: 40 },
-            }),
-            ...(exp.location ? [body(exp.location, { color: '888888', size: 18 })] : []),
+          ...data.experience.flatMap(exp => {
+            const dateLabel = exp.startDate || exp.endDate
+              ? `${exp.startDate || ''}${exp.startDate && exp.endDate ? ' - ' : ''}${exp.endDate || ''}`
+              : ''
+
+            return [
+              new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: noCellBorders,
+                rows: [
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        borders: noCellBorders,
+                        width: { size: 70, type: WidthType.PERCENTAGE },
+                        children: [
+                          new Paragraph({
+                            children: [new TextRun({ text: exp.title, bold: true, font, size: 20 })],
+                            spacing: { before: isCompressed ? 80 : 120, after: 20 },
+                          }),
+                          ...(exp.company
+                            ? [
+                                new Paragraph({
+                                  children: [buildHyperlinkRun(exp.company, exp.url, { size: 20, color: '555555' })],
+                                  spacing: { after: 40 },
+                                }),
+                              ]
+                            : []),
+                        ],
+                      }),
+                      new TableCell({
+                        borders: noCellBorders,
+                        width: { size: 30, type: WidthType.PERCENTAGE },
+                        children: [
+                          ...(dateLabel
+                            ? [
+                                new Paragraph({
+                                  children: [new TextRun({ text: dateLabel, font, size: 18, color: '888888' })],
+                                  alignment: AlignmentType.RIGHT,
+                                  spacing: { before: isCompressed ? 80 : 120, after: 20 },
+                                }),
+                              ]
+                            : []),
+                          ...(exp.location
+                            ? [
+                                new Paragraph({
+                                  children: [new TextRun({ text: exp.location, font, size: 18, color: '888888' })],
+                                  alignment: AlignmentType.RIGHT,
+                                  spacing: { after: 40 },
+                                }),
+                              ]
+                            : []),
+                          ...(!dateLabel && !exp.location ? [new Paragraph({ children: [] })] : []),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ...(exp.summary ? [body(exp.summary)] : []),
             ...exp.bullets
               .filter((_, i) => exp.bulletVisibility ? exp.bulletVisibility[i] !== false : true)
               .map(b => bullet(b)),
             gap(),
-          ]),
+            ]
+          }),
         ]
 
       case 'education':
@@ -140,16 +258,15 @@ export async function generateDOCX(
 
       case 'skills':
         if (!getResumeSkills(data).length) return []
+        const skillsLine = normalizeSkillSections(data.skillSections, getResumeSkills(data))
+          .map(section =>
+            `${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join(skillSeparator)}`
+          )
+          .filter(Boolean)
+          .join(skillSectionSeparator)
         return [
           sectionHeading('Skills'),
-          ...(safeConfig.skillsStyle === 'stacked'
-            ? normalizeSkillSections(data.skillSections, getResumeSkills(data)).flatMap(section => [
-                ...(section.title ? [body(section.tag ? `${section.title} (${section.tag})` : section.title, { bold: true, color: '666666', size: 18 })] : []),
-                ...section.skills.map(skill => bullet(skill)),
-              ])
-            : normalizeSkillSections(data.skillSections, getResumeSkills(data)).map(section =>
-                body(`${section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}: ` : ''}${section.skills.join(skillSeparator)}`)
-              )),
+          ...(skillsLine ? [body(skillsLine)] : []),
           gap(),
         ]
 
@@ -158,7 +275,10 @@ export async function generateDOCX(
         return [
           sectionHeading('Projects'),
           ...data.projects.flatMap(p => [
-            body(p.name, { bold: true }),
+            new Paragraph({
+              children: [buildHyperlinkRun(p.name, p.url, { bold: true })],
+              spacing: { after: spacingAfter / 2 },
+            }),
             ...(p.description ? [body(p.description, { color: '555555' })] : []),
             ...getProjectBullets(p).map(item => bullet(item)),
             ...(p.technologies?.length ? [body(p.technologies.join(', '), { italic: true, color: '888888', size: 18 })] : []),
@@ -170,9 +290,14 @@ export async function generateDOCX(
         if (!data.certifications.length) return []
         return [
           sectionHeading('Certifications'),
-          ...data.certifications.map(c =>
-            body(`${c.name}${c.issuer ? ` · ${c.issuer}` : ''}${c.date ? `  (${c.date})` : ''}`)
-          ),
+          ...data.certifications.map(c => new Paragraph({
+            children: [
+              buildHyperlinkRun(c.name, c.url, { size: 20 }),
+              ...(c.issuer ? [new TextRun({ text: ` · ${c.issuer}`, font, size: 20 })] : []),
+              ...(c.date ? [new TextRun({ text: `  (${c.date})`, font, size: 20 })] : []),
+            ],
+            spacing: { after: spacingAfter / 2 },
+          })),
           gap(),
         ]
 
@@ -188,7 +313,13 @@ export async function generateDOCX(
         if (!data.awards.length) return []
         return [
           sectionHeading('Awards'),
-          ...data.awards.map(a => body(`${a.title}${a.date ? `  (${a.date})` : ''}`)),
+          ...data.awards.map(a => new Paragraph({
+            children: [
+              buildHyperlinkRun(a.title, a.url, { size: 20 }),
+              ...(a.date ? [new TextRun({ text: `  (${a.date})`, font, size: 20 })] : []),
+            ],
+            spacing: { after: spacingAfter / 2 },
+          })),
           gap(),
         ]
 
@@ -197,7 +328,10 @@ export async function generateDOCX(
         return [
           sectionHeading('Publications'),
           ...data.publications.flatMap(p => [
-            body(p.title, { bold: true }),
+            new Paragraph({
+              children: [buildHyperlinkRun(p.title, p.url, { bold: true })],
+              spacing: { after: spacingAfter / 2 },
+            }),
             ...(p.publisher ? [body(`${p.publisher}${p.date ? ` · ${p.date}` : ''}`, { italic: true, color: '666666', size: 18 })] : []),
           ]),
           gap(),
@@ -221,10 +355,53 @@ export async function generateDOCX(
 
   // ── Header ─────────────────────────────────────────────────────────────────
 
-  const contact = (safeConfig.headerStyle === 'timeless'
-    ? [data.phone, data.email, data.linkedin, data.website, data.location]
-    : [data.email, data.phone, data.location, data.linkedin, data.website])
-    .filter(Boolean)
+  type ContactKind = 'email' | 'phone' | 'location' | 'linkedin' | 'website'
+  const contactItems: { value: string; kind: ContactKind }[] = (
+    safeConfig.headerStyle === 'timeless'
+      ? [
+          { value: data.phone, kind: 'phone' as const },
+          { value: data.email, kind: 'email' as const },
+          { value: data.linkedin, kind: 'linkedin' as const },
+          { value: data.website, kind: 'website' as const },
+          { value: data.location, kind: 'location' as const },
+        ]
+      : [
+          { value: data.email, kind: 'email' as const },
+          { value: data.phone, kind: 'phone' as const },
+          { value: data.location, kind: 'location' as const },
+          { value: data.linkedin, kind: 'linkedin' as const },
+          { value: data.website, kind: 'website' as const },
+        ]
+  ).filter(item => Boolean(item.value))
+
+  function contactKindToHref(kind: ContactKind, value: string): string | null {
+    if (kind === 'email') return normalizeHref(`mailto:${value.trim()}`)
+    if (kind === 'phone') return normalizeHref(`tel:${value.trim().replace(/[^\d+]/g, '')}`)
+    if (kind === 'linkedin' || kind === 'website') return normalizeHref(value)
+    return null
+  }
+
+  const contactTextSize = safeConfig.headerStyle === 'timeless' ? 20 : 18
+  const contactTextColor = safeConfig.headerStyle === 'timeless' ? '000000' : '666666'
+
+  // Per-field link toggles (sanitised to an object record). Linkify only the
+  // fields whose toggle is explicitly true; `location` always stays plain.
+  const contactLinkToggles =
+    typeof safeConfig.contactLinksClickable === 'object' && safeConfig.contactLinksClickable !== null
+      ? safeConfig.contactLinksClickable
+      : {}
+
+  function contactRun(item: { value: string; kind: ContactKind }) {
+    const fieldEnabled =
+      item.kind === 'location'
+        ? false
+        : Boolean((contactLinkToggles as Record<string, boolean | undefined>)[item.kind])
+    const href = fieldEnabled ? contactKindToHref(item.kind, item.value) : null
+    if (href) {
+      return buildHyperlinkRun(item.value, href, { size: contactTextSize, color: contactTextColor })
+    }
+    return new TextRun({ text: item.value, font, size: contactTextSize, color: contactTextColor })
+  }
 
   const headerParas: Array<InstanceType<typeof Paragraph>> = [
     new Paragraph({
@@ -237,22 +414,28 @@ export async function generateDOCX(
       alignment: headerAlignment,
       spacing: { after: 60 },
     })] : []),
-    ...(contact.length
+    ...(contactItems.length
       ? safeConfig.contactStyle === 'stacked'
-        ? contact.map((item, index) => new Paragraph({
-            children: [new TextRun({ text: item ?? '', font, size: 18, color: '666666' })],
+        ? contactItems.map((item, index) => new Paragraph({
+            children: [contactRun(item)],
             alignment: headerAlignment,
-            spacing: { after: index === contact.length - 1 ? 200 : 40 },
+            spacing: { after: index === contactItems.length - 1 ? 200 : 40 },
           }))
         : [new Paragraph({
-            children: [new TextRun({ text: contact.join(safeConfig.headerStyle === 'timeless' ? '  |  ' : '  ·  '), font, size: safeConfig.headerStyle === 'timeless' ? 20 : 18, color: safeConfig.headerStyle === 'timeless' ? '000000' : '666666' })],
+            children: contactItems.flatMap((item, index) => {
+              const separator = safeConfig.headerStyle === 'timeless' ? '  |  ' : '  ·  '
+              const sep = index > 0
+                ? [new TextRun({ text: separator, font, size: contactTextSize, color: contactTextColor })]
+                : []
+              return [...sep, contactRun(item)]
+            }),
             alignment: headerAlignment,
             spacing: { after: 200 },
           })]
       : []),
   ]
 
-  const bodyParas: Array<InstanceType<typeof Paragraph>> = allSections.flatMap(id => renderSection(id))
+  const bodyParas: BodyBlock[] = allSections.flatMap(id => renderSection(id))
 
   const doc = new Document({
     styles: {

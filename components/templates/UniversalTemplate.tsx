@@ -5,7 +5,117 @@ import { sanitizeUniversalConfig } from '@/lib/templateOptions'
 import { getEducationDateLabel, normalizeSkillSections } from '@/lib/resume-data'
 import EditableText from './EditableText'
 import type { TemplateProps, UniversalConfig } from '@/types'
-import { DEFAULT_VISIBILITY } from '@/types'
+import { DEFAULT_VISIBILITY, LINE_SPACING_MULTIPLIERS } from '@/types'
+
+// Strict scheme allowlist. We never accept `javascript:`, `data:`, `vbscript:`,
+// `file:`, or any user-defined scheme. Bare domains/paths get coerced to https.
+// Returning null causes the link icon to not render at all.
+const ALLOWED_URL_SCHEMES = ['http:', 'https:', 'mailto:', 'tel:'] as const
+
+function normalizeResumeLinkHref(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  // Strip whitespace AND zero-width chars so a field that looks empty (or has
+  // only a stray space) doesn't render a broken link icon.
+  const value = raw.replace(/[\s​-‍﻿]+/g, ' ').trim()
+  if (!value) return null
+
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(value)) {
+    // Has an explicit scheme. Only allow safe ones.
+    const lower = value.toLowerCase()
+    if (ALLOWED_URL_SCHEMES.some(scheme => lower.startsWith(scheme))) {
+      return value
+    }
+    return null
+  }
+
+  // Bare domain or path → assume https://
+  return `https://${value.replace(/^\/+/, '')}`
+}
+
+function ResumeLinkIcon({ url, accent, label }: { url: string | null | undefined; accent: string; label: string }) {
+  const href = normalizeResumeLinkHref(url)
+  if (!href) return null
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      title={href}
+      data-pdf-link="true"
+      // Stop click bubbling so clicking the link in the live preview doesn't
+      // trigger the field-navigation handler on the surrounding EditableText.
+      onClick={(e) => e.stopPropagation()}
+      className="inline-flex items-center align-middle ml-1 opacity-70 hover:opacity-100 transition-opacity"
+      style={{ color: accent }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M15 3h6v6" />
+        <path d="M10 14L21 3" />
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      </svg>
+    </a>
+  )
+}
+
+/**
+ * Wraps a resume title element (project name, cert name, exp company, etc.)
+ * with a hyperlink when `url` is present.
+ *
+ * Behaviour by mode:
+ *   - PDF / static render (`onNavigateToField` is undefined): the title text
+ *     becomes a real <a> that opens the URL in a new tab. Clicking the title
+ *     anywhere works — not just the small ↗ icon.
+ *   - Live preview (`onNavigateToField` is set): the title gets the same
+ *     visual treatment (accent color, hover underline) but a click navigates
+ *     to the field editor instead of opening the URL — otherwise users
+ *     couldn't edit titles that have URLs. The ↗ icon next to the title is
+ *     still the way to actually open the URL from inside the live preview.
+ */
+function ResumeTitleLink({
+  url,
+  accent,
+  isPreviewMode,
+  label,
+  children,
+}: {
+  url: string | null | undefined
+  accent: string
+  isPreviewMode: boolean
+  label: string
+  children: React.ReactNode
+}) {
+  const href = normalizeResumeLinkHref(url)
+  if (!href) return <>{children}</>
+
+  if (isPreviewMode) {
+    // Live preview: don't navigate; rely on the icon's click handler for URL.
+    return (
+      <span
+        aria-label={label}
+        style={{ color: accent, textDecorationColor: accent }}
+        className="underline decoration-dotted underline-offset-2 hover:decoration-solid"
+      >
+        {children}
+      </span>
+    )
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      title={href}
+      data-pdf-link="true"
+      style={{ color: accent, textDecorationColor: accent }}
+      className="underline decoration-dotted underline-offset-2 hover:decoration-solid"
+    >
+      {children}
+    </a>
+  )
+}
 
 interface UniversalTemplateProps extends TemplateProps {
   config: UniversalConfig
@@ -106,6 +216,24 @@ export default function UniversalTemplate({
 
   const accent = accentColor || '#026d32'
   const isCompressed = density === 'compressed'
+
+  // Body-text line-spacing multiplier. We compute scaled line-heights for the
+  // paragraph-style elements (bullets, summary, descriptions, custom text)
+  // and bake them in via inline style so Tailwind's explicit `leading-*`
+  // classes don't override them. Section headings, names, and dates keep
+  // their tight design line-heights — only the long-form text scales.
+  //
+  // This was important to fix because the LaTeX/"Jake's resume" template
+  // hard-codes `leading-[1.22]` etc. on bullets/descriptions, which made
+  // earlier inheritance-based attempts no-op for those templates.
+  const lsMultiplier = LINE_SPACING_MULTIPLIERS[safeConfig.lineSpacing ?? 'normal']
+  const bodyLineHeight = (base: number) => base * lsMultiplier
+  // Convenience values for the line-heights actually used in the template:
+  const lhTight = bodyLineHeight(1.25)       // was leading-tight
+  const lhSnug = bodyLineHeight(1.375)       // was leading-snug
+  const lhNormal = bodyLineHeight(1.5)       // was leading-normal
+  const lhRelaxed = bodyLineHeight(1.625)    // was leading-relaxed
+  const lhLatexBody = bodyLineHeight(1.22)   // was leading-[1.22]
   const isSidebar = layout === 'sidebar' || layout === 'sidebar-left' || layout === 'sidebar-right'
   const isSidebarRight = layout === 'sidebar-right'
   const isBannerHeader = headerStyle === 'banner'
@@ -170,121 +298,31 @@ export default function UniversalTemplate({
   function renderSkills(
     sections: Array<{ title: string; tag?: string; skills: string[] }>,
     isSidebarContext: boolean,
-    accentValue: string
+    _accentValue: string
   ) {
     const normalizedSections = normalizeSkillSections(sections)
-
-    if (!isSidebarContext && isLatexStyle) {
-      return (
-        <div className="mt-0.5 text-[13px] leading-[1.25] text-black">
-          {normalizedSections.map((section, sectionIndex) => (
-            <div key={sectionIndex} data-resume-page-break>
-              {section.title && (
-                <>
-                  <EditableText
-                    value={section.title}
-                    path={`skillSections.${sectionIndex}.title`}
-                    isEditing={isEditing}
-                    onFieldChange={onFieldChange}
-                    onNavigateToField={onNavigateToField}
-                    className="font-bold text-black"
-                  />
-                  {section.tag ? (
-                    <span>
-                      {' ('}
-                      <EditableText
-                        value={section.tag}
-                        path={`skillSections.${sectionIndex}.tag`}
-                        isEditing={isEditing}
-                        onFieldChange={onFieldChange}
-                        onNavigateToField={onNavigateToField}
-                        className="font-bold text-black"
-                      />
-                      {')'}
-                    </span>
-                  ) : null}
-                  <span>{': '}</span>
-                </>
-              )}
-              {section.skills.map((skill, skillIndex) => (
-                <React.Fragment key={skillIndex}>
-                  <EditableText
-                    value={skill}
-                    path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
-                    isEditing={isEditing}
-                    onFieldChange={onFieldChange}
-                    onNavigateToField={onNavigateToField}
-                    className="text-black"
-                  />
-                  {skillIndex < section.skills.length - 1 && <span>, </span>}
-                </React.Fragment>
-              ))}
-            </div>
-          ))}
-        </div>
-      )
-    }
-
-    if (skillsStyle === 'stacked') {
-      return (
-        <div className={`${isSidebarContext ? 'mt-1 space-y-2' : 'mt-1.5 space-y-2'}`}>
-          {normalizedSections.map((section, sectionIndex) => (
-            <div key={sectionIndex} data-resume-page-break>
-              {section.title && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <EditableText
-                    value={section.title}
-                    path={`skillSections.${sectionIndex}.title`}
-                    isEditing={isEditing}
-                    onFieldChange={onFieldChange}
-                    onNavigateToField={onNavigateToField}
-                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`}
-                  />
-                  {section.tag ? (
-                    <span
-                      className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
-                      onClick={
-                        !isEditing && onNavigateToField
-                          ? (event) => {
-                              event.stopPropagation()
-                              onNavigateToField(`skillSections.${sectionIndex}.tag`)
-                            }
-                          : undefined
-                      }
-                    >
-                      ({section.tag})
-                    </span>
-                  ) : null}
-                  <span className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} text-gray-600`}>:</span>
-                </div>
-              )}
-              <div className="mt-1 space-y-1">
-                {section.skills.map((skill, skillIndex) => (
-                  <div key={skillIndex} className="relative pl-[1.125rem]">
-                    <span style={{ color: accentValue, opacity: 0.7 }} className="absolute left-0 text-xs leading-5">•</span>
-                    <EditableText
-                      value={skill}
-                      path={`skillSections.${sectionIndex}.skills.${skillIndex}`}
-                      isEditing={isEditing}
-                      onFieldChange={onFieldChange}
-                      onNavigateToField={onNavigateToField}
-                      className={isSidebarContext ? 'text-[11px] text-gray-700 leading-tight' : 'text-sm text-gray-700 leading-tight'}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )
-    }
-
+    const isLatexSkills = !isSidebarContext && isLatexStyle
     const separator = skillsStyle === 'divider' ? ' • ' : ', '
+    const sectionSeparator = skillsStyle === 'divider' ? '  |  ' : '; '
+    const titleClassName = isLatexSkills
+      ? 'font-bold text-black'
+      : `${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`
+    const tagClassName = isLatexSkills
+      ? 'font-bold text-black'
+      : `${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`
+    const skillClassName = isLatexSkills
+      ? 'text-black'
+      : isSidebarContext
+        ? 'text-[11px] text-gray-700'
+        : 'text-sm text-gray-700'
+    const wrapperClassName = isLatexSkills
+      ? 'mt-0.5 text-[13px] leading-[1.25] text-black'
+      : 'mt-1 text-gray-700'
 
     return (
-      <div className="mt-1 space-y-1.5">
+      <div className={wrapperClassName} data-resume-page-break>
         {normalizedSections.map((section, sectionIndex) => (
-          <div key={sectionIndex} data-resume-page-break>
+          <React.Fragment key={sectionIndex}>
             {section.title && (
               <>
                 <EditableText
@@ -293,13 +331,13 @@ export default function UniversalTemplate({
                   isEditing={isEditing}
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
-                  className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-bold text-gray-600`}
+                  className={titleClassName}
                 />
                 {section.tag ? (
                   <span
-                    className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} font-medium text-gray-500 ${!isEditing && onNavigateToField ? 'cursor-text' : ''}`}
+                    className={tagClassName}
                     onClick={
-                      !isEditing && onNavigateToField
+                      !isLatexSkills && !isEditing && onNavigateToField
                         ? (event) => {
                             event.stopPropagation()
                             onNavigateToField(`skillSections.${sectionIndex}.tag`)
@@ -310,7 +348,7 @@ export default function UniversalTemplate({
                     ({section.tag})
                   </span>
                 ) : null}
-                <span className={`${isSidebarContext ? 'text-[10px]' : 'text-xs'} mr-2 text-gray-600`}>: </span>
+                <span className={isLatexSkills ? 'text-black' : `${isSidebarContext ? 'text-[10px]' : 'text-xs'} text-gray-600`}>: </span>
               </>
             )}
             {section.skills.map((skill, skillIndex) => (
@@ -321,12 +359,14 @@ export default function UniversalTemplate({
                   isEditing={isEditing}
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
+                  className={skillClassName}
                 />
 
                 {skillIndex < section.skills.length - 1 && <span className="text-gray-400">{separator}</span>}
               </React.Fragment>
             ))}
-          </div>
+            {sectionIndex < normalizedSections.length - 1 && <span className="text-gray-400">{sectionSeparator}</span>}
+          </React.Fragment>
         ))}
       </div>
     )
@@ -356,6 +396,55 @@ export default function UniversalTemplate({
     { value: data.location, path: 'location' },
   ].filter((item): item is { value: string; path: string } => Boolean(item.value))
 
+  // Compute the href for a contact item based on its path. Email/phone get
+  // mailto: / tel: schemes which the URL allowlist accepts. linkedin/website
+  // honour whatever the user typed (with auto-https prefix for bare domains).
+  function getContactHref(path: string, value: string): string | null {
+    if (path === 'email') return normalizeResumeLinkHref(`mailto:${value.trim()}`)
+    if (path === 'phone') return normalizeResumeLinkHref(`tel:${value.trim().replace(/[^\d+]/g, '')}`)
+    if (path === 'linkedin' || path === 'website') return normalizeResumeLinkHref(value)
+    return null
+  }
+
+  const isPreviewMode = Boolean(onNavigateToField)
+  const linkableContactPaths = new Set(['email', 'phone', 'linkedin', 'website'])
+
+  // Per-field hyperlink toggles. Sanitizer normalises this to a record of
+  // booleans; any falsy/missing field stays plain text.
+  const contactLinkToggles =
+    typeof safeConfig.contactLinksClickable === 'object' && safeConfig.contactLinksClickable !== null
+      ? safeConfig.contactLinksClickable
+      : {}
+
+  // Wrap a contact field in <a> only when that SPECIFIC field's toggle is on
+  // AND we're doing a static render (no onNavigateToField). Live-preview
+  // clicks navigate to the editor even when the toggle is on, so users can
+  // still edit hyperlinked contact fields.
+  function wrapContactLink(
+    path: string,
+    value: string,
+    className: string,
+    editable: React.ReactNode
+  ): React.ReactNode {
+    if (!linkableContactPaths.has(path)) return editable
+    if (!contactLinkToggles[path as keyof typeof contactLinkToggles]) return editable
+    if (isPreviewMode) return editable
+    const href = getContactHref(path, value)
+    if (!href) return editable
+    return (
+      <a
+        href={href}
+        target={href.startsWith('http') ? '_blank' : undefined}
+        rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+        data-pdf-link="true"
+        style={{ color: accent }}
+        className={`${className} underline decoration-dotted underline-offset-2 hover:decoration-solid`}
+      >
+        {editable}
+      </a>
+    )
+  }
+
   function renderContactInfo(centered: boolean) {
     const resolvedContactItems = isTimelessHeader ? timelessContactItems : contactItems
     if (resolvedContactItems.length === 0) return null
@@ -369,14 +458,16 @@ export default function UniversalTemplate({
             return (
               <React.Fragment key={item.path}>
                 {index > 0 && <span aria-hidden="true" className="px-1 text-black">|</span>}
-                <EditableText
-                  value={item.value}
-                  path={item.path}
-                  isEditing={isEditing}
-                  onFieldChange={onFieldChange}
-                  onNavigateToField={onNavigateToField}
-                  className={`break-words text-black ${isLink ? 'underline underline-offset-2' : ''}`}
-                />
+                {wrapContactLink(item.path, item.value, '', (
+                  <EditableText
+                    value={item.value}
+                    path={item.path}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className={`break-words text-black ${isLink ? 'underline underline-offset-2' : ''}`}
+                  />
+                ))}
               </React.Fragment>
             )
           })}
@@ -390,15 +481,18 @@ export default function UniversalTemplate({
       return (
         <div className={`mt-3 space-y-1 ${centered ? 'text-center' : ''}`}>
           {resolvedContactItems.map((item) => (
-            <EditableText
-              key={item.path}
-              value={item.value}
-              path={item.path}
-              isEditing={isEditing}
-              onFieldChange={onFieldChange}
-              onNavigateToField={onNavigateToField}
-              className={baseClassName}
-            />
+            <div key={item.path}>
+              {wrapContactLink(item.path, item.value, '', (
+                <EditableText
+                  value={item.value}
+                  path={item.path}
+                  isEditing={isEditing}
+                  onFieldChange={onFieldChange}
+                  onNavigateToField={onNavigateToField}
+                  className={baseClassName}
+                />
+              ))}
+            </div>
           ))}
         </div>
       )
@@ -407,15 +501,18 @@ export default function UniversalTemplate({
     return (
       <div className={`mt-3 flex flex-wrap gap-x-4 gap-y-1 ${centered ? 'justify-center' : ''}`}>
         {resolvedContactItems.map((item) => (
-          <EditableText
-            key={item.path}
-            value={item.value}
-            path={item.path}
-            isEditing={isEditing}
-            onFieldChange={onFieldChange}
-            onNavigateToField={onNavigateToField}
-            className={baseClassName}
-          />
+          <React.Fragment key={item.path}>
+            {wrapContactLink(item.path, item.value, '', (
+              <EditableText
+                value={item.value}
+                path={item.path}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+                className={baseClassName}
+              />
+            ))}
+          </React.Fragment>
         ))}
       </div>
     )
@@ -595,14 +692,17 @@ export default function UniversalTemplate({
             <div key={projectIndex} className="pl-[14px] text-black">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1 break-words text-[13px] leading-[1.15] text-black">
-                  <EditableText
-                    value={project.name}
-                    path={`projects.${projectIndex}.name`}
-                    isEditing={isEditing}
-                    onFieldChange={onFieldChange}
-                    onNavigateToField={onNavigateToField}
-                    className="font-bold text-black"
-                  />
+                  <ResumeTitleLink url={project.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open project ${project.name}`}>
+                    <EditableText
+                      value={project.name}
+                      path={`projects.${projectIndex}.name`}
+                      isEditing={isEditing}
+                      onFieldChange={onFieldChange}
+                      onNavigateToField={onNavigateToField}
+                      className="font-bold text-black"
+                    />
+                  </ResumeTitleLink>
+                  <ResumeLinkIcon url={project.url} accent={accent} label={`Open project ${project.name}`} />
                   {technologies.length > 0 && (
                     <>
                       <span> | </span>
@@ -627,20 +727,22 @@ export default function UniversalTemplate({
               </div>
 
               {project.description && (
-                <div className="mt-[2px] block break-words text-[13px] leading-[1.22] text-black">
+                <div className="mt-[2px] block break-words text-[13px] text-black" style={{ lineHeight: lhLatexBody }}>
                   <EditableText
                     value={project.description}
                     path={`projects.${projectIndex}.description`}
                     isEditing={isEditing}
                     onFieldChange={onFieldChange}
                     onNavigateToField={onNavigateToField}
-                    className="break-words text-[13px] leading-[1.22] text-black"
+                    className="break-words text-[13px] text-black"
+                    style={{ lineHeight: lhLatexBody }}
+                    preserveWhitespace
                   />
                 </div>
               )}
 
               {(project.bullets?.length ?? 0) > 0 && (
-                <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] leading-[1.22] text-black">
+                <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] text-black" style={{ lineHeight: lhLatexBody }}>
                   {(project.bullets ?? []).map((bullet, bulletIndex) => (
                     <li key={bulletIndex}>
                       <EditableText
@@ -649,7 +751,9 @@ export default function UniversalTemplate({
                         isEditing={isEditing}
                         onFieldChange={onFieldChange}
                         onNavigateToField={onNavigateToField}
-                        className="break-words text-[13px] leading-[1.22] text-black"
+                        className="break-words text-[13px] text-black"
+                        style={{ lineHeight: lhLatexBody }}
+                        preserveWhitespace
                       />
                     </li>
                   ))}
@@ -668,6 +772,27 @@ export default function UniversalTemplate({
     if (id.startsWith('custom_')) {
       const custom = data.customSections?.find(c => c.id === id)
       if (!custom) return null
+
+      // Page break: invisible marker that the JS pagination uses to force a
+      // slice boundary. The marker has ZERO rendered height. Crucially we do
+      // NOT set CSS break-before:page — the JS pagination already starts a
+      // new slice (= new PDF page) at this position. Setting the CSS break
+      // too would cause Puppeteer to break a SECOND time inside the new
+      // slice, producing a blank page.
+      if (custom.type === 'pageBreak') {
+        return (
+          <div
+            data-resume-page-break-hard="true"
+            aria-hidden="true"
+            style={{
+              height: 0,
+              margin: 0,
+              padding: 0,
+              border: 'none',
+            }}
+          />
+        )
+      }
 
       const header = isSidebarContext ? (
         <SidebarLabel
@@ -695,13 +820,17 @@ export default function UniversalTemplate({
         return (
           <div className={isSidebarContext ? 'mt-4' : ''}>
             {header}
-            <div className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}>
+            <div
+              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words`}
+              style={{ lineHeight: isCompressed ? lhSnug : lhRelaxed }}
+            >
               <EditableText
                 value={custom.text}
                 path={`${id}.text`}
                 isEditing={isEditing}
                 onFieldChange={onFieldChange}
                 onNavigateToField={onNavigateToField}
+                preserveWhitespace
               />
             </div>
           </div>
@@ -741,6 +870,9 @@ export default function UniversalTemplate({
                   dateLayout={dateLayout}
                   onNavigateToField={onNavigateToField}
                   isSidebarContext={isSidebarContext}
+                  lhTight={lhTight}
+                  lhNormal={lhNormal}
+                  lhLatexBody={lhLatexBody}
                 />
 
               ))}
@@ -756,13 +888,17 @@ export default function UniversalTemplate({
         return hasText(data.summary) ? (
           <div>
             {isSidebarContext ? <SidebarLabel text="Summary" accent={accent} /> : <SectionHeading title="Summary" accent={accent} density={density} styleVariant={sectionHeadingStyle} />}
-            <div className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words ${isCompressed ? 'leading-snug' : 'leading-relaxed'}`}>
+            <div
+              className={`${isSidebarContext ? 'text-[11px]' : isLatexStyle ? 'text-[13px]' : 'text-sm'} text-gray-700 break-words`}
+              style={{ lineHeight: isCompressed ? lhSnug : lhRelaxed }}
+            >
               <EditableText
                 value={data.summary}
                 path="summary"
                 isEditing={isEditing}
                 onFieldChange={onFieldChange}
                 onNavigateToField={onNavigateToField}
+                preserveWhitespace
               />
             </div>
           </div>
@@ -808,6 +944,9 @@ export default function UniversalTemplate({
                     dateLayout={dateLayout}
                     onNavigateToField={onNavigateToField}
                     isSidebarContext={isSidebarContext}
+                    lhTight={lhTight}
+                    lhNormal={lhNormal}
+                    lhLatexBody={lhLatexBody}
                   />
                 ) : null
               )}
@@ -993,7 +1132,10 @@ export default function UniversalTemplate({
             <div className={isSidebarContext ? 'mt-1 space-y-1' : (isCompressed ? 'space-y-1' : 'space-y-2')}>
               {data.certifications.map((c, i) => (
                 <p key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
-                  <EditableText value={c.name} path={`certifications.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  <ResumeTitleLink url={c.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open certification ${c.name}`}>
+                    <EditableText value={c.name} path={`certifications.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  </ResumeTitleLink>
+                  <ResumeLinkIcon url={c.url} accent={accent} label={`Open certification ${c.name}`} />
                   {c.issuer && (
                     <>
                       {' · '}
@@ -1047,6 +1189,9 @@ export default function UniversalTemplate({
                   bulletStyle={bulletStyle}
                   dateLayout={dateLayout}
                   isSidebarContext={isSidebarContext}
+                  lhTight={lhTight}
+                  lhNormal={lhNormal}
+                  lhLatexBody={lhLatexBody}
                 />
               ))}
             </div>
@@ -1078,11 +1223,19 @@ export default function UniversalTemplate({
                 hasProjectItemContent(proj) ? (
                   <div key={i}>
                     <div className="flex justify-between items-start">
-                      <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
+                      <div className="inline-flex items-baseline">
+                        <ResumeTitleLink url={proj.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open project ${proj.name}`}>
+                          <EditableText value={proj.name} path={`projects.${i}.name`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={isSidebarContext ? 'text-[11px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-900'} />
+                        </ResumeTitleLink>
+                        <ResumeLinkIcon url={proj.url} accent={accent} label={`Open project ${proj.name}`} />
+                      </div>
                     </div>
                     {proj.description && (
-                      <div className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5 leading-relaxed`}>
-                        <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} />
+                      <div
+                        className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 mt-0.5`}
+                        style={{ lineHeight: lhRelaxed }}
+                      >
+                        <EditableText value={proj.description} path={`projects.${i}.description`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} preserveWhitespace />
                       </div>
                     )}
                     {proj.technologies && proj.technologies.length > 0 && (
@@ -1112,7 +1265,9 @@ export default function UniversalTemplate({
                               isEditing={isEditing}
                               onFieldChange={onFieldChange}
                               onNavigateToField={onNavigateToField}
-                              className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600 leading-relaxed`}
+                              className={`${isSidebarContext ? 'text-[10px]' : 'text-sm'} text-gray-600`}
+                              style={{ lineHeight: lhRelaxed }}
+                              preserveWhitespace
                             />
                           </div>
                         ))}
@@ -1146,7 +1301,10 @@ export default function UniversalTemplate({
             <div className={isSidebarContext ? 'mt-1' : ''}>
               {data.awards.map((award, i) => (
                 <p key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
-                  <EditableText value={award.title} path={`awards.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  <ResumeTitleLink url={award.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open award ${award.title}`}>
+                    <EditableText value={award.title} path={`awards.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  </ResumeTitleLink>
+                  <ResumeLinkIcon url={award.url} accent={accent} label={`Open award ${award.title}`} />
                   {award.issuer && (
                     <>
                       {' · '}
@@ -1203,7 +1361,10 @@ export default function UniversalTemplate({
             <div className={isSidebarContext ? 'mt-1 space-y-1' : 'space-y-2'}>
               {data.publications.map((p, i) => (
                 <div key={i} className={`${isSidebarContext ? 'text-[11px]' : 'text-sm'} text-gray-700 leading-tight`}>
-                  <EditableText value={p.title} path={`publications.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  <ResumeTitleLink url={p.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open publication ${p.title}`}>
+                    <EditableText value={p.title} path={`publications.${i}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="font-medium break-words" />
+                  </ResumeTitleLink>
+                  <ResumeLinkIcon url={p.url} accent={accent} label={`Open publication ${p.title}`} />
                   {(p.publisher || p.date) && (
                     <span className={`text-gray-500 block italic ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
                       {p.publisher ? (
@@ -1535,8 +1696,10 @@ interface ExperienceItemProps {
     startDate?: string
     endDate?: string
     date?: string
+    summary?: string
     bullets?: string[]
     highlights?: string[]
+    url?: string
   }
   ei: number
   pathPrefix: string
@@ -1548,6 +1711,10 @@ interface ExperienceItemProps {
   dateLayout: UniversalConfig['dateLayout']
   onNavigateToField?: (path: string) => void
   isSidebarContext?: boolean
+  /** Pre-multiplied body line-heights from the parent template. */
+  lhTight: number
+  lhNormal: number
+  lhLatexBody: number
 }
 
 function ExperienceItem({
@@ -1562,6 +1729,9 @@ function ExperienceItem({
   dateLayout,
   onNavigateToField,
   isSidebarContext = false,
+  lhTight,
+  lhNormal,
+  lhLatexBody,
 }: ExperienceItemProps) {
   const isCompressed = density === 'compressed'
   const bulletMarker = bulletStyle === 'dash' ? '–' : bulletStyle === 'square' ? '▪' : '•'
@@ -1610,50 +1780,69 @@ function ExperienceItem({
     return (
       <div data-resume-page-break className="pl-[14px] text-black">
         <div className="flex items-start justify-between gap-4">
-          <EditableText
-            value={exp.title || exp.name}
-            path={`${pathPrefix}.${ei}.title`}
-            isEditing={isEditing}
-            onFieldChange={onFieldChange}
-            onNavigateToField={onNavigateToField}
-            className="min-w-0 flex-1 break-words text-[15px] font-bold leading-[1.12] text-black"
-          />
-          {dateContent && (
-            <span className="ml-4 shrink-0 text-right text-[15px] leading-[1.12] text-black">
-              {dateContent}
-            </span>
-          )}
-        </div>
-
-        {(exp.company || exp.location) && (
-          <div className="mt-[1px] flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              {exp.company && (
+          <div className="min-w-0 flex-1">
+            <EditableText
+              value={exp.title || exp.name}
+              path={`${pathPrefix}.${ei}.title`}
+              isEditing={isEditing}
+              onFieldChange={onFieldChange}
+              onNavigateToField={onNavigateToField}
+              className="block break-words text-[15px] font-bold leading-[1.12] text-black"
+            />
+            {exp.company && (
+              <span className="mt-[1px] inline-flex items-baseline">
+                <ResumeTitleLink url={exp.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open ${exp.company} website`}>
+                  <EditableText
+                    value={exp.company}
+                    path={`${pathPrefix}.${ei}.company`}
+                    isEditing={isEditing}
+                    onFieldChange={onFieldChange}
+                    onNavigateToField={onNavigateToField}
+                    className="block break-words text-[13px] italic leading-[1.15] text-black"
+                  />
+                </ResumeTitleLink>
+                <ResumeLinkIcon url={exp.url} accent={accent} label={`Open ${exp.company} website`} />
+              </span>
+            )}
+          </div>
+          {(dateContent || exp.location) && (
+            <div className="ml-4 shrink-0 text-right">
+              {dateContent && (
+                <span className="block text-[15px] leading-[1.12] text-black">
+                  {dateContent}
+                </span>
+              )}
+              {exp.location && (
                 <EditableText
-                  value={exp.company}
-                  path={`${pathPrefix}.${ei}.company`}
+                  value={exp.location}
+                  path={`${pathPrefix}.${ei}.location`}
                   isEditing={isEditing}
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
-                  className="block break-words text-[13px] italic leading-[1.15] text-black"
+                  className="mt-[1px] block text-[13px] italic leading-[1.15] text-black"
                 />
               )}
             </div>
-            {exp.location && (
-              <EditableText
-                value={exp.location}
-                path={`${pathPrefix}.${ei}.location`}
-                isEditing={isEditing}
-                onFieldChange={onFieldChange}
-                onNavigateToField={onNavigateToField}
-                className="ml-4 shrink-0 text-right text-[13px] italic leading-[1.15] text-black"
-              />
-            )}
+          )}
+        </div>
+
+        {exp.summary && (
+          <div className="mt-[2px]" style={{ lineHeight: lhLatexBody }}>
+            <EditableText
+              value={exp.summary}
+              path={`${pathPrefix}.${ei}.summary`}
+              isEditing={isEditing}
+              onFieldChange={onFieldChange}
+              onNavigateToField={onNavigateToField}
+              className="break-words text-[13px] text-black"
+              style={{ lineHeight: lhLatexBody }}
+              preserveWhitespace
+            />
           </div>
         )}
 
         {bulletItems.length > 0 && (
-          <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] leading-[1.22] text-black">
+          <ul className="mt-[2px] list-disc space-y-0 pl-[22px] text-[13px] text-black" style={{ lineHeight: lhLatexBody }}>
             {bulletItems.map((b: string, bi: number) => (
               <li key={bi} className="pl-0">
                 <EditableText
@@ -1662,7 +1851,9 @@ function ExperienceItem({
                   isEditing={isEditing}
                   onFieldChange={onFieldChange}
                   onNavigateToField={onNavigateToField}
-                  className="break-words text-[13px] leading-[1.22] text-black"
+                  className="break-words text-[13px] text-black"
+                  style={{ lineHeight: lhLatexBody }}
+                  preserveWhitespace
                 />
               </li>
             ))}
@@ -1676,19 +1867,39 @@ function ExperienceItem({
     <div data-resume-page-break>
       <div className={`items-start ${showRightDate ? 'flex justify-between gap-4' : ''}`}>
         <div className="min-w-0 flex-1">
-          <EditableText value={exp.title || exp.name} path={`${pathPrefix}.${ei}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm font-semibold text-gray-900 break-words" />
+          <EditableText value={exp.title || exp.name} path={`${pathPrefix}.${ei}.title`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="block text-sm font-semibold text-gray-900 break-words" />
           {exp.company && (
-            <EditableText value={exp.company} path={`${pathPrefix}.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-600 break-words block" />
+            <span className="inline-flex items-baseline">
+              <ResumeTitleLink url={exp.url} accent={accent} isPreviewMode={Boolean(onNavigateToField)} label={`Open ${exp.company} website`}>
+                <EditableText value={exp.company} path={`${pathPrefix}.${ei}.company`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-600 break-words block" />
+              </ResumeTitleLink>
+              <ResumeLinkIcon url={exp.url} accent={accent} label={`Open ${exp.company} website`} />
+            </span>
           )}
         </div>
-        {showRightDate && dateContent && (
-          <span className={`text-gray-400 shrink-0 ml-4 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
-            {dateContent}
-          </span>
+        {showRightDate && (dateContent || exp.location) && (
+          <div className={`shrink-0 ml-4 text-right text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
+            {dateContent && <span className="block">{dateContent}</span>}
+            {exp.location && (
+              <EditableText
+                value={exp.location}
+                path={`${pathPrefix}.${ei}.location`}
+                isEditing={isEditing}
+                onFieldChange={onFieldChange}
+                onNavigateToField={onNavigateToField}
+                className="mt-0.5 block"
+              />
+            )}
+          </div>
         )}
       </div>
 
-      {exp.location && (
+      {!showRightDate && dateContent && (
+        <span className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
+          {dateContent}
+        </span>
+      )}
+      {!showRightDate && exp.location && (
         <EditableText
           value={exp.location}
           path={`${pathPrefix}.${ei}.location`}
@@ -1698,18 +1909,28 @@ function ExperienceItem({
           className={`text-gray-400 block ${isSidebarContext || isCompressed ? 'text-[11px] mt-0.5' : 'text-xs mt-0.5'}`}
         />
       )}
-      {!showRightDate && dateContent && (
-        <span className={`mt-0.5 block text-gray-400 ${isSidebarContext || isCompressed ? 'text-[11px]' : 'text-xs'}`}>
-          {dateContent}
-        </span>
+
+      {exp.summary && (
+        <div className={`${isCompressed ? 'mt-0.5' : 'mt-1.5'}`} style={{ lineHeight: isCompressed ? lhTight : lhNormal }}>
+          <EditableText
+            value={exp.summary}
+            path={`${pathPrefix}.${ei}.summary`}
+            isEditing={isEditing}
+            onFieldChange={onFieldChange}
+            onNavigateToField={onNavigateToField}
+            className="text-sm text-gray-700 break-words"
+            style={{ lineHeight: isCompressed ? lhTight : lhNormal }}
+            preserveWhitespace
+          />
+        </div>
       )}
 
       {exp.bullets && exp.bullets.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.bullets.map((b: string, bi: number) => (
-            <li key={bi} className="relative pl-[1.125rem]">
+            <li key={bi} className="relative pl-[1.125rem]" style={{ lineHeight: isCompressed ? lhTight : lhNormal }}>
               <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
-              <EditableText value={b} path={`${pathPrefix}.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
+              <EditableText value={b} path={`${pathPrefix}.${ei}.bullets.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-700 break-words" style={{ lineHeight: isCompressed ? lhTight : lhNormal }} preserveWhitespace />
             </li>
           ))}
         </ul>
@@ -1717,9 +1938,9 @@ function ExperienceItem({
       {exp.highlights && exp.highlights.length > 0 && (
         <ul className={`${isCompressed ? 'mt-0.5 space-y-0.5' : 'mt-1.5 space-y-1'}`}>
           {exp.highlights.map((b: string, bi: number) => (
-            <li key={bi} className="relative pl-[1.125rem]">
+            <li key={bi} className="relative pl-[1.125rem]" style={{ lineHeight: isCompressed ? lhTight : lhNormal }}>
               <span style={{ color: accent, opacity: 0.7 }} className={`absolute left-0 text-base ${isCompressed ? '-top-[3px]' : '-top-px'}`}>{bulletMarker}</span>
-              <EditableText value={b} path={`${pathPrefix}.${ei}.highlights.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className={`text-sm text-gray-700 break-words ${isCompressed ? 'leading-tight' : 'leading-normal'}`} />
+              <EditableText value={b} path={`${pathPrefix}.${ei}.highlights.${bi}`} isEditing={isEditing} onFieldChange={onFieldChange} onNavigateToField={onNavigateToField} className="text-sm text-gray-700 break-words" style={{ lineHeight: isCompressed ? lhTight : lhNormal }} preserveWhitespace />
             </li>
           ))}
         </ul>

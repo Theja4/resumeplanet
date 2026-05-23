@@ -1,5 +1,6 @@
-import { DEFAULT_UNIVERSAL_CONFIG } from '@/types'
+import { CONTACT_LINK_FIELDS, DEFAULT_UNIVERSAL_CONFIG } from '@/types'
 import type {
+  ContactLinkToggles,
   UniversalBulletStyle,
   UniversalConfig,
   UniversalContactStyle,
@@ -9,6 +10,22 @@ import type {
   UniversalSectionHeadingStyle,
   UniversalSkillsStyle,
 } from '@/types'
+
+function normalizeContactLinksClickable(
+  value: UniversalConfig['contactLinksClickable']
+): ContactLinkToggles {
+  // Legacy migration: old schema stored a single boolean. Expand `true` to
+  // all-fields-true so existing users keep the same rendering.
+  if (value === true) {
+    return { linkedin: true, website: true, email: true, phone: true }
+  }
+  if (!value || typeof value !== 'object') return {}
+  const out: ContactLinkToggles = {}
+  for (const field of CONTACT_LINK_FIELDS) {
+    if (value[field] === true) out[field] = true
+  }
+  return out
+}
 
 export interface FontOption {
   id: string
@@ -146,7 +163,6 @@ export const BULLET_STYLE_OPTIONS: Array<TemplateOption<UniversalBulletStyle>> =
 export const SKILLS_STYLE_OPTIONS: Array<TemplateOption<UniversalSkillsStyle>> = [
   { value: 'inline', label: 'Comma', description: 'Runs inline like a sentence.' },
   { value: 'divider', label: 'Divider', description: 'Inline skills split by centered dots.' },
-  { value: 'stacked', label: 'Stacked', description: 'Each skill sits on its own line.' },
 ]
 
 export const CONTACT_STYLE_OPTIONS: Array<TemplateOption<UniversalContactStyle>> = [
@@ -233,6 +249,14 @@ export function sanitizeUniversalConfig(value: Partial<UniversalConfig> | null |
     density: value?.density === 'compressed' || value?.density === 'relaxed'
       ? value.density
       : DEFAULT_UNIVERSAL_CONFIG.density,
+    contactLinksClickable: normalizeContactLinksClickable(value?.contactLinksClickable),
+    lineSpacing:
+      value?.lineSpacing === 'compact' ||
+      value?.lineSpacing === 'normal' ||
+      value?.lineSpacing === 'relaxed' ||
+      value?.lineSpacing === 'loose'
+        ? value.lineSpacing
+        : DEFAULT_UNIVERSAL_CONFIG.lineSpacing,
   }
 }
 
@@ -390,7 +414,7 @@ export const ATS_TEMPLATE_PRESETS: TemplatePreset[] = [
     headerStyle: 'classic',
     sectionHeadingStyle: 'label',
     bulletStyle: 'square',
-    skillsStyle: 'stacked',
+    skillsStyle: 'divider',
     contactStyle: 'inline',
     dateLayout: 'inline',
     nameSize: 'large',
@@ -426,7 +450,7 @@ export const ATS_TEMPLATE_PRESETS: TemplatePreset[] = [
     headerStyle: 'compact',
     sectionHeadingStyle: 'rule',
     bulletStyle: 'square',
-    skillsStyle: 'stacked',
+    skillsStyle: 'divider',
     contactStyle: 'stacked',
     dateLayout: 'inline',
     nameSize: 'standard',

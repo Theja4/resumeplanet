@@ -470,13 +470,13 @@ function renderExperienceItems(writer, items) {
 
   for (const item of items) {
     const roleText = item.title || item.name || ''
-    const companyLine = writer.isLatexStyle ? item.company : [item.company, item.location].filter(Boolean).join('  |  ')
-    const locationLine = writer.isLatexStyle ? item.location : ''
+    const companyLine = item.company || ''
+    const locationLine = item.location || ''
     const dateLabel = [item.startDate || item.date, item.endDate].filter(Boolean).join(' - ')
-    const showRightDate = writer.dateLayout === 'right' && Boolean(dateLabel)
-    const dateColumnWidth = showRightDate ? writer.tokens.dateColumnWidth : 0
+    const showRightMeta = writer.dateLayout === 'right' && Boolean(dateLabel || locationLine)
+    const dateColumnWidth = showRightMeta ? writer.tokens.dateColumnWidth : 0
     const itemX = writer.isLatexStyle ? writer.marginX + 4 : writer.marginX
-    const leftMaxWidth = dateLabel ? writer.pageWidth - writer.marginX - itemX - dateColumnWidth - 4 : writer.pageWidth - writer.marginX - itemX
+    const leftMaxWidth = showRightMeta ? writer.pageWidth - writer.marginX - itemX - dateColumnWidth - 4 : writer.pageWidth - writer.marginX - itemX
     const bullets = item.bullets || item.highlights || []
     const keepTogetherHeight =
       writer.estimateWrappedHeight(roleText, {
@@ -493,6 +493,12 @@ function renderExperienceItems(writer, items) {
       }) : 0) +
       (writer.dateLayout === 'inline' && dateLabel
         ? writer.estimateWrappedHeight(dateLabel, {
+            fontSize: writer.tokens.metaFontSize,
+            after: writer.tokens.companyAfter,
+          })
+        : 0) +
+      (writer.dateLayout === 'inline' && locationLine
+        ? writer.estimateWrappedHeight(locationLine, {
             fontSize: writer.tokens.metaFontSize,
             after: writer.tokens.companyAfter,
           })
@@ -518,17 +524,29 @@ function renderExperienceItems(writer, items) {
     }
     const afterRoleY = writer.getY()
 
-    if (showRightDate) {
+    let rightMetaEndY = afterRoleY
+    if (showRightMeta) {
       writer.setY(startY)
-      writer.writeRightAlignedText(dateLabel, writer.pageWidth - writer.marginX, {
-        fontSize: writer.tokens.metaFontSize,
-        color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
-      })
-      writer.setY(Math.max(afterRoleY, startY + 4.8))
+      if (dateLabel) {
+        writer.writeRightAlignedText(dateLabel, writer.pageWidth - writer.marginX, {
+          fontSize: writer.tokens.metaFontSize,
+          color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
+        })
+        writer.setY(writer.getY() + 4.8)
+      }
+      if (locationLine) {
+        writer.writeRightAlignedText(locationLine, writer.pageWidth - writer.marginX, {
+          fontSize: writer.tokens.metaFontSize,
+          fontStyle: writer.isLatexStyle ? 'italic' : 'normal',
+          color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
+        })
+        writer.setY(writer.getY() + 4.8)
+      }
+      rightMetaEndY = writer.getY()
+      writer.setY(afterRoleY)
     }
 
-    if (companyLine || locationLine) {
-      const companyStartY = writer.getY()
+    if (companyLine) {
       writer.writeWrappedText(companyLine, {
         fontSize: writer.tokens.metaFontSize,
         fontStyle: writer.isLatexStyle ? 'italic' : 'normal',
@@ -537,22 +555,21 @@ function renderExperienceItems(writer, items) {
         maxWidth: leftMaxWidth,
         after: writer.tokens.companyAfter,
       })
-      const afterCompanyY = writer.getY()
-      if (locationLine) {
-        writer.setY(companyStartY)
-        writer.writeRightAlignedText(locationLine, writer.pageWidth - writer.marginX, {
-          fontSize: writer.tokens.metaFontSize,
-          fontStyle: 'italic',
-          color: [0, 0, 0],
-        })
-        writer.setY(Math.max(afterCompanyY, companyStartY + 4.8))
-      }
     }
+    writer.setY(Math.max(writer.getY(), rightMetaEndY))
 
-    if (!showRightDate && dateLabel) {
+    if (!showRightMeta && dateLabel) {
       writer.writeWrappedText(dateLabel, {
         fontSize: writer.tokens.metaFontSize,
         color: [107, 114, 128],
+        after: writer.tokens.companyAfter,
+      })
+    }
+    if (!showRightMeta && locationLine) {
+      writer.writeWrappedText(locationLine, {
+        fontSize: writer.tokens.metaFontSize,
+        fontStyle: writer.isLatexStyle ? 'italic' : 'normal',
+        color: writer.isLatexStyle ? [0, 0, 0] : [107, 114, 128],
         after: writer.tokens.companyAfter,
       })
     }
@@ -889,35 +906,18 @@ function renderSkillsSection(writer, data) {
   writer.writeSectionHeading('Skills', writer.sectionHeadingStyle)
 
   const separator = writer.skillsStyle === 'divider' ? '  •  ' : ', '
-
-  for (const section of sections) {
+  const sectionSeparator = writer.skillsStyle === 'divider' ? '  |  ' : '; '
+  const line = sections
+    .map(section => {
     const label = section.title ? `${section.title}${section.tag ? ` (${section.tag})` : ''}` : ''
     const skills = section.skills ?? []
-    if (!skills.length && !label) continue
+      if (!skills.length && !label) return ''
+      return label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
+    })
+    .filter(Boolean)
+    .join(sectionSeparator)
 
-    if (writer.skillsStyle === 'stacked') {
-      if (label) {
-        writer.writeWrappedText(label, {
-          fontSize: writer.tokens.metaFontSize,
-          fontStyle: 'bold',
-          color: [75, 85, 99],
-          after: 0.5,
-        })
-      }
-      for (const skill of skills) {
-        writer.writeWrappedText(skill, {
-          fontSize: writer.tokens.bodyFontSize,
-          color: [55, 65, 81],
-          x: writer.marginX + 4.5,
-          maxWidth: writer.contentWidth - 4.5,
-          after: 0.35,
-        })
-      }
-      writer.setY(writer.getY() + writer.tokens.paragraphGap)
-      continue
-    }
-
-    const line = label ? `${label}: ${skills.join(separator)}` : skills.join(separator)
+  if (line) {
     writer.writeWrappedText(line, {
       fontSize: writer.tokens.bodyFontSize,
       color: writer.isLatexStyle ? [0, 0, 0] : [55, 65, 81],

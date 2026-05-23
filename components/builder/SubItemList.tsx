@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor,
+  DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor,
   useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
 import {
@@ -163,8 +163,12 @@ export default function SubItemList({
     }
   }
 
+  // Split mouse + touch sensors to keep iPad vertical scrolling working inside
+  // long item lists (experience with 8 jobs, etc.). Long-press to initiate
+  // drag on touch; 5px-distance on mouse.
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
@@ -291,7 +295,10 @@ export default function SubItemList({
     <div>
       {/* Navigation bar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2">
+        <div
+          className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 p-1 shadow-sm"
+          aria-label={`Entry ${effectiveEditingIndex + 1} of ${items.length}`}
+        >
           <button
             onClick={() => {
               const nextIndex = effectiveEditingIndex > 0 ? effectiveEditingIndex - 1 : effectiveEditingIndex
@@ -299,11 +306,12 @@ export default function SubItemList({
               onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
             disabled={effectiveEditingIndex === 0}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:border-gray-400 hover:bg-gray-100 disabled:border-transparent disabled:bg-transparent disabled:text-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+            aria-label="Previous entry"
           >
-            <ChevronLeft size={16} className="text-gray-500" />
+            <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <span className="text-xs text-gray-500 font-medium">
+          <span className="min-w-[52px] px-2 text-center text-sm font-semibold tabular-nums text-gray-700">
             {effectiveEditingIndex + 1} / {items.length}
           </span>
           <button
@@ -313,15 +321,43 @@ export default function SubItemList({
               onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
             disabled={effectiveEditingIndex === items.length - 1}
-            className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:border-gray-400 hover:bg-gray-100 disabled:border-transparent disabled:bg-transparent disabled:text-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+            aria-label="Next entry"
           >
-            <ChevronRight size={16} className="text-gray-500" />
+            <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
         <div className="flex items-center gap-2">
+          {/* Hide/show the CURRENT sub-item without leaving the editor view.
+              Mirror of the eye icon on the list-view card so users don't have
+              to bounce back to the list to toggle visibility. */}
+          <button
+            onClick={() => toggleItemVisibility(effectiveEditingIndex)}
+            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            title={itemVisibility[effectiveEditingIndex] !== false ? 'Hide this entry' : 'Show this entry'}
+            aria-label={itemVisibility[effectiveEditingIndex] !== false ? 'Hide entry' : 'Show entry'}
+          >
+            {itemVisibility[effectiveEditingIndex] !== false ? (
+              <Eye size={14} className="text-gray-500" />
+            ) : (
+              <EyeOff size={14} className="text-gray-400" />
+            )}
+          </button>
+          {/* Delete the CURRENT sub-item. Reuses the existing confirm flow so
+              an accidental tap doesn't nuke an entry. */}
+          <button
+            onClick={() => setDeletingIndex(effectiveEditingIndex)}
+            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors"
+            title="Delete this entry"
+            aria-label="Delete entry"
+          >
+            <Trash2 size={14} className="text-gray-500 hover:text-red-500" />
+          </button>
           <button
             onClick={addItem}
             className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+            title="Add new entry"
+            aria-label="Add entry"
           >
             <Plus size={15} className="text-gray-500" />
           </button>
@@ -333,6 +369,25 @@ export default function SubItemList({
           </button>
         </div>
       </div>
+
+      {/* Inline delete confirm for the current sub-item (mirrors list-view) */}
+      {deletingIndex === effectiveEditingIndex && (
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-rose-50">
+          <span className="flex-1 text-sm text-gray-700">Delete this entry?</span>
+          <button
+            onClick={() => setDeletingIndex(null)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-white"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => confirmDelete(effectiveEditingIndex)}
+            className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600"
+          >
+            Delete
+          </button>
+        </div>
+      )}
 
       {/* Item editor */}
       <div ref={rootRef} className="p-4">
