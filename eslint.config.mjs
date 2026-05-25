@@ -15,6 +15,7 @@ const eslintConfig = defineConfig([
     ".claude/**",
     ".worktrees/**",
     ".superpowers/**",
+    "linkedin-profile-optimizer-extension/**",
   ]),
 ]);
 

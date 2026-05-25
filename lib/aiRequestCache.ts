@@ -1,7 +1,12 @@
 import { createHash } from 'crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export type AIRequestCacheFeature = 'ats_basic' | 'ats_pro' | 'match_pro' | 'cover_letter'
+export type AIRequestCacheFeature =
+  | 'ats_basic'
+  | 'ats_pro'
+  | 'match_pro'
+  | 'cover_letter'
+  | 'linkedin_rewrite'
 
 interface AIRequestCacheRow<T> {
   payload: {
