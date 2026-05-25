@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* Plus Jakarta Sans (variable woff2) is bundled in /public/fonts/ and
+ * registered via @font-face injected from entrypoints/content.tsx — that
+ * uses chrome.runtime.getURL() so LinkedIn's CSP can't block it. */
+
+@source "../entrypoints/**/*.{html,ts,tsx}";
+@source "./**/*.{ts,tsx}";
+
+:host {
+  all: initial;
+  color-scheme: dark;
+
+  /* ── Rezoomed dark-glass theme ─────────────────────────────────── */
+  --rz-primary:        #80da92;
+  --rz-primary-hover:  #a3ffb3;
+  --rz-primary-deep:   #026d32;
+  --rz-primary-soft:   rgba(128, 218, 146, 0.18);
+  --rz-primary-tint:   rgba(128, 218, 146, 0.10);
+  --rz-on-primary:     #00210a;
+
+  --rz-accent-mint:    #80da92;
+  --rz-accent-leaf:    #a3ffb3;
+  --rz-gradient:       linear-gradient(135deg, #a3ffb3 0%, #80da92 55%, #026d32 100%);
+  --rz-gradient-soft:  linear-gradient(135deg, rgba(163,255,179,0.22) 0%, rgba(2,109,50,0.22) 100%);
+  --rz-glow:           radial-gradient(60% 60% at 50% 0%, rgba(128,218,146,0.32) 0%, rgba(128,218,146,0) 70%);
+
+  /* Glass tokens — base canvas is near-black with a green undertone, and
+   * every card is a translucent overlay with backdrop blur. */
+  --rz-canvas:         #0b100e;
+  --rz-canvas-2:       #0f1513;
+  --rz-surface:        rgba(255, 255, 255, 0.045);
+  --rz-surface-2:      rgba(255, 255, 255, 0.07);
+  --rz-surface-3:      rgba(255, 255, 255, 0.10);
+  --rz-glass:          rgba(20, 28, 24, 0.55);
+  --rz-glass-strong:   rgba(20, 28, 24, 0.78);
+
+  --rz-on-surface:     #f3f6f3;
+  --rz-on-surface-2:   #c7d2ca;
+  --rz-on-surface-3:   #8b988e;
+  --rz-border:         rgba(255, 255, 255, 0.09);
+  --rz-border-strong:  rgba(128, 218, 146, 0.35);
+
+  --rz-warn:           #f5c065;
+  --rz-warn-soft:      rgba(245, 192, 101, 0.16);
+  --rz-danger:         #ff8a8a;
+  --rz-danger-soft:    rgba(255, 138, 138, 0.16);
+  --rz-info:           #9ad3ff;
+  --rz-info-soft:      rgba(154, 211, 255, 0.14);
+
+  --rz-radius-sm: 10px;
+  --rz-radius:    16px;
+  --rz-radius-lg: 22px;
+  --rz-radius-xl: 28px;
+
+  --rz-shadow-card:    0 1px 1px rgba(255,255,255,0.05) inset, 0 8px 24px -12px rgba(0,0,0,0.6);
+  --rz-shadow-pop:     0 10px 30px -8px rgba(128,218,146,0.35), 0 2px 6px rgba(0,0,0,0.4);
+  --rz-shadow-rail:    -20px 0 60px -20px rgba(0,0,0,0.7);
+
+  font-family:
+    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
+}
+
+#rezoomed-root,
+#rezoomed-root * {
+  box-sizing: border-box;
+}
+
+#rezoomed-root button,
+#rezoomed-root textarea,
+#rezoomed-root input,
+#rezoomed-root select {
+  font: inherit;
+  color: inherit;
+}
+
+#rezoomed-root ::selection {
+  background: rgba(128, 218, 146, 0.35);
+  color: #ffffff;
+}
+
+/* Glass primitive — reusable. */
+.rz-glass {
+  background: var(--rz-glass);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--rz-border);
+}
+
+.rz-card {
+  background: var(--rz-surface);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--rz-border);
+  border-radius: var(--rz-radius);
+  box-shadow: var(--rz-shadow-card);
+}
+
+/* ── Animation primitives ──────────────────────────────────────── */
+@keyframes rz-slide-in-right {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes rz-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rz-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes rz-pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1;   }
+}
+
+.rz-slide-in   { animation: rz-slide-in-right 320ms cubic-bezier(.22,.61,.36,1) both; }
+.rz-fade-in    { animation: rz-fade-in 260ms ease-out both; }
+.rz-pulse-glow { animation: rz-pulse-glow 2.4s ease-in-out infinite; }
+
+.rz-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.04) 0%,
+    rgba(255,255,255,0.10) 50%,
+    rgba(255,255,255,0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: rz-shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+/* Branded scrollbar. */
+#rezoomed-root *::-webkit-scrollbar { width: 8px; height: 8px; }
+#rezoomed-root *::-webkit-scrollbar-track { background: transparent; }
+#rezoomed-root *::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+}
+#rezoomed-root *::-webkit-scrollbar-thumb:hover {
+  background: rgba(128,218,146,0.35);
+}
