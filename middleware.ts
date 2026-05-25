@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-// Routes that bypass auth (webhooks, public API endpoints)
+// Routes that bypass auth (webhooks, public API endpoints).
+//
+// The extension API routes (/api/extension/me, /resumes, /consistency, /scan
+// and /api/linkedin/generate) authenticate via a bearer JWT in the
+// Authorization header — they never read Supabase cookies. Running
+// `updateSession` on them is wasted work, and the Supabase SSR helper
+// rewrites the request in a way that drops the Authorization header before
+// it reaches the route handler. /api/extension/token DELIBERATELY stays
+// non-public because it reads the Supabase session cookie to mint the JWT.
 const publicRoutes = [
   '/api/paddle/webhook',
   '/api/webhooks/paddle',
   '/api/webhooks/razorpay',
   '/api/auth/callback',
+  '/api/extension/me',
+  '/api/extension/resumes',
+  '/api/extension/consistency',
+  '/api/extension/scan',
+  '/api/linkedin/generate',
 ]
 
 /**
