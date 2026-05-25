@@ -19,13 +19,8 @@ export async function POST() {
     plan: context.profile.plan,
   })
 
-  // TEMP DIAGNOSTIC: expose the secret fingerprint the mint side sees, so we
-  // can compare against /me's view. Remove with the matching block in /me.
-  const s = process.env.EXTENSION_JWT_SECRET ?? ''
-  const secretFp = s ? `${s.length}:${s.slice(0, 4)}…${s.slice(-2)}` : 'MISSING'
-
   return NextResponse.json(
-    { token, expiresAt, debug: { secret: secretFp } },
+    { token, expiresAt },
     { headers: { 'Cache-Control': 'private, no-store' } }
   )
 }
