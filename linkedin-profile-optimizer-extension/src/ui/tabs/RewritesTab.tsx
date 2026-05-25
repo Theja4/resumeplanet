@@ -30,10 +30,10 @@ export function RewritesTab({ score, profile, me, targetJobDescription, targetRo
           {rewriteable.map(({ check }) => (
             <Card key={check.id}>
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[14px] font-bold">{check.label}</p>
+                <p className="text-[15px] font-bold">{check.label}</p>
                 <Lock className="h-4 w-4" style={{ color: "var(--rz-on-surface-3)" }} />
               </div>
-              <p className="mt-1.5 text-[13px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
+              <p className="mt-1.5 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
                 {check.tip}
               </p>
             </Card>
@@ -53,8 +53,8 @@ export function RewritesTab({ score, profile, me, targetJobDescription, targetRo
       ) : (
         rewriteable.map(({ check, rewrite }) => (
           <Card key={check.id}>
-            <p className="text-[14px] font-bold">{check.label}</p>
-            <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
+            <p className="text-[15px] font-bold">{check.label}</p>
+            <p className="mt-1 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
               {check.tip}
             </p>
             <RewriteCard
@@ -101,7 +101,7 @@ function UpgradeCard() {
             AI rewrites are a Pro feature
           </p>
           <p
-            className="mt-2 text-[13px] leading-snug"
+            className="mt-2 text-[14px] leading-snug"
             style={{ color: "var(--rz-on-surface-2)" }}
           >
             Claude rewrites your headline, About, experience bullets and skills to

@@ -49,7 +49,7 @@ export function FixesTab({
           <Card>
             <p className="text-[15px] font-bold">All clear on this scan.</p>
             <p
-              className="mt-1.5 text-[13px] leading-snug"
+              className="mt-1.5 text-[14px] leading-snug"
               style={{ color: "var(--rz-on-surface-2)" }}
             >
               Re-scan after any edit to make sure nothing regressed.
@@ -117,9 +117,9 @@ function CheckRow({
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[14px] font-bold leading-snug">{check.label}</p>
+          <p className="text-[15px] font-bold leading-snug">{check.label}</p>
           <p
-            className="mt-1.5 text-[13px] leading-snug"
+            className="mt-1.5 text-[14px] leading-snug"
             style={{ color: "var(--rz-on-surface-2)" }}
           >
             {check.status === "unread" ? (
@@ -171,7 +171,7 @@ function Collapse({ label, children }: { label: string; children: React.ReactNod
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em]"
+        className="inline-flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-[12px] font-bold uppercase tracking-[0.18em]"
         style={{ color: "var(--rz-on-surface-3)" }}
       >
         {label}

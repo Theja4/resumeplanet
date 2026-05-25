@@ -106,7 +106,7 @@ export function ProfileOptimizerPanel() {
             headerMeta={
               authed && me?.plan === "pro" ? (
                 <span
-                  className="hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
+                  className="hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider"
                   style={{
                     background: "var(--rz-gradient)",
                     color: "var(--rz-on-primary)",
@@ -256,9 +256,9 @@ function AnonView({ score }: { score: ScoreResult }) {
               boxShadow: "var(--rz-shadow-card)",
             }}
           >
-            <p className="text-[13px] font-semibold leading-snug">{check.label}</p>
+            <p className="text-[14px] font-semibold leading-snug">{check.label}</p>
             <p
-              className="mt-1 text-xs leading-snug"
+              className="mt-1 text-[14px] leading-snug"
               style={{ color: "var(--rz-on-surface-2)" }}
             >
               {check.tip}
@@ -298,12 +298,12 @@ function DebugPanel({
       }}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--rz-warn)" }}>
+        <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: "var(--rz-warn)" }}>
           Parser debug trace
         </p>
         <div className="flex gap-1.5">
           <button
-            className="rounded-md px-2 py-1 text-[11px] font-semibold"
+            className="rounded-md px-2 py-1 text-[12px] font-semibold"
             style={{ background: "var(--rz-surface)", color: "var(--rz-warn)", border: "1px solid var(--rz-border)" }}
             onClick={onRefresh}
             type="button"
@@ -311,7 +311,7 @@ function DebugPanel({
             Refresh
           </button>
           <button
-            className="rounded-md px-2 py-1 text-[11px] font-semibold inline-flex items-center gap-1"
+            className="rounded-md px-2 py-1 text-[12px] font-semibold inline-flex items-center gap-1"
             style={{ background: "var(--rz-surface)", color: "var(--rz-warn)", border: "1px solid var(--rz-border)" }}
             onClick={() => void onCopy()}
             type="button"
@@ -322,7 +322,7 @@ function DebugPanel({
         </div>
       </div>
       <textarea
-        className="block h-40 w-full resize-y rounded-md p-2 font-mono text-[11px] leading-snug outline-none"
+        className="block h-40 w-full resize-y rounded-md p-2 font-mono text-[12px] leading-snug outline-none"
         style={{
           background: "var(--rz-surface)",
           border: "1px solid var(--rz-border)",

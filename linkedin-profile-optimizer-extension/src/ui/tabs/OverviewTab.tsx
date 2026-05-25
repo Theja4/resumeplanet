@@ -20,8 +20,8 @@ export function OverviewTab({ score, onJumpToFixes }: Props) {
         {score.categories.map((category) => (
           <div key={category.id}>
             <div className="mb-1.5 flex items-center justify-between gap-3">
-              <span className="text-[14px] font-semibold">{category.label}</span>
-              <span className="text-[13px] font-bold" style={{ color: "var(--rz-on-surface-3)" }}>
+              <span className="text-[15px] font-semibold">{category.label}</span>
+              <span className="text-[14px] font-bold" style={{ color: "var(--rz-on-surface-3)" }}>
                 {category.status === "unread" ? "—" : `${category.total}%`}
               </span>
             </div>
@@ -42,9 +42,9 @@ export function OverviewTab({ score, onJumpToFixes }: Props) {
                 className="rz-card group flex w-full items-center justify-between gap-3 p-4 text-left transition hover:-translate-y-px"
               >
                 <div className="min-w-0">
-                  <p className="text-[14px] font-bold leading-tight">{c.label}</p>
+                  <p className="text-[15px] font-bold leading-tight">{c.label}</p>
                   <p
-                    className="mt-1 text-[13px] leading-snug"
+                    className="mt-1 text-[14px] leading-snug"
                     style={{ color: "var(--rz-on-surface-2)" }}
                   >
                     {c.tip}

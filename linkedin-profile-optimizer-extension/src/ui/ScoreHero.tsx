@@ -101,7 +101,7 @@ export function ScoreHero({ value, earned, available }: Props) {
                 {display}
               </div>
               <div
-                className="mt-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
+                className="mt-1.5 text-[11px] font-bold uppercase tracking-[0.18em]"
                 style={{ color: "var(--rz-on-surface-3)" }}
               >
                 of 100
@@ -111,7 +111,7 @@ export function ScoreHero({ value, earned, available }: Props) {
 
           <div className="min-w-0 flex-1">
             <p
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wider"
               style={{
                 background: "var(--rz-primary-soft)",
                 color: status.tone,
@@ -134,7 +134,7 @@ export function ScoreHero({ value, earned, available }: Props) {
               </span>
             </p>
             <p
-              className="mt-1.5 text-[11px] font-semibold uppercase tracking-wider"
+              className="mt-1.5 text-[12px] font-semibold uppercase tracking-wider"
               style={{ color: "var(--rz-on-surface-3)" }}
             >
               points earned
@@ -143,7 +143,7 @@ export function ScoreHero({ value, earned, available }: Props) {
         </div>
 
         <p
-          className="relative mt-4 text-[13px] leading-snug"
+          className="relative mt-4 text-[14px] leading-snug"
           style={{ color: "var(--rz-on-surface-2)" }}
         >
           Unread sections are excluded. Keep editing to push above 80.

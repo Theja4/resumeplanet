@@ -74,7 +74,7 @@ export function SidebarShell({
   if (hidden) {
     return (
       <button
-        className="fixed bottom-6 right-6 z-[2147483647] flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold rz-slide-in"
+        className="fixed bottom-6 right-6 z-[2147483647] flex items-center gap-2 rounded-full px-5 py-3 text-[16px] font-bold rz-slide-in"
         onClick={reopen}
         style={{
           background: "var(--rz-gradient)",
@@ -88,7 +88,7 @@ export function SidebarShell({
         Rezoomed
         {typeof scoreBadge === "number" ? (
           <span
-            className="ml-1 rounded-full px-2 py-0.5 text-xs"
+            className="ml-1 rounded-full px-2 py-0.5 text-[14px]"
             style={{ background: "rgba(0,0,0,0.18)" }}
           >
             {scoreBadge}
@@ -187,7 +187,7 @@ function Header({
         <Logo />
         <div className="min-w-0">
           <p
-            className="text-[11px] font-bold uppercase leading-none tracking-[0.18em]"
+            className="text-[12px] font-bold uppercase leading-none tracking-[0.18em]"
             style={{ color: "var(--rz-primary)" }}
           >
             Rezoomed
@@ -219,7 +219,7 @@ function Header({
 function KbdHint() {
   return (
     <div
-      className="mt-2 flex items-center justify-center gap-1.5 text-[11px]"
+      className="mt-2 flex items-center justify-center gap-1.5 text-[12px]"
       style={{ color: "var(--rz-on-surface-3)" }}
     >
       <kbd className="rz-kbd">⌘</kbd>
@@ -246,7 +246,7 @@ function KbdHint() {
 function FooterMinimal() {
   return (
     <div
-      className="relative z-[1] px-5 py-3 text-center text-[11px]"
+      className="relative z-[1] px-5 py-3 text-center text-[12px]"
       style={{ color: "var(--rz-on-surface-3)", borderTop: "1px solid var(--rz-border)" }}
     >
       <a

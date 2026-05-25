@@ -39,24 +39,27 @@ export default defineContentScript({
         // Inject the bundled stylesheet directly — no chrome-extension://
         // URL traversal, so this works even after the extension is
         // reloaded (orphan-safe).
+        // Plus Jakarta Sans is bundled in /public/fonts/ and referenced
+        // through chrome.runtime.getURL so LinkedIn's CSP can't block it.
+        // We inject the @font-face BEFORE the main stylesheet so the font
+        // is registered before any element tries to render with it.
+        const fontStyle = document.createElement("style");
+        const fontUrl = chrome.runtime.getURL("fonts/PlusJakartaSans-VF.woff2");
+        fontStyle.textContent = `
+          @font-face {
+            font-family: "Plus Jakarta Sans";
+            font-style: normal;
+            font-weight: 200 800;
+            font-display: swap;
+            src: url("${fontUrl}") format("woff2-variations"),
+                 url("${fontUrl}") format("woff2");
+          }
+        `;
+        shadow.appendChild(fontStyle);
+
         const style = document.createElement("style");
         style.textContent = shadowCss;
         shadow.appendChild(style);
-
-        // Load Plus Jakarta Sans into the shadow root via <link>. Doing this
-        // here (instead of @import in CSS) avoids Tailwind v4 reordering it
-        // out of valid position. The font silently falls back to Inter if
-        // LinkedIn's CSP blocks the fetch.
-        const fontPreconnect = document.createElement("link");
-        fontPreconnect.rel = "preconnect";
-        fontPreconnect.href = "https://fonts.gstatic.com";
-        fontPreconnect.crossOrigin = "anonymous";
-        shadow.appendChild(fontPreconnect);
-        const fontLink = document.createElement("link");
-        fontLink.rel = "stylesheet";
-        fontLink.href =
-          "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap";
-        shadow.appendChild(fontLink);
 
         const app = document.createElement("div");
         app.id = "rezoomed-root";

@@ -118,11 +118,11 @@ export function SignInPrompt({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[17px] font-extrabold leading-tight">{title}</p>
-          <p className="mt-2 text-[13px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
+          <p className="mt-2 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
             {body}
           </p>
           <button
-            className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[14px] font-bold transition hover:-translate-y-px disabled:opacity-60"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-bold transition hover:-translate-y-px disabled:opacity-60"
             style={{
               background: "var(--rz-gradient)",
               color: "var(--rz-on-primary)",
@@ -136,7 +136,7 @@ export function SignInPrompt({
             {busy ? "Opening Rezoomed…" : cta}
           </button>
           {error ? (
-            <p className="mt-3 text-[12px]" style={{ color: "var(--rz-danger)" }}>
+            <p className="mt-3 text-[13px]" style={{ color: "var(--rz-danger)" }}>
               Couldn't complete sign-in ({error}). Try again or open Rezoomed in a tab
               and sign in there first.
             </p>
@@ -157,7 +157,7 @@ export interface ProCtaProps {
 export function ProCta({ section, label = "Fix this (Pro)" }: ProCtaProps) {
   return (
     <a
-      className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition hover:-translate-y-px"
+      className="mt-3 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-bold transition hover:-translate-y-px"
       style={{
         background: "var(--rz-primary-soft)",
         color: "var(--rz-primary)",

@@ -132,15 +132,15 @@ export function ConsistencyGap({ userId, hasResume, profile }: Props) {
             <Upload className="h-4 w-4" style={{ color: "var(--rz-on-primary)" }} aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold leading-snug">
+            <p className="text-[16px] font-bold leading-snug">
               See if your resume matches your LinkedIn
             </p>
-            <p className="mt-1 text-xs leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
+            <p className="mt-1 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
               Recruiters notice when your headline, title, and skills drift between your
               resume and LinkedIn. Upload a resume to Rezoomed and we'll surface the gap here.
             </p>
             <a
-              className="mt-3 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-bold transition hover:-translate-y-px"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[16px] font-bold transition hover:-translate-y-px"
               style={{
                 background: "var(--rz-gradient)",
                 color: "var(--rz-on-primary)",
@@ -162,7 +162,7 @@ export function ConsistencyGap({ userId, hasResume, profile }: Props) {
   if (loading) {
     return (
       <div
-        className="rounded-xl p-3 text-xs"
+        className="rounded-xl p-3 text-[14px]"
         style={{
           background: "var(--rz-surface-2)",
           border: "1px solid var(--rz-border)",
@@ -196,17 +196,17 @@ export function ConsistencyGap({ userId, hasResume, profile }: Props) {
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-bold leading-snug">
+            <p className="text-[16px] font-bold leading-snug">
               Resume ↔ LinkedIn consistency
             </p>
           </div>
 
           {resumes && resumes.length > 1 ? (
-            <div className="mt-2 inline-flex items-center gap-1.5 text-xs">
+            <div className="mt-2 inline-flex items-center gap-1.5 text-[14px]">
               <span style={{ color: "var(--rz-on-surface-3)" }}>Comparing against:</span>
               <div className="relative">
                 <select
-                  className="appearance-none rounded-md py-1 pl-2 pr-7 text-xs font-semibold outline-none"
+                  className="appearance-none rounded-md py-1 pl-2 pr-7 text-[14px] font-semibold outline-none"
                   style={{
                     background: "var(--rz-surface)",
                     border: "1px solid var(--rz-border)",
@@ -243,17 +243,17 @@ export function ConsistencyGap({ userId, hasResume, profile }: Props) {
               </div>
             </div>
           ) : (
-            <p className="mt-1 text-[11px]" style={{ color: "var(--rz-on-surface-3)" }}>
+            <p className="mt-1 text-[12px]" style={{ color: "var(--rz-on-surface-3)" }}>
               Against: <span className="font-semibold">{consistency.resumeTitle}</span>
             </p>
           )}
 
           {mismatches.length === 0 ? (
-            <p className="mt-3 text-xs leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
+            <p className="mt-3 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface-2)" }}>
               Looks aligned — your headline, title and top skills match the resume.
             </p>
           ) : (
-            <ul className="mt-3 space-y-2 text-xs leading-snug" style={{ color: "var(--rz-on-surface)" }}>
+            <ul className="mt-3 space-y-2 text-[14px] leading-snug" style={{ color: "var(--rz-on-surface)" }}>
               {mismatches.map((m) => (
                 <li key={m.field}>
                   <span className="font-bold capitalize">{m.field}:</span>{" "}

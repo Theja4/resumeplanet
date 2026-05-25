@@ -32,7 +32,7 @@ export function TabNav<Id extends string>({ tabs, active, onChange }: Props<Id>)
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className="relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[12px] font-bold transition"
+            className="relative inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[13px] font-bold transition"
             style={
               isActive
                 ? {
@@ -50,7 +50,7 @@ export function TabNav<Id extends string>({ tabs, active, onChange }: Props<Id>)
             <span className="truncate">{tab.label}</span>
             {tab.badge != null && tab.badge !== 0 ? (
               <span
-                className="ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none"
+                className="ml-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold leading-none"
                 style={{
                   background: isActive ? "rgba(0,0,0,0.22)" : "var(--rz-primary-soft)",
                   color: isActive ? "var(--rz-on-primary)" : "var(--rz-primary)",

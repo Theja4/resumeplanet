@@ -127,7 +127,7 @@ export function RewriteCard({
   return (
     <div className="mt-2.5">
       <button
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide transition"
+        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-bold uppercase tracking-wide transition"
         style={{
           background: expanded ? "var(--rz-primary)" : "var(--rz-primary-tint)",
           color: expanded ? "var(--rz-on-primary)" : "var(--rz-primary)",
@@ -154,22 +154,22 @@ export function RewriteCard({
           }}
         >
           {loading ? (
-            <div className="flex items-center gap-2 text-xs" style={{ color: "var(--rz-primary)" }}>
+            <div className="flex items-center gap-2 text-[14px]" style={{ color: "var(--rz-primary)" }}>
               <span className="rz-skeleton h-3 w-3 rounded-full" />
               Generating rewrite with Claude…
             </div>
           ) : error ? (
-            <p className="text-xs" style={{ color: "var(--rz-danger)" }}>{error}</p>
+            <p className="text-[14px]" style={{ color: "var(--rz-danger)" }}>{error}</p>
           ) : result ? (
             <>
               <p
-                className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                className="text-[11px] font-bold uppercase tracking-[0.14em]"
                 style={{ color: "var(--rz-on-surface-3)" }}
               >
                 Current
               </p>
               <p
-                className="mt-1 whitespace-pre-wrap text-xs leading-snug"
+                className="mt-1 whitespace-pre-wrap text-[14px] leading-snug"
                 style={{ color: "var(--rz-on-surface-2)" }}
               >
                 {currentText.trim() || "(empty)"}
@@ -178,7 +178,7 @@ export function RewriteCard({
               <div className="my-3 flex items-center gap-2">
                 <div className="h-px flex-1" style={{ background: "var(--rz-border-strong)" }} />
                 <span
-                  className="text-[10px] font-bold uppercase tracking-[0.14em]"
+                  className="text-[11px] font-bold uppercase tracking-[0.14em]"
                   style={{ color: "var(--rz-primary)" }}
                 >
                   Suggested {result.cached ? "(cached)" : ""}
@@ -187,7 +187,7 @@ export function RewriteCard({
               </div>
 
               <p
-                className="whitespace-pre-wrap rounded-lg p-2.5 text-sm leading-snug"
+                className="whitespace-pre-wrap rounded-lg p-2.5 text-[16px] leading-snug"
                 style={{
                   background: "var(--rz-surface)",
                   color: "var(--rz-on-surface)",
@@ -198,14 +198,14 @@ export function RewriteCard({
               </p>
 
               {result.rationale ? (
-                <p className="mt-2 text-[11px] italic leading-snug" style={{ color: "var(--rz-on-surface-3)" }}>
+                <p className="mt-2 text-[12px] italic leading-snug" style={{ color: "var(--rz-on-surface-3)" }}>
                   Why: {result.rationale}
                 </p>
               ) : null}
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] font-semibold transition"
                   style={{
                     background: "var(--rz-surface)",
                     color: "var(--rz-on-surface)",
@@ -219,7 +219,7 @@ export function RewriteCard({
                   {copied ? "Copied" : "Copy"}
                 </button>
                 <a
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition hover:-translate-y-px"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] font-bold transition hover:-translate-y-px"
                   style={{
                     background: "var(--rz-gradient)",
                     color: "var(--rz-on-primary)",

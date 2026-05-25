@@ -38,5 +38,15 @@ export default defineConfig({
         "https://rezoomed.com/*",
       ],
     },
+    // The Plus Jakarta Sans variable woff2 ships in /public/fonts/ and gets
+    // referenced via chrome.runtime.getURL() inside the shadow root's
+    // @font-face. Without exposing it here LinkedIn page context would
+    // block the fetch.
+    web_accessible_resources: [
+      {
+        resources: ["fonts/*"],
+        matches: ["https://*.linkedin.com/*"],
+      },
+    ],
   },
 });

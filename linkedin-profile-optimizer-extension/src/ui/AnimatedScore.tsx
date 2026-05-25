@@ -36,7 +36,7 @@ export function AnimatedScore({ value }: { value: number }) {
           <div className="text-3xl font-semibold leading-none text-neutral-950">
             {displayValue}
           </div>
-          <div className="mt-1 text-xs font-medium text-neutral-500">/100</div>
+          <div className="mt-1 text-[14px] font-medium text-neutral-500">/100</div>
         </div>
       </div>
     </div>

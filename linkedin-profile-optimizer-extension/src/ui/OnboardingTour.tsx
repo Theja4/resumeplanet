@@ -71,7 +71,7 @@ export function OnboardingTour() {
         >
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
+            <span className="text-[12px] font-bold uppercase tracking-[0.14em]">
               {step + 1} of {STEPS.length}
             </span>
           </div>
@@ -87,7 +87,7 @@ export function OnboardingTour() {
         <div className="p-5">
           <p className="text-[18px] font-extrabold leading-tight">{current.title}</p>
           <p
-            className="mt-2.5 text-[14px] leading-snug"
+            className="mt-2.5 text-[15px] leading-snug"
             style={{ color: "var(--rz-on-surface-2)" }}
           >
             {current.body}
@@ -110,7 +110,7 @@ export function OnboardingTour() {
               <button
                 type="button"
                 onClick={finish}
-                className="rounded-xl px-3 py-2 text-[13px] font-semibold transition"
+                className="rounded-xl px-3 py-2 text-[14px] font-semibold transition"
                 style={{ color: "var(--rz-on-surface-3)" }}
               >
                 Skip
@@ -118,7 +118,7 @@ export function OnboardingTour() {
               <button
                 type="button"
                 onClick={() => (isLast ? finish() : setStep(step + 1))}
-                className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-[13px] font-bold transition hover:-translate-y-px"
+                className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-[14px] font-bold transition hover:-translate-y-px"
                 style={{
                   background: "var(--rz-gradient)",
                   color: "var(--rz-on-primary)",

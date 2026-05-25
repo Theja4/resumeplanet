@@ -33,7 +33,7 @@ export function StatusBadge({ status, points, max }: {
           : status;
   return (
     <span
-      className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider"
+      className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wider"
       style={styles}
     >
       <span
@@ -113,7 +113,7 @@ export function GradientButton({
     boxShadow: "var(--rz-shadow-pop)",
     opacity: disabled ? 0.55 : 1,
   };
-  const className = `inline-flex ${full ? "w-full" : ""} items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition hover:-translate-y-px active:translate-y-0`;
+  const className = `inline-flex ${full ? "w-full" : ""} items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[16px] font-bold transition hover:-translate-y-px active:translate-y-0`;
   if (href) {
     return (
       <a className={className} style={style} href={href} rel="noreferrer noopener" target="_blank" onClick={onClick}>
@@ -146,7 +146,7 @@ export function GhostButton({
     backdropFilter: "blur(12px)",
     WebkitBackdropFilter: "blur(12px)",
   };
-  const className = `inline-flex ${full ? "w-full" : ""} items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition hover:bg-[var(--rz-surface-2)]`;
+  const className = `inline-flex ${full ? "w-full" : ""} items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[16px] font-semibold transition hover:bg-[var(--rz-surface-2)]`;
   if (href) {
     return (
       <a className={className} style={style} href={href} rel="noreferrer noopener" target="_blank" onClick={onClick}>
@@ -164,7 +164,7 @@ export function GhostButton({
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <p
-      className="mb-2.5 mt-4 text-[11px] font-bold uppercase tracking-[0.18em]"
+      className="mb-2.5 mt-4 text-[12px] font-bold uppercase tracking-[0.18em]"
       style={{ color: "var(--rz-on-surface-3)" }}
     >
       {children}
