@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Rezoomed Profile Optimizer for LinkedIn. Client-side MV3 extension built with WXT, React, and Tailwind.",
+  "description": "Unmatched LinkedIn profile optimization: score your profile, fix weak sections, and boost recruiter visibility with Rezoomed.",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "compile": "tsc --noEmit",
+    "test": "vitest run",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "@wxt-dev/module-react": "^1.2.2",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.9.3",
+    "vitest": "^2.1.9",
     "wxt": "^0.20.26"
   }
 }

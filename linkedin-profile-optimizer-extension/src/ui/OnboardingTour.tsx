@@ -1,40 +1,69 @@
-import { useEffect, useState } from "react";
-import { Sparkles, ChevronRight, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronRight, X } from "lucide-react";
+
+import { Button } from "./components";
 
 const KEY = "rezoomed.onboarded.v1";
 
-const STEPS = [
+interface Step {
+  eyebrow: string;
+  title: string;
+  body: string;
+}
+
+const STEPS: Step[] = [
   {
-    title: "Welcome to Rezoomed",
-    body: "I scan your profile in real time and surface what recruiters look for. Watch the score update as you edit.",
+    eyebrow: "Welcome",
+    title: "Real-time profile coach",
+    body:
+      "Rezoomed scans your profile in real time and surfaces what recruiters look for. Watch the score update as you edit.",
   },
   {
-    title: "Tabs split the work",
-    body: "Overview shows the big picture. Fixes lists what to improve. Rewrites generates AI edits. Match scores against a JD.",
+    eyebrow: "Workflow",
+    title: "Two tabs, focused work",
+    body:
+      "My Profile shows your section-by-section score with severity pills and inline AI rewrites. Job Match scores you against any JD.",
   },
   {
-    title: "Tip — collapse anytime",
-    body: "Press ⌘. (Ctrl+. on Windows) to collapse this sidebar to a thin rail. Re-press to bring it back.",
+    eyebrow: "Pro tip",
+    title: "Collapse anytime",
+    body:
+      "Press ⌘. (Ctrl+. on Windows) to collapse this sidebar to a thin rail. Re-press to bring it back.",
   },
 ];
 
+/**
+ * Three-step onboarding shown on first run. Persists a single
+ * `rezoomed.onboarded.v1=1` flag in localStorage so it never repeats.
+ *
+ * Stripe-grade rebuild — flat card, numbered step indicator, no
+ * orb pulses, no gem badges.
+ */
 export function OnboardingTour() {
   const [step, setStep] = useState(0);
   const [show, setShow] = useState(false);
+  const nextBtnRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     try {
       if (localStorage.getItem(KEY) !== "1") {
-        // Slight delay so the score has time to animate in first.
-        const t = window.setTimeout(() => setShow(true), 900);
+        const t = window.setTimeout(() => setShow(true), 700);
         return () => window.clearTimeout(t);
       }
     } catch {
-      // private mode — skip the tour rather than nag every load.
+      /* ignore */
     }
     return undefined;
   }, []);
 
+  // Auto-focus the primary CTA on each step.
+  useEffect(() => {
+    if (!show) return;
+    const id = window.requestAnimationFrame(() => {
+      nextBtnRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [show, step]);
   const finish = () => {
     try {
       localStorage.setItem(KEY, "1");
@@ -44,90 +73,130 @@ export function OnboardingTour() {
     setShow(false);
   };
 
+  // Escape closes the tour.
+  useEffect(() => {
+    if (!show) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        finish();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show]);
+
+  const advance = () => {
+    if (step >= STEPS.length - 1) {
+      finish();
+    } else {
+      setStep(step + 1);
+    }
+  };
+
   if (!show) return null;
-  const current = STEPS[step];
+  const current = STEPS[step]!;
   const isLast = step === STEPS.length - 1;
 
   return (
     <div
       className="rz-fade-in fixed inset-0 z-[2147483647] grid place-items-center"
-      style={{ background: "rgba(0,0,0,0.35)" }}
+      style={{ background: "var(--rz-overlay)" }}
       onClick={finish}
+      role="presentation"
     >
       <div
-        className="mx-4 max-w-sm overflow-hidden rounded-3xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rz-tour-title"
+        className="rz-scale-in relative mx-4 w-[min(380px,calc(100vw-32px))]"
         style={{
-          background: "var(--rz-canvas-2)",
-          backdropFilter: "blur(24px) saturate(170%)",
-          WebkitBackdropFilter: "blur(24px) saturate(170%)",
-          border: "1px solid var(--rz-border-strong)",
-          boxShadow: "var(--rz-shadow-rail)",
+          background: "var(--rz-card-bg)",
+          border: "1px solid var(--rz-border)",
+          borderRadius: "var(--rz-radius-lg)",
+          boxShadow: "var(--rz-shadow-md)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="flex items-center justify-between px-4 py-3"
-          style={{ background: "var(--rz-gradient)", color: "var(--rz-on-primary)" }}
+        <button
+          type="button"
+          onClick={finish}
+          className="absolute right-3 top-3 inline-flex h-6 w-6 items-center justify-center rounded-md transition"
+          style={{
+            color: "var(--rz-text-3)",
+          }}
+          aria-label="Skip tour"
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "var(--rz-card-bg-alt)";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--rz-text)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+            (e.currentTarget as HTMLButtonElement).style.color = "var(--rz-text-3)";
+          }}
         >
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-[12px] font-bold uppercase tracking-[0.14em]">
-              {step + 1} of {STEPS.length}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={finish}
-            className="rounded-md p-1 transition hover:bg-white/15"
-            aria-label="Skip tour"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-5">
-          <p className="text-[18px] font-extrabold leading-tight">{current.title}</p>
+          <X className="h-3.5 w-3.5" />
+        </button>
+
+        <div className="px-6 pb-5 pt-7">
           <p
-            className="mt-2.5 text-[15px] leading-snug"
-            style={{ color: "var(--rz-on-surface-2)" }}
+            className="rz-eyebrow"
+            style={{ color: "var(--rz-primary)" }}
+          >
+            {current.eyebrow} · {step + 1} / {STEPS.length}
+          </p>
+          <p
+            id="rz-tour-title"
+            className="mt-2 rz-h2"
+            style={{ color: "var(--rz-text)" }}
+          >
+            {current.title}
+          </p>
+          <p
+            className="mt-2 rz-body"
+            style={{ color: "var(--rz-text-2)" }}
           >
             {current.body}
           </p>
 
-          <div className="mt-5 flex items-center justify-between">
-            <div className="flex gap-1.5">
+          <div className="mt-6 flex items-center justify-between">
+            <div className="flex items-center gap-1.5" aria-hidden="true">
               {STEPS.map((_, i) => (
                 <span
                   key={i}
-                  className="h-1.5 w-6 rounded-full transition"
+                  className="inline-block h-1.5 rounded-full"
                   style={{
+                    width: i === step ? 18 : 6,
                     background:
-                      i === step ? "var(--rz-primary)" : "var(--rz-surface-3)",
+                      i === step ? "var(--rz-primary)" : "var(--rz-border)",
+                    transition:
+                      "width 220ms var(--rz-ease), background 200ms ease",
                   }}
                 />
               ))}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={finish}
-                className="rounded-xl px-3 py-2 text-[14px] font-semibold transition"
-                style={{ color: "var(--rz-on-surface-3)" }}
-              >
+            <div className="flex items-center gap-1.5">
+              <Button variant="tertiary" size="sm" onClick={finish}>
                 Skip
-              </button>
-              <button
-                type="button"
-                onClick={() => (isLast ? finish() : setStep(step + 1))}
-                className="inline-flex items-center gap-1 rounded-xl px-4 py-2 text-[14px] font-bold transition hover:-translate-y-px"
-                style={{
-                  background: "var(--rz-gradient)",
-                  color: "var(--rz-on-primary)",
-                  boxShadow: "var(--rz-shadow-pop)",
+              </Button>
+              <span
+                ref={(node) => {
+                  if (node) {
+                    const btn = node.querySelector("button");
+                    if (btn) nextBtnRef.current = btn as HTMLButtonElement;
+                  }
                 }}
               >
-                {isLast ? "Get started" : "Next"}
-                <ChevronRight className="h-4 w-4" />
-              </button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={advance}
+                  trailingIcon={<ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />}
+                >
+                  {isLast ? "Get started" : "Next"}
+                </Button>
+              </span>
             </div>
           </div>
         </div>

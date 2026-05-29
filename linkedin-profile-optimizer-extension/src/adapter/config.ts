@@ -1,4 +1,15 @@
-import type { SelectorConfig } from "./types";
+import { REZOOMED_BASE_URL } from "../config/env";
+import type {
+  FieldSelectorConfig,
+  ProfileField,
+  SelectorConfig,
+  StrategyName,
+  StrategySelector,
+} from "./types";
+
+const ADAPTER_CONFIG_PATH = "/api/linkedin/adapter-config";
+const REMOTE_FETCH_TIMEOUT_MS = 4000;
+const CACHE_STORAGE_KEY = "rezoomed.selectorConfig.v1";
 
 export const DEFAULT_SELECTOR_CONFIG: SelectorConfig = {
   version: "2026-05-24.default",
@@ -342,9 +353,219 @@ export interface SelectorConfigCacheRecord {
   expiresAt: number;
 }
 
+const VALID_STRATEGIES: ReadonlySet<StrategyName> = new Set([
+  "embeddedJson",
+  "semantic",
+  "domClasses",
+]);
+
+const VALID_VALUE_TYPES = new Set([
+  "string",
+  "string[]",
+  "boolean",
+  "number",
+  "experience[]",
+]);
+
+const VALID_FIELDS: ReadonlySet<ProfileField> = new Set([
+  "headline",
+  "about",
+  "experience",
+  "skills",
+  "education",
+  "hasPhoto",
+  "hasBanner",
+  "customUrl",
+  "openToWork",
+  "recommendationsCount",
+]);
+
+// Whitelist of keys the remote payload may set on a strategy. Anything
+// outside this set is dropped — guards against a server-side bug or
+// malicious actor smuggling in arbitrary keys the extension would later
+// reflect into selectors or RegExp constructors.
+const ALLOWED_STRATEGY_KEYS: ReadonlySet<keyof StrategySelector> = new Set([
+  "strategy",
+  "confidence",
+  "selectors",
+  "rootSelectors",
+  "itemSelectors",
+  "bulletSelectors",
+  "attribute",
+  "sectionHeadings",
+  "ariaLabels",
+  "jsonPathHints",
+  "jsonKeyHints",
+  "textIncludes",
+  "excludeText",
+  "patterns",
+] as const);
+
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
+}
+
+function sanitizeStrategy(raw: unknown): StrategySelector | null {
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as Record<string, unknown>;
+  const strategy = input.strategy;
+  if (typeof strategy !== "string" || !VALID_STRATEGIES.has(strategy as StrategyName)) {
+    return null;
+  }
+
+  const clean: StrategySelector = { strategy: strategy as StrategyName };
+  for (const key of ALLOWED_STRATEGY_KEYS) {
+    if (key === "strategy") continue;
+    const v = input[key as string];
+    if (v === undefined) continue;
+    if (key === "confidence") {
+      if (typeof v === "number" && v >= 0 && v <= 1) clean.confidence = v;
+    } else if (key === "attribute") {
+      if (typeof v === "string" && v.length < 200) clean.attribute = v;
+    } else {
+      // All remaining whitelisted keys are string[].
+      if (isStringArray(v) && v.length < 200) {
+        (clean as unknown as Record<string, string[]>)[key as string] = v.filter(
+          (s) => s.length < 500,
+        );
+      }
+    }
+  }
+  return clean;
+}
+
+function sanitizeField(raw: unknown): FieldSelectorConfig | null {
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as Record<string, unknown>;
+  const field = input.field;
+  const valueType = input.valueType;
+  if (
+    typeof field !== "string" ||
+    !VALID_FIELDS.has(field as ProfileField) ||
+    typeof valueType !== "string" ||
+    !VALID_VALUE_TYPES.has(valueType)
+  ) {
+    return null;
+  }
+  const strategiesRaw = input.strategies;
+  if (!Array.isArray(strategiesRaw)) return null;
+  const strategies = strategiesRaw
+    .map(sanitizeStrategy)
+    .filter((s): s is StrategySelector => s !== null);
+  if (strategies.length === 0) return null;
+  const threshold =
+    typeof input.threshold === "number" && input.threshold >= 0 && input.threshold <= 1
+      ? input.threshold
+      : undefined;
+  return {
+    field: field as ProfileField,
+    valueType: valueType as FieldSelectorConfig["valueType"],
+    threshold,
+    strategies,
+  };
+}
+
+function sanitizeRemoteConfig(raw: unknown): SelectorConfig | null {
+  if (!raw || typeof raw !== "object") return null;
+  const input = raw as Record<string, unknown>;
+  if (typeof input.version !== "string" || input.version.length > 200) return null;
+  const minConfidence =
+    typeof input.minConfidence === "number" &&
+    input.minConfidence >= 0 &&
+    input.minConfidence <= 1
+      ? input.minConfidence
+      : DEFAULT_SELECTOR_CONFIG.minConfidence;
+  const cacheRaw = input.cache as Record<string, unknown> | undefined;
+  const cache = {
+    key:
+      cacheRaw && typeof cacheRaw.key === "string"
+        ? cacheRaw.key
+        : DEFAULT_SELECTOR_CONFIG.cache.key,
+    ttlMs:
+      cacheRaw && typeof cacheRaw.ttlMs === "number" && cacheRaw.ttlMs > 0
+        ? Math.min(cacheRaw.ttlMs, 1000 * 60 * 60 * 24 * 7)
+        : DEFAULT_SELECTOR_CONFIG.cache.ttlMs,
+  };
+  const fieldsRaw = input.fields;
+  if (!fieldsRaw || typeof fieldsRaw !== "object") return null;
+  const fields: Partial<Record<ProfileField, FieldSelectorConfig>> = {};
+  for (const [key, value] of Object.entries(fieldsRaw)) {
+    if (!VALID_FIELDS.has(key as ProfileField)) continue;
+    const sanitized = sanitizeField(value);
+    if (sanitized) fields[key as ProfileField] = sanitized;
+  }
+  if (Object.keys(fields).length === 0) return null;
+  return { version: input.version, minConfidence, cache, fields };
+}
+
+async function readCache(): Promise<SelectorConfigCacheRecord | null> {
+  try {
+    const stored = await chrome.storage.local.get(CACHE_STORAGE_KEY);
+    const record = stored[CACHE_STORAGE_KEY] as SelectorConfigCacheRecord | undefined;
+    if (!record || typeof record !== "object") return null;
+    if (record.expiresAt && record.expiresAt < Date.now()) return null;
+    return record;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(config: SelectorConfig): Promise<void> {
+  try {
+    const now = Date.now();
+    const record: SelectorConfigCacheRecord = {
+      config,
+      fetchedAt: now,
+      expiresAt: now + config.cache.ttlMs,
+    };
+    await chrome.storage.local.set({ [CACHE_STORAGE_KEY]: record });
+  } catch {
+    // ignore — fallback path always works
+  }
+}
+
+async function fetchRemote(): Promise<SelectorConfig | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_FETCH_TIMEOUT_MS);
+  try {
+    const url = `${REZOOMED_BASE_URL}${ADAPTER_CONFIG_PATH}`;
+    const resp = await fetch(url, {
+      method: "GET",
+      credentials: "omit",
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!resp.ok) return null;
+    const json = (await resp.json()) as unknown;
+    return sanitizeRemoteConfig(json);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function loadConfig(): Promise<SelectorConfig> {
-  // TODO(Session 5): fetch a remote declarative SelectorConfig override, validate
-  // its JSON shape, and cache it using DEFAULT_SELECTOR_CONFIG.cache.ttlMs.
-  // Remote config must remain data-only; never fetch or execute remote code.
+  const cached = await readCache();
+  if (cached) {
+    // Refresh in the background for next scan, but use the cached
+    // config now so the user sees a fast scan.
+    void (async () => {
+      const fresh = await fetchRemote();
+      if (fresh && fresh.version !== cached.config.version) {
+        await writeCache(fresh);
+      }
+    })();
+    return cached.config;
+  }
+
+  const fresh = await fetchRemote();
+  if (fresh) {
+    await writeCache(fresh);
+    return fresh;
+  }
+
   return DEFAULT_SELECTOR_CONFIG;
 }

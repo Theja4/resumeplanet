@@ -3,7 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rezoomed Profile Optimizer</title>
+    <title>Rezoomed: LinkedIn Profile Optimizer</title>
+    <!-- theme-boot.js synchronously reads the cached theme from
+         localStorage and applies data-theme to <html> BEFORE the
+         pre-paint CSS below evaluates. Must be an external file
+         because Manifest V3's default CSP blocks inline scripts. -->
+    <script src="./theme-boot.js"></script>
+    <style>
+      /* The Chrome popup window itself is always a sharp rectangle.
+       * To make the popup APPEAR rounded we keep html/body fully
+       * transparent and float a rounded card (.rz-popup-shell) inside
+       * with a small transparent gutter — so the user sees only the
+       * rounded card with the page showing through the corners. */
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent !important;
+        background-color: transparent !important;
+        overflow: hidden;
+      }
+      html {
+        width: 424px;
+        min-height: 588px;
+      }
+      body {
+        box-sizing: border-box;
+        width: 424px;
+        min-height: 588px;
+        padding: 10px;
+      }
+      #root {
+        width: 100%;
+        min-height: 568px;
+        background: transparent;
+      }
+      html[data-theme="light"],
+      html[data-theme="light"] body {
+        color: #0f172a;
+      }
+      html[data-theme="dark"],
+      html[data-theme="dark"] body {
+        color: #f8fafc;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

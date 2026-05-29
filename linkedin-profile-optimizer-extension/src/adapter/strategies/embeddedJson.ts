@@ -136,6 +136,28 @@ function normalizeCandidateValues(
   }
 
   if (fieldConfig.valueType === "boolean") {
+    // For image-presence fields (hasPhoto / hasBanner) LinkedIn often
+    // emits the JSON key even when the user has NOT set a custom photo
+    // or banner — value can be null, "", an empty object, or an object
+    // whose every leaf string is empty (e.g. { artifacts: [] }). Plain
+    // `Boolean(value)` is true for any non-null object, which produces
+    // the false-positive "Banner image — passing" entry users see when
+    // their banner is actually empty.
+    //
+    // For these image fields we require an actual non-empty string
+    // somewhere in the value tree (a real URL, vanity slug, or media
+    // ref). For all other boolean fields we keep the original loose
+    // truthy check.
+    const isImagePresenceField =
+      fieldConfig.field === "hasBanner" || fieldConfig.field === "hasPhoto";
+
+    if (isImagePresenceField) {
+      if (flattened.some((value) => hasNonEmptyStringDeep(value))) return true;
+      // We saw the key but it carried no real content — treat as absent.
+      if (flattened.length > 0) return false;
+      return undefined;
+    }
+
     if (flattened.some((value) => Boolean(value))) return true;
     if (flattened.some((value) => value === false)) return false;
     return undefined;
@@ -318,4 +340,30 @@ function dedupeExperience(entries: ExperienceEntry[]): ExperienceEntry[] {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Recursive "is there any actual content here?" check used for image
+ * presence detection. Returns true if `value` (or any descendant in an
+ * array/object tree) is a non-empty trimmed string. Used to defeat
+ * LinkedIn JSON shapes like { artifacts: [] }, { url: "" }, or null
+ * placeholders that would otherwise read as truthy via plain Boolean().
+ *
+ * Caps recursion depth so a maliciously-deep structure can't hang the
+ * scan. Numbers/booleans don't count — for image presence we want a
+ * real URL/string somewhere.
+ */
+function hasNonEmptyStringDeep(value: unknown, depth = 0): boolean {
+  if (depth > 6) return false;
+  if (value == null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) {
+    return value.some((item) => hasNonEmptyStringDeep(item, depth + 1));
+  }
+  if (isObject(value)) {
+    return Object.values(value).some((item) =>
+      hasNonEmptyStringDeep(item, depth + 1),
+    );
+  }
+  return false;
 }

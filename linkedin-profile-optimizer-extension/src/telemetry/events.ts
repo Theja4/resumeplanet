@@ -17,7 +17,73 @@ export type RezoomedEvent =
       name: "consistency_gap_shown";
       props: { mismatches: number; hasResume: boolean; resumeSwitched: boolean };
     }
-  | { name: "pro_cta_clicked"; props: { section: string } };
+  | { name: "pro_cta_clicked"; props: { section: string } }
+  | {
+      name: "recruiter_boolean_shown";
+      props: {
+        source: "myprofile" | "anon_breakdown" | "match_tab";
+        would_surface: boolean;
+        role_label: string;
+        resolved_from_taxonomy: boolean;
+        missing_term_count: number;
+      };
+    }
+  | {
+      name: "recruiter_boolean_copied";
+      props: {
+        source: "myprofile" | "anon_breakdown" | "match_tab";
+        would_surface: boolean;
+        role_label: string;
+        resolved_from_taxonomy: boolean;
+      };
+    }
+  | {
+      name: "consistency_sync_run";
+      props: {
+        cached: boolean;
+        sections: number;
+        usedJobDescription: boolean;
+      };
+    }
+  | {
+      name: "consistency_sync_section_copied";
+      props: { generator: "headline" | "about" | "experience_bullets" | "skills" };
+    }
+  | {
+      name: "consistency_sync_section_opened";
+      props: { generator: "headline" | "about" | "experience_bullets" | "skills" };
+    }
+  | {
+      // Per-field extraction health. Emitted once per profile-view session
+      // ~12s after the first scan, after the MutationObserver re-scans
+      // have had time to settle. Lets us alert on a sharp drop in any
+      // single field's read rate (e.g. "headline_read rate fell to 30%
+      // overnight" → LinkedIn changed a class, push a remote config fix).
+      name: "extraction_health";
+      props: {
+        configVersion: string;
+        fieldsRead: number;
+        fieldsTotal: number;
+        // Each field reports 1 if read (value present, confidence above
+        // threshold) or 0 if unread, so PostHog can aggregate across
+        // users into a per-field success rate.
+        headline_read: 0 | 1;
+        about_read: 0 | 1;
+        experience_read: 0 | 1;
+        skills_read: 0 | 1;
+        education_read: 0 | 1;
+        hasPhoto_read: 0 | 1;
+        hasBanner_read: 0 | 1;
+        recommendationsCount_read: 0 | 1;
+      };
+    }
+  | {
+      // Sanity signal: a profile that returned ZERO fields almost
+      // certainly means our adapter is fully broken on this DOM
+      // variant. Alert hard if this rate jumps above background noise.
+      name: "extraction_empty";
+      props: { configVersion: string; profileUrl: string };
+    };
 
 async function getDistinctId(): Promise<string> {
   const stored = await chrome.storage.local.get(DISTINCT_ID_KEY);

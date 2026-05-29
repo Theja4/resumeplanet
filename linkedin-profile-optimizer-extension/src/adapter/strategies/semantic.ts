@@ -370,30 +370,81 @@ function hasImageSignal(
   const images = Array.from(
     main.querySelectorAll<HTMLImageElement>("img[alt], image[aria-label]"),
   );
+
+  // For an image to count as actually present we need:
+  //   1. its alt/aria-label to match the configured labels
+  //   2. AND a real, non-empty `src` that isn't an inline 1×1 / data:
+  //      placeholder. LinkedIn renders the empty banner state with a
+  //      labelled <img> whose src is either "", a data: URL, or a
+  //      `static.licdn.com/.../ghost-…` placeholder, and the previous
+  //      label-only check produced false-positive "Banner image —
+  //      passing" entries for users with no banner.
   if (
     images.some((image) => {
       const alt = `${image.getAttribute("alt") ?? ""} ${image.getAttribute("aria-label") ?? ""}`;
-      return labels.some((label) =>
+      const labelMatches = labels.some((label) =>
         alt.toLowerCase().includes(label.toLowerCase()),
       );
+      if (!labelMatches) return false;
+      return hasMeaningfulImageSrc(image);
     })
   ) {
     return true;
   }
 
+  // Aria-labelled non-img elements (e.g. background-image divs) — same
+  // tightening: only count when the element actually has a non-empty
+  // background-image inline style or backing image src nested inside.
   const labelled = Array.from(main.querySelectorAll<HTMLElement>("[aria-label]"));
   if (
     labelled.some((element) => {
       const label = element.getAttribute("aria-label") ?? "";
-      return labels.some((candidate) =>
+      const labelMatches = labels.some((candidate) =>
         label.toLowerCase().includes(candidate.toLowerCase()),
       );
+      if (!labelMatches) return false;
+      return elementHasMeaningfulImage(element);
     })
   ) {
     return true;
   }
 
+  // Banner absence is a readable state on LinkedIn: the top card can
+  // render without a user-uploaded cover image. Report that as `false`
+  // so scoring can show the actionable "Add a banner" fix instead of
+  // a noisy "Couldn't read this section" message.
+  if (fieldConfig.field === "hasBanner") return false;
+
   return undefined;
+}
+
+/** Only treat an <img> as a real signal when its src is a real http(s)
+ *  URL pointing at user-uploaded media — not "", a data:/blob: URL, or
+ *  the LinkedIn ghost/placeholder asset path. */
+function hasMeaningfulImageSrc(image: HTMLImageElement): boolean {
+  const src = (image.getAttribute("src") ?? "").trim();
+  if (!src) return false;
+  if (/^(data:|blob:|about:)/i.test(src)) return false;
+  // LinkedIn ships the empty banner / default avatar from a known
+  // static path — anything served from `static.licdn.com/.../ghost…`
+  // or `static.licdn.com/.../default…` is a placeholder, not a real
+  // user-uploaded media asset.
+  if (/static\.licdn\.com\/(?:[^"]*\/)?(ghost|default)/i.test(src)) return false;
+  return true;
+}
+
+function elementHasMeaningfulImage(element: HTMLElement): boolean {
+  // Direct background-image inline style.
+  const inlineBg = element.style.backgroundImage || "";
+  if (/url\(["']?(?!data:)(?!about:)(?!blob:)https?:[^)"']+/i.test(inlineBg)) {
+    if (!/static\.licdn\.com\/(?:[^"')]*\/)?(ghost|default)/i.test(inlineBg)) {
+      return true;
+    }
+  }
+  // Or a nested <img> with a real src.
+  const nestedImg = element.querySelector<HTMLImageElement>("img");
+  if (nestedImg && hasMeaningfulImageSrc(nestedImg)) return true;
+  return false;
 }
 
 function extractRecommendationsCount(

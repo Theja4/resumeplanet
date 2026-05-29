@@ -4,6 +4,7 @@ import {
   API_ME_PATH,
   API_RESUMES_PATH,
   API_SCAN_PATH,
+  API_SYNC_FROM_RESUME_PATH,
 } from "../config/env";
 import { clearStoredToken } from "./storage";
 import { getToken, refreshIfNeeded } from "./auth";
@@ -121,6 +122,51 @@ export async function postGenerate(payload: GeneratePayload): Promise<GenerateRe
     method: "POST",
     body: payload,
   })) as GenerateResponse;
+}
+
+export interface SyncFromResumePayload {
+  targetRole: string;
+  resumeId?: string;
+  targetJobDescription?: string;
+  /** Current LinkedIn text per section, used as anti-contradiction context. */
+  linkedinCurrent: {
+    headline: string;
+    about: string;
+    experience_bullets: string;
+    skills: string;
+  };
+}
+
+export interface SyncFromResumeSection {
+  generator: GeneratorType;
+  rewrite: string;
+  rewriteLines?: string[];
+  rationale: string;
+  cached: boolean;
+  empty: boolean;
+}
+
+export interface SyncFromResumeResponse {
+  resumeId: string;
+  resumeTitle: string;
+  sections: SyncFromResumeSection[];
+}
+
+/**
+ * Pro-only sync. Generates LinkedIn output for all 4 sections from
+ * the user's most recent (or specified) resume, tuned for LinkedIn's
+ * recruiter Boolean net.
+ *
+ * Throws HttpError(402) when the user is not on Pro.
+ * Throws HttpError(404) when the user has no resume on Rezoomed.
+ */
+export async function postSyncFromResume(
+  payload: SyncFromResumePayload,
+): Promise<SyncFromResumeResponse> {
+  return (await authedRequest(API_SYNC_FROM_RESUME_PATH, {
+    method: "POST",
+    body: payload,
+  })) as SyncFromResumeResponse;
 }
 
 export { HttpError };

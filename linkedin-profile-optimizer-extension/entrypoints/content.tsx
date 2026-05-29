@@ -16,6 +16,19 @@ import {
 import { isLinkedInProfileUrl, isLikelyOwnProfilePage } from "../src/adapter/ownership";
 import { ProfileOptimizerPanel } from "../src/ui/ProfileOptimizerPanel";
 
+const THEME_LOCALSTORAGE_KEY = "rezoomed.theme.v1.cache";
+const PANEL_FONT_PATH = "fonts/Geist-Variable.woff2";
+
+function readCachedThemeSync(): "light" | "dark" {
+  try {
+    const v = localStorage.getItem(THEME_LOCALSTORAGE_KEY);
+    if (v === "dark" || v === "light") return v;
+  } catch {
+    /* ignore */
+  }
+  return "light";
+}
+
 export default defineContentScript({
   matches: ["*://*.linkedin.com/in/*"],
   runAt: "document_idle",
@@ -26,6 +39,12 @@ export default defineContentScript({
   cssInjectionMode: "manual",
   async main(ctx) {
     if (!isLinkedInProfileUrl(window.location.href)) return;
+
+    // Swallow rejections that originate inside our own script (and only
+    // ours — we don't want to mask LinkedIn's own bugs). Without this, a
+    // transient network blip on a fire-and-forget fetch ends up logged
+    // in chrome://extensions as a red "Failed to fetch" entry.
+    installUnhandledRejectionGuard();
 
     const ownProfile = await waitForOwnProfile(document);
     if (!ownProfile) return;
@@ -39,30 +58,25 @@ export default defineContentScript({
         // Inject the bundled stylesheet directly — no chrome-extension://
         // URL traversal, so this works even after the extension is
         // reloaded (orphan-safe).
-        // Plus Jakarta Sans is bundled in /public/fonts/ and referenced
-        // through chrome.runtime.getURL so LinkedIn's CSP can't block it.
-        // We inject the @font-face BEFORE the main stylesheet so the font
-        // is registered before any element tries to render with it.
-        const fontStyle = document.createElement("style");
-        const fontUrl = chrome.runtime.getURL("fonts/PlusJakartaSans-VF.woff2");
-        fontStyle.textContent = `
-          @font-face {
-            font-family: "Plus Jakarta Sans";
-            font-style: normal;
-            font-weight: 200 800;
-            font-display: swap;
-            src: url("${fontUrl}") format("woff2-variations"),
-                 url("${fontUrl}") format("woff2");
-          }
-        `;
-        shadow.appendChild(fontStyle);
-
         const style = document.createElement("style");
-        style.textContent = shadowCss;
+        const fontUrl = chrome.runtime.getURL(PANEL_FONT_PATH);
+        style.textContent = `
+          @font-face {
+            font-family: "Geist";
+            src: url("${fontUrl}") format("woff2");
+            font-weight: 100 900;
+            font-style: normal;
+            font-display: swap;
+          }
+        ` + shadowCss;
         shadow.appendChild(style);
 
         const app = document.createElement("div");
         app.id = "rezoomed-root";
+        // Apply the cached theme synchronously to avoid flashing the
+        // wrong palette on the first paint. The ThemeProvider inside
+        // ProfileOptimizerPanel takes over for runtime changes.
+        app.setAttribute("data-theme", readCachedThemeSync());
         container.append(app);
 
         const root = ReactDOM.createRoot(app);
@@ -101,4 +115,28 @@ async function waitForOwnProfile(doc: Document): Promise<boolean> {
   }
 
   return false;
+}
+
+let unhandledRejectionGuardInstalled = false;
+function installUnhandledRejectionGuard() {
+  if (unhandledRejectionGuardInstalled) return;
+  unhandledRejectionGuardInstalled = true;
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const message =
+      reason instanceof Error
+        ? reason.message
+        : typeof reason === "string"
+          ? reason
+          : "";
+    // Quiet only the noisy network failures that come from our own
+    // fire-and-forget fetches (telemetry, background-relayed API calls
+    // when the SW is asleep). LinkedIn's own rejections never reach this
+    // handler because they fire on the page's window, not ours.
+    const isOurFetchFailure =
+      /failed to fetch|network ?error|message port closed|Extension context invalidated/i.test(
+        message,
+      );
+    if (isOurFetchFailure) event.preventDefault();
+  });
 }

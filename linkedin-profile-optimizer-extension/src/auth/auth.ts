@@ -21,19 +21,37 @@ export async function isLoggedIn(): Promise<boolean> {
 }
 
 export async function signIn(): Promise<{ ok: true } | { ok: false; error: string }> {
-  const response = (await chrome.runtime.sendMessage({
-    type: "AUTH_SIGN_IN",
-  })) as AuthResponse;
+  // chrome.runtime.sendMessage can reject (channel closed, SW asleep,
+  // extension reloaded mid-flow). Always return a typed result so callers
+  // never see an unhandled "Failed to fetch" surface in chrome://extensions.
+  let response: AuthResponse | undefined;
+  try {
+    response = (await chrome.runtime.sendMessage({
+      type: "AUTH_SIGN_IN",
+    })) as AuthResponse;
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "sendmessage_failed",
+    };
+  }
 
   if (!response?.ok) {
     return { ok: false, error: response?.error ?? "unknown_error" };
   }
 
-  await writeStoredToken({
-    token: response.token,
-    expiresAt: response.expiresAt,
-    storedAt: Math.floor(Date.now() / 1000),
-  });
+  try {
+    await writeStoredToken({
+      token: response.token,
+      expiresAt: response.expiresAt,
+      storedAt: Math.floor(Date.now() / 1000),
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "token_store_failed",
+    };
+  }
   return { ok: true };
 }
 

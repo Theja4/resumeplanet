@@ -1,149 +1,1399 @@
 @import "tailwindcss";
 
-/* Plus Jakarta Sans (variable woff2) is bundled in /public/fonts/ and
- * registered via @font-face injected from entrypoints/content.tsx — that
- * uses chrome.runtime.getURL() so LinkedIn's CSP can't block it. */
+/*
+ * Rezoomed — extension design system
+ * ─────────────────────────────────────
+ * Tokens scoped to :host (shadow DOM content script) and :root (popup
+ * document). Both surfaces honor a `data-theme="light|dark"` attribute.
+ * Default is light. Product-card surfaces, crisp controls, and a few
+ * Rezoomed brand accents inspired by the public landing page.
+ *
+ * Many legacy token names (`--rz-primary`, `--rz-canvas`, `--rz-glass`,
+ * etc.) are kept as aliases so existing component callsites compile
+ * during the migration. They map to the new neutral palette.
+ */
 
 @source "../entrypoints/**/*.{html,ts,tsx}";
 @source "./**/*.{ts,tsx}";
 
-:host {
+/* ============================================================
+ * Light theme (default)
+ * ============================================================ */
+:host,
+:host([data-theme="light"]),
+:root,
+:root[data-theme="light"] {
   all: initial;
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* ── Rezoomed dark-glass theme ─────────────────────────────────── */
-  --rz-primary:        #80da92;
-  --rz-primary-hover:  #a3ffb3;
-  --rz-primary-deep:   #026d32;
-  --rz-primary-soft:   rgba(128, 218, 146, 0.18);
-  --rz-primary-tint:   rgba(128, 218, 146, 0.10);
-  --rz-on-primary:     #00210a;
+  /* Brand accents */
+  --rz-primary:           #14a85a;
+  --rz-primary-hover:     #0f8f4d;
+  --rz-primary-active:    #0b743f;
+  --rz-primary-soft:      rgba(20, 168, 90, 0.14);
+  --rz-primary-tint:      rgba(20, 168, 90, 0.08);
+  --rz-on-primary:        #ffffff;
+  --rz-pop:               #ff5f9f;
+  --rz-pop-soft:          rgba(255, 95, 159, 0.14);
+  --rz-sun:               #f4b000;
+  --rz-sun-soft:          rgba(244, 176, 0, 0.16);
+  --rz-sky:               #0ea5c8;
+  --rz-sky-soft:          rgba(14, 165, 200, 0.12);
+  --rz-ink:               #101114;
+  --rz-font-sans:
+    "Geist", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI Variable", "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    system-ui, ui-sans-serif, sans-serif;
+  --rz-font-display:
+    "Geist", "Inter Tight", "Inter", -apple-system, BlinkMacSystemFont,
+    "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, system-ui, sans-serif;
 
-  --rz-accent-mint:    #80da92;
-  --rz-accent-leaf:    #a3ffb3;
-  --rz-gradient:       linear-gradient(135deg, #a3ffb3 0%, #80da92 55%, #026d32 100%);
-  --rz-gradient-soft:  linear-gradient(135deg, rgba(163,255,179,0.22) 0%, rgba(2,109,50,0.22) 100%);
-  --rz-glow:           radial-gradient(60% 60% at 50% 0%, rgba(128,218,146,0.32) 0%, rgba(128,218,146,0) 70%);
+  /* Surfaces */
+  --rz-panel-bg:          #f7faf6;       /* sidebar/popup canvas */
+  --rz-card-bg:           #ffffff;        /* cards/content */
+  --rz-card-bg-alt:       #f1f6f2;        /* slightly recessed card */
+  --rz-elev-bg:           #ffffff;        /* elevated panels */
+  --rz-overlay:           rgba(15, 23, 42, 0.55);
+  --rz-glass-card:        rgba(255, 255, 255, 0.58);
+  --rz-glass-card-strong: rgba(255, 255, 255, 0.72);
+  --rz-glass-edge:        rgba(255, 255, 255, 0.82);
+  --rz-glass-highlight:   rgba(255, 255, 255, 0.54);
 
-  /* Glass tokens — base canvas is near-black with a green undertone, and
-   * every card is a translucent overlay with backdrop blur. */
-  --rz-canvas:         #0b100e;
-  --rz-canvas-2:       #0f1513;
-  --rz-surface:        rgba(255, 255, 255, 0.045);
-  --rz-surface-2:      rgba(255, 255, 255, 0.07);
-  --rz-surface-3:      rgba(255, 255, 255, 0.10);
-  --rz-glass:          rgba(20, 28, 24, 0.55);
-  --rz-glass-strong:   rgba(20, 28, 24, 0.78);
+  /* Text */
+  --rz-text:              #0f172a;        /* primary */
+  --rz-text-2:            #475569;        /* secondary */
+  --rz-text-3:            #64748b;        /* tertiary */
+  --rz-text-4:            #94a3b8;        /* placeholder */
+  --rz-text-on-accent:    #ffffff;
 
-  --rz-on-surface:     #f3f6f3;
-  --rz-on-surface-2:   #c7d2ca;
-  --rz-on-surface-3:   #8b988e;
-  --rz-border:         rgba(255, 255, 255, 0.09);
-  --rz-border-strong:  rgba(128, 218, 146, 0.35);
+  /* Borders */
+  --rz-border:            #dde7dd;
+  --rz-border-strong:     #c9d7ca;
+  --rz-border-soft:       #edf4ee;
+  --rz-border-focus:      #14a85a;
 
-  --rz-warn:           #f5c065;
-  --rz-warn-soft:      rgba(245, 192, 101, 0.16);
-  --rz-danger:         #ff8a8a;
-  --rz-danger-soft:    rgba(255, 138, 138, 0.16);
-  --rz-info:           #9ad3ff;
-  --rz-info-soft:      rgba(154, 211, 255, 0.14);
+  /* Status — Critical (red), Warning (amber), Good (emerald) */
+  --rz-critical-text:     #b91c1c;
+  --rz-critical-bg:       #fef2f2;
+  --rz-critical-border:   #fecaca;
+  --rz-critical-solid:    #dc2626;
 
-  --rz-radius-sm: 10px;
-  --rz-radius:    16px;
-  --rz-radius-lg: 22px;
-  --rz-radius-xl: 28px;
+  --rz-warning-text:      #b45309;
+  --rz-warning-bg:        #fffbeb;
+  --rz-warning-border:    #fde68a;
+  --rz-warning-solid:     #d97706;
 
-  --rz-shadow-card:    0 1px 1px rgba(255,255,255,0.05) inset, 0 8px 24px -12px rgba(0,0,0,0.6);
-  --rz-shadow-pop:     0 10px 30px -8px rgba(128,218,146,0.35), 0 2px 6px rgba(0,0,0,0.4);
-  --rz-shadow-rail:    -20px 0 60px -20px rgba(0,0,0,0.7);
+  --rz-good-text:         #047857;
+  --rz-good-bg:           #ecfdf5;
+  --rz-good-border:       #a7f3d0;
+  --rz-good-solid:        #059669;
 
+  --rz-info-text:         #0369a1;
+  --rz-info-bg:           #f0f9ff;
+  --rz-info-border:       #bae6fd;
+  --rz-info-solid:        #0284c7;
+
+  /* Shadows */
+  --rz-shadow-xs:
+    0 1px 2px rgba(16, 24, 20, 0.06);
+  --rz-shadow-sm:
+    0 10px 24px -18px rgba(16, 24, 20, 0.34),
+    0 2px 6px rgba(16, 24, 20, 0.08);
+  --rz-shadow-md:
+    0 22px 44px -28px rgba(16, 24, 20, 0.46),
+    0 8px 16px -12px rgba(20, 168, 90, 0.24);
+  --rz-shadow-rail:
+    -12px 0 36px -24px rgba(16, 24, 20, 0.28);
+
+  /* Shape */
+  --rz-radius-xs:         4px;
+  --rz-radius-sm:         6px;
+  --rz-radius:            8px;
+  --rz-radius-md:         24px;
+  --rz-radius-lg:         28px;
+  --rz-radius-xl:         32px;
+
+  /* Motion */
+  --rz-ease:              cubic-bezier(0.22, 0.61, 0.36, 1);
+  --rz-ease-out:          cubic-bezier(0.16, 1, 0.3, 1);
+  --rz-ease-in-out:       cubic-bezier(0.65, 0, 0.35, 1);
+  --rz-dur-1:             120ms;
+  --rz-dur-2:             200ms;
+  --rz-dur-3:             280ms;
+
+  /* ── Legacy aliases (kept so old callsites compile) ── */
+  --rz-canvas:            var(--rz-panel-bg);
+  --rz-canvas-2:          var(--rz-panel-bg);
+  --rz-canvas-3:          var(--rz-card-bg);
+  --rz-canvas-elev:       var(--rz-card-bg);
+  --rz-surface:           var(--rz-card-bg);
+  --rz-surface-2:         var(--rz-card-bg-alt);
+  --rz-surface-3:         var(--rz-card-bg-alt);
+  --rz-glass:             var(--rz-card-bg);
+  --rz-glass-strong:      var(--rz-card-bg);
+  --rz-glass-soft:        var(--rz-card-bg-alt);
+  --rz-on-surface:        var(--rz-text);
+  --rz-on-surface-2:      var(--rz-text-2);
+  --rz-on-surface-3:      var(--rz-text-3);
+  --rz-on-surface-4:      var(--rz-text-4);
+  --rz-primary-bright:    var(--rz-primary);
+  --rz-primary-deep:      var(--rz-primary-active);
+  --rz-accent-mint:       var(--rz-primary);
+  --rz-accent-leaf:       var(--rz-sun);
+  --rz-accent-iris:       var(--rz-sky);
+  --rz-accent-iris-soft:  var(--rz-info-bg);
+  --rz-warn:              var(--rz-warning-solid);
+  --rz-warn-soft:         var(--rz-warning-bg);
+  --rz-danger:            var(--rz-critical-solid);
+  --rz-danger-soft:       var(--rz-critical-bg);
+  --rz-info:              var(--rz-info-solid);
+  --rz-info-soft:         var(--rz-info-bg);
+  --rz-shadow-card:       var(--rz-shadow-xs);
+  --rz-shadow-card-hover: var(--rz-shadow-sm);
+  --rz-shadow-pop:        var(--rz-shadow-sm);
+  --rz-shadow-pop-hover:  var(--rz-shadow-md);
+  --rz-shadow-elevate:    var(--rz-shadow-md);
+  --rz-shadow-glow:       var(--rz-shadow-sm);
+  --rz-gradient:          var(--rz-primary);
+  --rz-gradient-soft:     var(--rz-primary-soft);
+  --rz-gradient-aurora:   var(--rz-card-bg);
+  --rz-gradient-iris:     var(--rz-info-bg);
+  --rz-glow:              transparent;
+  --rz-glow-soft:         transparent;
+  --rz-glow-deep:         transparent;
+  --rz-border-iris:       var(--rz-info-border);
+  --rz-radius-2xl:        var(--rz-radius-xl);
+  --rz-ease-spring:       var(--rz-ease);
+  --rz-dur-4:             var(--rz-dur-3);
+
+  /* Typography */
   font-family:
-    "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 16px;
-  line-height: 1.55;
+    var(--rz-font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--rz-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+
+  /* Cross-theme transition (color/background only — never sizes) */
+  transition:
+    background-color var(--rz-dur-2) var(--rz-ease),
+    color var(--rz-dur-2) var(--rz-ease),
+    border-color var(--rz-dur-2) var(--rz-ease);
 }
 
+/* ============================================================
+ * Dark theme
+ * ============================================================ */
+:host([data-theme="dark"]),
+:root[data-theme="dark"],
+#rezoomed-root[data-theme="dark"],
+[data-rezoomed-theme-target][data-theme="dark"] {
+  color-scheme: dark;
+
+  --rz-primary:           #22c76f;
+  --rz-primary-hover:     #45d889;
+  --rz-primary-active:    #14a85a;
+  --rz-primary-soft:      rgba(34, 199, 111, 0.18);
+  --rz-primary-tint:      rgba(34, 199, 111, 0.10);
+  --rz-on-primary:        #ffffff;
+  --rz-pop:               #ff75ad;
+  --rz-pop-soft:          rgba(255, 117, 173, 0.16);
+  --rz-sun:               #ffd24a;
+  --rz-sun-soft:          rgba(255, 210, 74, 0.16);
+  --rz-sky:               #45d5f0;
+  --rz-sky-soft:          rgba(69, 213, 240, 0.13);
+  --rz-ink:               #ffffff;
+
+  --rz-panel-bg:          #101114;
+  --rz-card-bg:           #181a1d;
+  --rz-card-bg-alt:       #202327;
+  --rz-elev-bg:           #23262b;
+  --rz-overlay:           rgba(0, 0, 0, 0.65);
+  --rz-glass-card:        rgba(24, 26, 29, 0.58);
+  --rz-glass-card-strong: rgba(32, 35, 39, 0.74);
+  --rz-glass-edge:        rgba(255, 255, 255, 0.15);
+  --rz-glass-highlight:   rgba(255, 255, 255, 0.10);
+
+  --rz-text:              #f8fafc;
+  --rz-text-2:            #cbd5e1;
+  --rz-text-3:            #94a3b8;
+  --rz-text-4:            #64748b;
+  --rz-text-on-accent:    #ffffff;
+
+  --rz-border:            rgba(255, 255, 255, 0.08);
+  --rz-border-strong:     rgba(255, 255, 255, 0.14);
+  --rz-border-soft:       rgba(255, 255, 255, 0.04);
+  --rz-border-focus:      #10b981;
+
+  --rz-critical-text:     #fca5a5;
+  --rz-critical-bg:       rgba(220, 38, 38, 0.10);
+  --rz-critical-border:   rgba(220, 38, 38, 0.30);
+  --rz-critical-solid:    #ef4444;
+
+  --rz-warning-text:      #fcd34d;
+  --rz-warning-bg:        rgba(217, 119, 6, 0.10);
+  --rz-warning-border:    rgba(217, 119, 6, 0.30);
+  --rz-warning-solid:     #f59e0b;
+
+  --rz-good-text:         #6ee7b7;
+  --rz-good-bg:           rgba(16, 185, 129, 0.10);
+  --rz-good-border:       rgba(16, 185, 129, 0.30);
+  --rz-good-solid:        #10b981;
+
+  --rz-info-text:         #7dd3fc;
+  --rz-info-bg:           rgba(2, 132, 199, 0.12);
+  --rz-info-border:       rgba(2, 132, 199, 0.32);
+  --rz-info-solid:        #38bdf8;
+
+  --rz-shadow-xs:
+    0 1px 2px rgba(0, 0, 0, 0.40);
+  --rz-shadow-sm:
+    0 12px 26px -18px rgba(0, 0, 0, 0.78),
+    0 2px 8px rgba(0, 0, 0, 0.42);
+  --rz-shadow-md:
+    0 26px 48px -26px rgba(0, 0, 0, 0.86),
+    0 10px 22px -18px rgba(34, 199, 111, 0.22);
+  --rz-shadow-rail:
+    -8px 0 24px -16px rgba(0, 0, 0, 0.60);
+}
+
+/* ============================================================
+ * Reset (scoped)
+ * ============================================================ */
 #rezoomed-root,
-#rezoomed-root * {
+#rezoomed-root *,
+#root,
+#root * {
   box-sizing: border-box;
 }
 
-#rezoomed-root button,
-#rezoomed-root textarea,
-#rezoomed-root input,
-#rezoomed-root select {
-  font: inherit;
-  color: inherit;
+#rezoomed-root,
+#root {
+  font-family: var(--rz-font-sans);
 }
 
-#rezoomed-root ::selection {
-  background: rgba(128, 218, 146, 0.35);
+#rezoomed-root *:not(svg):not(path):not(kbd),
+#root *:not(svg):not(path):not(kbd) {
+  font-family: var(--rz-font-sans) !important;
+}
+
+#rezoomed-root button,
+#rezoomed-root input,
+#rezoomed-root textarea,
+#rezoomed-root select,
+#root button,
+#root input,
+#root textarea,
+#root select {
+  font: inherit;
+}
+
+#rezoomed-root ::selection,
+#root ::selection {
+  background: var(--rz-primary-soft);
+  color: var(--rz-text);
+}
+
+/* ============================================================
+ * Card primitive (replaces .rz-card / .rz-card-elev / .rz-glass)
+ * ============================================================ */
+.rz-card {
+  position: relative;
+  background:
+    linear-gradient(145deg, var(--rz-glass-highlight), transparent 34%),
+    var(--rz-glass-card);
+  border: 1px solid var(--rz-glass-edge);
+  border-radius: var(--rz-radius-md);
+  clip-path: inset(0 round var(--rz-radius-md));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.36),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
+    0 22px 46px -34px rgba(15, 23, 42, 0.40),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  overflow: hidden;
+  transition:
+    border-color var(--rz-dur-2) var(--rz-ease),
+    box-shadow var(--rz-dur-2) var(--rz-ease),
+    background-color var(--rz-dur-2) var(--rz-ease),
+    transform var(--rz-dur-2) var(--rz-ease),
+    filter var(--rz-dur-2) var(--rz-ease);
+}
+
+.rz-card-hover:hover {
+  border-color: var(--rz-glass-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 30px 58px -38px rgba(15, 23, 42, 0.50),
+    0 8px 22px -18px rgba(20, 168, 90, 0.26);
+  transform: translateY(-4px) scale(1.012);
+  filter: saturate(1.08);
+}
+
+.rz-card-elev {
+  position: relative;
+  background:
+    linear-gradient(145deg, var(--rz-glass-highlight), transparent 34%),
+    var(--rz-glass-card-strong);
+  border: 1px solid var(--rz-glass-edge);
+  border-radius: var(--rz-radius-md);
+  clip-path: inset(0 round var(--rz-radius-md));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.40),
+    0 28px 56px -36px rgba(15, 23, 42, 0.46),
+    0 8px 22px -18px rgba(20, 168, 90, 0.22);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.rz-card:not(.rz-card-hover):hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.04),
+    0 28px 56px -38px rgba(15, 23, 42, 0.44),
+    0 8px 20px -18px rgba(20, 168, 90, 0.22);
+}
+
+/* Legacy alias — old code referenced .rz-glass for translucent surface;
+ * now just maps to a flat card. */
+.rz-glass,
+.rz-glass-strong {
+  background: var(--rz-glass-card);
+  border: 1px solid var(--rz-glass-edge);
+  border-radius: var(--rz-radius-md);
+  clip-path: inset(0 round var(--rz-radius-md));
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+}
+
+/* ============================================================
+ * Buttons (legacy classes — also exposed as React Button primitive)
+ * ============================================================ */
+.rz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  border-radius: var(--rz-radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  letter-spacing: 0;
+  transition:
+    background-color var(--rz-dur-1) var(--rz-ease),
+    border-color var(--rz-dur-1) var(--rz-ease),
+    color var(--rz-dur-1) var(--rz-ease),
+    box-shadow var(--rz-dur-1) var(--rz-ease),
+    opacity var(--rz-dur-1) var(--rz-ease),
+    transform var(--rz-dur-1) var(--rz-ease);
+}
+.rz-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.rz-btn-primary {
+  background: #0f9f59;
+  color: var(--rz-on-primary);
+  border-color: transparent;
+  box-shadow:
+    0 12px 24px -14px rgba(15, 159, 89, 0.68),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+.rz-btn-primary:hover:not(:disabled) {
+  background: #0b8d4f;
+  box-shadow: var(--rz-shadow-sm);
+  transform: translateY(-1px);
+}
+.rz-btn-primary:active:not(:disabled) {
+  background: var(--rz-primary-active);
+  transform: translateY(0);
+}
+.rz-btn-ghost,
+.rz-btn-secondary {
+  background: var(--rz-card-bg);
+  color: var(--rz-text);
+  border-color: var(--rz-border);
+}
+.rz-btn-ghost:hover:not(:disabled),
+.rz-btn-secondary:hover:not(:disabled) {
+  background: var(--rz-card-bg-alt);
+  border-color: var(--rz-border-strong);
+  transform: translateY(-1px);
+}
+.rz-btn-link,
+.rz-btn-tertiary {
+  background: transparent;
+  color: var(--rz-primary);
+  border-color: transparent;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.rz-btn-link:hover:not(:disabled),
+.rz-btn-tertiary:hover:not(:disabled) {
+  background: var(--rz-primary-soft);
+}
+.rz-btn-sm  { min-height: 38px; padding: 9px 13px; font-size: 14px; border-radius: var(--rz-radius-sm); }
+.rz-btn-lg  { min-height: 52px; padding: 14px 20px; font-size: 17px; border-radius: var(--rz-radius); }
+.rz-btn-block { width: 100%; }
+
+#rezoomed-root .rz-btn-primary,
+#root .rz-btn-primary {
   color: #ffffff;
 }
 
-/* Glass primitive — reusable. */
-.rz-glass {
-  background: var(--rz-glass);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid var(--rz-border);
+#rezoomed-root .rz-btn-secondary,
+#root .rz-btn-secondary {
+  color: var(--rz-text);
 }
 
-.rz-card {
-  background: var(--rz-surface);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-  border: 1px solid var(--rz-border);
-  border-radius: var(--rz-radius);
-  box-shadow: var(--rz-shadow-card);
+#rezoomed-root .rz-btn-tertiary,
+#root .rz-btn-tertiary {
+  color: var(--rz-primary);
 }
 
-/* ── Animation primitives ──────────────────────────────────────── */
-@keyframes rz-slide-in-right {
-  from { transform: translateX(28px); opacity: 0; }
-  to   { transform: translateX(0);    opacity: 1; }
+#rezoomed-root .rz-btn-hero,
+#root .rz-btn-hero {
+  min-height: 58px;
+  justify-content: space-between;
+  padding: 15px 18px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, #0fac63 0%, #1dc777 48%, #85e85d 100%);
+  color: #ffffff;
+  box-shadow:
+    0 18px 38px -22px rgba(15, 172, 99, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(5, 84, 48, 0.22);
 }
+
+#rezoomed-root .rz-btn-auth,
+#root .rz-btn-auth {
+  min-height: 52px;
+  justify-content: center;
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 760;
+}
+
+#rezoomed-root .rz-btn-hero:hover:not(:disabled),
+#root .rz-btn-hero:hover:not(:disabled) {
+  background:
+    linear-gradient(135deg, #12bd6d 0%, #27d985 48%, #a4f266 100%);
+}
+
+#rezoomed-root .rz-btn-dashboard,
+#root .rz-btn-dashboard {
+  min-height: 50px;
+  justify-content: space-between;
+  padding: 13px 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, #fff7fb 0%, #effff6 55%, #eef9ff 100%);
+  border-color: #bcd9c9;
+  box-shadow:
+    0 12px 28px -24px rgba(20, 168, 90, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  color: var(--rz-text);
+}
+
+:root[data-theme="dark"] #root .rz-btn-dashboard,
+#rezoomed-root[data-theme="dark"] .rz-btn-dashboard,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-btn-dashboard,
+:host([data-theme="dark"]) #rezoomed-root .rz-btn-dashboard {
+  background:
+    linear-gradient(135deg, rgba(255, 117, 173, 0.16), rgba(34, 199, 111, 0.18), rgba(69, 213, 240, 0.13));
+  border-color: var(--rz-border-strong);
+  color: var(--rz-text);
+}
+
+/* ──────────────────────────────────────────────────────────
+ * Generate AI rewrite — emerald primary with hover lift + sheen.
+ * Same look in light + dark so the action reads as the section
+ * card's hero CTA.
+ * ────────────────────────────────────────────────────────── */
+#rezoomed-root .rz-btn-rewrite,
+#root .rz-btn-rewrite {
+  min-height: 42px;
+  padding: 10px 16px;
+  font-size: 14.5px;
+  font-weight: 720;
+  border-radius: 12px;
+  letter-spacing: 0.005em;
+  color: #ffffff;
+  border-color: transparent;
+  background:
+    linear-gradient(135deg, #0fac63 0%, #17c074 48%, #36d585 100%);
+  box-shadow:
+    0 10px 22px -14px rgba(15, 172, 99, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 rgba(5, 84, 48, 0.22);
+  transition:
+    transform 180ms var(--rz-ease-out),
+    box-shadow 220ms var(--rz-ease-out),
+    background 220ms var(--rz-ease-out),
+    filter 220ms var(--rz-ease-out);
+}
+#rezoomed-root .rz-btn-rewrite:hover:not(:disabled),
+#root .rz-btn-rewrite:hover:not(:disabled) {
+  background:
+    linear-gradient(135deg, #12bd6d 0%, #1fd07e 48%, #4ce096 100%);
+  box-shadow:
+    0 18px 32px -16px rgba(15, 172, 99, 0.78),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(5, 84, 48, 0.20);
+  transform: translateY(-1px);
+  filter: saturate(1.05);
+}
+#rezoomed-root .rz-btn-rewrite:active:not(:disabled),
+#root .rz-btn-rewrite:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow:
+    0 6px 14px -10px rgba(15, 172, 99, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+#rezoomed-root .rz-btn-rewrite:focus-visible,
+#root .rz-btn-rewrite:focus-visible {
+  outline: 2px solid var(--rz-primary);
+  outline-offset: 2px;
+}
+
+:root[data-theme="dark"] #root .rz-btn-rewrite,
+#rezoomed-root[data-theme="dark"] .rz-btn-rewrite,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-btn-rewrite,
+:host([data-theme="dark"]) #rezoomed-root .rz-btn-rewrite {
+  background:
+    linear-gradient(135deg, #14c473 0%, #21d886 48%, #4eea98 100%);
+  color: #04150c;
+  box-shadow:
+    0 14px 30px -16px rgba(33, 216, 134, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+}
+:root[data-theme="dark"] #root .rz-btn-rewrite:hover:not(:disabled),
+#rezoomed-root[data-theme="dark"] .rz-btn-rewrite:hover:not(:disabled),
+[data-rezoomed-theme-target][data-theme="dark"] .rz-btn-rewrite:hover:not(:disabled),
+:host([data-theme="dark"]) #rezoomed-root .rz-btn-rewrite:hover:not(:disabled) {
+  background:
+    linear-gradient(135deg, #1cd07d 0%, #2ee492 48%, #62f2a9 100%);
+  box-shadow:
+    0 22px 38px -16px rgba(46, 228, 146, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+/* ============================================================
+ * Typography utilities
+ * ============================================================ */
+.rz-display {
+  font-size: 31px;
+  font-weight: 760;
+  line-height: 1.15;
+  letter-spacing: 0;
+  color: var(--rz-text);
+  font-family: var(--rz-font-display) !important;
+}
+.rz-h1 {
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: var(--rz-text);
+  font-family: var(--rz-font-display) !important;
+}
+.rz-h2 {
+  font-size: 19px;
+  font-weight: 720;
+  line-height: 1.25;
+  letter-spacing: 0;
+  color: var(--rz-text);
+  font-family: var(--rz-font-display) !important;
+}
+.rz-eyebrow {
+  font-size: 13px;
+  font-weight: 720;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rz-text-3);
+}
+.rz-body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--rz-text-2);
+}
+.rz-caption {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--rz-text-3);
+}
+.rz-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--rz-text-3);
+}
+.rz-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brand wordmark — matches the public Rezoomed logo: single weight,
+ * single colour (text), tight tracking, rounded display face. */
+.rz-wordmark {
+  font-weight: 720;
+  font-size: 21px;
+  letter-spacing: -0.012em;
+  line-height: 1;
+  color: var(--rz-text);
+  font-family: var(--rz-font-display) !important;
+}
+.rz-wordmark-lg {
+  font-weight: 720;
+  font-size: 24px;
+  letter-spacing: -0.012em;
+  line-height: 1;
+  color: var(--rz-text);
+  font-family: var(--rz-font-display) !important;
+}
+
+/* ============================================================
+ * Status pill — Critical / Needs work / Good
+ * ============================================================ */
+.rz-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px 5px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.rz-status-pill[data-severity="critical"] {
+  background: var(--rz-critical-bg);
+  color: var(--rz-critical-text);
+  border-color: var(--rz-critical-border);
+}
+.rz-status-pill[data-severity="warning"] {
+  background: var(--rz-warning-bg);
+  color: var(--rz-warning-text);
+  border-color: var(--rz-warning-border);
+}
+.rz-status-pill[data-severity="good"] {
+  background: var(--rz-good-bg);
+  color: var(--rz-good-text);
+  border-color: var(--rz-good-border);
+}
+
+/* Segmented tab switcher */
+.rz-tabs {
+  min-height: 58px;
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--rz-primary) 26%, var(--rz-glass-edge));
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.52), transparent 38%),
+    linear-gradient(135deg, rgba(20, 168, 90, 0.22), rgba(20, 168, 90, 0.12));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 18px 38px -30px rgba(15, 23, 42, 0.45),
+    0 8px 22px -18px rgba(20, 168, 90, 0.32);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+}
+
+.rz-tabs-indicator {
+  bottom: 5px;
+  top: 5px;
+  border-radius: 999px;
+  background:
+    linear-gradient(145deg, #ffffff 0%, #f8fffb 100%);
+  box-shadow:
+    0 14px 30px -20px rgba(15, 23, 42, 0.34),
+    0 6px 18px -14px rgba(20, 168, 90, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  transition:
+    transform 360ms cubic-bezier(0.2, 0.95, 0.2, 1),
+    width 360ms cubic-bezier(0.2, 0.95, 0.2, 1),
+    opacity 180ms var(--rz-ease);
+}
+
+.rz-tab-button {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-family: var(--rz-font-sans) !important;
+  letter-spacing: 0;
+  transition:
+    color 180ms var(--rz-ease),
+    transform 180ms var(--rz-ease),
+    background-color 180ms var(--rz-ease);
+}
+
+.rz-tab-button:hover {
+  transform: translateY(-1px);
+}
+
+.rz-tab-button[data-active="false"]:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.rz-tab-button[data-active="true"] svg {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+
+:root[data-theme="dark"] .rz-tabs,
+#rezoomed-root[data-theme="dark"] .rz-tabs,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-tabs {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12), transparent 38%),
+    linear-gradient(135deg, rgba(34, 199, 111, 0.24), rgba(34, 199, 111, 0.10)),
+    rgba(24, 26, 29, 0.62);
+}
+
+:root[data-theme="dark"] .rz-tabs-indicator,
+#rezoomed-root[data-theme="dark"] .rz-tabs-indicator,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-tabs-indicator {
+  background:
+    linear-gradient(145deg, rgba(248, 250, 252, 0.96), rgba(226, 247, 235, 0.92));
+}
+
+/* Legacy badge — kept for old callsites */
+.rz-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--rz-border);
+  background: var(--rz-card-bg-alt);
+  color: var(--rz-text-2);
+  white-space: nowrap;
+}
+
+/* ============================================================
+ * Focus rings (keyboard-only)
+ * ============================================================ */
+#rezoomed-root :focus-visible,
+#root :focus-visible {
+  outline: 2px solid var(--rz-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--rz-radius-sm);
+}
+#rezoomed-root button:focus:not(:focus-visible),
+#root button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================================
+ * Animations (restrained)
+ * ============================================================ */
 @keyframes rz-fade-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(2px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes rz-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes rz-scale-in {
+  from { opacity: 0; transform: scale(0.98); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes rz-pop-in {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.96); }
+  70%  { opacity: 1; transform: translateY(-1px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes rz-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes rz-score-pulse {
+  0%, 100% { opacity: 0.65; transform: scale(1); }
+  50%      { opacity: 1; transform: scale(1.04); }
+}
+@keyframes rz-sheen {
+  0%   { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(220%) skewX(-18deg); }
+}
+@keyframes rz-spin { to { transform: rotate(360deg); } }
 @keyframes rz-shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
-@keyframes rz-pulse-glow {
-  0%, 100% { opacity: 0.6; }
-  50%      { opacity: 1;   }
+@keyframes rz-slide-in-right {
+  from { transform: translateX(8px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes rz-pill-glint {
+  0%   { transform: translateX(-135%) skewX(-18deg); opacity: 0; }
+  18%  { opacity: 0.9; }
+  100% { transform: translateX(240%) skewX(-18deg); opacity: 0; }
+}
+@keyframes rz-pill-spark {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.88; }
+  50%      { transform: rotate(10deg) scale(1.08); opacity: 1; }
 }
 
-.rz-slide-in   { animation: rz-slide-in-right 320ms cubic-bezier(.22,.61,.36,1) both; }
-.rz-fade-in    { animation: rz-fade-in 260ms ease-out both; }
-.rz-pulse-glow { animation: rz-pulse-glow 2.4s ease-in-out infinite; }
+.rz-fade-in   { animation: rz-fade-in var(--rz-dur-2) var(--rz-ease) both; }
+.rz-fade-up   { animation: rz-fade-up var(--rz-dur-3) var(--rz-ease) both; }
+.rz-scale-in  { animation: rz-scale-in var(--rz-dur-2) var(--rz-ease) both; }
+.rz-pop-in    { animation: rz-pop-in 420ms var(--rz-ease-out) both; }
+.rz-float     { animation: rz-float 3s var(--rz-ease-in-out, ease-in-out) infinite; }
+.rz-score-pulse { animation: rz-score-pulse 2.2s var(--rz-ease-in-out, ease-in-out) infinite; }
+.rz-slide-in  { animation: rz-slide-in-right var(--rz-dur-2) var(--rz-ease) both; }
 
+.rz-stagger > * {
+  animation: rz-fade-up var(--rz-dur-3) var(--rz-ease) both;
+}
+.rz-stagger > *:nth-child(1) { animation-delay:   0ms; }
+.rz-stagger > *:nth-child(2) { animation-delay:  40ms; }
+.rz-stagger > *:nth-child(3) { animation-delay:  80ms; }
+.rz-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.rz-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.rz-stagger > *:nth-child(6) { animation-delay: 200ms; }
+
+/* Loading shimmer */
 .rz-skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255,255,255,0.04) 0%,
-    rgba(255,255,255,0.10) 50%,
-    rgba(255,255,255,0.04) 100%
+    var(--rz-card-bg-alt) 0%,
+    var(--rz-border) 50%,
+    var(--rz-card-bg-alt) 100%
   );
   background-size: 200% 100%;
-  animation: rz-shimmer 1.6s linear infinite;
-  border-radius: 8px;
+  animation: rz-shimmer 1.4s linear infinite;
+  border-radius: var(--rz-radius-sm);
 }
 
-/* Branded scrollbar. */
-#rezoomed-root *::-webkit-scrollbar { width: 8px; height: 8px; }
-#rezoomed-root *::-webkit-scrollbar-track { background: transparent; }
-#rezoomed-root *::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.08);
+/* Branded extension surfaces */
+.rz-brand-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(20, 168, 90, 0.18), transparent 36%),
+    linear-gradient(315deg, rgba(255, 95, 159, 0.14), transparent 38%),
+    var(--rz-card-bg);
+}
+
+.rz-brand-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background-image:
+    linear-gradient(rgba(20, 168, 90, 0.10) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 168, 90, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.65), transparent 80%);
+}
+
+.rz-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.rz-sheen::after {
+  content: "";
+  position: absolute;
+  bottom: -40%;
+  left: 0;
+  top: -40%;
+  width: 28%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.32),
+    transparent
+  );
+  transform: translateX(-120%) skewX(-18deg);
+}
+
+.rz-sheen:hover::after {
+  animation: rz-sheen 760ms var(--rz-ease-out);
+}
+
+.rz-mascot-tile {
+  background:
+    linear-gradient(135deg, rgba(244, 176, 0, 0.28), rgba(20, 168, 90, 0.22)),
+    var(--rz-card-bg-alt);
+  border: 1px solid var(--rz-border);
+  box-shadow: var(--rz-shadow-sm);
+  border-radius: 18px;
+  clip-path: inset(0 round 18px);
+}
+
+.rz-popup-shell {
+  border-radius: 22px;
+  border: 1px solid var(--rz-border);
+  box-shadow:
+    0 22px 50px -22px rgba(8, 18, 12, 0.45),
+    0 4px 14px rgba(8, 18, 12, 0.12);
+  clip-path: inset(0 round 22px);
+}
+
+/* Persistent Pro upgrade card in MyProfileView. Soft emerald wash,
+ * subtle inner highlight, primary-tone border. Sheen on hover. */
+.rz-fix-all-cta {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(20, 168, 90, 0.12) 0%, rgba(54, 213, 133, 0.07) 100%),
+    var(--rz-card-bg);
+  border: 1px solid rgba(20, 168, 90, 0.28) !important;
+  box-shadow:
+    0 14px 30px -20px rgba(20, 168, 90, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.rz-fix-all-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(20, 168, 90, 0.18), transparent 60%);
+  opacity: 0.55;
+}
+
+:root[data-theme="dark"] #root .rz-fix-all-cta,
+#rezoomed-root[data-theme="dark"] .rz-fix-all-cta,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-fix-all-cta,
+:host([data-theme="dark"]) #rezoomed-root .rz-fix-all-cta {
+  background:
+    linear-gradient(135deg, rgba(34, 199, 111, 0.18) 0%, rgba(20, 168, 90, 0.08) 100%),
+    var(--rz-card-bg);
+  border-color: rgba(46, 228, 146, 0.34) !important;
+  box-shadow:
+    0 18px 38px -22px rgba(46, 228, 146, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+:root[data-theme="dark"] #root .rz-fix-all-cta::before,
+#rezoomed-root[data-theme="dark"] .rz-fix-all-cta::before,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-fix-all-cta::before,
+:host([data-theme="dark"]) #rezoomed-root .rz-fix-all-cta::before {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(46, 228, 146, 0.28), transparent 60%);
+}
+
+/* Quiet collapsible group used for "already passing" / "not scored"
+ * rows inside SectionRow. Hides the native triangle and rotates our
+ * own chevron when the disclosure is open. */
+.rz-disclosure > summary {
+  list-style: none;
+}
+.rz-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.rz-disclosure > summary:hover {
+  background: var(--rz-card-bg-alt);
+}
+.rz-disclosure[open] > summary .rz-disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+.rz-popup-rounded-card {
+  border-radius: 28px !important;
+  overflow: hidden;
+  clip-path: inset(0 round 28px);
+}
+
+.rz-action-card {
+  background:
+    linear-gradient(135deg, rgba(255, 95, 159, 0.11), rgba(20, 168, 90, 0.12) 48%, rgba(14, 165, 200, 0.10)),
+    var(--rz-card-bg);
+  border-color: #bad8c7;
+  box-shadow:
+    0 24px 48px -34px rgba(20, 168, 90, 0.42),
+    0 2px 8px rgba(16, 24, 20, 0.06);
+}
+
+.rz-action-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
+  opacity: 0.42;
+  transform: translateX(-65%) skewX(-18deg);
+}
+
+.rz-floating-pill {
+  --rz-pill-tone: #059669;
+  --rz-pill-tone-deep: #065f46;
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483647;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 8px 12px 8px 8px;
+  /* All copy on this surface is white — see the kicker/brand/arrow
+     overrides below. White-on-#059669/#d97706/#dc2626 is AA at 14px+. */
+  color: #ffffff;
+  border: 1px solid var(--rz-pill-tone-deep);
+  border-radius: 22px;
+  /* Solid severity colour with a subtle deep gradient for shape. No
+     glass / no theme tint — the whole point is that the pill IS the
+     severity signal, legible regardless of light or dark page theme. */
+  background: linear-gradient(135deg, var(--rz-pill-tone) 0%, var(--rz-pill-tone-deep) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 22px 42px -28px rgba(15, 23, 42, 0.55),
+    0 8px 22px -18px var(--rz-pill-tone);
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 220ms var(--rz-ease-out),
+    box-shadow 220ms var(--rz-ease-out),
+    border-color 220ms var(--rz-ease-out),
+    filter 220ms var(--rz-ease-out);
+}
+
+.rz-floating-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  transform: translateX(-135%) skewX(-18deg);
+}
+
+.rz-floating-pill:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 30px 58px -34px rgba(15, 23, 42, 0.62),
+    0 14px 30px -20px var(--rz-pill-tone);
+  filter: saturate(1.06) brightness(1.04);
+}
+
+.rz-floating-pill:hover::before {
+  animation: rz-pill-glint 820ms var(--rz-ease-out);
+}
+
+.rz-floating-pill-icon {
+  position: relative;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: visible;
+}
+
+.rz-floating-pill-icon img {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  /* Lift the bunny logo off the coloured surface. */
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 10px 22px -14px rgba(0, 0, 0, 0.4);
+}
+
+.rz-floating-pill-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+}
+
+.rz-floating-pill-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  /* Slight transparency reads as secondary on the saturated surface. */
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.rz-floating-pill-brand {
+  margin-top: 3px;
+  font-size: 17px;
+  font-weight: 900;
+  color: #ffffff;
+  font-family: var(--rz-font-display) !important;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
+}
+
+.rz-floating-pill-score {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  min-height: 34px;
+  padding: 6px 10px;
+  /* High-contrast score chip: white surface, severity-coloured text.
+     Reads cleanly on any of the three pill background colours. */
+  color: var(--rz-pill-tone-deep);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 4px 10px -6px rgba(0, 0, 0, 0.3);
+}
+
+.rz-floating-pill-score strong {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--rz-pill-tone-deep);
+}
+
+.rz-floating-pill-score small {
+  font-size: 11px;
+  font-weight: 800;
+  /* Same hue, lighter — preserves the colour story without losing legibility. */
+  color: var(--rz-pill-tone);
+  opacity: 0.85;
+}
+
+.rz-floating-pill-arrow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  /* White-on-translucent matches the score chip's design language. */
+  color: #ffffff;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: transform 220ms var(--rz-ease-out), background 220ms var(--rz-ease-out);
+}
+
+.rz-floating-pill:hover .rz-floating-pill-arrow {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(-2px);
+}
+
+/* Dark-page-mode override no longer needed — the pill is theme-stable
+   by design — but we keep a tiny tweak to soften the outer shadow when
+   the page background is dark, so the pill doesn't look amputated. */
+:root[data-theme="dark"] .rz-floating-pill,
+#rezoomed-root[data-theme="dark"] .rz-floating-pill,
+[data-rezoomed-theme-target][data-theme="dark"] .rz-floating-pill,
+:host([data-theme="dark"]) #rezoomed-root .rz-floating-pill {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    0 22px 42px -28px rgba(0, 0, 0, 0.75),
+    0 8px 22px -18px var(--rz-pill-tone);
+}
+
+.rz-issue-card {
+  border-color: var(--rz-glass-edge);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.38),
+    0 24px 46px -34px rgba(15, 23, 42, 0.44);
+}
+
+.rz-issue-card[aria-expanded="false"] {
+  transition:
+    transform 180ms var(--rz-ease-out),
+    border-color 180ms var(--rz-ease-out),
+    box-shadow 180ms var(--rz-ease-out);
+}
+
+.rz-issue-card[aria-expanded="false"]:hover {
+  transform: translateY(-1px);
+  border-color: var(--rz-border-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 28px 52px -34px rgba(15, 23, 42, 0.52);
+}
+
+.rz-issue-card::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  top: 0;
+  width: 6px;
+  background: var(--rz-priority-solid, var(--rz-primary));
+  box-shadow: 0 0 22px var(--rz-priority-glow, rgba(20, 168, 90, 0.22));
+}
+
+.rz-section-card::before {
+  content: "";
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  top: 14px;
+  width: 4px;
+  border-radius: 0 999px 999px 0;
+  background: var(--rz-priority-solid, var(--rz-primary));
+  box-shadow: 0 0 18px var(--rz-priority-glow, rgba(20, 168, 90, 0.22));
+}
+
+.rz-issue-card::after,
+.rz-unlock-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(20, 168, 90, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 168, 90, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(90deg, rgba(0, 0, 0, 0.65), transparent 78%);
+}
+
+.rz-unlock-card {
+  border-color: var(--rz-border-strong);
+  box-shadow: var(--rz-shadow-md);
+}
+
+.rz-card[data-priority-tone="critical"],
+.rz-issue-card[data-priority-tone="critical"] {
+  --rz-priority-solid: var(--rz-critical-solid);
+  --rz-priority-glow: rgba(220, 38, 38, 0.28);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 35%),
+    linear-gradient(135deg, rgba(220, 38, 38, 0.12), transparent 42%),
+    var(--rz-glass-card);
+  border-color: color-mix(in srgb, var(--rz-critical-border) 68%, var(--rz-glass-edge));
+}
+
+.rz-card[data-priority-tone="warning"],
+.rz-issue-card[data-priority-tone="warning"] {
+  --rz-priority-solid: var(--rz-warning-solid);
+  --rz-priority-glow: rgba(217, 119, 6, 0.28);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 35%),
+    linear-gradient(135deg, rgba(217, 119, 6, 0.13), transparent 42%),
+    var(--rz-glass-card);
+  border-color: color-mix(in srgb, var(--rz-warning-border) 68%, var(--rz-glass-edge));
+}
+
+.rz-card[data-priority-tone="good"],
+.rz-issue-card[data-priority-tone="good"] {
+  --rz-priority-solid: var(--rz-good-solid);
+  --rz-priority-glow: rgba(5, 150, 105, 0.28);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.62), transparent 35%),
+    linear-gradient(135deg, rgba(5, 150, 105, 0.12), transparent 42%),
+    var(--rz-glass-card);
+  border-color: color-mix(in srgb, var(--rz-good-border) 68%, var(--rz-glass-edge));
+}
+
+:root[data-theme="dark"] .rz-card[data-priority-tone="critical"],
+:root[data-theme="dark"] .rz-issue-card[data-priority-tone="critical"],
+#rezoomed-root[data-theme="dark"] .rz-card[data-priority-tone="critical"],
+#rezoomed-root[data-theme="dark"] .rz-issue-card[data-priority-tone="critical"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-card[data-priority-tone="critical"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-issue-card[data-priority-tone="critical"] {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), transparent 35%),
+    linear-gradient(135deg, rgba(239, 68, 68, 0.14), transparent 42%),
+    var(--rz-glass-card);
+}
+
+:root[data-theme="dark"] .rz-card[data-priority-tone="warning"],
+:root[data-theme="dark"] .rz-issue-card[data-priority-tone="warning"],
+#rezoomed-root[data-theme="dark"] .rz-card[data-priority-tone="warning"],
+#rezoomed-root[data-theme="dark"] .rz-issue-card[data-priority-tone="warning"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-card[data-priority-tone="warning"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-issue-card[data-priority-tone="warning"] {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), transparent 35%),
+    linear-gradient(135deg, rgba(245, 158, 11, 0.15), transparent 42%),
+    var(--rz-glass-card);
+}
+
+:root[data-theme="dark"] .rz-card[data-priority-tone="good"],
+:root[data-theme="dark"] .rz-issue-card[data-priority-tone="good"],
+#rezoomed-root[data-theme="dark"] .rz-card[data-priority-tone="good"],
+#rezoomed-root[data-theme="dark"] .rz-issue-card[data-priority-tone="good"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-card[data-priority-tone="good"],
+[data-rezoomed-theme-target][data-theme="dark"] .rz-issue-card[data-priority-tone="good"] {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.10), transparent 35%),
+    linear-gradient(135deg, rgba(16, 185, 129, 0.14), transparent 42%),
+    var(--rz-glass-card);
+}
+
+.rz-panel-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(20, 168, 90, 0.14), transparent 28%),
+    radial-gradient(circle at 100% 36%, rgba(255, 95, 159, 0.10), transparent 28%);
+  opacity: 0.9;
+}
+
+/* ============================================================
+ * Scrollbar (subtle)
+ * ============================================================ */
+#rezoomed-root *::-webkit-scrollbar,
+#root *::-webkit-scrollbar { width: 8px; height: 8px; }
+#rezoomed-root *::-webkit-scrollbar-track,
+#root *::-webkit-scrollbar-track { background: transparent; }
+#rezoomed-root *::-webkit-scrollbar-thumb,
+#root *::-webkit-scrollbar-thumb {
+  background: var(--rz-border);
   border-radius: 999px;
 }
-#rezoomed-root *::-webkit-scrollbar-thumb:hover {
-  background: rgba(128,218,146,0.35);
+#rezoomed-root *::-webkit-scrollbar-thumb:hover,
+#root *::-webkit-scrollbar-thumb:hover {
+  background: var(--rz-border-strong);
+}
+
+/* ============================================================
+ * Reduced motion
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  :host,
+  :root {
+    --rz-dur-1: 0ms;
+    --rz-dur-2: 0ms;
+    --rz-dur-3: 0ms;
+  }
+  .rz-fade-in,
+  .rz-fade-up,
+  .rz-scale-in,
+  .rz-slide-in,
+  .rz-stagger > *,
+  .rz-skeleton {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
 }

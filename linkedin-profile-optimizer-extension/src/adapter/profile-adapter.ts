@@ -1,5 +1,5 @@
 import { DEFAULT_SELECTOR_CONFIG } from "./config";
-import { debugGroup, debugLog, resetDebugTrace } from "./debug";
+import { debugGroup, debugLog } from "./debug";
 import {
   fieldValue,
   isEmptyValue,
@@ -45,7 +45,6 @@ export function extractProfileData(
 ): ProfileData {
   const profile: Partial<Record<ProfileField, FieldValue<unknown>>> = {};
 
-  resetDebugTrace();
   debugLog("scan start", new Date().toISOString(), "url", document.location.href);
   emitDomProbe(document);
   debugGroup("extractProfileData", () => {
