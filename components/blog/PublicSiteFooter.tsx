@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getOrganizationSameAsLinks } from '@/lib/site'
+import ChromeStoreBadge from '@/components/ChromeStoreBadge'
 
 type SocialLink = {
   label: string
@@ -66,6 +67,7 @@ const TOOL_LINKS = [
   { label: 'Resume Builder', href: '/resume-builder' },
   { label: 'ATS Checker', href: '/ats-checker' },
   { label: 'Match Score', href: '/match-score' },
+  { label: 'LinkedIn Optimizer', href: '/linkedin-optimizer' },
   { label: 'Resume Tailoring', href: '/resume-tailoring' },
   { label: 'Cover Letter', href: '/cover-letter-generator' },
   { label: 'Metadata Enhancer', href: '/metadata-enhancer' },
@@ -77,6 +79,7 @@ const RESOURCE_LINKS = [
   { label: 'Blog', href: '/blog' },
   { label: 'ATS Resume Test', href: '/ats-resume-test' },
   { label: 'Resume Formats', href: '/resume-format' },
+  { label: 'Contact', href: '/contact' },
 ]
 
 const LEGAL_LINKS = [
@@ -172,6 +175,9 @@ export default function PublicSiteFooter() {
                   ))}
                 </div>
               )}
+
+              {/* Chrome Web Store badge */}
+              <ChromeStoreBadge className="mt-1" />
             </div>
 
             <FooterColumn title="Tools" links={TOOL_LINKS} />

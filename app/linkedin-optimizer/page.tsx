@@ -1,25 +1,52 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Download, CheckCircle2, Eye, FileText, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import {
+  Search, ShieldCheck, FileCheck2, FileText, Target, Wand2, ArrowUpRight,
+} from 'lucide-react'
 import PublicSiteHeader from '@/components/blog/PublicSiteHeader'
 import PublicSiteFooter from '@/components/blog/PublicSiteFooter'
-import { getSiteUrl } from '@/lib/site'
+import LinkedInExtensionLanding from '@/components/landing/LinkedInExtensionLanding'
+import { getSiteUrl, SITE_NAME } from '@/lib/site'
 
-// Placeholder until the extension is published. Swap for the real Chrome Web
-// Store URL post-listing; tests/landing copy reference this constant.
-const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/PLACEHOLDER_EXTENSION_ID'
+const PAGE_PATH = '/linkedin-optimizer'
+const PAGE_TITLE = 'LinkedIn Profile Optimization — Free Chrome Extension by Rezoomed'
+const PAGE_DESCRIPTION =
+  'Open your LinkedIn profile and get an instant recruiter-search score, section-by-section fixes, and a resume↔LinkedIn consistency check. Free Chrome extension from Rezoomed.'
+const SHOWCASE_IMAGE = '/linkedin-extension/showcase.webp'
 
 export const metadata: Metadata = {
-  title: 'LinkedIn Profile Optimization — Free Chrome Extension by Rezoomed',
-  description:
-    'Open your LinkedIn profile and get an instant recruiter-search score, section-by-section fixes, and a resume↔LinkedIn consistency check. Free Chrome extension from Rezoomed.',
-  alternates: { canonical: '/linkedin-optimizer' },
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  keywords: [
+    'LinkedIn profile optimization',
+    'LinkedIn SEO',
+    'LinkedIn profile optimizer',
+    'recruiter search',
+    'LinkedIn profile score',
+    'optimize LinkedIn headline',
+    'LinkedIn keyword optimization',
+    'resume LinkedIn consistency',
+    'free Chrome extension',
+    'LinkedIn for job seekers',
+  ],
+  alternates: { canonical: PAGE_PATH },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   openGraph: {
     type: 'website',
     title: 'LinkedIn Profile Optimization — Free Chrome Extension',
     description:
       'Recruiter-search score, section fixes, and resume consistency for your LinkedIn profile. Free Chrome extension.',
-    url: '/linkedin-optimizer',
+    url: PAGE_PATH,
     images: ['/opengraph-image'],
   },
   twitter: {
@@ -33,6 +60,8 @@ export const metadata: Metadata = {
 
 export const revalidate = 300
 
+// Single source of truth — rendered visibly in the client component AND emitted
+// as FAQPage structured data below, so Google sees matching copy in both.
 const FAQS = [
   {
     question: 'Do I need to give the extension my LinkedIn password?',
@@ -61,242 +90,210 @@ const FAQS = [
   },
 ] as const
 
-const DIFFERENTIATORS = [
+// Keyword-rich trust points (server-rendered for SEO + visual structure).
+const HIGHLIGHTS = [
   {
-    title: 'Recruiter-search simulation',
-    body: 'Most tools grade you on how complete your profile is. We grade you on how findable you are — keyword density, headline match, and signal strength for the searches recruiters actually run.',
+    Icon: Search,
+    title: 'Recruiter-search scoring',
+    blurb: 'Graded on how findable you are in recruiter searches — not vanity completeness.',
   },
   {
-    title: 'Real-hired-profile framing',
-    body: 'Every check is calibrated against profiles of people who were recently hired into roles like the one you want. Pass means "looks like the people who got the job," not "you filled in the field."',
+    Icon: ShieldCheck,
+    title: 'On-device & private',
+    blurb: 'The free scan runs in your browser. Your profile content never leaves your device.',
   },
   {
-    title: 'Resume↔LinkedIn consistency',
-    body: "Recruiters cross-reference your LinkedIn against the resume you sent. We surface where they drift — headline, current title, skills — so you can align both before the next interview loop.",
+    Icon: FileCheck2,
+    title: 'Resume ↔ LinkedIn in sync',
+    blurb: 'Flags every section that drifts from the resume you actually send recruiters.',
   },
 ] as const
 
-const HOW_IT_WORKS = [
+// Server-rendered internal links — crawlable, descriptive anchors.
+const RELATED_TOOLS = [
   {
-    n: '1',
-    title: 'Install in one click',
-    body: 'Add Rezoomed to Chrome. No account required to see your first teaser score.',
+    href: '/resume-builder',
+    Icon: FileText,
+    title: 'AI Resume Builder',
+    blurb: 'Build a recruiter-ready resume that stays in sync with your optimized LinkedIn profile.',
   },
   {
-    n: '2',
-    title: 'Open your LinkedIn profile',
-    body: 'The panel appears in the corner with your recruiter-search score and the two biggest issues holding you back.',
+    href: '/ats-checker',
+    Icon: ShieldCheck,
+    title: 'ATS Resume Checker',
+    blurb: 'Score your resume against applicant tracking systems before you apply.',
   },
   {
-    n: '3',
-    title: 'Sign in to unlock the full breakdown',
-    body: 'A free Rezoomed account unlocks every section check plus the resume consistency gap. Pro adds per-section AI fixes.',
+    href: '/match-score',
+    Icon: Target,
+    title: 'Resume Match Score',
+    blurb: 'See how well your resume fits a specific job description, requirement by requirement.',
+  },
+  {
+    href: '/resume-tailoring',
+    Icon: Wand2,
+    title: 'Resume Tailoring',
+    blurb: 'Rewrite your bullets to match a target role and the keywords recruiters search for.',
   },
 ] as const
 
 export default function LinkedInOptimizerPage() {
   const siteUrl = getSiteUrl()
-  const breadcrumbJsonLd = {
+  const pageUrl = `${siteUrl}${PAGE_PATH}`
+  const showcaseImageUrl = `${siteUrl}${SHOWCASE_IMAGE}`
+
+  // Consolidated structured data graph (WebPage + Breadcrumb + SoftwareApplication + FAQ).
+  const jsonLdGraph = {
     '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+    '@graph': [
       {
-        '@type': 'ListItem',
-        position: 2,
-        name: 'LinkedIn Profile Optimizer',
-        item: `${siteUrl}/linkedin-optimizer`,
+        '@type': 'WebPage',
+        '@id': `${pageUrl}#webpage`,
+        url: pageUrl,
+        name: PAGE_TITLE,
+        description: PAGE_DESCRIPTION,
+        inLanguage: 'en-US',
+        isPartOf: { '@id': `${siteUrl}/#website` },
+        primaryImageOfPage: showcaseImageUrl,
+        breadcrumb: { '@id': `${pageUrl}#breadcrumb` },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'LinkedIn Profile Optimizer', item: pageUrl },
+        ],
+      },
+      {
+        '@type': 'SoftwareApplication',
+        '@id': `${pageUrl}#software`,
+        name: 'Rezoomed — Profile Optimizer for LinkedIn',
+        applicationCategory: 'BrowserApplication',
+        operatingSystem: 'Chrome',
+        browserRequirements: 'Requires Google Chrome',
+        url: pageUrl,
+        description:
+          'Chrome extension that scores any LinkedIn profile against recruiter-search behavior and benchmarks it to people recently hired into your target role.',
+        image: showcaseImageUrl,
+        screenshot: showcaseImageUrl,
+        featureList: [
+          'Recruiter-search profile score (0–100)',
+          '14 section-level readability checks',
+          'Resume↔LinkedIn consistency check',
+          'Per-section AI rewrites (Pro)',
+          'On-device free scan — no password required',
+        ],
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+        publisher: {
+          '@type': 'Organization',
+          '@id': `${siteUrl}/#organization`,
+          name: SITE_NAME,
+          url: siteUrl,
+          logo: `${siteUrl}/icon.png`,
+        },
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': `${pageUrl}#faq`,
+        mainEntity: FAQS.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+        })),
       },
     ],
   }
-  const faqJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: FAQS.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-    })),
-  }
-  const softwareJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'Rezoomed — Profile Optimizer for LinkedIn',
-    applicationCategory: 'BrowserApplication',
-    operatingSystem: 'Chrome',
-    url: `${siteUrl}/linkedin-optimizer`,
-    description:
-      'Chrome extension that scores any LinkedIn profile against recruiter-search behavior and benchmarks it to people recently hired into your target role.',
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background-landing text-on-surface font-body">
+    <div className="flex min-h-screen flex-col bg-white font-body text-zinc-900">
       <PublicSiteHeader />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdGraph) }}
       />
 
-      <main className="mx-auto w-full max-w-[80rem] flex-1 px-6 pb-20 pt-24">
-        {/* Hero */}
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(241,247,243,0.88))] px-6 py-10 shadow-[0_24px_60px_rgba(18,24,21,0.06)] sm:px-12 sm:py-14">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.26),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_36%)]" />
-          <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-center">
-            <div className="space-y-5">
-              <span className="inline-flex items-center rounded-full border border-primary-container/50 bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-                Free Chrome extension
+      <main className="flex-1">
+        <LinkedInExtensionLanding faqs={FAQS} />
+
+        {/* Server-rendered, crawlable SEO content + internal links */}
+        <section className="relative overflow-hidden border-t border-zinc-100 bg-[linear-gradient(180deg,#ffffff_0%,#f4f8f5_100%)] px-6 py-24">
+          <div className="pointer-events-none absolute -left-24 top-20 h-80 w-80 rounded-full bg-[#A3FFB3]/25 blur-3xl" />
+          <div className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-[#0A66C2]/10 blur-3xl" />
+
+          <div className="relative mx-auto max-w-5xl">
+            {/* intro */}
+            <div className="mx-auto max-w-3xl text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#026d32]/15 bg-[#026d32]/8 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-[#026d32]">
+                Why Rezoomed
               </span>
-              <h1 className="max-w-3xl text-3xl font-black tracking-tight text-on-background sm:text-4xl lg:text-[3.25rem] lg:leading-[1]">
-                Score your LinkedIn profile the way recruiters actually search.
-              </h1>
-              <p className="max-w-xl text-base leading-7 text-on-surface-variant">
-                One click and a free Rezoomed account unlocks the full section-by-section
-                breakdown — plus a consistency check against the resume in your account, so
-                your LinkedIn and your resume don't drift apart.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <a
-                  className="inline-flex items-center gap-2 rounded-full bg-on-background px-5 py-3 text-sm font-semibold text-on-primary shadow-lg shadow-on-background/20 transition hover:bg-on-background/90"
-                  href={CHROME_STORE_URL}
-                  rel="noreferrer noopener"
-                  target="_blank"
-                >
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  Add to Chrome — free
-                </a>
-                <Link
-                  className="inline-flex items-center gap-2 rounded-full border border-on-background/10 bg-white/80 px-5 py-3 text-sm font-semibold text-on-background transition hover:bg-white"
-                  href="/pricing"
-                >
-                  See Pro pricing
-                </Link>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[10px] text-on-surface-variant">
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">
-                  Never asks for LinkedIn credentials
+              <h2 className="mt-4 text-3xl font-black tracking-tight text-zinc-950 sm:text-4xl">
+                LinkedIn profile optimization that mirrors{' '}
+                <span className="bg-gradient-to-r from-[#026d32] to-[#0A66C2] bg-clip-text text-transparent">
+                  recruiter search
                 </span>
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">
-                  Teaser score, no signup
-                </span>
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">
-                  Works in browser
-                </span>
-              </div>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/70 bg-white/86 p-6 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                What the panel shows
-              </p>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-on-surface">
-                <li className="flex items-start gap-2">
-                  <Eye className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  Recruiter-search score (0–100)
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  14 section-level readable checks
-                </li>
-                <li className="flex items-start gap-2">
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  Resume↔LinkedIn drift highlights
-                </li>
-                <li className="flex items-start gap-2">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-                  Per-section AI rewrites (Pro)
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* Differentiators */}
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold tracking-tight text-on-background sm:text-3xl">
-            Built on what gets people hired, not what fills the form
-          </h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {DIFFERENTIATORS.map((d) => (
-              <div
-                key={d.title}
-                className="rounded-2xl border border-white/70 bg-white/86 p-6 shadow-[0_18px_45px_rgba(25,28,29,0.04)]"
-              >
-                <h3 className="text-base font-bold text-on-background">{d.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-on-surface-variant">{d.body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* How it works */}
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold tracking-tight text-on-background sm:text-3xl">
-            Three steps
-          </h2>
-          <ol className="mt-6 grid gap-4 md:grid-cols-3">
-            {HOW_IT_WORKS.map((s) => (
-              <li
-                key={s.n}
-                className="rounded-2xl border border-white/70 bg-white/86 p-6 shadow-[0_18px_45px_rgba(25,28,29,0.04)]"
-              >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-sm font-bold text-on-primary-container">
-                  {s.n}
-                </span>
-                <h3 className="mt-3 text-base font-bold text-on-background">{s.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-on-surface-variant">{s.body}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* CTA */}
-        <section className="mt-12 rounded-[2rem] border border-white/70 bg-on-background px-6 py-10 text-on-primary sm:px-12">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(14rem,1fr)] lg:items-center">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Stop guessing what's wrong with your LinkedIn
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-on-primary/80">
-                Install the extension, open your profile, and see what recruiters see — in
-                under 30 seconds.
+              <p className="mt-5 text-base leading-7 text-zinc-600 sm:text-lg">
+                Most LinkedIn profile checkers grade how complete your profile looks. Rezoomed grades how{' '}
+                <strong className="font-bold text-zinc-900">findable</strong>{' '}
+                you are. Recruiters
+                don&rsquo;t scroll — they search, using Boolean queries built from job titles, skills, and
+                keywords. Our free Chrome extension scores your profile against that real recruiter-search
+                behavior, so you can fix the headline, About section, experience, and skills that decide
+                whether you surface at all.
               </p>
             </div>
-            <a
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-on-background transition hover:bg-white/90"
-              href={CHROME_STORE_URL}
-              rel="noreferrer noopener"
-              target="_blank"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Add to Chrome — free
-            </a>
-          </div>
-        </section>
 
-        {/* FAQ */}
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold tracking-tight text-on-background sm:text-3xl">
-            Frequently asked
-          </h2>
-          <dl className="mt-6 space-y-4">
-            {FAQS.map((faq) => (
-              <div
-                key={faq.question}
-                className="rounded-2xl border border-white/70 bg-white/86 p-6 shadow-[0_18px_45px_rgba(25,28,29,0.04)]"
-              >
-                <dt className="text-base font-bold text-on-background">{faq.question}</dt>
-                <dd className="mt-2 text-sm leading-6 text-on-surface-variant">{faq.answer}</dd>
-              </div>
-            ))}
-          </dl>
+            {/* highlight strip */}
+            <div className="mt-12 grid gap-4 md:grid-cols-3">
+              {HIGHLIGHTS.map((h) => (
+                <div
+                  key={h.title}
+                  className="rounded-2xl border border-white bg-white/80 p-6 shadow-[0_18px_45px_rgba(18,24,21,0.05)] backdrop-blur-sm"
+                >
+                  <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#026d32] to-[#30c06b] shadow-lg shadow-[#026d32]/20">
+                    <h.Icon className="h-5 w-5 text-white" aria-hidden />
+                  </div>
+                  <h3 className="text-base font-black text-zinc-950">{h.title}</h3>
+                  <p className="mt-1.5 text-sm leading-6 text-zinc-500">{h.blurb}</p>
+                </div>
+              ))}
+            </div>
+
+            <p className="mx-auto mt-10 max-w-3xl text-center text-sm leading-7 text-zinc-500 sm:text-base">
+              Every check is calibrated against profiles of people recently hired into the role you want.
+              Profile parsing for the free scan happens entirely in your browser — no password, no
+              scraping. Pair the extension with the rest of the Rezoomed toolkit to keep your resume and
+              LinkedIn telling one consistent, keyword-rich story.
+            </p>
+
+            {/* related tools */}
+            <h3 className="mt-16 text-center text-xs font-bold uppercase tracking-[0.2em] text-zinc-400">
+              Explore the toolkit
+            </h3>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {RELATED_TOOLS.map((tool) => (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="group flex items-start gap-4 rounded-2xl border border-zinc-100 bg-white p-6 shadow-[0_12px_30px_rgba(18,24,21,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[#0A66C2]/25 hover:shadow-[0_22px_50px_rgba(10,102,194,0.12)]"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-white transition-colors duration-300 group-hover:bg-[#0A66C2]">
+                    <tool.Icon className="h-5 w-5" aria-hidden />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-base font-black text-zinc-950 group-hover:text-[#026d32]">
+                        {tool.title}
+                      </span>
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-zinc-300 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[#0A66C2]" aria-hidden />
+                    </div>
+                    <p className="mt-1.5 text-sm leading-6 text-zinc-500">{tool.blurb}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </section>
       </main>
 

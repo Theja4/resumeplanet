@@ -49,3 +49,7 @@ graphify-out/
 
 # seo audit output (generated reports, not source)
 /seo-audit-rezoomed/
+
+# wxt / extension build artifacts (generated, not source)
+.wxt/
+.output/

@@ -22,14 +22,17 @@ const PUBLIC_ROUTES = [
   '/ats-resume-format',
   '/resume-format-for-job-applications',
   '/resume-tailoring',
+  '/linkedin-optimizer',
   '/amazon-ats-resume-guide',
   '/what-ats-does-amazon-use',
   '/cover-letter-generator',
   '/pricing',
   '/cookie-policy',
   '/privacy-policy',
+  '/privacy/linkedin-extension',
   '/refund-policy',
   '/terms',
+  '/contact',
 ] as const
 
 function getRoutePriority(route: string) {
@@ -46,6 +49,7 @@ function getRoutePriority(route: string) {
       '/resume-format-for-job-applications',
       '/resume-tailoring',
       '/match-score',
+      '/linkedin-optimizer',
     ].includes(route)
   ) return 0.9
   if (route.startsWith('/resume-format/')) return 0.85
