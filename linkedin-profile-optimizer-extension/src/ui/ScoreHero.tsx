@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 
-import { Badge, Card, SeverityDot } from "./components";
+import { Card } from "./components";
 import {
   aggregateSeverity,
   severityFromRatio,
@@ -41,7 +41,6 @@ export function ScoreHero({ score, isFree = true }: Props) {
   const agg = aggregateSeverity(score);
   const lift = Math.min(100 - score.total, Math.round(agg.totalPointsLost));
   const potential = score.total + lift;
-  const fixCount = agg.criticalCount + agg.warningCount;
 
   useEffect(() => {
     let frame = 0;
@@ -105,9 +104,18 @@ export function ScoreHero({ score, isFree = true }: Props) {
   const offset = CIRC - ratio * CIRC;
 
   return (
-    <section className="rz-fade-in mx-4 mt-2 mb-3">
-      <Card padded="md" className="rz-card-elev rz-brand-panel">
-        <div className="relative z-[1] flex items-center gap-5">
+    <section className="rz-fade-in mx-2 mt-2 mb-3">
+      <Card padded="sm" className="rz-card-elev rz-hero-feature">
+        <div className="relative z-[1] rz-hero-live">
+          <span className="rz-hero-eq" aria-hidden="true">
+            <i /><i /><i /><i />
+          </span>
+          <span className="rz-hero-live-pulse" aria-hidden="true" />
+          Real-time <b>LinkedIn</b> scan
+        </div>
+
+        {/* One horizontal row: ring · potential leap · severity chips */}
+        <div className="relative z-[1] mt-3 flex flex-wrap items-center gap-3">
           <ScoreRing
             display={display}
             offset={offset}
@@ -115,26 +123,19 @@ export function ScoreHero({ score, isFree = true }: Props) {
           />
 
           <div className="min-w-0 flex-1">
-            <Badge tone={overall === "good" ? "success" : overall === "warning" ? "warning" : "critical"}>
-              Live LinkedIn scan
-            </Badge>
-
-            <div className="mt-2">
-              {isFree ? (
-                <FreeHeadline
-                  current={score.total}
-                  potential={potential}
-                  lift={lift}
-                  fixCount={fixCount}
-                  peakDelta={peakDelta}
-                />
-              ) : (
-                <ProHeadline overall={overall} agg={agg} />
-              )}
-            </div>
-
-            <SeverityLegend agg={agg} />
+            {isFree ? (
+              <FreePotential
+                current={score.total}
+                potential={potential}
+                lift={lift}
+                peakDelta={peakDelta}
+              />
+            ) : (
+              <ProHeadline overall={overall} agg={agg} />
+            )}
           </div>
+
+          <SeverityChips agg={agg} />
         </div>
 
         <div className="relative z-[1] mt-4">
@@ -156,7 +157,7 @@ function ScoreRing({
 }) {
   return (
     <div
-      className="relative grid h-[122px] w-[122px] shrink-0 place-items-center"
+      className="rz-hero-ring relative grid h-[88px] w-[88px] shrink-0 place-items-center"
       role="img"
       aria-label={`Score ${display} of 100`}
     >
@@ -186,11 +187,11 @@ function ScoreRing({
         className="text-center rz-num leading-none"
         style={{ color: "var(--rz-text)", fontVariantNumeric: "tabular-nums" }}
       >
-        <div className="text-[40px] font-extrabold leading-none">
+        <div className="text-[36px] font-bold leading-none tracking-[-0.035em]">
           {display}
         </div>
         <div
-          className="mt-1 text-[11px] font-bold uppercase tracking-[0.06em]"
+          className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.1em]"
           style={{ color: "var(--rz-text-3)" }}
         >
           of 100
@@ -200,7 +201,14 @@ function ScoreRing({
   );
 }
 
-function FreeHeadline({
+/**
+ * Free-user headline — the "current → potential" leap. The ring already
+ * shows the current score; this frames the *gain*: a muted red current
+ * number flowing through a red→emerald arrow into a big glowing emerald
+ * potential, with the point lift as a floating pill that reveals after
+ * the ring's one-time peek animation settles (loss-aversion cue).
+ */
+function FreePotential({
   current,
   potential,
   lift,
@@ -209,48 +217,65 @@ function FreeHeadline({
   current: number;
   potential: number;
   lift: number;
-  fixCount: number;
   peakDelta: boolean;
 }) {
   if (lift <= 0) {
     return (
-      <p
-        className="text-[18px] font-extrabold leading-tight"
-        style={{ color: "var(--rz-text)" }}
-      >
-        Top of the pool
-      </p>
+      <div>
+        <p className="rz-hero-eyebrow">Potential score</p>
+        <div className="mt-1.5 flex items-end gap-3">
+          <span className="rz-hero-pot rz-num" data-v={String(current)}>
+            <span className="rz-hero-pot-g">{current}</span>
+          </span>
+          <span className="rz-hero-topflag">Top of the pool</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="flex items-baseline gap-2">
-      <span
-        className="text-[11.5px] font-extrabold uppercase tracking-[0.06em]"
-        style={{ color: "var(--rz-text-3)" }}
+    <div>
+      <p className="rz-hero-eyebrow">Potential score</p>
+      <div
+        className="mt-1.5 rz-hero-leap"
+        role="img"
+        aria-label={`Current score ${current}, potential ${potential} — up ${lift} points`}
       >
-        Potential
-      </span>
-      <span
-        className="rz-num text-[26px] font-extrabold leading-none"
-        style={{ color: "var(--rz-text)" }}
-      >
-        {potential}
-      </span>
-      <span
-        className="inline-flex items-center gap-0.5 rounded-[6px] px-1.5 py-0.5 text-[11px] font-bold rz-num"
-        style={{
-          background: "var(--rz-good-bg)",
-          color: "var(--rz-good-text)",
-          border: "1px solid var(--rz-good-border)",
-          opacity: peakDelta ? 1 : 0,
-          transform: peakDelta ? "translateY(0)" : "translateY(4px)",
-          transition: "opacity 380ms var(--rz-ease-out), transform 380ms var(--rz-ease-out)",
-        }}
-      >
-        <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
-        +{potential - current}
-      </span>
+        <span className="rz-hero-from rz-num">{current}</span>
+        <span className="rz-hero-arrow" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            fill="none"
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <defs>
+              <linearGradient id="rzLeapArrow" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="#ff6b7d" />
+                <stop offset="1" stopColor="#25e08a" />
+              </linearGradient>
+            </defs>
+            <path d="M4 12h15M13 6l6 6-6 6" stroke="url(#rzLeapArrow)" />
+          </svg>
+        </span>
+        <span className="rz-hero-pot rz-num" data-v={String(potential)}>
+          <span className="rz-hero-pot-g">{potential}</span>
+        </span>
+        <span
+          className="rz-hero-gain rz-num"
+          style={{
+            opacity: peakDelta ? 1 : 0,
+            transform: peakDelta ? "translateY(0)" : "translateY(4px)",
+            transition: "opacity 380ms var(--rz-ease-out), transform 380ms var(--rz-ease-out)",
+          }}
+        >
+          <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+          +{lift}
+        </span>
+      </div>
     </div>
   );
 }
@@ -271,7 +296,7 @@ function ProHeadline({
   return (
     <div>
       <p
-        className="text-[20px] font-extrabold leading-tight"
+        className="text-[20px] font-bold leading-tight tracking-[-0.014em]"
         style={{ color: "var(--rz-text)" }}
       >
         {headline}
@@ -286,7 +311,11 @@ function ProHeadline({
   );
 }
 
-function SeverityLegend({
+/**
+ * Severity breakdown as glass chips with breathing severity dots — sits
+ * full-width under the score so it reads cleanly on the dark hero.
+ */
+function SeverityChips({
   agg,
 }: {
   agg: AggregateSeverity;
@@ -299,66 +328,33 @@ function SeverityLegend({
   if (items.length === 0) return null;
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      {items.map((it, idx) => (
-        <span
-          key={it.severity}
-          className="inline-flex items-center gap-1.5 text-[13.5px] font-medium"
-          style={{ color: "var(--rz-text-2)" }}
-        >
-          <SeverityDot severity={it.severity} size="sm" />
-          <span className="rz-num font-medium" style={{ color: "var(--rz-text)" }}>
-            {it.count}
-          </span>
-          <span style={{ color: "var(--rz-text-3)" }}>{it.label}</span>
-          {idx < items.length - 1 ? (
-            <span aria-hidden="true" style={{ color: "var(--rz-text-4)" }}>
-              ·
-            </span>
-          ) : null}
+    <div className="rz-hero-chips">
+      {items.map((it) => (
+        <span key={it.severity} className="rz-hero-chip">
+          <span className="rz-hero-cdot" data-sev={it.severity} aria-hidden="true" />
+          <b className="rz-num">{it.count}</b>
+          <span>{it.label}</span>
         </span>
       ))}
     </div>
   );
 }
 
-interface UserPalette {
-  /** Strong base color — used for the chip background, pointer, and dot ring. */
-  solid: string;
-  /** Lighter shade — used on the bar fill's right edge for a soft gradient. */
-  light: string;
-  /** Translucent halo color matching `solid` — for the dot's outer glow. */
-  halo: string;
-}
+type LadderPalette = { solid: string; deep: string; glow: string };
 
-function userPaletteFor(s: Severity): UserPalette {
-  if (s === "critical") {
-    return {
-      solid: "var(--rz-critical-solid)",
-      light: "#f87171",
-      halo: "rgba(220, 38, 38, 0.42)",
-    };
-  }
-  if (s === "warning") {
-    return {
-      solid: "var(--rz-warning-solid)",
-      light: "#fbbf24",
-      halo: "rgba(217, 119, 6, 0.42)",
-    };
-  }
-  return {
-    solid: "var(--rz-primary)",
-    light: "#1fd07e",
-    halo: "rgba(20, 168, 90, 0.50)",
-  };
+function ladderPaletteFor(s: Severity): LadderPalette {
+  if (s === "critical") return { solid: "#fb7185", deep: "#f43f5e", glow: "251,113,133" };
+  if (s === "warning")  return { solid: "#fbbf24", deep: "#f59e0b", glow: "251,191,36" };
+  return { solid: "#2ee88f", deep: "#14b87a", glow: "46,232,143" };
 }
 
 /**
- * Recruiter-visibility ladder. The bar plots the user's score against
- * a single anchored milestone (the 88-pt recruiter cutoff). The user
- * pin + bar fill take their colour from `severityFromRatio(score/100)`
- * so red/amber/green narrate distance to the goal; the recruiter
- * cutoff itself is always green (it's the destination).
+ * Compact recruiter-visibility ladder on the dark hero. Plots the score
+ * against the 88-pt recruiter cutoff (or 95-pt top tier once cleared):
+ * a "You · N" pin above the bar, the cutoff marker + label below-right
+ * (anchored so it can't clip the edge), and a one-line gap narration.
+ * Colours follow severity (red/amber → cutoff green) so distance to the
+ * goal reads at a glance.
  */
 function GoalLadder({ score }: { score: number }) {
   const [fillWidth, setFillWidth] = useState(0);
@@ -380,8 +376,8 @@ function GoalLadder({ score }: { score: number }) {
       ? { score: TOP_TIER, label: "Top tier" }
       : null;
 
-  const userSeverity = severityFromRatio(score / 100);
-  const palette = userPaletteFor(userSeverity);
+  const pal = ladderPaletteFor(severityFromRatio(score / 100));
+  const dotBorder = "#0c1016";
 
   const subtext = (() => {
     if (belowRecruiter) {
@@ -396,30 +392,27 @@ function GoalLadder({ score }: { score: number }) {
   })();
 
   // Clamp the user-pin's center so the tag never spills off either edge.
-  const pinLeft = Math.min(92, Math.max(8, userLeft));
+  const pinLeft = Math.min(90, Math.max(10, userLeft));
 
   return (
     <div>
-      {/* Floating "You · 76" tag anchored to the user dot. Colour-coded
-          by severity so it reads at a glance: red when far below the
-          cutoff, amber when close, green once past. The pointer's tip
-          extends down past the chip baseline so it visibly meets the
-          user dot on the bar instead of floating above it. */}
-      <div className="relative h-8" aria-hidden="true">
+      {/* "You · N" pin above the bar */}
+      <div className="relative" style={{ height: 22 }} aria-hidden="true">
         <div
-          className="absolute bottom-0 flex flex-col items-center"
+          className="absolute flex flex-col items-center"
           style={{
+            bottom: 3,
             left: `${pinLeft}%`,
             transform: "translateX(-50%)",
             transition: "left 900ms var(--rz-ease-out)",
           }}
         >
           <span
-            className="inline-flex items-center gap-1 rounded-[7px] px-1.5 py-0.5 text-[11px] font-extrabold rz-num whitespace-nowrap"
+            className="rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold rz-num whitespace-nowrap"
             style={{
-              background: `linear-gradient(135deg, ${palette.solid} 0%, ${palette.light} 100%)`,
-              color: "#ffffff",
-              boxShadow: `0 4px 12px -4px ${palette.halo}, inset 0 1px 0 rgba(255, 255, 255, 0.25)`,
+              background: `linear-gradient(135deg, ${pal.solid} 0%, ${pal.deep} 100%)`,
+              color: "#1a1206",
+              boxShadow: `0 6px 16px -6px rgba(${pal.glow},0.6)`,
             }}
           >
             You · {score}
@@ -427,12 +420,9 @@ function GoalLadder({ score }: { score: number }) {
           <span
             className="block h-0 w-0"
             style={{
-              // Slightly bigger pointer so the visual link from the
-              // chip down to the user dot reads clearly at a glance.
-              borderLeft: "5px solid transparent",
-              borderRight: "5px solid transparent",
-              borderTop: `8px solid ${palette.solid}`,
-              filter: `drop-shadow(0 1px 1px ${palette.halo})`,
+              borderLeft: "4px solid transparent",
+              borderRight: "4px solid transparent",
+              borderTop: `5px solid ${pal.solid}`,
             }}
           />
         </div>
@@ -440,11 +430,11 @@ function GoalLadder({ score }: { score: number }) {
 
       {/* The bar */}
       <div
-        className="relative h-2 rounded-full"
+        className="relative rounded-full"
         style={{
-          background: "var(--rz-card-bg-alt)",
-          border: "1px solid var(--rz-border)",
-          boxShadow: "inset 0 1px 1px rgba(15, 23, 42, 0.06)",
+          height: 8,
+          background: "rgba(255,255,255,0.07)",
+          border: "1px solid rgba(255,255,255,0.09)",
         }}
         role="img"
         aria-label={
@@ -459,35 +449,27 @@ function GoalLadder({ score }: { score: number }) {
           className="absolute inset-y-0 left-0 rounded-full"
           style={{
             width: `${Math.min(100, Math.max(0, fillWidth))}%`,
-            background: `linear-gradient(90deg, ${palette.solid} 0%, ${palette.light} 100%)`,
-            transition:
-              "width 900ms var(--rz-ease-out), background 320ms var(--rz-ease)",
-            boxShadow: `0 0 12px -2px ${palette.halo}`,
+            background: `linear-gradient(90deg, ${pal.deep} 0%, ${pal.solid} 100%)`,
+            boxShadow: `0 0 14px -2px rgba(${pal.glow},0.55)`,
+            transition: "width 900ms var(--rz-ease-out), background 320ms var(--rz-ease)",
           }}
         />
 
-        {/* Milestone tick — always green because the cutoff is the goal. */}
+        {/* Cutoff marker — always emerald (the destination). */}
         {milestone ? (
           <span
-            className="absolute top-1/2"
+            className="absolute top-1/2 rounded-full"
             style={{
               left: `${milestone.score}%`,
               transform: "translate(-50%, -50%)",
+              width: 12,
+              height: 12,
+              background: "#2ee88f",
+              border: `2px solid ${dotBorder}`,
+              boxShadow: "0 0 0 2px #2ee88f, 0 0 12px 1px rgba(46,232,143,0.6)",
             }}
             aria-hidden="true"
-          >
-            <span
-              className="grid place-items-center rounded-full"
-              style={{
-                width: 14,
-                height: 14,
-                background: "var(--rz-good-solid)",
-                border: "2px solid var(--rz-card-bg)",
-                boxShadow:
-                  "0 0 0 2px var(--rz-good-solid), 0 4px 10px -2px rgba(5, 150, 105, 0.55)",
-              }}
-            />
-          </span>
+          />
         ) : null}
 
         {/* User dot — radial gradient in the severity colour. */}
@@ -496,62 +478,48 @@ function GoalLadder({ score }: { score: number }) {
           style={{
             left: `${Math.min(100, Math.max(0, userLeft))}%`,
             transform: "translate(-50%, -50%)",
-            width: 16,
-            height: 16,
-            background: `radial-gradient(circle at 30% 30%, #ffffff, ${palette.solid} 70%)`,
-            border: "3px solid var(--rz-card-bg)",
-            boxShadow: `0 0 0 2px ${palette.solid}, 0 6px 16px -3px ${palette.halo}`,
-            transition:
-              "left 900ms var(--rz-ease-out), background 320ms var(--rz-ease), box-shadow 320ms var(--rz-ease)",
+            width: 14,
+            height: 14,
+            background: `radial-gradient(circle at 30% 30%, #ffffff, ${pal.solid} 70%)`,
+            border: `2.5px solid ${dotBorder}`,
+            boxShadow: `0 0 0 2px ${pal.solid}, 0 0 14px 1px rgba(${pal.glow},0.6)`,
+            transition: "left 900ms var(--rz-ease-out)",
           }}
           aria-hidden="true"
         />
       </div>
 
-      {/* Milestone label below the bar — wrapped in a green chip so the
-          colour matches the cutoff tick directly above it. The tick
-          line + margin together leave a clear gap below the green dot
-          on the bar, so the chip never visually collides with it. */}
+      {/* Cutoff label below-right, anchored so it never clips; a thin
+          tick links it back up to the marker at the milestone%. */}
       {milestone ? (
-        <div className="relative h-12">
-          <div
-            className="absolute top-0 flex flex-col items-center"
+        <div className="relative" style={{ height: 22, marginTop: 8 }} aria-hidden="true">
+          <span
+            className="absolute"
             style={{
+              top: -8,
               left: `${milestone.score}%`,
-              transform: "translateX(-50%)",
+              width: 1,
+              height: 8,
+              background: "#2ee88f",
+              opacity: 0.5,
+            }}
+          />
+          <span
+            className="absolute right-0 top-0 rounded-[7px] px-2 py-0.5 text-[10.5px] font-bold rz-num whitespace-nowrap"
+            style={{
+              color: "#2ee88f",
+              background: "rgba(46,232,143,0.12)",
+              border: "1px solid rgba(46,232,143,0.28)",
             }}
           >
-            <span
-              className="block w-px"
-              style={{
-                // 12px tick — clears the user/milestone dots' 3px
-                // bottom overhang past the bar plus ~9px of breathing
-                // room before the chip starts.
-                height: 12,
-                background: "var(--rz-good-solid)",
-                opacity: 0.7,
-              }}
-              aria-hidden="true"
-            />
-            <span
-              className="mt-1.5 inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 text-[11px] font-extrabold rz-num whitespace-nowrap"
-              style={{
-                background: "var(--rz-good-bg)",
-                color: "var(--rz-good-text)",
-                border: "1px solid var(--rz-good-border)",
-              }}
-            >
-              {milestone.label} · {milestone.score}
-            </span>
-          </div>
+            {milestone.label} · {milestone.score}
+          </span>
         </div>
-      ) : (
-        <div className="h-1" />
-      )}
+      ) : null}
 
       <p
-        className="mt-2 text-[12.5px] leading-snug"
-        style={{ color: "var(--rz-text-2)" }}
+        className="text-[12px] leading-snug"
+        style={{ color: "rgba(255,255,255,0.74)", marginTop: milestone ? 6 : 10 }}
       >
         {subtext}
       </p>

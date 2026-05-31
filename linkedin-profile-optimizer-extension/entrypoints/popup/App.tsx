@@ -16,7 +16,6 @@ import {
   Divider,
   SeverityDot,
   Stat,
-  ThemeToggle,
 } from "../../src/ui/components";
 import { severityFromRatio } from "../../src/scoring/severity";
 import { BrandMark, ProfileCardIllustration, ScoreWaveSvg } from "../../src/ui/svg";
@@ -61,7 +60,7 @@ export function PopupApp() {
 
   return (
     <main
-      className="rz-popup-shell relative flex h-full min-h-[576px] w-full flex-col overflow-hidden"
+      className="rz-anon rz-popup-shell relative flex h-full min-h-[576px] w-full flex-col overflow-hidden"
       style={{
         background: "var(--rz-panel-bg)",
         color: "var(--rz-text)",
@@ -72,7 +71,6 @@ export function PopupApp() {
         style={{ borderBottom: "1px solid var(--rz-border)" }}
       >
         <BrandMark size="md" iconUrl={iconUrl} />
-        <ThemeToggle size="sm" />
       </header>
 
       <div className="flex-1 space-y-4 px-5 py-5">
@@ -236,7 +234,7 @@ function ScanCard({ lastScan }: { lastScan: LastScan | null }) {
           <div className="min-w-0">
             <p className="rz-eyebrow">Profile Optimizer</p>
             <p
-              className="mt-2 text-[19px] font-extrabold leading-snug"
+              className="mt-2 text-[19px] font-bold leading-snug tracking-[-0.014em]"
               style={{ color: "var(--rz-text)" }}
             >
               Open LinkedIn to run your first scan.
@@ -319,7 +317,7 @@ function MiniScoreRing({ score }: { score: number }) {
         />
       </svg>
       <SeverityDot severity={severity} size="sm" className="absolute right-2 top-2 rz-score-pulse" />
-      <span className="rz-num text-[22px] font-extrabold" style={{ color: "var(--rz-text)" }}>
+      <span className="rz-num text-[22px] font-bold tracking-[-0.02em]" style={{ color: "var(--rz-text)" }}>
         {score}
       </span>
     </div>
@@ -345,10 +343,10 @@ function SignalTile({
       >
         {icon}
       </span>
-      <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.06em]" style={{ color: "var(--rz-text-3)" }}>
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.07em]" style={{ color: "var(--rz-text-3)" }}>
         {label}
       </p>
-      <p className="mt-0.5 text-[13px] font-extrabold" style={{ color: "var(--rz-text)" }}>
+      <p className="mt-0.5 text-[13px] font-bold tracking-[-0.01em]" style={{ color: "var(--rz-text)" }}>
         {value}
       </p>
     </Card>

@@ -29,6 +29,33 @@ const SECTION_LABEL: Record<BooleanSection, string> = {
 };
 
 /**
+ * Syntax-highlight a recruiter Boolean string: AND/OR operators in the
+ * "good" accent, "quoted phrases" in the warning accent. Purely
+ * presentational — the query text itself is unchanged.
+ */
+function renderBooleanQuery(query: string): React.ReactNode {
+  if (!query) return "(no query — add a target role)";
+  const parts = query.split(/("[^"]*"|\bAND\b|\bOR\b)/g);
+  return parts.map((part, i) => {
+    if (part === "AND" || part === "OR") {
+      return (
+        <span key={i} style={{ color: "var(--rz-good-solid)", fontWeight: 700 }}>
+          {part}
+        </span>
+      );
+    }
+    if (part.length > 1 && part.startsWith('"') && part.endsWith('"')) {
+      return (
+        <span key={i} style={{ color: "var(--rz-warning-text)" }}>
+          {part}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+/**
  * Recruiter Boolean simulation card.
  *
  * Shows the actual Boolean string a recruiter would paste into LinkedIn
@@ -113,7 +140,7 @@ function ResultCard({
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p
-            className="text-[14.5px] font-extrabold leading-snug"
+            className="text-[14.5px] font-bold leading-snug tracking-[-0.01em]"
             style={{ color: "var(--rz-text)" }}
           >
             {wouldSurface
@@ -137,7 +164,7 @@ function ResultCard({
         }}
         aria-label="Recruiter Boolean search"
       >
-        {result.query || "(no query — add a target role)"}
+        {renderBooleanQuery(result.query)}
       </pre>
 
       {/* Verdict reason */}
@@ -152,7 +179,7 @@ function ResultCard({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {compact ? (
             <span
-              className="text-[12.5px] font-extrabold"
+              className="text-[12.5px] font-bold"
               style={{ color: "var(--rz-primary)" }}
             >
               Sign in to unlock
@@ -181,7 +208,7 @@ function ResultCard({
           }}
         >
           <p
-            className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+            className="text-[10.5px] font-semibold uppercase tracking-[0.09em]"
             style={{ color: "var(--rz-text-3)" }}
           >
             Missing terms by section

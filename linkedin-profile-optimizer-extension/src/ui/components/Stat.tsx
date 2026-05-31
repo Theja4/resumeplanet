@@ -51,7 +51,7 @@ export function Stat({
     <div className={`flex flex-col gap-1 ${className}`}>
       {label ? (
         <span
-          className={`${sz.label} font-extrabold uppercase tracking-[0.04em]`}
+          className={`${sz.label} font-semibold uppercase tracking-[0.06em]`}
           style={{ color: "var(--rz-text-3)" }}
         >
           {label}

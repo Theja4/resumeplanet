@@ -113,7 +113,7 @@ export function SignInPrompt({
       <Card padded="md" className="rz-unlock-card rz-brand-panel">
         <div className="relative z-[1]">
           <p
-            className="text-[17px] font-extrabold leading-tight"
+            className="text-[17px] font-bold leading-tight tracking-[-0.014em]"
             style={{ color: "var(--rz-text)" }}
           >
             {title}
@@ -131,7 +131,7 @@ export function SignInPrompt({
               onClick={handleClick}
               loading={busy}
               icon={<LogIn className="h-4 w-4" aria-hidden="true" />}
-              className="rz-btn-hero rz-btn-auth rz-sheen"
+              className="rz-btn-hero rz-btn-auth rz-sheen rz-cta-glow"
               block
             >
               {busy ? "Opening Rezoomed…" : cta}
@@ -166,7 +166,7 @@ export function SignInPrompt({
         </div>
         <div className="min-w-0 flex-1">
           <div
-            className="inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-extrabold uppercase tracking-[0.08em]"
+            className="inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[12px] font-semibold uppercase tracking-[0.09em]"
             style={{
               background: "var(--rz-card-bg-alt)",
               color: "var(--rz-primary)",
@@ -177,7 +177,7 @@ export function SignInPrompt({
             Rezoomed account
           </div>
           <p
-            className="mt-3 text-[19px] font-extrabold leading-tight"
+            className="mt-3 text-[19px] font-bold leading-tight tracking-[-0.014em]"
             style={{ color: "var(--rz-text)" }}
           >
             {title}
@@ -224,7 +224,7 @@ export function SignInPrompt({
 function MiniBenefit({ label }: { label: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-[8px] px-2.5 py-2 text-[12.5px] font-bold"
+      className="inline-flex items-center gap-1.5 rounded-[8px] px-2.5 py-2 text-[12.5px] font-semibold"
       style={{
         background: "var(--rz-card-bg)",
         color: "var(--rz-text-2)",

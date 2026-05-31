@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { IconButton, SeverityDot, ThemeToggle } from "./components";
+import { IconButton, SeverityDot } from "./components";
 import { severityFromRatio } from "../scoring/severity";
 import { BrandMark } from "./svg";
 import { SIDEBAR_OPEN_REQUEST_KEY } from "./sidebarState";
@@ -31,6 +31,8 @@ interface Props {
   bottomNav?: ReactNode;
   /** Right-side area inside the header — typically status/plan badge. */
   headerMeta?: ReactNode;
+  /** Render the whole panel as the premium dark "anon" experience. */
+  dark?: boolean;
 }
 
 function readBool(key: string, fallback: boolean): boolean {
@@ -59,6 +61,7 @@ export function SidebarShell({
   sticky,
   bottomNav,
   headerMeta,
+  dark = false,
 }: Props) {
   const [collapsed, setCollapsed] = useState(() => readBool(COLLAPSED_KEY, false));
   const [hidden, setHidden] = useState(() => readBool(HIDDEN_KEY, false));
@@ -120,9 +123,9 @@ export function SidebarShell({
 
   return (
     <aside
-      className="rz-panel-shell fixed right-0 top-0 z-[2147483647] flex h-screen flex-col overflow-hidden rz-slide-in"
+      className={`rz-panel-shell fixed right-0 top-0 z-[2147483647] flex h-screen flex-col overflow-hidden rz-slide-in${dark ? " rz-anon" : ""}`}
       style={{
-        width: collapsed ? "78px" : "min(500px, calc(100vw - 24px))",
+        width: collapsed ? "78px" : "min(540px, calc(100vw - 24px))",
         background: "var(--rz-panel-bg)",
         color: "var(--rz-text)",
         borderLeft: "1px solid var(--rz-border)",
@@ -268,7 +271,6 @@ function Header({
       </div>
       <div className="relative z-[1] flex items-center gap-1">
         {meta ? <div className="mr-1">{meta}</div> : null}
-        <ThemeToggle size="sm" />
         <IconButton size="sm" title="Re-scan profile" onClick={onRescan} ariaLabel="Re-scan profile">
           <RefreshCw className={`h-[19px] w-[19px] ${scanning ? "animate-[rz-spin_700ms_linear_infinite]" : ""}`} />
         </IconButton>
@@ -344,7 +346,7 @@ function CollapsedRail({
             title={`Score ${scoreBadge}/100 — click to expand`}
             aria-label={`Expand panel — score ${scoreBadge} of 100`}
             type="button"
-            className="relative grid h-12 w-12 place-items-center rounded-[8px] text-[16px] font-extrabold rz-num"
+            className="relative grid h-12 w-12 place-items-center rounded-[8px] text-[16px] font-bold rz-num tracking-[-0.02em]"
             style={{
               background: "var(--rz-card-bg)",
               color: "var(--rz-text)",

@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Flame, LogIn, TrendingDown } from "lucide-react";
+import { Eye, Flame, Lock, LogIn, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadConfig } from "../adapter/config";
@@ -214,6 +214,7 @@ function PanelInner() {
             scoreBadge={score?.total ?? null}
             scanning={scanning}
             onRescan={() => void rescan()}
+            dark
             headerMeta={
               isPro ? (
                 <Badge tone="pro">Pro</Badge>
@@ -346,12 +347,12 @@ function AnonView({
         />
       </div>
 
-      <div className="mb-2 mt-4 flex items-center justify-between gap-2">
+      <div className="mb-2.5 mt-5 flex items-center justify-between gap-2">
         <p className="rz-eyebrow">
           What's costing you {gapToTier > 0 ? `${gapToTier} pts` : "ranking"}
         </p>
       </div>
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         {topIssues.map((check, index) => (
           <IssuePreviewCard
             key={check.id}
@@ -367,7 +368,11 @@ function AnonView({
             signInError={signIn.error}
           />
         ))}
-        <HiddenIssuesNotice count={lockedIssueCount} />
+        <HiddenIssuesNotice
+          count={lockedIssueCount}
+          onSignIn={signIn.handleClick}
+          busy={signIn.busy}
+        />
       </div>
 
       {/* Recruiter Boolean simulation — anti-vanity-score signal.
@@ -439,11 +444,12 @@ function RecruiterStakesBanner({
       role="status"
     >
       <div
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
         style={{
-          background: "rgba(255, 255, 255, 0.55)",
+          background: "rgba(255, 255, 255, 0.08)",
           color: palette.solid,
           border: `1px solid ${palette.border}`,
+          boxShadow: `0 0 16px -4px ${palette.solid}`,
         }}
         aria-hidden="true"
       >
@@ -451,7 +457,7 @@ function RecruiterStakesBanner({
       </div>
       <div className="min-w-0 flex-1">
         <p
-          className="text-[14px] font-extrabold leading-tight"
+          className="text-[14px] font-bold leading-tight tracking-[-0.01em]"
           style={{ color: palette.text }}
         >
           {headline}
@@ -498,7 +504,7 @@ function IssuePreviewCard({
     >
       <div className="relative z-[1] flex items-start gap-3">
         <div
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[15px] font-extrabold leading-none rz-num"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[15px] font-bold leading-none rz-num"
           style={{
             background: isCritical
               ? "color-mix(in srgb, var(--rz-critical-solid) 14%, var(--rz-card-bg))"
@@ -519,14 +525,14 @@ function IssuePreviewCard({
           <div className="flex items-center gap-1.5">
             <SeverityDot severity={severity} size="xs" />
             <span
-              className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+              className="text-[10.5px] font-semibold uppercase tracking-[0.09em]"
               style={{ color: isCritical ? "var(--rz-critical-text)" : "var(--rz-warning-text)" }}
             >
               {isCritical ? "Red flag" : "Ranking flag"} #{index + 1}
             </span>
           </div>
           <p
-            className="mt-0.5 text-[14.5px] font-extrabold leading-snug"
+            className="mt-0.5 text-[14.5px] font-bold leading-snug tracking-[-0.01em]"
             style={{ color: "var(--rz-text)" }}
           >
             {label}
@@ -559,7 +565,7 @@ function IssuePreviewCard({
                   onClick={onSignIn}
                   loading={signInBusy}
                   icon={<LogIn className="h-4 w-4" aria-hidden="true" />}
-                  className="rz-btn-hero rz-btn-auth rz-sheen"
+                  className="rz-btn-hero rz-btn-auth rz-sheen rz-cta-glow"
                   block
                 >
                   {signInBusy ? "Opening Rezoomed…" : "Sign in to unlock"}
@@ -581,23 +587,52 @@ function IssuePreviewCard({
   );
 }
 
-function HiddenIssuesNotice({ count }: { count: number }) {
+function HiddenIssuesNotice({
+  count,
+  onSignIn,
+  busy,
+}: {
+  count: number;
+  onSignIn: () => void;
+  busy: boolean;
+}) {
   if (count <= 0) return null;
 
   return (
-    <div className="flex justify-end">
-      <span
-        className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 text-[11px] font-extrabold uppercase tracking-[0.06em]"
-        style={{
-          background: "var(--rz-critical-bg)",
-          color: "var(--rz-critical-text)",
-          border: "1px solid var(--rz-critical-border)",
-        }}
-      >
-        <EyeOff className="h-3 w-3" aria-hidden="true" />
-        +{count} hidden
-      </span>
-    </div>
+    <Card
+      padded="none"
+      as="button"
+      onClick={onSignIn}
+      className="rz-locked rz-pop-in"
+      ariaLabel={`Sign in to reveal ${count} more hidden ${count === 1 ? "flag" : "flags"}`}
+    >
+      <div className="rz-locked-blur px-4 py-3.5">
+        <span className="rz-locked-tile" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="rz-locked-line" style={{ width: "52%" }} />
+          <div className="rz-locked-line" style={{ width: "82%", height: 7, marginTop: 8 }} />
+        </div>
+      </div>
+      <div className="rz-locked-veil">
+        <span className="rz-locked-key" aria-hidden="true">
+          <Lock className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 text-left">
+          <span
+            className="block text-[13px] font-bold leading-tight"
+            style={{ color: "#ffe1b0" }}
+          >
+            +{count} hidden red {count === 1 ? "flag" : "flags"}
+          </span>
+          <span
+            className="mt-0.5 block text-[11.5px] leading-snug"
+            style={{ color: "var(--rz-text-2)" }}
+          >
+            {busy ? "Opening Rezoomed…" : "Sign in to reveal what else recruiters see"}
+          </span>
+        </span>
+      </div>
+    </Card>
   );
 }
 

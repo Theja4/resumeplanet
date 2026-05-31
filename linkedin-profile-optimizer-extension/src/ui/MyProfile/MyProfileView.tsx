@@ -86,8 +86,8 @@ export function MyProfileView({
       ) : null}
 
       <div className="px-4">
-        <p className="rz-eyebrow mb-2.5">Sections</p>
-        <div className="space-y-2.5">
+        <p className="rz-eyebrow mb-3">Sections</p>
+        <div className="space-y-3">
           {orderedCategories.map(({ category, severity }) => {
             const failingChecks = score.checks.filter(
               (c) =>
@@ -177,7 +177,7 @@ function FixAllWithAiCta({ failingCount }: { failingCount: number }) {
         </div>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[15px] font-extrabold leading-tight"
+            className="text-[15px] font-bold leading-tight tracking-[-0.012em]"
             style={{ color: "var(--rz-text)" }}
           >
             Fix all {failingCount} {failingCount === 1 ? "issue" : "issues"} with AI

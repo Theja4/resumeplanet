@@ -70,7 +70,7 @@ export function Badge({
 }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-[8px] border px-2.5 py-1.5 text-[13px] font-bold leading-none ${className}`}
+      className={`inline-flex items-center gap-1 rounded-[8px] border px-2.5 py-1.5 text-[13px] font-semibold leading-none ${className}`}
       style={styleFor(tone)}
     >
       {icon}

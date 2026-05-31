@@ -7,8 +7,13 @@
     <!-- theme-boot.js synchronously reads the cached theme from
          localStorage and applies data-theme to <html> BEFORE the
          pre-paint CSS below evaluates. Must be an external file
-         because Manifest V3's default CSP blocks inline scripts. -->
-    <script src="./theme-boot.js"></script>
+         because Manifest V3's default CSP blocks inline scripts.
+         Referenced from /public via an absolute path so Vite copies
+         it verbatim instead of trying to bundle it (a classic
+         non-module script) — keeps it render-blocking/synchronous,
+         which is what prevents the theme flash. Do NOT add
+         type="module" here: that would defer it past first paint. -->
+    <script src="/theme-boot.js"></script>
     <style>
       /* The Chrome popup window itself is always a sharp rectangle.
        * To make the popup APPEAR rounded we keep html/body fully

@@ -86,9 +86,9 @@ export const Card = forwardRef<HTMLDivElement | HTMLButtonElement, CardProps>(
 function paddingClass(p: CardPadding): string {
   switch (p) {
     case "none": return "";
-    case "sm":   return "p-3.5";
+    case "sm":   return "p-4";
     case "lg":   return "p-6";
-    default:     return "p-4.5";
+    default:     return "p-5";
   }
 }
 

@@ -87,7 +87,7 @@ function NoResumeCard() {
         </div>
         <div className="min-w-0">
           <p
-            className="text-[14px] font-extrabold leading-snug"
+            className="text-[14px] font-bold leading-snug tracking-[-0.01em]"
             style={{ color: "var(--rz-text)" }}
           >
             Sync your LinkedIn from your resume
@@ -129,7 +129,7 @@ function ProTeaserCard() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p
-              className="text-[14px] font-extrabold leading-snug"
+              className="text-[14px] font-bold leading-snug tracking-[-0.01em]"
               style={{ color: "var(--rz-text)" }}
             >
               Resume ↔ LinkedIn auto-sync
@@ -214,7 +214,7 @@ function ProSyncCard({ profile, targetRole, targetJobDescription }: ProSyncProps
           </div>
           <div className="min-w-0 flex-1">
             <p
-              className="text-[14px] font-extrabold leading-snug"
+              className="text-[14px] font-bold leading-snug tracking-[-0.01em]"
               style={{ color: "var(--rz-text)" }}
             >
               Resume ↔ LinkedIn aligned profile
@@ -319,7 +319,7 @@ function SectionRewriteCard({ section }: { section: SyncFromResumeSection }) {
     return (
       <Card padded="md">
         <p
-          className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+          className="text-[10.5px] font-semibold uppercase tracking-[0.09em]"
           style={{ color: "var(--rz-text-3)" }}
         >
           {SECTION_LABEL[section.generator]}
@@ -339,7 +339,7 @@ function SectionRewriteCard({ section }: { section: SyncFromResumeSection }) {
     <Card padded="md" className="rz-pop-in">
       <div className="flex items-center justify-between gap-2">
         <p
-          className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+          className="text-[10.5px] font-semibold uppercase tracking-[0.09em]"
           style={{ color: "var(--rz-text-3)" }}
         >
           {SECTION_LABEL[section.generator]}

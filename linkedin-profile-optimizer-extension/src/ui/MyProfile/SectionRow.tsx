@@ -103,7 +103,7 @@ export function SectionRow({
         <div className="min-w-0 text-left">
           <div className="flex items-center gap-2">
             <p
-              className="text-[16px] font-extrabold leading-snug"
+              className="text-[16px] font-bold leading-snug tracking-[-0.012em]"
               style={{ color: "var(--rz-text)" }}
             >
               {category.label}
@@ -171,7 +171,7 @@ export function SectionRow({
           {unreadChecks.length > 0 ? (
             <details className="rz-disclosure">
               <summary
-                className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] px-2 py-1.5 text-[12.5px] font-bold transition-colors"
+                className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] px-2 py-1.5 text-[12.5px] font-semibold transition-colors"
                 style={{ color: "var(--rz-text-3)" }}
               >
                 <span
@@ -199,7 +199,7 @@ export function SectionRow({
           {passedChecks.length > 0 ? (
             <details className="rz-disclosure">
               <summary
-                className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] px-2 py-1.5 text-[12.5px] font-bold transition-colors"
+                className="flex cursor-pointer list-none items-center gap-2 rounded-[10px] px-2 py-1.5 text-[12.5px] font-semibold transition-colors"
                 style={{ color: "var(--rz-good-text)" }}
               >
                 <Check
@@ -268,7 +268,7 @@ function FailingCheckCard({
       }}
     >
       <div
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[15px] font-extrabold leading-none rz-num"
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[15px] font-bold leading-none rz-num"
         style={{
           background: `color-mix(in srgb, ${palette.solid} 14%, var(--rz-card-bg))`,
           color: palette.solid,
@@ -282,14 +282,14 @@ function FailingCheckCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span
-            className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]"
+            className="text-[10.5px] font-semibold uppercase tracking-[0.09em]"
             style={{ color: palette.text }}
           >
             {isFail ? "To do · critical" : "To do · needs work"}
           </span>
         </div>
         <p
-          className="mt-0.5 text-[14.5px] font-extrabold leading-snug"
+          className="mt-0.5 text-[14.5px] font-bold leading-snug tracking-[-0.01em]"
           style={{ color: "var(--rz-text)" }}
         >
           {check.label}
