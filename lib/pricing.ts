@@ -46,6 +46,9 @@ const POLAR_SUPPORTED_REGIONAL_CURRENCIES = new Set([
   'EUR',
   'GBP',
   'INR',
+  // MAD price lives as an additional currency on the same Polar products, so
+  // checkout presents it automatically — no separate Morocco product needed.
+  'MAD',
 ])
 
 const PAYPAL_SUPPORTED_REGIONAL_CURRENCIES = new Set([
@@ -233,12 +236,14 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     },
   },
   {
-    // Morocco. `paddlePriceId` here holds the POLAR product id (same field is
-    // reused across providers). It doubles as the gate: until the Polar MA
-    // products exist (env set), this override is skipped and MA users see the
-    // default USD pricing — so we never display DH prices while charging USD.
-    // displayPrice = amount charged (DH49 / DH299); actualPrice = struck-through
-    // original (DH99 / DH599).
+    // Morocco. MAD is an additional currency on the SAME Polar products, so
+    // Polar presents DH pricing at checkout automatically (no separate MA
+    // product needed — leave POLAR_PRO_*_PRODUCT_ID_MA unset). MAD is in
+    // POLAR_SUPPORTED_REGIONAL_CURRENCIES so this display override applies for
+    // MA visitors. displayPrice is the LIST price charged by the Polar product
+    // (DH99 / DH599) and MUST match the MAD prices set on Polar. Discount codes
+    // reduce it to ~DH49 / DH299 at checkout, applied via the promo/discount
+    // flow (like every other region) — not a built-in strike-through here.
     id: 'MAD',
     countries: new Set(['MA']),
     currency: 'MAD',
@@ -246,16 +251,14 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
     prices: {
       monthly: {
         paddlePriceId: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID_MA ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_MAD', 49),
-        actualPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_ACTUAL_MAD', 99),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_MAD', 49),
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_MAD', 99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_MAD', 99),
       },
       annual: {
         paddlePriceId: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID_MA ?? '',
-        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_MAD', 299),
-        actualPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_ACTUAL_MAD', 599),
-        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_MAD', 24.92),
-        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_MAD ?? 'Save DH289 vs monthly',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_MAD', 599),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_MAD', 49.92),
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_MAD ?? 'Save DH589 vs monthly',
       },
       weekly: {
         paddlePriceId: process.env.POLAR_PRO_WEEKLY_PRODUCT_ID_MA ?? '',
