@@ -74,7 +74,7 @@ function isRegionalProviderCurrencySupported(currency: string) {
 }
 
 type RegionalPricingConfig = {
-  id: 'EUR' | 'GBP' | 'INR' | 'AUD' | 'CAD' | 'AED'
+  id: 'EUR' | 'GBP' | 'INR' | 'AUD' | 'CAD' | 'AED' | 'MAD'
   countries: Set<string>
   currency: string
   currencySymbol: string
@@ -229,6 +229,37 @@ const REGIONAL_PRICING_CONFIGS: RegionalPricingConfig[] = [
       weekly: {
         paddlePriceId: process.env.PADDLE_PRO_PRICE_WEEKLY_AED ?? '',
         displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_AED', 9.99),
+      },
+    },
+  },
+  {
+    // Morocco. `paddlePriceId` here holds the POLAR product id (same field is
+    // reused across providers). It doubles as the gate: until the Polar MA
+    // products exist (env set), this override is skipped and MA users see the
+    // default USD pricing — so we never display DH prices while charging USD.
+    // displayPrice = amount charged (DH49 / DH299); actualPrice = struck-through
+    // original (DH99 / DH599).
+    id: 'MAD',
+    countries: new Set(['MA']),
+    currency: 'MAD',
+    currencySymbol: 'DH ',
+    prices: {
+      monthly: {
+        paddlePriceId: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID_MA ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_DISPLAY_MAD', 49),
+        actualPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_ACTUAL_MAD', 99),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_MONTHLY_PER_MONTH_MAD', 49),
+      },
+      annual: {
+        paddlePriceId: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID_MA ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_DISPLAY_MAD', 299),
+        actualPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_ACTUAL_MAD', 599),
+        perMonthEquivalent: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_ANNUAL_PER_MONTH_MAD', 24.92),
+        savingsNote: process.env.NEXT_PUBLIC_PRO_PRICE_ANNUAL_SAVINGS_MAD ?? 'Save DH289 vs monthly',
+      },
+      weekly: {
+        paddlePriceId: process.env.POLAR_PRO_WEEKLY_PRODUCT_ID_MA ?? '',
+        displayPrice: readNumberEnv('NEXT_PUBLIC_PRO_PRICE_WEEKLY_DISPLAY_MAD', 19),
       },
     },
   },

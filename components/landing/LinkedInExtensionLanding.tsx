@@ -17,6 +17,7 @@ import {
   Target, Wand2, ArrowRight, Check, ChevronRight, Lock,
 } from 'lucide-react'
 import LinkedInFeatureShowcase from './LinkedInFeatureShowcase'
+import { CHROME_STORE_URL } from '@/lib/site'
 
 // ── Shared easing ─────────────────────────────────────────────────────────
 const ease = [0.16, 1, 0.3, 1] as const
@@ -236,8 +237,6 @@ function SearchMarquee() {
     </section>
   )
 }
-
-const CHROME_STORE_URL = 'https://chromewebstore.google.com/detail/PLACEHOLDER_EXTENSION_ID'
 
 // ══ HERO ════════════════════════════════════════════════════════════════════
 function Hero() {

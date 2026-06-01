@@ -37,6 +37,5 @@ export function getOrganizationSameAsLinks() {
 export const SITE_NAME = 'Rezoomed'
 
 // Chrome Web Store listing for the LinkedIn Profile Optimizer extension.
-// TODO: replace the placeholder id once the listing is published.
 export const CHROME_STORE_URL =
-  'https://chromewebstore.google.com/detail/PLACEHOLDER_EXTENSION_ID'
+  'https://chromewebstore.google.com/detail/rezoomed-linkedin-profile/coegmjilijdmbogdhgggmlmclpgiiljc'

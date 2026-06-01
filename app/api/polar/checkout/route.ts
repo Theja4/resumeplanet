@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
   }
 
   const interval = selectedPriceOption.id === 'annual' ? 'annual' : 'monthly'
-  const productId = getPolarProductId(interval)
+  const productId = getPolarProductId(interval, pricingCountryCode)
   if (!productId) return err(`Polar ${interval} product is not configured`, 500)
 
   const discountId = await resolvePolarDiscountId(body)

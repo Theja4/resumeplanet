@@ -43,6 +43,25 @@ const POLAR_PRODUCT_BY_INTERVAL: Record<PolarInterval, string | undefined> = {
   annual: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID,
 }
 
+// Country-specific Polar products (regional pricing). When a country has a
+// dedicated product configured, checkout uses it instead of the global one so
+// the user is actually charged the local price. Keyed by ISO country code.
+const POLAR_PRODUCT_BY_COUNTRY: Record<string, Record<PolarInterval, string | undefined>> = {
+  MA: {
+    monthly: process.env.POLAR_PRO_MONTHLY_PRODUCT_ID_MA,
+    annual: process.env.POLAR_PRO_ANNUAL_PRODUCT_ID_MA,
+  },
+}
+
+// All configured country-specific product IDs, used by the webhook to map a
+// product back to its interval regardless of region.
+const POLAR_REGIONAL_PRODUCT_IDS: Array<{ id: string; interval: PolarInterval }> =
+  Object.values(POLAR_PRODUCT_BY_COUNTRY).flatMap((byInterval) =>
+    (Object.entries(byInterval) as Array<[PolarInterval, string | undefined]>)
+      .filter((entry): entry is [PolarInterval, string] => Boolean(entry[1]))
+      .map(([interval, id]) => ({ id, interval }))
+  )
+
 const POLAR_DISCOUNT_BY_CODE: Record<string, string | undefined> = {
   CAREER50: process.env.POLAR_DISCOUNT_CAREER50_ID,
   JOBS50: process.env.POLAR_DISCOUNT_JOBS50_ID,
@@ -79,15 +98,18 @@ export function getPolarConfigurationError() {
   return null
 }
 
-export function getPolarProductId(interval: PolarInterval) {
-  return POLAR_PRODUCT_BY_INTERVAL[interval]
+export function getPolarProductId(interval: PolarInterval, countryCode?: string | null) {
+  const country = countryCode?.trim().toUpperCase()
+  const regional = country ? POLAR_PRODUCT_BY_COUNTRY[country]?.[interval] : undefined
+  return regional || POLAR_PRODUCT_BY_INTERVAL[interval]
 }
 
 export function getPolarIntervalFromProductId(productId?: string | null): PolarInterval | null {
   if (!productId) return null
   if (productId === process.env.POLAR_PRO_ANNUAL_PRODUCT_ID) return 'annual'
   if (productId === process.env.POLAR_PRO_MONTHLY_PRODUCT_ID) return 'monthly'
-  return null
+  const regional = POLAR_REGIONAL_PRODUCT_IDS.find((p) => p.id === productId)
+  return regional?.interval ?? null
 }
 
 export function getPolarDiscountId(code?: string | null) {

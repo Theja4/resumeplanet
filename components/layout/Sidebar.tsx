@@ -26,8 +26,10 @@ import {
   Wand2,
   Handshake,
   Globe2,
+  Puzzle,
   type LucideIcon,
 } from 'lucide-react'
+import { CHROME_STORE_URL } from '@/lib/site'
 
 type NavItem = {
   href: string
@@ -35,6 +37,7 @@ type NavItem = {
   Icon: LucideIcon
   badge?: string
   builderMode?: 'tailor'
+  external?: boolean
 }
 
 function buildNavSections(showAffiliate: boolean, isPro: boolean): Array<{ title: string; collapsible?: boolean; items: NavItem[] }> {
@@ -52,6 +55,13 @@ function buildNavSections(showAffiliate: boolean, isPro: boolean): Array<{ title
         { href: '/dashboard/resumes', label: 'Your Library', Icon: FileText },
         { href: '/dashboard/builder', label: 'Resume Builder', Icon: Pencil },
         { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
+        {
+          href: CHROME_STORE_URL,
+          label: 'LinkedIn Optimizer',
+          Icon: Puzzle,
+          badge: 'New',
+          external: true,
+        },
         {
           href: '/dashboard/builder?mode=tailor',
           label: 'Tailor Resume',
@@ -219,7 +229,7 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
                 }`}
               >
                 {section.items.map((item) => {
-                  const { href, label, Icon, badge } = item
+                  const { href, label, Icon, badge, external } = item
                   const active = isActive(item)
                   const isNew = badge === 'New'
                   const itemClassName = `dashboard-card-hover flex w-full items-center gap-3 rounded-[1rem] px-3.5 py-3 text-left transition-all duration-200 ${
@@ -228,13 +238,8 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
                       : 'text-on-surface-variant hover:bg-white/78 hover:text-on-surface'
                   }`
 
-                  return (
-                    <Link
-                      key={href}
-                      href={href}
-                      prefetch
-                      className={itemClassName}
-                    >
+                  const inner = (
+                    <>
                       <Icon size={18} strokeWidth={active ? 2.5 : 1.75} />
                       <span className="text-sm">{label}</span>
                       {badge ? (
@@ -242,6 +247,26 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
                           {badge}
                         </span>
                       ) : null}
+                    </>
+                  )
+
+                  if (external) {
+                    return (
+                      <a
+                        key={href}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={itemClassName}
+                      >
+                        {inner}
+                      </a>
+                    )
+                  }
+
+                  return (
+                    <Link key={href} href={href} prefetch className={itemClassName}>
+                      {inner}
                     </Link>
                   )
                 })}

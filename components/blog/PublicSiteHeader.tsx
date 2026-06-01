@@ -4,6 +4,8 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronDown, Menu as MenuIcon, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { CHROME_STORE_URL } from '@/lib/site'
+import ChromeLogo from '@/components/icons/ChromeLogo'
 
 const FORMAT_MENU_LINKS = [
   { label: 'Resume Format', href: '/resume-format' },
@@ -171,6 +173,18 @@ export default function PublicSiteHeader({
         </div>
 
         <div className="relative z-10 hidden items-center gap-3 md:flex">
+          <a
+            href={CHROME_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-2 text-sm font-bold text-zinc-700 transition-all duration-150 hover:border-zinc-300 hover:bg-zinc-50"
+          >
+            <ChromeLogo className="h-4 w-4" />
+            Extension
+            <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-black">
+              New
+            </span>
+          </a>
           <Link
             href="/auth/login"
             className="px-4 py-2 text-[15px] font-semibold text-zinc-500 transition-colors duration-150 hover:text-zinc-900"
@@ -317,6 +331,18 @@ export default function PublicSiteHeader({
               ))}
             </div>
           </div>
+
+          <a
+            href={CHROME_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="mt-3 flex items-center justify-center gap-2 rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-bold text-zinc-800"
+          >
+            <ChromeLogo className="h-4 w-4" />
+            Get the Chrome extension
+            <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black uppercase text-black">New</span>
+          </a>
 
           <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
             <Link
