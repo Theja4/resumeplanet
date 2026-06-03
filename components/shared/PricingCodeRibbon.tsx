@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { Check, Copy, X } from 'lucide-react'
 
 interface PricingCodeRibbonProps {
@@ -9,22 +9,34 @@ interface PricingCodeRibbonProps {
   storageKey?: string
 }
 
+// Stable subscribe (no live updates needed beyond the current tab, which we
+// handle with local state). Module-level so it doesn't re-subscribe each render.
+const subscribe = () => () => {}
+const getServerSnapshot = () => false
+
 export default function PricingCodeRibbon({
   code,
   discountPercent,
   storageKey = `pricing-ribbon-dismissed-${code.trim().toLowerCase()}`,
 }: PricingCodeRibbonProps) {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(storageKey) === 'true'
-  })
+  // Read the persisted "dismissed" flag in a hydration-safe way: the server
+  // (and the first client render) always see `false`, so SSR and hydration
+  // match; React then reconciles to the real localStorage value after mount.
+  const persistedDismissed = useSyncExternalStore(
+    subscribe,
+    () => (typeof window !== 'undefined' && window.localStorage.getItem(storageKey) === 'true'),
+    getServerSnapshot,
+  )
+  const [locallyDismissed, setLocallyDismissed] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  const dismissed = persistedDismissed || locallyDismissed
 
   function handleDismiss() {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(storageKey, 'true')
     }
-    setDismissed(true)
+    setLocallyDismissed(true)
   }
 
   async function handleCopy() {

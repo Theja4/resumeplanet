@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Zap } from 'lucide-react'
+import AuthAwareLandingLink from './AuthAwareLandingLink'
 import AuroraShader from './AuroraShader'
 import RotatingHeadline from './RotatingHeadline'
 
@@ -42,14 +43,10 @@ export default function LandingHeroV2() {
           {/* ── Left: copy ──────────────────────────────────────── */}
           <div className="relative z-10 min-w-0 text-center lg:text-left">
             <div
-              className="hero-text-rise inline-flex items-center gap-2 rounded-full border border-zinc-900/[0.08] bg-white/70 px-4 py-2 text-[12px] font-medium tracking-wide text-zinc-700 backdrop-blur"
+              className="hero-text-rise inline-flex items-center rounded-full bg-[#1fb078] px-3 py-1.5 text-[10px] font-black uppercase leading-none tracking-[0.12em] text-white shadow-[0_8px_18px_rgba(31,176,120,0.22)] sm:text-[11px]"
               style={{ animationDelay: '0.05s' }}
             >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00a84d] opacity-60" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#00a84d]" />
-              </span>
-              <span>AI-powered · Built for the 2026 job market</span>
+              Top #1 AI Resume TOOLS PLATFORM
             </div>
 
             <h1
@@ -89,8 +86,8 @@ export default function LandingHeroV2() {
               className="hero-text-rise mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center lg:justify-start"
               style={{ animationDelay: '0.45s' }}
             >
-              <Link
-                href="/auth/register"
+              <AuthAwareLandingLink
+                anonymousHref="/auth/register"
                 className="landing-cta-primary group"
               >
                 <span>Get started</span>
@@ -98,7 +95,7 @@ export default function LandingHeroV2() {
                   size={18}
                   className="transition-transform duration-300 group-hover:translate-x-0.5"
                 />
-              </Link>
+              </AuthAwareLandingLink>
               <Link href="/ats-checker" className="landing-pill-ghost">
                 <Zap size={16} className="text-[#00a84d]" />
                 Try the ATS scan

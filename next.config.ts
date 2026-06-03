@@ -102,6 +102,7 @@ const nextConfig: NextConfig = {
     // Serve AVIF when the browser supports it, fall back to WebP otherwise.
     // Cuts hero-image bytes ~15-25% beyond WebP, which moves real LCP.
     formats: ['image/avif', 'image/webp'],
+    qualities: [65, 70, 75],
   },
   async headers() {
     return [

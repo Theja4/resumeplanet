@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, List, AlignLeft, Tags, Loader2, User, GripVertical, SeparatorHorizontal } from 'lucide-react'
+import { X, List, AlignLeft, Tags, Loader2, User, GripVertical, SeparatorHorizontal, Plus, RotateCcw } from 'lucide-react'
 import type { CustomSectionType } from '@/types'
 import {
   DndContext, DragOverlay, closestCorners,
@@ -357,55 +357,70 @@ export default function SectionList({
     ))
 
   return (
-    <div className="flex flex-col gap-2 p-4 pt-6 w-full pb-20">
-      <div className="mb-4 px-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-bold text-zinc-700 mb-0.5">Editor Sections</h2>
-          <p className="text-xs text-zinc-400">Refine your professional narrative</p>
+    <div className="flex min-h-full w-full flex-col gap-2 bg-[radial-gradient(circle_at_18%_0%,rgba(16,185,129,0.09),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.82),rgba(247,249,248,0.92))] p-4 pt-5 pb-20">
+      <div className="mb-4 rounded-[1.35rem] border border-white/80 bg-white/80 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.9)]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700">
+                Builder
+              </span>
+            </div>
+            <h2 className="text-[1.15rem] font-black leading-tight tracking-tight text-zinc-900">Editor Sections</h2>
+            <p className="mt-1 text-[13px] leading-snug text-zinc-500">Refine your professional narrative</p>
+          </div>
+          <button
+            onClick={handleResetOrder}
+            disabled={isDisabled}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-zinc-200/80 bg-white px-3.5 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <RotateCcw size={13} />
+            Reset
+          </button>
         </div>
-        <button
-          onClick={handleResetOrder}
-          disabled={isDisabled}
-          className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border border-zinc-200 rounded-lg text-zinc-500 bg-zinc-50 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Reset Order
-        </button>
       </div>
 
       <div className="relative">
         <nav className={`space-y-4 transition-opacity duration-200 ${isDisabled ? 'opacity-40 pointer-events-none' : ''}`}>
 
           {/* Contact — always fixed at top, not draggable */}
-          <div className="px-1 translate-y-0.5">
-            <div className={`bg-white border shadow-sm transition-all duration-200 ${
+          <div className="px-1">
+            <div className={`group relative overflow-hidden border bg-white/95 shadow-[0_18px_40px_rgba(15,23,42,0.07)] transition-all duration-200 ${
               expandedSection === 'contact'
-                ? 'border-emerald-200 rounded-t-xl border-b-emerald-50'
-                : 'border-dashed border-zinc-200 rounded-xl'
-            } p-4 flex items-center justify-between group`}>
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                  expandedSection === 'contact' ? 'bg-emerald-50 text-emerald-600' : 'bg-zinc-50 text-zinc-400 group-hover:bg-emerald-50 group-hover:text-emerald-500'
-                }`}>
-                  <User size={16} />
+                ? 'rounded-t-[1.35rem] border-emerald-200 border-b-emerald-50'
+                : 'rounded-[1.35rem] border-zinc-200/80 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_22px_50px_rgba(16,185,129,0.12)]'
+            } p-4`}>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-300/80 to-transparent" />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3.5">
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+                    expandedSection === 'contact' ? 'bg-emerald-100 text-emerald-700' : 'bg-zinc-100 text-zinc-500 group-hover:bg-emerald-50 group-hover:text-emerald-600'
+                  }`}>
+                    <User size={19} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className={`block truncate text-[13px] font-black uppercase tracking-[0.18em] ${
+                      expandedSection === 'contact' ? 'text-emerald-950' : 'text-zinc-700'
+                    }`}>Contact Info</span>
+                    <span className="mt-1 block text-xs font-medium text-zinc-400">Name, role, links, location</span>
+                  </div>
                 </div>
-                <span className={`text-xs font-bold uppercase tracking-widest ${
-                  expandedSection === 'contact' ? 'text-emerald-900' : 'text-zinc-600'
-                }`}>Contact Info</span>
+                <button
+                  onClick={() => onExpandSection(expandedSection === 'contact' ? null : 'contact')}
+                  className={`inline-flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition-all active:scale-95 ${
+                    expandedSection === 'contact'
+                      ? 'bg-emerald-600 text-white shadow-[0_12px_24px_rgba(5,150,105,0.26)]'
+                      : 'border border-zinc-200 bg-zinc-50 text-zinc-500 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'
+                  }`}
+                >
+                  {expandedSection === 'contact' ? 'Close' : 'Edit'}
+                </button>
               </div>
-              <button
-                onClick={() => onExpandSection(expandedSection === 'contact' ? null : 'contact')}
-                className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border rounded-lg transition-all active:scale-95 flex items-center gap-2 ${
-                  expandedSection === 'contact'
-                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm shadow-emerald-200'
-                    : 'bg-zinc-50 text-zinc-400 border-zinc-100 hover:bg-emerald-50 hover:text-emerald-600'
-                }`}
-              >
-                {expandedSection === 'contact' ? 'Close' : 'Edit'}
-              </button>
             </div>
             {expandedSection === 'contact' && (
-              <div className="bg-white border-x border-b border-emerald-200 rounded-b-xl shadow-sm animate-in slide-in-from-top-1 duration-200 overflow-hidden">
-                <div className="bg-emerald-50/30">
+              <div className="overflow-hidden rounded-b-[1.35rem] border-x border-b border-emerald-200 bg-white shadow-[0_20px_45px_rgba(15,23,42,0.08)] animate-in slide-in-from-top-1 duration-200">
+                <div className="bg-gradient-to-b from-emerald-50/70 to-white">
                   <ContactEditor
                     data={resumeData}
                     onChange={onDataChange}
@@ -428,18 +443,23 @@ export default function SectionList({
             onDragCancel={() => setActiveId(null)}
           >
             {isSidebarLayout ? (
-              <div className="space-y-8 mt-4">
+              <div className="mt-5 space-y-7">
                 {/* Primary Column (Body) */}
                 <div>
-                  <div className="flex items-center gap-2 px-4 mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">Primary Column</h3>
+                  <div className="mb-3 flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.55)]" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">Primary Column</h3>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-zinc-400 shadow-sm">
+                      {localPrimary.length}
+                    </span>
                   </div>
-                  <PrimaryCol className="min-h-[60px] border-2 border-dashed border-zinc-100/50 rounded-2xl p-2 bg-zinc-50/30 flex flex-col gap-1.5">
+                  <PrimaryCol className="flex min-h-[70px] flex-col gap-2 rounded-[1.35rem] border border-dashed border-indigo-100/80 bg-white/50 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                     <SortableContext items={localPrimary} strategy={verticalListSortingStrategy}>
                       {renderRows(localPrimary)}
                       {localPrimary.length === 0 && (
-                        <div className="h-12 flex items-center justify-center text-[10px] font-bold text-zinc-300 uppercase tracking-widest italic">
+                        <div className="flex h-14 items-center justify-center rounded-2xl bg-white/70 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300">
                           Drag sections here
                         </div>
                       )}
@@ -449,15 +469,20 @@ export default function SectionList({
 
                 {/* Secondary Column (Sidebar) */}
                 <div>
-                  <div className="flex items-center gap-2 px-4 mb-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-800">Secondary Column</h3>
+                  <div className="mb-3 flex items-center justify-between px-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.6)]" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-700">Secondary Column</h3>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-zinc-400 shadow-sm">
+                      {localSecondary.length}
+                    </span>
                   </div>
-                  <SecondaryCol className="min-h-[60px] border-2 border-dashed border-zinc-100/50 rounded-2xl p-2 bg-zinc-50/30 flex flex-col gap-1.5">
+                  <SecondaryCol className="flex min-h-[70px] flex-col gap-2 rounded-[1.35rem] border border-dashed border-emerald-100/90 bg-white/50 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
                     <SortableContext items={localSecondary} strategy={verticalListSortingStrategy}>
                       {renderRows(localSecondary)}
                       {localSecondary.length === 0 && (
-                        <div className="h-12 flex items-center justify-center text-[10px] font-bold text-zinc-300 uppercase tracking-widest italic">
+                        <div className="flex h-14 items-center justify-center rounded-2xl bg-white/70 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300">
                           Drag sections here
                         </div>
                       )}
@@ -467,10 +492,15 @@ export default function SectionList({
               </div>
             ) : (
               /* Single-column: one flat list, no cross-column drag */
-              <div className="space-y-2 mt-4">
-                <div className="flex items-center gap-2 px-4 mb-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-zinc-500">All Sections</h3>
+              <div className="mt-5 space-y-2">
+                <div className="mb-2 flex items-center justify-between px-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_14px_rgba(16,185,129,0.65)]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">All Sections</h3>
+                  </div>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-black text-zinc-400 shadow-sm">
+                    {localPrimary.length + localSecondary.length}
+                  </span>
                 </div>
                 <SortableContext
                   items={[...localPrimary, ...localSecondary]}
@@ -483,7 +513,7 @@ export default function SectionList({
 
             <DragOverlay>
               {activeId ? (
-                <div className="bg-white border border-emerald-300 rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3 opacity-95 cursor-grabbing">
+                <div className="flex cursor-grabbing items-center gap-3 rounded-[1.15rem] border border-emerald-300 bg-white/95 px-4 py-3 opacity-95 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur">
                   <GripVertical size={16} className="text-emerald-400 shrink-0" />
                   <span className="text-sm font-semibold text-zinc-700">{getSectionLabel(activeId)}</span>
                 </div>
@@ -493,25 +523,28 @@ export default function SectionList({
         </nav>
 
         {isDisabled && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-xl">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.35rem] bg-white/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.8)] backdrop-blur-md">
             <Loader2 size={24} className="animate-spin text-primary mb-2" />
             <span className="text-xs font-semibold text-zinc-700">AI is optimizing your resume...</span>
           </div>
         )}
       </div>
 
-      <div className="mt-8 px-4">
+      <div className="mt-7 px-1">
         {!isAdding ? (
           <button
             onClick={() => setIsAdding(true)}
-            className="w-full py-4 border-2 border-dashed border-zinc-200 rounded-xl text-xs font-bold text-zinc-400 uppercase tracking-widest hover:border-primary-container hover:text-primary transition-all active:scale-[0.98]">
-              + Add Custom Section
+            className="group flex w-full items-center justify-center gap-2 rounded-[1.15rem] border border-dashed border-emerald-200 bg-white/65 py-4 text-xs font-black uppercase tracking-[0.16em] text-emerald-700 shadow-[0_14px_32px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50 active:translate-y-0 active:scale-[0.98]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                <Plus size={15} strokeWidth={2.5} />
+              </span>
+              Add Custom Section
           </button>
         ) : (
-          <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl shadow-sm">
+          <div className="rounded-[1.35rem] border border-emerald-100 bg-white p-4 shadow-[0_20px_45px_rgba(15,23,42,0.08)]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">New Section</span>
-              <button onClick={() => setIsAdding(false)} className="text-zinc-400 hover:text-zinc-600">
+              <span className="text-xs font-black uppercase tracking-[0.18em] text-zinc-600">New Section</span>
+              <button onClick={() => setIsAdding(false)} className="rounded-full p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600">
                 <X size={16} />
               </button>
             </div>
@@ -523,13 +556,13 @@ export default function SectionList({
                 value={newTitle}
                 maxLength={80}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="w-full px-3.5 py-2 text-sm font-medium border-zinc-200 rounded-lg shadow-sm focus:ring-emerald-500 focus:border-emerald-500 mb-3 placeholder:font-normal"
+                className="mb-3 w-full rounded-xl border-zinc-200 px-3.5 py-2.5 text-sm font-medium shadow-sm placeholder:font-normal focus:border-emerald-500 focus:ring-emerald-500"
               />
             )}
             <div className="flex flex-col gap-2 mb-4">
               <button
                 onClick={() => setNewType('complex')}
-                className={`flex gap-3 text-left p-2.5 rounded-lg border transition-all ${newType === 'complex' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900' : 'border-zinc-200 bg-white hover:bg-zinc-50'}`}
+                className={`flex gap-3 rounded-xl border p-3 text-left transition-all ${newType === 'complex' ? 'border-emerald-400 bg-emerald-50 text-emerald-950 shadow-sm' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50'}`}
               >
                 <List size={18} className={`shrink-0 ${newType === 'complex' ? 'text-emerald-500' : 'text-zinc-400'}`} />
                 <div>
@@ -539,7 +572,7 @@ export default function SectionList({
               </button>
               <button
                 onClick={() => setNewType('tags')}
-                className={`flex gap-3 text-left p-2.5 rounded-lg border transition-all ${newType === 'tags' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900' : 'border-zinc-200 bg-white hover:bg-zinc-50'}`}
+                className={`flex gap-3 rounded-xl border p-3 text-left transition-all ${newType === 'tags' ? 'border-emerald-400 bg-emerald-50 text-emerald-950 shadow-sm' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50'}`}
               >
                 <Tags size={18} className={`shrink-0 ${newType === 'tags' ? 'text-emerald-500' : 'text-zinc-400'}`} />
                 <div>
@@ -549,7 +582,7 @@ export default function SectionList({
               </button>
               <button
                 onClick={() => setNewType('text')}
-                className={`flex gap-3 text-left p-2.5 rounded-lg border transition-all ${newType === 'text' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900' : 'border-zinc-200 bg-white hover:bg-zinc-50'}`}
+                className={`flex gap-3 rounded-xl border p-3 text-left transition-all ${newType === 'text' ? 'border-emerald-400 bg-emerald-50 text-emerald-950 shadow-sm' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50'}`}
               >
                 <AlignLeft size={18} className={`shrink-0 ${newType === 'text' ? 'text-emerald-500' : 'text-zinc-400'}`} />
                 <div>
@@ -559,7 +592,7 @@ export default function SectionList({
               </button>
               <button
                 onClick={() => setNewType('pageBreak')}
-                className={`flex gap-3 text-left p-2.5 rounded-lg border transition-all ${newType === 'pageBreak' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-900' : 'border-zinc-200 bg-white hover:bg-zinc-50'}`}
+                className={`flex gap-3 rounded-xl border p-3 text-left transition-all ${newType === 'pageBreak' ? 'border-emerald-400 bg-emerald-50 text-emerald-950 shadow-sm' : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50'}`}
               >
                 <SeparatorHorizontal size={18} className={`shrink-0 ${newType === 'pageBreak' ? 'text-emerald-500' : 'text-zinc-400'}`} />
                 <div>
@@ -571,7 +604,7 @@ export default function SectionList({
             <button
               onClick={handleAddCustom}
               disabled={newType !== 'pageBreak' && !newTitle.trim()}
-              className="w-full py-2.5 bg-primary text-white rounded-lg text-xs font-bold tracking-wide uppercase disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+              className="w-full rounded-xl bg-primary py-3 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_12px_24px_rgba(5,150,105,0.22)] transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {newType === 'pageBreak' ? 'Insert Page Break' : 'Construct Section'}
             </button>

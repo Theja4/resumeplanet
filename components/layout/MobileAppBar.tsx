@@ -16,7 +16,6 @@ import {
   FilePenLine,
   PlusCircle,
   ShoppingBag,
-  CreditCard,
   CircleHelp,
   LogOut,
   type LucideIcon,
@@ -28,21 +27,23 @@ type MobileNavItem = {
   Icon: LucideIcon
 }
 
-const BASE_MOBILE_NAV_ITEMS: MobileNavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
-  { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
-  { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
-  { href: '/dashboard/builder/new', label: 'Create Resume', Icon: PlusCircle },
-  { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: FilePenLine },
-  ...(HUMAN_WRITTEN_SERVICE_ENABLED
-    ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag }]
-    : []),
-  { href: '/dashboard/pricing', label: 'Pricing', Icon: CreditCard },
-]
+function buildMobileNavItems(): MobileNavItem[] {
+  return [
+    { href: '/dashboard', label: 'Dashboard', Icon: LayoutGrid },
+    { href: '/dashboard/resumes', label: 'Files', Icon: FileText },
+    { href: '/dashboard/ats-checker', label: 'ATS Checker', Icon: BarChart3 },
+    { href: '/dashboard/builder/new', label: 'Create Resume', Icon: PlusCircle },
+    { href: '/dashboard/metadata-enhancer', label: 'Metadata Enhancer', Icon: FilePenLine },
+    ...(HUMAN_WRITTEN_SERVICE_ENABLED
+      ? [{ href: '/dashboard/orders', label: 'Human-Written', Icon: ShoppingBag }]
+      : []),
+  ]
+}
 
-export default function MobileAppBar({ initials }: { initials: string }) {
+export default function MobileAppBar({ initials }: { initials: string; isPro?: boolean }) {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const navItems = buildMobileNavItems()
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setMenuOpen(false))
@@ -72,7 +73,7 @@ export default function MobileAppBar({ initials }: { initials: string }) {
       {menuOpen ? (
         <div className="mt-2 rounded-[1.25rem] border border-white/75 bg-white/95 p-2.5 shadow-[0_18px_40px_rgba(25,28,29,0.1)] backdrop-blur-2xl">
           <nav className="grid grid-cols-1 gap-1.5">
-            {BASE_MOBILE_NAV_ITEMS.map(({ href, label, Icon }) => {
+            {navItems.map(({ href, label, Icon }) => {
               const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href)
               return (
                 <Link

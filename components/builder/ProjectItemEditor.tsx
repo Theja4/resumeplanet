@@ -16,7 +16,7 @@ function InputField({ label, path, value, onChange, placeholder, labelIcon }: {
   const inputId = `field-${path.replace(/[^a-zA-Z0-9]+/g, '-')}`
   return (
     <div>
-      <label htmlFor={inputId} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1.5">
+      <label htmlFor={inputId} className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">
         {labelIcon}
         {label}
       </label>
@@ -27,13 +27,13 @@ function InputField({ label, path, value, onChange, placeholder, labelIcon }: {
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 pr-9 text-sm font-medium text-zinc-900 shadow-sm outline-none transition-all placeholder:font-normal placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
         />
         {value && (
           <button
             aria-label="Clear field"
             onClick={() => onChange('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
           >
             <X size={14} />
           </button>
@@ -49,11 +49,11 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
   const bulletsId = `field-${pathPrefix.replace(/[^a-zA-Z0-9]+/g, '-')}-bullets`
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 rounded-[1.35rem] border border-zinc-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.06)]">
       <InputField label="Project Name" path={`${pathPrefix}.name`} value={item.name} onChange={v => onChange({ ...item, name: v })} placeholder="My Project" />
       <InputField label="Link (optional)" path={`${pathPrefix}.url`} value={item.url ?? ''} onChange={v => onChange({ ...item, url: v })} placeholder="https://github.com/you/project" labelIcon={<LinkIcon size={13} className="text-gray-400" />} />
       <div>
-        <label htmlFor={descId} className="block text-sm font-medium text-gray-600 mb-1.5">Description</label>
+        <label htmlFor={descId} className="mb-1.5 block text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">Description</label>
         <AutoGrowTextarea
           id={descId}
           data-field-path={`${pathPrefix}.description`}
@@ -61,12 +61,12 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
           maxLength={2000}
           onChange={e => onChange({ ...item, description: e.target.value })}
           placeholder="What does this project do?"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-zinc-900 shadow-sm outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
           minHeight={42}
         />
       </div>
       <div>
-        <label htmlFor={techId} className="block text-sm font-medium text-gray-600 mb-1.5">Technologies (comma separated)</label>
+        <label htmlFor={techId} className="mb-1.5 block text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">Technologies (comma separated)</label>
         <input
           id={techId}
           data-field-path={`${pathPrefix}.technologies`}
@@ -76,11 +76,11 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
             technologies: e.target.value.split(',').map(t => t.trim()).filter(Boolean)
           })}
           placeholder="React, Next.js, Tailwind..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm font-medium text-zinc-900 shadow-sm outline-none transition-all placeholder:font-normal placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
         />
       </div>
       <div>
-        <label htmlFor={bulletsId} className="block text-sm font-medium text-gray-600 mb-1.5">Key Achievements (one per line)</label>
+        <label htmlFor={bulletsId} className="mb-1.5 block text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">Key Achievements (one per line)</label>
         <AutoGrowTextarea
           id={bulletsId}
           data-field-path={`${pathPrefix}.bullets`}
@@ -91,7 +91,7 @@ export default function ProjectItemEditor({ item, pathPrefix, onChange }: Props)
             bullets: e.target.value.split('\n').map(b => b.trim()).filter(Boolean)
           })}
           placeholder="Describe your contributions..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-zinc-900 shadow-sm outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
           minHeight={42}
         />
       </div>

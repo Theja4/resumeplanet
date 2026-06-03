@@ -22,7 +22,7 @@ export default function CancelSubscriptionButton({ provider, className }: Props)
       const json = await res.json().catch(() => null) as
         | { success?: boolean; error?: string }
         | null
-      
+
       if (res.ok && json?.success) {
         setSuccess(true)
         setTimeout(() => window.location.reload(), 3000)
@@ -64,11 +64,11 @@ export default function CancelSubscriptionButton({ provider, className }: Props)
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600">
               <AlertTriangle size={24} />
             </div>
-            
+
             <h3 className="mt-6 text-xl font-black tracking-tight text-slate-900">Cancel your Pro plan?</h3>
-            
+
             <p className="mt-4 text-sm leading-7 text-slate-500">
-              You will keep all Pro features until your current period ends. 
+              You will keep all Pro features until your current period ends.
               <span className="block mt-2 font-bold text-slate-700 underline underline-offset-4 decoration-red-200">No partial refunds are issued.</span>
               After your period ends, you will lose access to AI insights, unlimited scans, and tailored resume versions.
             </p>

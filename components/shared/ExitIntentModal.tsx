@@ -285,6 +285,7 @@ export default function ExitIntentModal({ promo, priceOption, onClose }: Props) 
                 fill
                 priority
                 sizes="(min-width: 1024px) 272px, 100vw"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
                 className="object-cover object-center"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.72),rgba(255,255,255,0.08)_42%,rgba(0,0,0,0.06))]" />

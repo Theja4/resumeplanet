@@ -167,44 +167,20 @@ export default function PublicATSCheckerPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareApplicationJsonLd) }}
       />
 
-      <main className="mx-auto flex-1 max-w-[90rem] px-6 pb-20 pt-24">
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.92),rgba(241,247,243,0.88))] px-6 py-5 shadow-[0_24px_60px_rgba(18,24,21,0.06)] backdrop-blur-2xl sm:px-8 sm:py-6">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(163,255,179,0.26),transparent_40%),radial-gradient(circle_at_center,rgba(123,211,252,0.12),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(2,109,50,0.08),transparent_36%)]" />
-          <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-end">
-            <div className="space-y-3">
-              <span className="inline-flex items-center rounded-full border border-primary-container/50 bg-primary-container/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-                Free ATS resume checker
-              </span>
-              <h1 className="max-w-3xl text-3xl font-black tracking-tight text-on-background sm:text-4xl lg:text-[3.35rem] lg:leading-[0.98]">
-                Free ATS resume checker for parsing, keywords, and formatting issues.
-              </h1>
-            </div>
-            <div className="space-y-3 lg:max-w-[26rem] lg:justify-self-end">
-              <p className="text-sm leading-6 text-on-surface-variant sm:text-[15px]">
-                Scan your resume before you apply and catch the ATS issues that make strong candidates look weaker than they are.
-              </p>
-              <div className="flex flex-wrap gap-2 text-[10px] text-on-surface-variant">
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">1 scan before signup</span>
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">PDF and DOCX</span>
-                <span className="rounded-full border border-black/8 bg-white/86 px-3 py-1.5 font-bold uppercase tracking-[0.16em]">Instant feedback</span>
-              </div>
-            </div>
-          </div>
+      <main className="mx-auto w-full flex-1 max-w-[90rem] px-4 pb-20 pt-24 sm:px-6">
+        <section>
+          <Suspense fallback={null}>
+            <ATSCheckerClient resumes={[]} profile={null} publicMode mode="ats" />
+          </Suspense>
         </section>
 
-        <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mx-auto mt-8 grid max-w-7xl gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {ATS_FEATURES.map((bullet) => (
-            <div key={bullet} className="flex items-start gap-3 rounded-[1.35rem] border border-white/70 bg-white/86 px-4 py-4 shadow-[0_18px_45px_rgba(25,28,29,0.05)]">
+            <div key={bullet} className="flex items-start gap-3 rounded-[22px] border border-emerald-100 bg-white px-4 py-4 shadow-sm shadow-emerald-950/[0.04]">
               <Sparkles size={16} className="mt-0.5 shrink-0 text-primary" strokeWidth={2} />
-              <p className="text-sm leading-6 text-on-surface">{bullet}</p>
+              <p className="text-sm leading-6 text-slate-700">{bullet}</p>
             </div>
           ))}
-        </section>
-
-        <section className="mt-6">
-          <Suspense fallback={null}>
-            <ATSCheckerClient resumes={[]} profile={null} publicMode mode="ats" showIntro={false} />
-          </Suspense>
         </section>
 
         <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(18rem,0.92fr)]">

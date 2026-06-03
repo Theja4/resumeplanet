@@ -44,17 +44,17 @@ export default async function AffiliateDashboardPage() {
 
   // Hardcoded overrides for early affiliate partners until real tracking data is backfilled
   const HARDCODED_OVERRIDE = {
-    totalSignups: 261,
-    activeSubscriptions: 26,
-    totalEarned: 98.3,
-    pendingPayout: 98.3,
+    totalSignups: 396,
+    activeSubscriptions: 39,
+    totalEarned: 144.6,
+    pendingPayout: 144.6,
     monthlySignups: [
       { monthKey: '2025-12', label: 'Dec', signups: 0 },
       { monthKey: '2026-01', label: 'Jan', signups: 0 },
       { monthKey: '2026-02', label: 'Feb', signups: 0 },
       { monthKey: '2026-03', label: 'Mar', signups: 0 },
       { monthKey: '2026-04', label: 'Apr', signups: 183 },
-      { monthKey: '2026-05', label: 'May', signups: 69 },
+      { monthKey: '2026-05', label: 'May', signups: 213 },
     ],
   }
   const HARDCODED_CODES = new Set(['CAREER50', 'NEERAJA50'])

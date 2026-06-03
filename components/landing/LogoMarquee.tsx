@@ -51,13 +51,13 @@ function FigmaLogo() {
 
 type CdnCompany = { name: string; slug: string; color: string }
 type InlineCompany = { name: string; slug: 'google' | 'microsoft' | 'amazon' | 'figma' }
-type Company = CdnCompany | InlineCompany
+export type Company = CdnCompany | InlineCompany
 
 function isCdn(c: Company): c is CdnCompany {
   return 'color' in c
 }
 
-const COMPANIES: Company[] = [
+export const COMPANIES: Company[] = [
   { name: 'Google',    slug: 'google' },
   { name: 'Microsoft', slug: 'microsoft' },
   { name: 'Amazon',    slug: 'amazon' },
@@ -68,7 +68,7 @@ const COMPANIES: Company[] = [
   { name: 'Uber',      slug: 'uber',      color: '000000' },
 ]
 
-function LogoIcon({ company }: { company: Company }) {
+export function LogoIcon({ company }: { company: Company }) {
   if (!isCdn(company)) {
     if (company.slug === 'google')    return <GoogleLogo />
     if (company.slug === 'microsoft') return <MicrosoftLogo />

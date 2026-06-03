@@ -6,6 +6,7 @@ import { ChevronDown, Menu as MenuIcon, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { CHROME_STORE_URL } from '@/lib/site'
 import ChromeLogo from '@/components/icons/ChromeLogo'
+import { useClientAuthStatus } from '@/components/auth/useClientAuthStatus'
 
 const FORMAT_MENU_LINKS = [
   { label: 'Resume Format', href: '/resume-format' },
@@ -31,6 +32,7 @@ export default function PublicSiteHeader({
 }: {
   active?: 'home' | 'blog' | 'pricing' | 'jobs' | 'none'
 }) {
+  const isAuthenticated = useClientAuthStatus()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isDesktopMenuOpen, setIsDesktopMenuOpen] = useState(false)
   const [isMobileHeaderCondensed, setIsMobileHeaderCondensed] = useState(false)
@@ -185,18 +187,29 @@ export default function PublicSiteHeader({
               New
             </span>
           </a>
-          <Link
-            href="/auth/login"
-            className="px-4 py-2 text-[15px] font-semibold text-zinc-500 transition-colors duration-150 hover:text-zinc-900"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/auth/register"
-            className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-5 py-2 text-sm font-bold text-white transition-all duration-150 hover:bg-zinc-700"
-          >
-            Sign up
-          </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard/account"
+              className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-5 py-2 text-sm font-bold text-white transition-all duration-150 hover:bg-zinc-700"
+            >
+              My account
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="px-4 py-2 text-[15px] font-semibold text-zinc-500 transition-colors duration-150 hover:text-zinc-900"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/auth/register"
+                className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-5 py-2 text-sm font-bold text-white transition-all duration-150 hover:bg-zinc-700"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -344,22 +357,34 @@ export default function PublicSiteHeader({
             <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[9px] font-black uppercase text-black">New</span>
           </a>
 
-          <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
-            <Link
-              href="/auth/login"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-bold text-zinc-700 transition-all hover:bg-black hover:text-white"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/auth/register"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="inline-flex items-center justify-center rounded-full border border-primary-container bg-primary-container/25 px-4 py-2 text-sm font-bold text-primary-landing transition-all hover:bg-primary-container/35"
-            >
-              Create Account
-            </Link>
-          </div>
+          {isAuthenticated ? (
+            <div className="mt-2 pt-2">
+              <Link
+                href="/dashboard/account"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex w-full items-center justify-center rounded-full border border-primary-container bg-primary-container/25 px-4 py-2 text-sm font-bold text-primary-landing transition-all hover:bg-primary-container/35"
+              >
+                My account
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-2 grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
+              <Link
+                href="/auth/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center rounded-full border border-black/10 px-4 py-2 text-sm font-bold text-zinc-700 transition-all hover:bg-black hover:text-white"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/auth/register"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center rounded-full border border-primary-container bg-primary-container/25 px-4 py-2 text-sm font-bold text-primary-landing transition-all hover:bg-primary-container/35"
+              >
+                Create Account
+              </Link>
+            </div>
+          )}
         </div>
       </div>
       </nav>

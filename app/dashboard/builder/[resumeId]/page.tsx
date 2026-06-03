@@ -69,6 +69,11 @@ const DEFAULT_RIGHT_PANEL_WIDTH = 380
 const COLLAPSED_PANEL_WIDTH = 48
 const BUILDER_PREVIEW_WIDTH = 794
 const BUILDER_LAYOUT_GUTTER = 160
+const DEFAULT_EXPANDED_BUILDER_WIDTH =
+  DEFAULT_LEFT_PANEL_WIDTH +
+  DEFAULT_RIGHT_PANEL_WIDTH +
+  BUILDER_PREVIEW_WIDTH +
+  BUILDER_LAYOUT_GUTTER
 const LEGACY_DEFAULT_SECTION_ORDER = ['summary', 'experience', 'education', 'projects', 'volunteer']
 const LEGACY_DEFAULT_SIDEBAR_SECTION_ORDER = [
   'skills',
@@ -239,38 +244,6 @@ function getSectionItemCount(data: ResumeData, sectionId: string) {
   }
 }
 
-function createEmptySectionItem(sectionId: 'experience' | 'education' | 'projects') {
-  if (sectionId === 'experience') {
-    return {
-      company: '',
-      title: '',
-      location: '',
-      startDate: '',
-      endDate: '',
-      bullets: [],
-      bulletVisibility: [],
-    }
-  }
-
-  if (sectionId === 'education') {
-    return {
-      institution: '',
-      degree: '',
-      field: '',
-      startDate: '',
-      endDate: '',
-      gpa: '',
-    }
-  }
-
-  return {
-    name: '',
-    description: '',
-    bullets: [],
-    technologies: [],
-  }
-}
-
 function hasMeaningfulText(value: string | null | undefined) {
   return Boolean(value?.trim())
 }
@@ -283,6 +256,7 @@ function hasMeaningfulExperienceItem(item: ResumeData['experience'][number]) {
     hasMeaningfulText(item.startDate) ||
     hasMeaningfulText(item.endDate) ||
     hasMeaningfulText(item.summary) ||
+    hasMeaningfulText(item.url) ||
     item.bullets.some(hasMeaningfulText)
   )
 }
@@ -294,7 +268,9 @@ function hasMeaningfulEducationItem(item: ResumeData['education'][number]) {
     hasMeaningfulText(item.field) ||
     hasMeaningfulText(item.startDate) ||
     hasMeaningfulText(item.endDate) ||
-    hasMeaningfulText(item.gpa)
+    hasMeaningfulText(item.graduationDate) ||
+    hasMeaningfulText(item.gpa) ||
+    hasMeaningfulText(item.url)
   )
 }
 
@@ -313,13 +289,14 @@ function hasMeaningfulProjectItem(item: ResumeData['projects'][number]) {
   return (
     hasMeaningfulText(item.name) ||
     hasMeaningfulText(item.description) ||
+    hasMeaningfulText(item.url) ||
     item.bullets?.some(hasMeaningfulText) === true ||
     item.technologies.some(hasMeaningfulText)
   )
 }
 
 function hasMeaningfulCertificationItem(item: ResumeData['certifications'][number]) {
-  return hasMeaningfulText(item.name) || hasMeaningfulText(item.issuer) || hasMeaningfulText(item.date)
+  return hasMeaningfulText(item.name) || hasMeaningfulText(item.issuer) || hasMeaningfulText(item.date) || hasMeaningfulText(item.url)
 }
 
 function hasMeaningfulCustomSection(section: NonNullable<ResumeData['customSections']>[number]) {
@@ -1509,7 +1486,11 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   const [isLeftCollapsed, setIsLeftCollapsed] = useState(false)
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
-  const [isRightCollapsed, setIsRightCollapsed] = useState(() => isPro)
+  const [isRightCollapsed, setIsRightCollapsed] = useState(() =>
+    isPro ||
+    (typeof window !== 'undefined' && window.innerWidth < DEFAULT_EXPANDED_BUILDER_WIDTH)
+  )
+  const hasAutoCollapsedRightRef = useRef(false)
   const builderPanelWidthsRef = useRef({
     left: DEFAULT_LEFT_PANEL_WIDTH,
     right: DEFAULT_RIGHT_PANEL_WIDTH,
@@ -1519,11 +1500,24 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
     rightWidth +
     (BUILDER_PREVIEW_WIDTH * effectiveScale) +
     BUILDER_LAYOUT_GUTTER
-  const shouldSuppressBuilderInsights =
+  const shouldAutoCollapseBuilderInsights =
     activeMode === 'builder' &&
     !isPro &&
     viewportWidth > 0 &&
     viewportWidth < expandedBuilderWidth
+
+  useEffect(() => {
+    if (!shouldAutoCollapseBuilderInsights) {
+      hasAutoCollapsedRightRef.current = false
+      return
+    }
+
+    if (hasAutoCollapsedRightRef.current) return
+
+    hasAutoCollapsedRightRef.current = true
+    const frame = window.requestAnimationFrame(() => setIsRightCollapsed(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [shouldAutoCollapseBuilderInsights])
 
   useEffect(() => {
     if (isOverRecommendedPages && !isPageWarningDismissed) {
@@ -1806,56 +1800,6 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
   function handleNavigateToField(path: string) {
     const sectionId = getSectionIdForFieldPath(path)
     if (!sectionId) return
-    if (isGhostResumeSectionId(sectionId)) {
-      dismissGhostSections(sectionId)
-    }
-
-    const indexedFieldMatch = path.match(/^(experience|education|projects)\.(\d+)\./)
-    const customIndexedMatch = path.match(/^(custom_[a-z0-9]+)\.items\.(\d+)\./)
-
-    if (indexedFieldMatch) {
-      const indexedSectionId = indexedFieldMatch[1] as 'experience' | 'education' | 'projects'
-      const requestedIndex = Number(indexedFieldMatch[2])
-
-      setResumeData(previous => {
-        if (!previous) return previous
-
-        const currentItems = previous[indexedSectionId]
-        if (currentItems.length > requestedIndex) return previous
-
-        // Only honour click-to-create for the NEXT slot (index === length).
-        // Stale clicks on already-deleted items used to silently spawn
-        // multiple empty entries — e.g. click "experience.5.title" with 0
-        // items used to create 5 empty entries. Now we no-op those.
-        if (requestedIndex !== currentItems.length) return previous
-
-        const nextItems = [...currentItems, createEmptySectionItem(indexedSectionId)]
-        return {
-          ...previous,
-          [indexedSectionId]: nextItems,
-        }
-      })
-    } else if (customIndexedMatch) {
-      const indexedSectionId = customIndexedMatch[1]
-      const requestedIndex = Number(customIndexedMatch[2])
-
-      setResumeData(previous => {
-        if (!previous) return previous
-
-        const customSections = [...(previous.customSections || [])]
-        const idx = customSections.findIndex(c => c.id === indexedSectionId)
-        if (idx === -1 || customSections[idx].type !== 'complex') return previous
-
-        const currentItems = customSections[idx].items || []
-        if (currentItems.length > requestedIndex) return previous
-        // Same guard as above — only allow appending one entry at the tail.
-        if (requestedIndex !== currentItems.length) return previous
-
-        const nextItems = [...currentItems, { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }]
-        customSections[idx] = { ...customSections[idx], items: nextItems }
-        return { ...previous, customSections }
-      })
-    }
 
     setExpandedSection(sectionId)
     setIsLeftCollapsed(false)
@@ -2423,27 +2367,27 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </div>
           
           {/* Builder / Tailor Toggle */}
-          <div className="flex shrink-0 bg-surface-container-low p-1 rounded-full">
+          <div className="flex shrink-0 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-1 shadow-sm shadow-emerald-950/[0.03]">
             <button
               onClick={() => setBuilderMode('builder')}
-              className={`px-6 py-1.5 text-xs font-bold tracking-tight rounded-full transition-all ${
+              className={`rounded-xl px-6 py-1.5 text-xs font-bold tracking-tight transition-all ${
                 activeMode === 'builder' 
                   ? 'bg-white text-emerald-700 shadow-sm' 
-                  : 'text-zinc-400 hover:text-zinc-600'
+                  : 'text-emerald-700/45 hover:text-emerald-800'
               }`}
             >
               BUILDER
             </button>
             <button
               onClick={handleTailorClick}
-              className={`px-6 py-1.5 text-xs font-bold tracking-tight rounded-full transition-all flex justify-center items-center ${
+              className={`flex items-center justify-center rounded-xl px-6 py-1.5 text-xs font-bold tracking-tight transition-all ${
                 activeMode === 'tailor' 
                   ? 'bg-white text-emerald-700 shadow-sm' 
-                  : 'text-zinc-400 hover:text-zinc-600'
+                  : 'text-emerald-700/45 hover:text-emerald-800'
               }`}
             >
               TAILOR
-              {!isPro && <span className="ml-1 text-[10px] text-amber-500 font-bold tracking-tighter">PRO</span>}
+              {!isPro && <span className="ml-1 text-[10px] font-bold tracking-tighter text-amber-500">PRO</span>}
             </button>
           </div>
           
@@ -2802,21 +2746,21 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
               aria-hidden
             >
               <TemplateComponent
-              key={`print-${previewVersion}`}
-              data={visibleData ?? resumeData}
-              isEditing={false}
-              showEmptyStateGuidance
-              highlightedSectionId={null}
-              /* Ghost sections deliberately omitted from the measurement
-                 wrapper — they're editor-only guidance and don't appear in
-                 the downloaded PDF, so measuring with them would produce a
-                 preview page count that doesn't match the export. */
-              onFieldChange={() => {}}
-              sectionOrder={orderedSections}
-              sidebarSectionOrder={orderedSidebarSections}
-              config={templateConfig}
-              showEditingBadge={false}
-            />
+                key={`print-${previewVersion}`}
+                data={visibleData ?? resumeData}
+                isEditing={false}
+                showEmptyStateGuidance
+                highlightedSectionId={null}
+                ghostSections={ghostSections}
+                /* Ghost sections are preview-only guidance and are not sent to
+                   PDF/DOCX export. Measuring them here keeps page badges aligned
+                   with what the builder preview actually shows. */
+                onFieldChange={() => {}}
+                sectionOrder={orderedSections}
+                sidebarSectionOrder={orderedSidebarSections}
+                config={templateConfig}
+                showEditingBadge={false}
+              />
             </div>
 
             {/* Word-like paged preview + undo/redo to the right.
@@ -2892,9 +2836,10 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                         isEditing={false}
                         showEmptyStateGuidance
                         highlightedSectionId={null}
-                        /* No ghostSections in visible preview — WYSIWYG with
-                           the downloaded PDF. The section list in the editor
-                           sidebar already surfaces empty sections. */
+                        ghostSections={ghostSections}
+                        /* Preview-only starter suggestions make a new resume
+                           useful immediately. PDF/DOCX export still receives
+                           only the real resume data. */
                         onFieldChange={() => {}}
                         sectionOrder={orderedSections}
                         sidebarSectionOrder={orderedSidebarSections}
@@ -2976,48 +2921,47 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
           </section>
 
           {/* Right Handle */}
-          {!shouldSuppressBuilderInsights && !isRightCollapsed && (
+          {!isRightCollapsed && (
             <div 
-              className="w-1 bg-transparent hover:bg-emerald-500/30 cursor-col-resize z-10 shrink-0 select-none scale-x-150 transition-colors"
+              className="z-10 w-1 shrink-0 scale-x-150 cursor-col-resize select-none bg-transparent transition-colors hover:bg-emerald-400/40"
               onMouseDown={() => setIsDraggingRight(true)}
             />
           )}
 
           {/* Right Sidebar: AI INSIGHTS / TAILOR */}
-          {!shouldSuppressBuilderInsights ? (
-            <aside
-              style={{ width: isRightCollapsed ? COLLAPSED_PANEL_WIDTH : rightWidth }}
-              className="bg-surface-container-lowest border-l border-outline-variant/10 flex flex-col shrink-0 relative transition-all duration-300"
-            >
+          <aside
+            style={{ width: isRightCollapsed ? COLLAPSED_PANEL_WIDTH : rightWidth }}
+            className="relative flex shrink-0 flex-col border-l border-emerald-100/80 bg-[linear-gradient(180deg,#f1fbf4_0%,#ffffff_40%,#f8faf9_100%)] shadow-[-18px_0_44px_rgba(15,23,42,0.04)] transition-all duration-300"
+          >
             {/* Collapse Toggle */}
             <button
               onClick={() => setIsRightCollapsed(!isRightCollapsed)}
-              className={`absolute top-4 ${isRightCollapsed ? 'left-1/2 -translate-x-1/2' : 'left-[-24px]'} z-50 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm active:scale-95 transition-all ${
+              className={`absolute top-4 ${isRightCollapsed ? 'left-1/2 -translate-x-1/2' : 'left-[-24px]'} z-50 flex h-9 w-9 items-center justify-center rounded-2xl border shadow-sm active:scale-95 transition-all ${
                 isRightCollapsed && !isPro && activeMode === 'builder'
                   ? 'border-emerald-300 bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.32)] hover:brightness-110'
-                  : 'border-zinc-200 bg-white text-zinc-400 hover:text-primary hover:shadow-md'
+                  : 'border-emerald-100 bg-white text-emerald-500 hover:border-emerald-200 hover:text-primary hover:shadow-md'
               }`}
               title={isRightCollapsed ? (activeMode === 'builder' && !isPro ? 'Open AI Insights Pro panel' : "Expand Sidebar") : "Hide Sidebar"}
             >
               {isRightCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
 
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col overflow-hidden">
               {isRightCollapsed ? (
                 <button
                   type="button"
                   onClick={() => setIsRightCollapsed(false)}
-                  className={`flex-1 flex flex-col items-center pt-16 gap-5 transition-colors ${
+                  className={`flex flex-1 flex-col items-center gap-5 pt-16 transition-colors ${
                     !isPro && activeMode === 'builder'
                       ? 'bg-gradient-to-b from-emerald-50 via-white to-emerald-50/70 hover:from-emerald-100 hover:via-white hover:to-emerald-100/80'
-                      : 'hover:bg-zinc-50'
+                      : 'hover:bg-emerald-50/60'
                   }`}
                   title={activeMode === 'builder' && !isPro ? 'Open AI Insights panel' : 'Expand Sidebar'}
                 >
                   <span className={`[writing-mode:vertical-lr] rotate-180 whitespace-nowrap text-[10px] font-bold uppercase tracking-widest ${
                     !isPro && activeMode === 'builder'
                       ? 'text-emerald-700'
-                      : 'text-zinc-400'
+                      : 'text-emerald-600/70'
                   }`}>
                     {activeMode === 'tailor' ? 'Tailor Mode' : 'AI Insights'}
                   </span>
@@ -3026,7 +2970,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                       <Sparkles size={16} />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-400">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-emerald-600 shadow-sm">
                       <Star size={16} />
                     </div>
                   )}
@@ -3062,8 +3006,7 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                 )
               )}
             </div>
-            </aside>
-          ) : null}
+          </aside>
           
         </main>
       </div>

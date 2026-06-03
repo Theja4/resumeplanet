@@ -17,7 +17,14 @@ function readAffiliateReferralCodeFromDocumentCookie() {
     .find(cookie => cookie.startsWith(cookiePrefix))
     ?.slice(cookiePrefix.length)
 
-  const decodedValue = cookieValue ? decodeURIComponent(cookieValue) : null
+  let decodedValue: string | null = null
+
+  try {
+    decodedValue = cookieValue ? decodeURIComponent(cookieValue) : null
+  } catch {
+    decodedValue = null
+  }
+
   return isAffiliateReferralCode(decodedValue) ? normalizeAffiliateCode(decodedValue) : null
 }
 
@@ -31,25 +38,21 @@ export default function AffiliateReferralTracker() {
       document.cookie = `${AFFILIATE_REFERRAL_COOKIE}=${encodeURIComponent(normalizedRef)}${COOKIE_ATTRIBUTES}`
     }
 
-    const referralCode = normalizedRef ?? readAffiliateReferralCodeFromDocumentCookie()
-
     let isMounted = true
+    let unsubscribeFromAuth: (() => void) | null = null
 
-    async function persistAffiliateSource() {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+    function buildSyncKey(userId: string, code: string | null) {
+      return code
+        ? `rezoomed_affiliate_source_synced:${userId}:${code}`
+        : `rezoomed_affiliate_source_synced:${userId}:server-cookie`
+    }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!isMounted || !user?.id) {
+    async function persistAffiliateSource(userId: string, code: string | null) {
+      if (!isMounted) {
         return
       }
 
-      const syncKey = referralCode
-        ? `rezoomed_affiliate_source_synced:${user.id}:${referralCode}`
-        : `rezoomed_affiliate_source_synced:${user.id}:server-cookie`
+      const syncKey = buildSyncKey(userId, code)
 
       if (window.sessionStorage.getItem(syncKey) === '1') {
         return
@@ -61,7 +64,7 @@ export default function AffiliateReferralTracker() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...(referralCode ? { code: referralCode } : {}),
+          ...(code ? { code } : {}),
         }),
       })
 
@@ -69,13 +72,54 @@ export default function AffiliateReferralTracker() {
         return
       }
 
-      window.sessionStorage.setItem(syncKey, '1')
+      const payload = (await response.json().catch(() => null)) as
+        | { sourceCode?: string | null }
+        | null
+
+      if (payload?.sourceCode) {
+        window.sessionStorage.setItem(syncKey, '1')
+      }
     }
 
-    void persistAffiliateSource()
+    function scheduleAffiliateSourceSync(userId: string | null | undefined) {
+      if (!userId) {
+        return
+      }
+
+      const latestReferralCode =
+        normalizedRef ?? readAffiliateReferralCodeFromDocumentCookie()
+
+      window.setTimeout(() => {
+        void persistAffiliateSource(userId, latestReferralCode)
+      }, 0)
+    }
+
+    async function initializeAffiliateSourceSync() {
+      const { createClient } = await import('@/lib/supabase/client')
+
+      if (!isMounted) {
+        return
+      }
+
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      scheduleAffiliateSourceSync(user?.id)
+
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        scheduleAffiliateSourceSync(session?.user?.id)
+      })
+
+      unsubscribeFromAuth = () => data.subscription.unsubscribe()
+    }
+
+    void initializeAffiliateSourceSync()
 
     return () => {
       isMounted = false
+      unsubscribeFromAuth?.()
     }
   }, [])
 

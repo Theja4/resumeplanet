@@ -1,6 +1,6 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { ArrowRight, Sparkles } from 'lucide-react'
+import AuthAwareLandingLink from './AuthAwareLandingLink'
 import AuroraShader from './AuroraShader'
 
 export default function LandingFinalCTA() {
@@ -51,13 +51,13 @@ export default function LandingFinalCTA() {
           </p>
 
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-            <Link href="/auth/register" className="landing-cta-primary-light group">
+            <AuthAwareLandingLink anonymousHref="/auth/register" className="landing-cta-primary-light group">
               <span>Get started</span>
               <ArrowRight
                 size={18}
                 className="transition-transform duration-300 group-hover:translate-x-0.5"
               />
-            </Link>
+            </AuthAwareLandingLink>
           </div>
 
           <p className="mt-5 text-sm text-white/45">
@@ -75,8 +75,8 @@ export default function LandingFinalCTA() {
             }}
           />
 
-          <Link
-            href="/auth/register"
+          <AuthAwareLandingLink
+            anonymousHref="/auth/register"
             aria-label="Start building your resume"
             className="mascot-bob absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 cursor-pointer"
           >
@@ -87,7 +87,7 @@ export default function LandingFinalCTA() {
               height={600}
               className="relative h-[280px] w-[280px] object-contain drop-shadow-[0_24px_38px_rgba(0,0,0,0.35)] md:h-[380px] md:w-[380px]"
             />
-          </Link>
+          </AuthAwareLandingLink>
         </div>
       </div>
     </section>

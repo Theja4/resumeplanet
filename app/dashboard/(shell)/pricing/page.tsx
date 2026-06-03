@@ -8,9 +8,11 @@ import {
   readAffiliateReferralCodeFromCookies,
 } from '@/lib/affiliate-server'
 import { CheckCircle2 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import PricingWorkspaceClient from './PricingWorkspaceClient'
+import ClosePageButton from './ClosePageButton'
 import UpgradePoller from '@/components/shared/UpgradePoller'
 import {
   HUMAN_WRITTEN_ORDER,
@@ -54,6 +56,24 @@ function formatOrderAmount(amount?: number | null) {
   }
 
   return `$${HUMAN_WRITTEN_ORDER.display.displayPrice.toFixed(2)}`
+}
+
+function RezoomedBrandMark({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <Image
+        src="/auth-login-logo.png"
+        alt="Rezoomed logo"
+        width={32}
+        height={32}
+        className="h-7 w-7 object-contain"
+        priority
+      />
+      <span className="text-sm font-black tracking-tighter text-primary sm:text-base">
+        Rezoomed
+      </span>
+    </div>
+  )
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
@@ -118,7 +138,13 @@ export default async function PricingPage({
   return (
     <>
       <PricingPageTracker source={pricingSource} />
-      <div className="mx-auto w-full max-w-[1320px] space-y-5 pb-8">
+      {/* Full-screen layer — covers the dashboard sidebar/nav for a focused upgrade flow */}
+      <div className="fixed inset-0 z-[60] bg-[linear-gradient(180deg,#f8f9fa_0%,#f3f6f4_100%)]">
+        <div className="pointer-events-none absolute inset-0 grid-bg opacity-25" />
+        <ClosePageButton />
+        {/* Only this inner layer scrolls — the close button stays pinned */}
+        <div className="absolute inset-0 overflow-y-auto">
+        <div className="relative mx-auto w-full max-w-[1320px] space-y-4 px-4 pb-10 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pt-6">
         {/* Upgrade success banner */}
         {upgraded && (
           <>
@@ -133,35 +159,39 @@ export default async function PricingPage({
           </>
         )}
 
-        <DashboardSurface variant="default" className="space-y-4 p-4 sm:p-5">
-          <div className="space-y-2.5">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-1.5">
             {isPro ? (
               <>
                 <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
                   Plans & Billing
                 </span>
                 <div className="space-y-1.5">
-                  <h1 className="max-w-4xl text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem]">
+                  <h1 className="max-w-4xl text-[1.9rem] font-black leading-[1.02] tracking-tight text-on-background sm:text-[2.45rem]">
                     Billing, simplified.
                   </h1>
-                  <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
+                  <p className="max-w-2xl text-sm leading-5 text-on-surface-variant">
                     Compare the free tier with the live monthly and annual Pro plans in one cleaner view.
                   </p>
                 </div>
               </>
             ) : (
-              <div className="space-y-2">
-                <h1 className="whitespace-nowrap text-[2.35rem] font-black tracking-tight leading-[0.98] text-on-background sm:text-[3.1rem]">
-                  Stop getting filtered. Start getting hired.
-                </h1>
-                <p className="whitespace-nowrap text-[15px] text-on-surface-variant">
-                  90%+ of resumes are auto-rejected before a human sees them. Applicants using AI-optimized resumes are getting the interviews you&apos;re missing.
-                </p>
+              <div className="grid items-center gap-2 text-center sm:grid-cols-[minmax(8rem,1fr)_minmax(0,48rem)_minmax(8rem,1fr)]">
+                <RezoomedBrandMark className="justify-self-center sm:justify-self-start" />
+                <div className="space-y-1.5 sm:col-start-2">
+                  <h1 className="mx-auto max-w-3xl text-[1.9rem] font-black leading-[1.04] tracking-tight text-on-background sm:text-[2.45rem]">
+                    You&apos;re about to get hired faster
+                  </h1>
+                  <p className="mx-auto max-w-4xl text-sm leading-5 text-on-surface-variant">
+                    90%+ of resumes are auto-rejected before a human reads them. Unlock the AI tools that land interviews.
+                  </p>
+                </div>
+                <div className="hidden sm:block" />
               </div>
             )}
           </div>
 
-          <div className={isPro ? 'border-t border-black/6 pt-4' : 'pt-2'}>
+          <div className={isPro ? 'border-t border-black/6 pt-3' : 'pt-0'}>
             <PricingWorkspaceClient
               autoFillPromo={promoCode}
               availablePromo={pricingPromo}
@@ -174,7 +204,7 @@ export default async function PricingPage({
               consumeCheckoutIntent
             />
           </div>
-        </DashboardSurface>
+        </div>
 
         {/* Order history */}
         {HUMAN_WRITTEN_SERVICE_ENABLED && paidOrders.length > 0 && (
@@ -214,6 +244,8 @@ export default async function PricingPage({
             </DashboardSurface>
           </div>
         )}
+        </div>
+        </div>
       </div>
     </>
   )

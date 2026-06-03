@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { isPro, getRemainingFreeScans } from '@/lib/planUtils'
@@ -635,26 +636,26 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
   }, [isFinishing, steps.length])
 
   return (
-    <div className="overflow-hidden rounded-[1.6rem] bg-[#070d09] shadow-[0_28px_70px_rgba(0,0,0,0.45)] ring-1 ring-emerald-500/12">
-      <div className="flex flex-col items-center gap-8 p-10">
+    <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f0fbf4_100%)] shadow-[0_24px_60px_rgba(2,109,50,0.10)]">
+      <div className="flex flex-col items-center gap-7 p-6 sm:p-8 lg:p-10">
 
         {/* ── Radar display ─────────────────────────────────────── */}
-        <div className="relative h-52 w-52">
+        <div className="relative h-48 w-48 sm:h-52 sm:w-52">
           {/* Concentric rings */}
           {[0, 1, 2, 3].map(i => (
             <div
               key={i}
-              className="absolute rounded-full border border-emerald-500/18"
+              className="absolute rounded-full border border-emerald-500/20"
               style={{ inset: `${i * 12.5}%` }}
             />
           ))}
 
           {/* Crosshairs */}
           <div className="absolute inset-0 flex items-center">
-            <div className="h-px w-full bg-emerald-500/12" />
+            <div className="h-px w-full bg-emerald-500/15" />
           </div>
           <div className="absolute inset-0 flex justify-center">
-            <div className="h-full w-px bg-emerald-500/12" />
+            <div className="h-full w-px bg-emerald-500/15" />
           </div>
 
           {/* Sweep trail (conic-gradient) */}
@@ -688,7 +689,7 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
                 </>
               )}
               {i > stepIndex && (
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-900/60" />
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-200" />
               )}
             </div>
           ))}
@@ -703,14 +704,14 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
         <div className="space-y-1.5 text-center">
           <div className="flex items-center justify-center gap-2">
             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-400">
+            <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
               {isMatchMode ? 'Deep analysis active' : 'Resume scan active'}
             </h3>
             <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 [animation-delay:0.5s]" />
           </div>
           <p
             key={stepIndex}
-            className="text-xl font-black tracking-tight text-white transition-all duration-500"
+            className="text-xl font-black tracking-tight text-slate-950 transition-all duration-500"
           >
             {steps[stepIndex]}
           </p>
@@ -723,10 +724,10 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
               key={step}
               className={`flex items-center gap-3 rounded-[0.9rem] px-4 py-2.5 transition-all duration-700 ${
                 i < stepIndex
-                  ? 'bg-emerald-500/14'
+                  ? 'border border-emerald-100 bg-emerald-50'
                   : i === stepIndex
-                  ? 'bg-white/7 ring-1 ring-emerald-500/28'
-                  : 'opacity-20'
+                  ? 'border border-emerald-200 bg-white ring-4 ring-emerald-100/70'
+                  : 'border border-slate-100 bg-white/60 opacity-70'
               }`}
             >
               {i < stepIndex ? (
@@ -737,15 +738,15 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               ) : (
-                <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-white/20" />
+                <div className="h-3.5 w-3.5 shrink-0 rounded-full border border-slate-200" />
               )}
               <span
                 className={`text-sm ${
                   i < stepIndex
-                    ? 'font-medium text-emerald-300'
+                    ? 'font-semibold text-emerald-700'
                     : i === stepIndex
-                    ? 'font-semibold text-white'
-                    : 'text-white/35'
+                    ? 'font-semibold text-slate-950'
+                    : 'text-slate-400'
                 }`}
               >
                 {step}
@@ -756,7 +757,7 @@ function ScanningAnimation({ isMatchMode, isFinishing }: { isMatchMode: boolean;
       </div>
 
       {/* Bottom scan line accent */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-emerald-500/35 to-transparent" />
     </div>
   )
 }
@@ -892,9 +893,9 @@ function ScoreRing({ score, label = 'ATS Score' }: { score: number; label?: stri
   const color = scoreColour(score)
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-2 rounded-[24px] border border-emerald-100 bg-white px-4 py-4 shadow-sm shadow-emerald-950/[0.04]">
       <svg width="128" height="128" viewBox="0 0 128 128">
-        <circle cx="64" cy="64" r={r} fill="none" stroke="#becabc" strokeWidth="8" />
+        <circle cx="64" cy="64" r={r} fill="none" stroke="#d9eee0" strokeWidth="8" />
         <circle
           cx="64" cy="64" r={r}
           fill="none"
@@ -915,7 +916,7 @@ function ScoreRing({ score, label = 'ATS Score' }: { score: number; label?: stri
           {score}
         </text>
       </svg>
-      <span className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{label}</span>
+      <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</span>
     </div>
   )
 }
@@ -925,11 +926,11 @@ function ScoreRing({ score, label = 'ATS Score' }: { score: number; label?: stri
 function BreakdownBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5">
-      <span className="text-sm font-medium text-on-surface-variant">{label}</span>
-      <span className="text-right text-xs font-bold text-on-surface">{value}</span>
-      <div className="col-span-2 bg-surface-container-high rounded-full h-1.5">
+      <span className="text-sm font-semibold text-slate-600">{label}</span>
+      <span className="text-right text-xs font-bold text-slate-900">{value}</span>
+      <div className="col-span-2 h-2 rounded-full bg-emerald-50">
         <div
-          className="h-1.5 rounded-full bg-primary transition-all duration-500"
+          className="h-2 rounded-full bg-primary transition-all duration-500"
           style={{ width: `${value}%` }}
         />
       </div>
@@ -975,20 +976,20 @@ function UploadZone({
   if (uploadedFile) {
     return (
       <div className={`flex ${compact ? 'min-h-[280px]' : publicMode ? 'min-h-[200px]' : 'min-h-[280px]'} flex-1 flex-col justify-between gap-4`}>
-        <div className={`flex items-center justify-between rounded-xl bg-primary-container/20 ${compact ? 'p-4' : 'p-4'}`}>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`${compact ? 'h-10 w-10 rounded-lg' : 'h-10 w-10 rounded-lg'} flex shrink-0 items-center justify-center bg-primary-container/50`}>
+        <div className={`flex items-center justify-between rounded-[22px] border border-emerald-100 bg-emerald-50/70 shadow-sm ${compact ? 'p-4' : 'p-4'}`}>
+          <div className="flex min-w-0 items-center gap-3">
+            <div className={`${compact ? 'h-10 w-10 rounded-2xl' : 'h-10 w-10 rounded-2xl'} flex shrink-0 items-center justify-center border border-emerald-100 bg-white`}>
               <FileUp size={18} className="text-primary" strokeWidth={1.75} />
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-on-surface">{uploadedFile.name}</p>
-              <p className="text-[10px] text-on-surface-variant">{wordCount} words extracted</p>
+              <p className="truncate text-sm font-bold text-slate-950">{uploadedFile.name}</p>
+              <p className="text-[10px] font-semibold text-slate-500">{wordCount} words extracted</p>
             </div>
           </div>
           {showClearButton ? (
             <button
               onClick={onClear}
-              className="ml-3 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition-colors hover:bg-surface-container-high"
+              className="ml-3 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-white hover:text-slate-900"
               aria-label="Remove file"
             >
               <X size={14} />
@@ -997,7 +998,7 @@ function UploadZone({
         </div>
         <button
           onClick={() => inputRef.current?.click()}
-          className="px-1 text-left text-xs font-semibold text-primary hover:underline"
+          className="px-1 text-left text-xs font-bold text-primary hover:underline"
         >
           Upload a different file
         </button>
@@ -1028,9 +1029,9 @@ function UploadZone({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
         disabled={isExtracting}
-        className={`flex-1 ${compact ? 'min-h-[360px] gap-5 py-10' : publicMode ? 'min-h-[180px] py-8' : 'min-h-[280px]'} flex flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all ${isDragging
-            ? 'border-primary bg-primary-container/15 scale-[1.01]'
-            : 'border-outline-variant hover:border-primary/50 hover:bg-primary-container/5'
+        className={`flex-1 ${compact ? 'min-h-[360px] gap-5 py-10' : publicMode ? 'min-h-[220px] py-8' : 'min-h-[300px]'} flex flex-col items-center justify-center rounded-[26px] border-2 border-dashed transition-all ${isDragging
+            ? 'scale-[1.01] border-primary bg-primary-container/20 shadow-[0_18px_44px_rgba(2,109,50,0.10)]'
+            : 'border-emerald-200 bg-[linear-gradient(180deg,#ffffff_0%,#f5fbf7_100%)] hover:border-primary/55 hover:bg-primary-container/10 hover:shadow-[0_18px_44px_rgba(2,109,50,0.08)]'
           } ${isExtracting ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}
       >
         {isExtracting ? (
@@ -1039,22 +1040,22 @@ function UploadZone({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            <p className="text-sm font-semibold text-on-surface-variant">Extracting text…</p>
+            <p className="text-sm font-semibold text-slate-600">Extracting text...</p>
           </>
         ) : (
           <>
-            <div className={`${compact ? 'h-16 w-16 rounded-[1.35rem]' : 'h-14 w-14 rounded-2xl'} flex items-center justify-center bg-primary-container/30`}>
+            <div className={`${compact ? 'h-16 w-16 rounded-[1.35rem]' : 'h-14 w-14 rounded-2xl'} flex items-center justify-center border border-emerald-100 bg-emerald-50 shadow-sm`}>
               <Upload size={compact ? 30 : 26} className="text-primary" strokeWidth={1.5} />
             </div>
             <div className={`text-center ${compact ? 'space-y-1' : 'space-y-1'}`}>
-              <p className={`${compact ? 'text-lg' : 'text-sm'} font-bold text-on-surface`}>
+              <p className={`${compact ? 'text-lg' : 'text-sm'} font-black text-slate-950`}>
                 {compact ? 'Upload resume' : 'Drop your resume here'}
               </p>
               {!compact && (
-                <p className="text-xs text-on-surface-variant">or click to browse</p>
+                <p className="text-xs font-medium text-slate-500">or click to browse</p>
               )}
-              {compact && <p className="text-sm text-on-surface-variant">Drop a PDF or DOCX, or click to browse</p>}
-              <p className={`${compact ? 'mt-3 text-xs' : 'mt-2 text-[10px]'} font-semibold uppercase tracking-widest text-on-surface-variant/60`}>
+              {compact && <p className="text-sm text-slate-500">Drop a PDF or DOCX, or click to browse</p>}
+              <p className={`${compact ? 'mt-3 text-xs' : 'mt-2 text-[10px]'} font-bold uppercase tracking-widest text-slate-400`}>
                 PDF · DOCX · Max {MAX_RESUME_UPLOAD_LABEL_SPACED}
               </p>
             </div>
@@ -1062,7 +1063,7 @@ function UploadZone({
         )}
       </button>
       {extractError && (
-        <p className="mt-3 text-xs text-red-600 text-center">{extractError}</p>
+        <p className="mt-3 text-center text-xs font-medium text-red-600">{extractError}</p>
       )}
     </div>
   )
@@ -1902,14 +1903,14 @@ export default function ATSCheckerClient({
   const scanActionBlock = (
     <>
       {!pro && !publicMode && scansLeft !== null && scansLeft === 0 && (
-        <div className="rounded-xl bg-amber-50 px-5 py-3 text-sm text-amber-800 text-center">
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-3 text-center text-sm font-medium text-amber-800">
           You have used all free scans today. Scans reset every 24 hours.{' '}
           <Link href="/dashboard/pricing" className="font-semibold underline">Upgrade to Pro</Link> for advanced analysis.
         </div>
       )}
 
       {isAnonymousAtsMode && publicAuthPromptReason && (
-        <div className="rounded-[1.4rem] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950 shadow-[0_18px_42px_rgba(2,109,50,0.08)]">
+        <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950 shadow-[0_18px_42px_rgba(2,109,50,0.08)]">
           <p className="font-semibold">
             {publicAuthPromptReason === 'another_resume'
               ? 'Your free pre-signup ATS scan is already used. Log in or create a free account to check another resume.'
@@ -1918,13 +1919,13 @@ export default function ATSCheckerClient({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Link
               href="/auth/login"
-              className="inline-flex items-center justify-center rounded-full border border-emerald-300 bg-white px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:border-emerald-400 hover:text-emerald-900"
+              className="inline-flex items-center justify-center rounded-2xl border border-emerald-300 bg-white px-4 py-2 text-sm font-bold text-emerald-800 transition hover:border-emerald-400 hover:text-emerald-900"
             >
               Log in
             </Link>
             <Link
               href="/auth/register"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
+              className="inline-flex items-center justify-center rounded-2xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800"
             >
               Create free account
             </Link>
@@ -1933,7 +1934,7 @@ export default function ATSCheckerClient({
       )}
 
       {scanError && (
-        <div className="rounded-xl bg-red-50 px-5 py-3 text-sm text-red-700 text-center">
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-3 text-center text-sm font-medium text-red-700">
           {scanError}
         </div>
       )}
@@ -1943,7 +1944,7 @@ export default function ATSCheckerClient({
           onClick={handleScan}
           disabled={!canScan && !isScanning}
           aria-busy={isScanning}
-          className={`group relative flex items-center justify-center gap-3 overflow-hidden bg-zinc-950 font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none ${compactPublicUploadCard ? 'w-full rounded-2xl px-8 py-5 text-lg' : 'rounded-full px-12 py-4 text-base'} ${isScanning ? 'animate-pulse cursor-wait shadow-[0_0_0_6px_rgba(16,185,129,0.14),0_24px_52px_rgba(2,109,50,0.28)] ring-2 ring-emerald-300/35 hover:translate-y-0 hover:bg-zinc-950' : publicMode ? 'shadow-[0_20px_40px_rgba(2,109,50,0.12)] hover:shadow-[0_24px_48px_rgba(2,109,50,0.2)]' : 'hover:shadow-[0_24px_42px_rgba(24,24,27,0.18)]'}`}
+          className={`group relative flex items-center justify-center gap-3 overflow-hidden bg-primary font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:shadow-none ${compactPublicUploadCard ? 'w-full rounded-2xl px-8 py-5 text-lg' : 'rounded-2xl px-12 py-4 text-base'} ${isScanning ? 'animate-pulse cursor-wait shadow-[0_0_0_6px_rgba(16,185,129,0.14),0_24px_52px_rgba(2,109,50,0.28)] ring-2 ring-emerald-300/35 hover:translate-y-0 hover:bg-primary' : 'shadow-[0_20px_40px_rgba(2,109,50,0.14)] hover:shadow-[0_24px_48px_rgba(2,109,50,0.22)]'}`}
         >
           {isScanning ? (
             <>
@@ -1972,7 +1973,7 @@ export default function ATSCheckerClient({
       </div>
 
       {!pro && !publicMode && (
-        <p className="text-center text-xs text-on-surface-variant">
+        <p className="text-center text-xs font-medium text-slate-500">
           {isMatchMode
             ? 'Match Score is a Pro feature. '
             : 'Free plan: unlimited ATS scans with basic analysis. '}
@@ -1983,7 +1984,7 @@ export default function ATSCheckerClient({
       )}
 
       {publicMode && !compactPublicUploadCard && (
-        <p className="text-center text-xs text-on-surface-variant">
+        <p className="text-center text-xs font-medium text-slate-500">
           {isMatchMode
             ? 'Free match scoring is open here. Create an account when you want AI tailoring and builder editing.'
             : 'One ATS scan is available before signup. Create an account to rescan, upload another resume, and unlock AI improve + builder editing.'}
@@ -1992,8 +1993,22 @@ export default function ATSCheckerClient({
     </>
   )
 
+  const hasSavedResumeInput = inputMode === 'resume' && resumes.length > 0
+  const resumeSurfaceHeightClass = hasSavedResumeInput && !compactPublicUploadCard
+    ? 'min-h-0'
+    : isMatchMode
+      ? (publicMode ? 'min-h-[400px]' : 'min-h-[480px]')
+      : compactPublicUploadCard
+        ? 'min-h-[520px]'
+        : publicMode
+          ? 'h-full'
+          : 'min-h-[360px]'
+  const resumeInputHeightClass = hasSavedResumeInput && !compactPublicUploadCard
+    ? 'h-auto flex-none'
+    : `${compactPublicUploadCard ? 'min-h-[380px]' : publicMode ? 'h-auto' : 'min-h-[280px]'} flex-1`
+
   return (
-    <div className={publicMode ? "space-y-6" : "max-w-7xl mx-auto space-y-8"}>
+    <div className={publicMode ? "mx-auto w-full max-w-7xl space-y-6" : "mx-auto w-full max-w-7xl space-y-8"}>
       {showOptimizeModal && (
         <OneClickOptimizeModal
           onClose={() => setShowOptimizeModal(false)}
@@ -2061,17 +2076,15 @@ export default function ATSCheckerClient({
                       ? 'Unlimited basic ATS scans are active.'
                       : `${scansLeft} scans remaining today.`}
                 </p>
-                <Link href="/dashboard/pricing" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                  Upgrade for unlimited <ChevronRight size={12} />
-                </Link>
               </div>
             )
           }
+          className="border-emerald-100 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(236,250,240,0.92))] shadow-[0_28px_70px_rgba(2,109,50,0.10)]"
         />
       )}
 
       {isMatchMode && showIntro && (
-        <div className="flex items-start gap-3 rounded-[1.25rem] border border-amber-200 bg-amber-50 px-5 py-4">
+        <div className="flex items-start gap-3 rounded-[22px] border border-amber-200 bg-amber-50 px-5 py-4">
           <Lightbulb size={16} className="mt-0.5 shrink-0 text-amber-600" strokeWidth={1.75} />
           <p className="text-sm text-amber-900">
             <span className="font-bold">Best results with ATS score 75+.</span>{' '}
@@ -2087,7 +2100,7 @@ export default function ATSCheckerClient({
       <div className={
         isMatchMode
           ? 'grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start'
-          : 'w-full'
+          : 'w-full rounded-[30px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f3fbf6_100%)] p-3 shadow-[0_28px_70px_rgba(2,109,50,0.08)] sm:p-4'
       }>
 
         {/* Your Resume */}
@@ -2103,15 +2116,15 @@ export default function ATSCheckerClient({
               </span>
             </div>
           )}
-          <DashboardSurface variant="default" className={`${isMatchMode ? (publicMode ? 'min-h-[400px]' : 'min-h-[480px]') : compactPublicUploadCard ? 'min-h-[520px]' : publicMode ? 'h-full' : 'min-h-[360px]'} ${compactPublicUploadCard ? 'p-7' : 'p-6'} flex flex-col ${compactPublicUploadCard ? 'gap-6' : 'gap-4'} shadow-[0_12px_44px_rgba(18,24,21,0.06)] border-white/60 backdrop-blur-sm`}>
+          <DashboardSurface variant="default" className={`${resumeSurfaceHeightClass} ${compactPublicUploadCard ? 'p-7' : 'p-6'} flex flex-col ${compactPublicUploadCard ? 'gap-6' : 'gap-4'} border-emerald-100 bg-white shadow-sm shadow-emerald-950/[0.04] backdrop-blur-sm`}>
             {/* Mode toggle */}
             {resumes.length > 0 && (
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setInputMode('resume')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${inputMode === 'resume'
-                      ? 'bg-primary-container/30 border-2 border-primary/30'
-                      : 'bg-surface-container-low border-2 border-transparent hover:border-primary/20'
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 p-4 transition-all ${inputMode === 'resume'
+                      ? 'border-primary/30 bg-primary-container/30 shadow-sm'
+                      : 'border-transparent bg-emerald-50/50 hover:border-primary/20 hover:bg-white'
                     }`}
                 >
                   <FileText
@@ -2128,9 +2141,9 @@ export default function ATSCheckerClient({
                   onClick={() => {
                     setInputMode('upload')
                   }}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all ${inputMode === 'upload'
-                      ? 'bg-primary-container/30 border-2 border-primary/30'
-                      : 'border-2 border-dashed border-outline-variant hover:border-primary/40 hover:bg-primary-container/10'
+                  className={`flex flex-col items-center justify-center rounded-2xl border-2 p-4 transition-all ${inputMode === 'upload'
+                      ? 'border-primary/30 bg-primary-container/30 shadow-sm'
+                      : 'border-dashed border-emerald-200 bg-white hover:border-primary/40 hover:bg-primary-container/10'
                     }`}
                 >
                   <Upload
@@ -2147,22 +2160,22 @@ export default function ATSCheckerClient({
             )}
 
             {/* Input area */}
-            <div className={`relative flex ${compactPublicUploadCard ? 'min-h-[380px]' : publicMode ? 'h-auto' : 'min-h-[280px]'} flex-1 flex-col`}>
+            <div className={`relative flex ${resumeInputHeightClass} flex-col`}>
               {inputMode === 'resume' && resumes.length > 0 ? (
-                <div className="flex min-h-[280px] flex-1 flex-col rounded-xl border border-black/6 bg-[linear-gradient(180deg,rgba(244,248,245,0.72),rgba(255,255,255,0.92))] p-4">
+                <div className="flex flex-col rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,rgba(244,248,245,0.72),rgba(255,255,255,0.92))] p-4 shadow-sm shadow-emerald-950/[0.03]">
                   <select
                     value={selectedResumeId}
                     onChange={e => {
                       setSelectedResumeId(e.target.value)
                     }}
-                    className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none focus:ring-4 focus:ring-emerald-100"
                   >
                     {resumes.map(r => (
                       <option key={r.id} value={r.id}>{getResumeTitleLabel(r, resumeTitleLabels)}</option>
                     ))}
                   </select>
 
-                  <div className="mt-auto space-y-2 px-1 pt-6">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-emerald-100 bg-white/80 px-4 py-3">
                     <p className="text-xs font-semibold text-on-surface-variant">
                       Using a saved resume from your library.
                     </p>
@@ -2206,29 +2219,29 @@ export default function ATSCheckerClient({
                   <span className="text-xs font-medium text-on-surface-variant">(required)</span>
                 </div>
               </div>
-              <span className="text-[11px] font-semibold text-on-surface-variant bg-surface-container-high px-2.5 py-1 rounded-md">
+              <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                 Target Role
               </span>
             </div>
 
-            <DashboardSurface variant="default" className="min-h-[480px] p-6 flex flex-col gap-5">
-              <div className="flex items-start gap-3 p-3 bg-secondary-container/40 rounded-xl">
-                <Lightbulb size={16} className="text-on-secondary-container mt-0.5 shrink-0" strokeWidth={1.75} />
-                <p className="text-xs text-on-secondary-container leading-snug">
+            <DashboardSurface variant="default" className="flex min-h-[480px] flex-col gap-5 border-emerald-100 bg-white p-6 shadow-sm shadow-emerald-950/[0.04]">
+              <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+                <Lightbulb size={16} className="mt-0.5 shrink-0 text-primary" strokeWidth={1.75} />
+                <p className="text-xs leading-snug text-emerald-900">
                   Pro tip: Paste at least 20 words from the full requirements list so the score can judge real fit instead of just the title.
                 </p>
               </div>
 
-              <div className="flex-1 relative">
+              <div className="relative flex-1">
                 <textarea
                   value={jobDescription}
                   onChange={e => setJobDescription(e.target.value)}
-                  placeholder="Paste the job title and full description here…"
-                  className="w-full h-full min-h-[320px] p-4 bg-surface-container-low border-none rounded-xl text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none placeholder:text-on-surface-variant/50 leading-relaxed"
+                  placeholder="Paste the job title and full description here..."
+                  className="h-full min-h-[320px] w-full resize-none rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbf8_100%)] p-4 text-sm leading-relaxed text-slate-900 outline-none placeholder:text-slate-400 focus:ring-4 focus:ring-emerald-100"
                 />
                 <div className="absolute bottom-3 right-3">
                   {jobWordCount > 0 && (
-                    <span className="text-[10px] font-bold text-on-surface-variant bg-white/80 backdrop-blur px-2 py-1 rounded-md">
+                    <span className="rounded-full border border-emerald-100 bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm backdrop-blur">
                       {jobWordCount} words
                     </span>
                   )}
@@ -2259,11 +2272,29 @@ export default function ATSCheckerClient({
         </div>
       )}
 
+      {/* ── Pre-scan placeholder ─────────────────────────────────────────────── */}
+      {!isScanning && !scanResult && showIntro && !isMatchMode && (
+        <DashboardSurface variant="subtle" className="flex flex-col items-center justify-center border-emerald-100 bg-white px-6 py-12 text-center shadow-sm shadow-emerald-950/[0.04]">
+          <Image
+            src="/empty-ats-scans.png"
+            alt="A resume being scanned by a magnifying glass"
+            width={176}
+            height={176}
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            className="mb-5 h-40 w-40 object-contain sm:h-44 sm:w-44"
+          />
+          <h3 className="text-base font-bold text-slate-950">Your ATS results will appear here</h3>
+          <p className="mt-1 max-w-sm text-sm text-slate-500">
+            Upload a resume and run a scan to see your score, keyword gaps, and the highest-impact fixes.
+          </p>
+        </DashboardSurface>
+      )}
+
       {/* ── Results ──────────────────────────────────────────────────────────── */}
       {scanResult && (
         <div ref={resultsRef} className="scroll-mt-24 space-y-5">
           {optimiseResult && (
-            <DashboardSurface variant="default" className="p-2">
+            <DashboardSurface variant="default" className="border-emerald-100 bg-white p-2 shadow-sm shadow-emerald-950/[0.04]">
               <div className="grid gap-2 sm:grid-cols-2">
                 {(['results', 'optimised'] as const).map(tab => {
                   const selected = activeTab === tab
@@ -2286,14 +2317,14 @@ export default function ATSCheckerClient({
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`group rounded-[1.2rem] border px-4 py-3 text-left transition-all ${selected
-                          ? 'border-zinc-950 bg-zinc-950 text-white shadow-[0_18px_38px_rgba(17,24,39,0.18)]'
-                          : 'border-black/8 bg-white/80 text-on-surface hover:-translate-y-0.5 hover:bg-white'
+                      className={`group rounded-[22px] border px-4 py-3 text-left transition-all ${selected
+                          ? 'border-emerald-600 bg-primary text-white shadow-[0_18px_38px_rgba(2,109,50,0.18)]'
+                          : 'border-emerald-100 bg-white/80 text-slate-900 hover:-translate-y-0.5 hover:bg-emerald-50/45'
                         }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <span className={`flex h-10 w-10 items-center justify-center rounded-full ${selected ? 'bg-white/12 text-white' : 'bg-primary-container/35 text-primary'}`}>
+                          <span className={`flex h-10 w-10 items-center justify-center rounded-2xl ${selected ? 'bg-white/12 text-white' : 'bg-primary-container/35 text-primary'}`}>
                             {tab === 'results' ? <FileText size={18} strokeWidth={1.8} /> : <Sparkles size={18} strokeWidth={1.8} />}
                           </span>
                           <div>
@@ -2322,9 +2353,9 @@ export default function ATSCheckerClient({
           )}
 
           {activeTab === 'results' && (
-            <div className={publicMode ? 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]' : 'grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]'}>
+            <div className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
               <div className="space-y-5">
-                <DashboardSurface variant="default" className="border-white !bg-white !bg-none p-5 shadow-[0_24px_60px_rgba(25,28,29,0.08)] sm:p-6">
+                <DashboardSurface variant="default" className="border-emerald-100 !bg-white !bg-none p-5 shadow-[0_24px_60px_rgba(2,109,50,0.08)] sm:p-6">
                   <div className="space-y-6">
                     <div className="space-y-5">
                       <h2 className="text-[1.75rem] font-black tracking-tight text-on-background">{resultsTitle}</h2>
@@ -2342,7 +2373,7 @@ export default function ATSCheckerClient({
                       </div>
 
                       {isMatchMode && (
-                        <div className="flex-1 space-y-3.5 rounded-2xl border border-black/5 bg-zinc-50/50 p-4">
+                        <div className="flex-1 space-y-3.5 rounded-[22px] border border-emerald-100 bg-emerald-50/45 p-4">
                           <div className="flex items-center gap-2 mb-1">
                             <BarChart3 size={13} className="text-primary" />
                             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Alignment Heatmap</p>
@@ -2351,30 +2382,30 @@ export default function ATSCheckerClient({
                           <div className="space-y-2.5">
                             <div className="space-y-1">
                               <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                                <span className="text-zinc-500">Keyword Match</span>
+                                <span className="text-slate-500">Keyword Match</span>
                                 <span className="text-primary">{scanResult.score}%</span>
                               </div>
-                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
                                 <div className="h-full bg-primary" style={{ width: `${scanResult.score}%` }} />
                               </div>
                             </div>
 
                             <div className="space-y-1">
                               <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                                <span className="text-zinc-500">Technical Depth</span>
+                                <span className="text-slate-500">Technical Depth</span>
                                 <span className="text-amber-600">68%</span>
                               </div>
-                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
                                 <div className="h-full bg-amber-500" style={{ width: '68%' }} />
                               </div>
                             </div>
 
                             <div className="space-y-1">
                               <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                                <span className="text-zinc-500">Structure</span>
+                                <span className="text-slate-500">Structure</span>
                                 <span className="text-emerald-600">94%</span>
                               </div>
-                              <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white">
                                 <div className="h-full bg-emerald-500" style={{ width: '94%' }} />
                               </div>
                             </div>
@@ -2414,7 +2445,7 @@ export default function ATSCheckerClient({
                       </div>
                     </div>
 
-                    <div className="border-t border-black/6 pt-5">
+                    <div className="border-t border-emerald-100 pt-5">
                       <p className="text-lg font-bold tracking-tight text-on-background">{reviewHeading}</p>
                       <p className="mt-2 text-sm leading-6 text-on-surface-variant">
                         {reviewDescription}
@@ -2423,9 +2454,9 @@ export default function ATSCheckerClient({
                         {getReviewSections(scanResult).map(section => (
                           <div
                             key={section.key}
-                            className={`flex items-center justify-between rounded-[1.1rem] px-4 py-3 ${section.count > 0
-                                ? 'bg-red-50 text-red-700'
-                                : 'bg-emerald-50 text-emerald-700'
+                            className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${section.count > 0
+                                ? 'border-red-100 bg-red-50 text-red-700'
+                                : 'border-emerald-100 bg-emerald-50 text-emerald-700'
                               }`}
                           >
                             <div className="flex items-center gap-3">
@@ -2459,7 +2490,7 @@ export default function ATSCheckerClient({
                 )}
 
                 {scanResult.scoreBreakdown && (
-                  <DashboardSurface variant="subtle" className="p-5">
+                  <DashboardSurface variant="subtle" className="border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/[0.04]">
                     <div className="space-y-4">
                       <div>
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Score breakdown</p>
@@ -2476,7 +2507,7 @@ export default function ATSCheckerClient({
                   </DashboardSurface>
                 )}
 
-                <DashboardSurface variant="subtle" className="p-5">
+                <DashboardSurface variant="subtle" className="border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/[0.04]">
                   <div className="space-y-4">
                     <div>
                       <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Keyword insights</p>
@@ -2489,7 +2520,7 @@ export default function ATSCheckerClient({
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">{missingKeywordLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.missingKeywords.map(keyword => (
-                            <span key={keyword} className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                            <span key={keyword} className="rounded-full border border-red-100 bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
                               {keyword}
                             </span>
                           ))}
@@ -2502,7 +2533,7 @@ export default function ATSCheckerClient({
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{presentKeywordLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.presentKeywords.map(keyword => (
-                            <span key={keyword} className="rounded-md bg-primary-container/45 px-2.5 py-1 text-xs font-medium text-on-primary-container">
+                            <span key={keyword} className="rounded-full border border-emerald-100 bg-primary-container/45 px-2.5 py-1 text-xs font-semibold text-on-primary-container">
                               {keyword}
                             </span>
                           ))}
@@ -2515,7 +2546,7 @@ export default function ATSCheckerClient({
                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-red-700">{mustHaveLabel}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {scanResult.keywordAnalysis.mustHave.map(keyword => (
-                            <span key={keyword} className="rounded-md bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                            <span key={keyword} className="rounded-full border border-red-100 bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-700">
                               {keyword}
                             </span>
                           ))}
@@ -2528,11 +2559,11 @@ export default function ATSCheckerClient({
               </div>
 
               <div className="space-y-5">
-                <DashboardSurface variant="default" className="overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-black/6 px-5 py-4">
+                <DashboardSurface variant="default" className="overflow-hidden border-emerald-100 bg-white shadow-sm shadow-emerald-950/[0.04]">
+                  <div className="flex items-center justify-between border-b border-emerald-100 px-5 py-4">
                     <div>
-                      <p className="text-sm font-semibold text-on-background">Universal template preview</p>
-                      <p className="text-xs text-on-surface-variant">Banner header selected with Rezoomed green accent. Only the first page is shown here.</p>
+                      <p className="text-sm font-bold text-slate-950">Universal template preview</p>
+                      <p className="text-xs text-slate-500">Banner header selected with Rezoomed green accent. Only the first page is shown here.</p>
                     </div>
                     <span className="rounded-full bg-primary-container/35 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-on-primary-container">
                       Page 1 · Banner · Green
@@ -2541,7 +2572,7 @@ export default function ATSCheckerClient({
 
                   <div
                     ref={previewViewportRef}
-                    className="overflow-hidden bg-[linear-gradient(180deg,#eef4ef_0%,#f7f8f5_100%)] px-2 py-3 sm:px-3 sm:py-4"
+                    className="overflow-hidden bg-[linear-gradient(180deg,#eef8f1_0%,#f7fbf8_100%)] px-2 py-3 sm:px-3 sm:py-4"
                     style={{ height: previewFrameHeight }}
                   >
                     <div className="mx-auto overflow-hidden rounded-[1.6rem] border border-black/8 bg-white shadow-[0_22px_60px_rgba(15,23,42,0.12)]" style={{ width: previewFrameWidth, height: Math.round(ATS_PREVIEW_PAGE_HEIGHT * previewScale) }}>
@@ -2569,7 +2600,7 @@ export default function ATSCheckerClient({
                   <button
                     onClick={handleOptimiseCTA}
                     disabled={isPreparingBuilder}
-                    className="group inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-zinc-950 px-6 py-3.5 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-45"
+                    className="group inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-white shadow-[0_18px_38px_rgba(2,109,50,0.18)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     {isOptimiseCtaBusy ? (
                       <>
@@ -2591,7 +2622,7 @@ export default function ATSCheckerClient({
                   <button
                     onClick={() => { void handleTemplateCustomize() }}
                     disabled={isPreparingBuilder}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-black/8 bg-white px-6 py-3.5 text-sm font-bold text-on-surface transition-all hover:-translate-y-0.5 hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-emerald-100 bg-white px-6 py-3.5 text-sm font-bold text-slate-900 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-emerald-50/55 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     {isPreparingBuilder ? (
                       <>
@@ -2611,7 +2642,7 @@ export default function ATSCheckerClient({
                 </div>
 
                 {(optimiseError || customizeError) && (
-                  <div className="rounded-[1.2rem] bg-red-50 px-5 py-3 text-sm text-red-700">
+                  <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-3 text-sm font-medium text-red-700">
                     {optimiseError ?? customizeError}
                   </div>
                 )}
@@ -2626,10 +2657,10 @@ export default function ATSCheckerClient({
                     </div>
                     <div className="space-y-4">
                       {scanResult.suggestions.map((suggestion, index) => (
-                        <DashboardSurface key={index} variant="subtle" className="p-5">
+                        <DashboardSurface key={index} variant="subtle" className="border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/[0.04]">
                           <div className="space-y-3">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${severityBadge(suggestion.severity)}`}>
+                              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${severityBadge(suggestion.severity)}`}>
                                 {suggestion.severity}
                               </span>
                               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
@@ -2641,7 +2672,7 @@ export default function ATSCheckerClient({
                               <span className="font-semibold text-primary">Fix: </span>{suggestion.fix}
                             </p>
                             {suggestion.example && (
-                              <div className="rounded-[1rem] bg-white px-4 py-3 text-sm italic leading-6 text-on-surface-variant shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]">
+                              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/45 px-4 py-3 text-sm italic leading-6 text-slate-600">
                                 {suggestion.example}
                               </div>
                             )}
@@ -2653,7 +2684,7 @@ export default function ATSCheckerClient({
                 )}
 
                 {(scanResult.formattingIssues?.length || scanResult.industryInsight) && (
-                  <DashboardSurface variant="subtle" className="p-5">
+                  <DashboardSurface variant="subtle" className="border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/[0.04]">
                     <div className="space-y-4">
                       {scanResult.formattingIssues && scanResult.formattingIssues.length > 0 && (
                         <div className="space-y-2.5">
@@ -2670,7 +2701,7 @@ export default function ATSCheckerClient({
                       )}
 
                       {scanResult.industryInsight && (
-                        <div className="rounded-[1.2rem] bg-primary-container/25 px-4 py-4">
+                        <div className="rounded-[22px] border border-emerald-100 bg-primary-container/25 px-4 py-4">
                           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-primary-container">{insightHeading}</p>
                           <p className="mt-2 text-sm leading-7 text-on-surface">{scanResult.industryInsight}</p>
                         </div>

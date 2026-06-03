@@ -70,6 +70,63 @@ function makeEmptyItem(sectionId: ComplexSectionId): ComplexSectionItem {
   return { company: '', title: '', location: '', startDate: '', endDate: '', bullets: [], bulletVisibility: [] }
 }
 
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
+
+function hasMeaningfulItemData(item: ComplexSectionItem, sectionId: ComplexSectionId): boolean {
+  if (sectionId.startsWith('custom_') || sectionId === 'experience') {
+    const experienceItem = item as ExperienceItem
+    return (
+      hasText(experienceItem.company) ||
+      hasText(experienceItem.title) ||
+      hasText(experienceItem.location) ||
+      hasText(experienceItem.startDate) ||
+      hasText(experienceItem.endDate) ||
+      hasText(experienceItem.summary) ||
+      hasText(experienceItem.url) ||
+      experienceItem.bullets.some(hasText)
+    )
+  }
+
+  if (sectionId === 'education') {
+    const educationItem = item as EducationItem
+    return (
+      hasText(educationItem.institution) ||
+      hasText(educationItem.degree) ||
+      hasText(educationItem.field) ||
+      hasText(educationItem.startDate) ||
+      hasText(educationItem.endDate) ||
+      hasText(educationItem.graduationDate) ||
+      hasText(educationItem.gpa) ||
+      hasText(educationItem.url)
+    )
+  }
+
+  if (sectionId === 'projects') {
+    const projectItem = item as ProjectItem
+    return (
+      hasText(projectItem.name) ||
+      hasText(projectItem.description) ||
+      hasText(projectItem.url) ||
+      projectItem.bullets?.some(hasText) === true ||
+      projectItem.technologies.some(hasText)
+    )
+  }
+
+  if (sectionId === 'certifications') {
+    const certificationItem = item as CertificationItem
+    return (
+      hasText(certificationItem.name) ||
+      hasText(certificationItem.issuer) ||
+      hasText(certificationItem.date) ||
+      hasText(certificationItem.url)
+    )
+  }
+
+  return false
+}
+
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -97,37 +154,51 @@ function SortableItemCard({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="mx-3 my-2 bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div ref={setNodeRef} style={style} className={`mx-3 my-2 overflow-hidden rounded-[1.1rem] border bg-white/95 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all ${
+      isVisible
+        ? 'border-zinc-200 hover:border-emerald-200 hover:shadow-[0_18px_36px_rgba(16,185,129,0.09)]'
+        : 'border-zinc-100 bg-zinc-50/80'
+    }`}>
       {isDeleting ? (
-        <div className="px-4 py-3 flex items-center gap-3">
-          <span className="flex-1 text-sm text-gray-700">Delete this entry?</span>
-          <button onClick={onCancelDelete} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={onConfirmDelete} className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">Delete</button>
+        <div className="flex items-center gap-3 bg-rose-50 px-4 py-3">
+          <span className="flex-1 text-sm font-semibold text-rose-950">Delete this entry?</span>
+          <button onClick={onCancelDelete} className="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 transition-colors hover:bg-rose-100">Cancel</button>
+          <button onClick={onConfirmDelete} className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] transition-colors hover:bg-red-600">Delete</button>
         </div>
       ) : (
         <>
-          <div className="flex items-center px-4 py-3 gap-2">
-            <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 shrink-0" tabIndex={-1}>
+          <div className="flex items-center gap-3 px-4 py-3.5">
+            <button {...attributes} {...listeners} className="flex h-9 w-6 shrink-0 cursor-grab items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 active:cursor-grabbing" tabIndex={-1}>
               <GripVertical size={16} />
             </button>
-            <div className="flex-1 min-w-0">
-              <div className={`text-sm font-medium text-gray-800 truncate ${!isVisible ? 'opacity-50' : ''}`}>{label}</div>
-              {sublabel && <div className="text-xs text-gray-400 truncate">{sublabel}</div>}
+            <div className="min-w-0 flex-1">
+              <div className={`truncate text-sm font-bold ${isVisible ? 'text-zinc-900' : 'text-zinc-400'}`}>{label}</div>
+              {sublabel && <div className={`mt-0.5 truncate text-xs font-medium ${isVisible ? 'text-zinc-500' : 'text-zinc-300'}`}>{sublabel}</div>}
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <span className={`h-1.5 w-1.5 rounded-full ${isVisible ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-zinc-400">
+                  {isVisible ? 'Visible' : 'Hidden'}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={onToggleVisibility} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors" title={isVisible ? 'Hide' : 'Show'}>
-                {isVisible ? <Eye size={15} className="text-gray-500" /> : <EyeOff size={15} className="text-gray-300" />}
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button onClick={onToggleVisibility} className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                isVisible
+                  ? 'bg-zinc-100 text-zinc-500 hover:bg-emerald-50 hover:text-emerald-700'
+                  : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+              }`} title={isVisible ? 'Hide' : 'Show'}>
+                {isVisible ? <Eye size={15} /> : <EyeOff size={15} />}
               </button>
-              <button onClick={onDelete} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors">
-                <Trash2 size={15} className="text-gray-500 hover:text-red-500" />
+              <button onClick={onDelete} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-500">
+                <Trash2 size={15} />
               </button>
-              <button onClick={onEdit} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-                <ChevronDown size={15} className="text-gray-500" />
+              <button onClick={onEdit} className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white">
+                <ChevronDown size={15} />
               </button>
             </div>
           </div>
           {!isVisible && (
-            <div className="px-4 pb-2 text-xs text-gray-400 italic">Hidden from resume</div>
+            <div className="border-t border-zinc-100 bg-zinc-50/80 px-4 py-2 text-xs font-semibold text-zinc-400">Hidden from resume output</div>
           )}
         </>
       )}
@@ -147,8 +218,14 @@ export default function SubItemList({
   onItemDelete,
   onItemEditorOpen,
 }: Props) {
+  const items = getItems(resumeData, sectionId)
   const initialFocusIndex = focusPath ? getItemIndexFromFocusPath(sectionId, focusPath) : null
-  const [editingIndex, setEditingIndex] = useState<number | null>(initialFocusIndex)
+  const [draftItem, setDraftItem] = useState<ComplexSectionItem | null>(() =>
+    initialFocusIndex !== null && initialFocusIndex === items.length ? makeEmptyItem(sectionId) : null
+  )
+  const [editingIndex, setEditingIndex] = useState<number | null>(() =>
+    initialFocusIndex !== null && initialFocusIndex <= items.length ? initialFocusIndex : null
+  )
   const [prevFocusPath, setPrevFocusPath] = useState(focusPath)
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -157,7 +234,12 @@ export default function SubItemList({
     setPrevFocusPath(focusPath)
     if (focusPath && focusPath.startsWith(`${sectionId}.`)) {
       const index = getItemIndexFromFocusPath(sectionId, focusPath)
-      if (index !== null) {
+      if (index !== null && index <= items.length) {
+        if (index === items.length) {
+          setDraftItem(current => current ?? makeEmptyItem(sectionId))
+        } else {
+          setDraftItem(null)
+        }
         setEditingIndex(index)
       }
     }
@@ -172,15 +254,20 @@ export default function SubItemList({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const items = getItems(resumeData, sectionId)
   const itemIds = items.map((_, i) => `${sectionId}-${i}`)
   const itemVisibility = visibility.items[sectionId] || []
-  const effectiveEditingIndex = editingIndex !== null && editingIndex < items.length ? editingIndex : null
+  const draftIndex = draftItem ? items.length : null
+  const effectiveEditingIndex =
+    editingIndex !== null && (editingIndex < items.length || editingIndex === draftIndex)
+      ? editingIndex
+      : null
+  const isEditingDraftItem = draftIndex !== null && effectiveEditingIndex === draftIndex
+  const editableItemCount = items.length + (draftItem ? 1 : 0)
 
   const focusIndex = focusPath ? getItemIndexFromFocusPath(sectionId, focusPath) : null
 
   useFocusFieldPath({
-    focusPath: (editingIndex !== null && editingIndex === focusIndex) ? focusPath : null,
+    focusPath: (effectiveEditingIndex !== null && effectiveEditingIndex === focusIndex) ? focusPath : null,
     rootRef,
     onHandled: onFocusHandled
   })
@@ -222,15 +309,19 @@ export default function SubItemList({
   }
 
   function addItem() {
-    const newItem = makeEmptyItem(sectionId)
-    updateItems([...items, newItem] as typeof items)
-    onItemAdd?.(sectionId)
-    // Set editing to the new item
+    setDraftItem(current => current ?? makeEmptyItem(sectionId))
     setEditingIndex(items.length)
     onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${items.length}`)
   }
 
   function confirmDelete(index: number) {
+    if (draftIndex !== null && index === draftIndex) {
+      setDraftItem(null)
+      setEditingIndex(null)
+      setDeletingIndex(null)
+      return
+    }
+
     const newItems = items.filter((_, i) => i !== index) as typeof items
     const newVis = itemVisibility.filter((_, i) => i !== index)
     updateItems(newItems)
@@ -244,6 +335,19 @@ export default function SubItemList({
   }
 
   function updateItem(index: number, updated: ExperienceItem | EducationItem | ProjectItem | CertificationItem) {
+    if (draftIndex !== null && index === draftIndex) {
+      if (!hasMeaningfulItemData(updated, sectionId)) {
+        setDraftItem(updated)
+        return
+      }
+
+      updateItems([...items, updated] as typeof items)
+      setDraftItem(null)
+      setEditingIndex(items.length)
+      onItemAdd?.(sectionId)
+      return
+    }
+
     const newItems = [...items]
     newItems[index] = updated
     updateItems(newItems as typeof items)
@@ -253,7 +357,7 @@ export default function SubItemList({
 
   if (effectiveEditingIndex === null) {
     return (
-      <div className="pb-3">
+      <div className="bg-gradient-to-b from-emerald-50/30 to-white pb-4 pt-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
             {items.map((item, i) => (
@@ -279,7 +383,7 @@ export default function SubItemList({
 
         <button
           onClick={addItem}
-          className="mx-3 w-[calc(100%-1.5rem)] border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center gap-1.5"
+          className="mx-3 mt-3 flex w-[calc(100%-1.5rem)] items-center justify-center gap-2 rounded-[1rem] border border-dashed border-emerald-200 bg-white/80 py-3 text-sm font-bold text-emerald-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 active:scale-[0.99]"
         >
           <Plus size={14} /> Add entry
         </button>
@@ -289,81 +393,87 @@ export default function SubItemList({
 
   // ── EDIT VIEW ────────────────────────────────────────────────────────────────
 
-  const item = items[effectiveEditingIndex]
+  const item = (isEditingDraftItem ? draftItem : items[effectiveEditingIndex]) as ComplexSectionItem
 
   return (
-    <div>
+    <div className="bg-gradient-to-b from-emerald-50/30 to-white">
       {/* Navigation bar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-emerald-100 bg-white/92 px-4 py-3 shadow-[0_8px_22px_rgba(15,23,42,0.04)] backdrop-blur">
         <div
-          className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-gray-50 p-1 shadow-sm"
-          aria-label={`Entry ${effectiveEditingIndex + 1} of ${items.length}`}
+          className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 p-1 shadow-sm"
+          aria-label={`Entry ${effectiveEditingIndex + 1} of ${editableItemCount}`}
         >
           <button
             onClick={() => {
               const nextIndex = effectiveEditingIndex > 0 ? effectiveEditingIndex - 1 : effectiveEditingIndex
+              if (isEditingDraftItem) setDraftItem(null)
               setEditingIndex(nextIndex)
               onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
             disabled={effectiveEditingIndex === 0}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:border-gray-400 hover:bg-gray-100 disabled:border-transparent disabled:bg-transparent disabled:text-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-zinc-300 disabled:shadow-none"
             aria-label="Previous entry"
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <span className="min-w-[52px] px-2 text-center text-sm font-semibold tabular-nums text-gray-700">
-            {effectiveEditingIndex + 1} / {items.length}
+          <span className="min-w-[52px] px-2 text-center text-sm font-black tabular-nums text-zinc-700">
+            {effectiveEditingIndex + 1} / {editableItemCount}
           </span>
           <button
             onClick={() => {
-              const nextIndex = effectiveEditingIndex < items.length - 1 ? effectiveEditingIndex + 1 : effectiveEditingIndex
+              const nextIndex = effectiveEditingIndex < editableItemCount - 1 ? effectiveEditingIndex + 1 : effectiveEditingIndex
               setEditingIndex(nextIndex)
               onItemEditorOpen?.(sectionId, `${getItemPathPrefix(sectionId)}.${nextIndex}`)
             }}
-            disabled={effectiveEditingIndex === items.length - 1}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm transition-colors hover:border-gray-400 hover:bg-gray-100 disabled:border-transparent disabled:bg-transparent disabled:text-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
+            disabled={effectiveEditingIndex === editableItemCount - 1}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-700 shadow-sm transition-colors hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-transparent disabled:text-zinc-300 disabled:shadow-none"
             aria-label="Next entry"
           >
             <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Hide/show the CURRENT sub-item without leaving the editor view.
               Mirror of the eye icon on the list-view card so users don't have
               to bounce back to the list to toggle visibility. */}
-          <button
-            onClick={() => toggleItemVisibility(effectiveEditingIndex)}
-            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
-            title={itemVisibility[effectiveEditingIndex] !== false ? 'Hide this entry' : 'Show this entry'}
-            aria-label={itemVisibility[effectiveEditingIndex] !== false ? 'Hide entry' : 'Show entry'}
-          >
-            {itemVisibility[effectiveEditingIndex] !== false ? (
-              <Eye size={14} className="text-gray-500" />
-            ) : (
-              <EyeOff size={14} className="text-gray-400" />
-            )}
-          </button>
+          {!isEditingDraftItem && (
+            <button
+              onClick={() => toggleItemVisibility(effectiveEditingIndex)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              title={itemVisibility[effectiveEditingIndex] !== false ? 'Hide this entry' : 'Show this entry'}
+              aria-label={itemVisibility[effectiveEditingIndex] !== false ? 'Hide entry' : 'Show entry'}
+            >
+              {itemVisibility[effectiveEditingIndex] !== false ? (
+                <Eye size={14} />
+              ) : (
+                <EyeOff size={14} />
+              )}
+            </button>
+          )}
           {/* Delete the CURRENT sub-item. Reuses the existing confirm flow so
               an accidental tap doesn't nuke an entry. */}
           <button
             onClick={() => setDeletingIndex(effectiveEditingIndex)}
-            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-500"
             title="Delete this entry"
             aria-label="Delete entry"
           >
-            <Trash2 size={14} className="text-gray-500 hover:text-red-500" />
+            <Trash2 size={14} />
           </button>
           <button
             onClick={addItem}
-            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 transition-colors hover:bg-emerald-600 hover:text-white"
             title="Add new entry"
             aria-label="Add entry"
           >
-            <Plus size={15} className="text-gray-500" />
+            <Plus size={15} />
           </button>
           <button
-            onClick={() => setEditingIndex(null)}
-            className="px-3 py-1.5 bg-gray-900 text-white rounded-full text-xs font-medium hover:bg-gray-800"
+            onClick={() => {
+              if (isEditingDraftItem) setDraftItem(null)
+              setEditingIndex(null)
+            }}
+            className="rounded-full bg-zinc-950 px-4 py-2 text-xs font-bold text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)] transition-colors hover:bg-zinc-800"
           >
             Done
           </button>
@@ -372,17 +482,17 @@ export default function SubItemList({
 
       {/* Inline delete confirm for the current sub-item (mirrors list-view) */}
       {deletingIndex === effectiveEditingIndex && (
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 bg-rose-50">
-          <span className="flex-1 text-sm text-gray-700">Delete this entry?</span>
+        <div className="flex items-center gap-3 border-b border-rose-100 bg-rose-50 px-4 py-3">
+          <span className="flex-1 text-sm font-semibold text-rose-950">Delete this entry?</span>
           <button
             onClick={() => setDeletingIndex(null)}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-white"
+            className="rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-bold text-rose-700 hover:bg-rose-100"
           >
             Cancel
           </button>
           <button
             onClick={() => confirmDelete(effectiveEditingIndex)}
-            className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600"
+            className="rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-[0_10px_20px_rgba(239,68,68,0.2)] hover:bg-red-600"
           >
             Delete
           </button>

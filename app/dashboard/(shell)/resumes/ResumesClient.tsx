@@ -97,6 +97,8 @@ export default function ResumesClient({
       {resumes.length === 0 ? (
         <EmptyState
           icon={FileText}
+          image="/empty-resumes.png"
+          imageAlt="An open folder with a blank resume page"
           title="No resumes yet"
           description={`Upload your first resume to get started. We support PDF and DOCX files up to ${MAX_RESUME_UPLOAD_LABEL}.`}
         />

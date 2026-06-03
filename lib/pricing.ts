@@ -369,7 +369,7 @@ export const FREE_PLAN = {
     'Match Score against any job description',
     'AI-generated cover letters',
     'Unlimited resumes',
-    'AI - insights (Claude Opus)',
+    'AI - insights (Claude)',
     'Tailor Mode rewrites',
     'Editable DOCX exports',
   ],
@@ -446,7 +446,7 @@ export const PRO_PLAN = {
     'Advanced ATS analysis',
     'Match Score against any job description',
     'AI-generated cover letters',
-    'AI - insights (Claude Opus)',
+    'AI - insights (Claude)',
     'Tailor Mode rewrites',
     'Unlimited saved resumes',
     'PDF + editable DOCX exports',
@@ -792,6 +792,9 @@ export const PROMOTIONS: PromoConfig[] = [
     endDate: undefined,
     isExitIntent: false,
     isBanner: false,
+    // Featured promo: drives the top ribbon + exit-intent offer. The price is NOT
+    // pre-applied on the cards (ProUpgradeExperience starts with no promo) — the
+    // discount only takes effect once JOBS50 is entered or arrives via ?promo=JOBS50.
     isAutoApply: true,
     exitIntentTimerSeconds: 600,
     bannerBgColor: undefined,

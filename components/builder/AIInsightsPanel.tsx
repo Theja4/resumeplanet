@@ -329,14 +329,14 @@ function buildResumeText(data: ResumeData): string {
   return normalizeResumeSignature(parts.join('\n'))
 }
 
-const ANALYSIS_STEPS: { label: string; color: string; dimColor: string }[] = [
-  { label: 'Parsing resume structure',          color: '#60a5fa', dimColor: '#172554' },
-  { label: 'Scanning action verbs & strength',  color: '#34d399', dimColor: '#022c22' },
-  { label: 'Measuring keyword density',         color: '#a78bfa', dimColor: '#2e1065' },
-  { label: 'Evaluating ATS compatibility',      color: '#fbbf24', dimColor: '#422006' },
-  { label: 'Reviewing section order & gaps',    color: '#22d3ee', dimColor: '#082f49' },
-  { label: 'Identifying missing metrics',       color: '#f87171', dimColor: '#450a0a' },
-  { label: 'Compiling improvement suggestions', color: '#4ade80', dimColor: '#052e16' },
+const ANALYSIS_STEPS: { label: string; color: string }[] = [
+  { label: 'Parsing resume structure', color: '#60a5fa' },
+  { label: 'Scanning action verbs & strength', color: '#34d399' },
+  { label: 'Measuring keyword density', color: '#a78bfa' },
+  { label: 'Evaluating ATS compatibility', color: '#fbbf24' },
+  { label: 'Reviewing section order & gaps', color: '#22d3ee' },
+  { label: 'Identifying missing metrics', color: '#f87171' },
+  { label: 'Compiling improvement suggestions', color: '#4ade80' },
 ]
 
 const STEP_DURATION_MS = 8571 // ~60s total across 7 steps
@@ -397,46 +397,44 @@ function AnalysisLoader({ apiDone, onFinished }: { apiDone: boolean; onFinished:
   const fastForwarding = apiDone && !allDone
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900 overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-[linear-gradient(180deg,#f1fbf4_0%,#ffffff_42%,#f8faf9_100%)]">
 
       {/* Top hero section */}
-      <div className="flex flex-col items-center justify-center pt-10 pb-6 px-6">
-        {/* Orb */}
-        <div className="relative mb-5">
+      <div className="px-5 pb-5 pt-6">
+        <div className="relative overflow-hidden rounded-[24px] border border-emerald-100 bg-white p-5 text-center shadow-sm shadow-emerald-950/[0.04]">
+        {/* Scanner mark */}
+        <div className="relative mx-auto mb-5 w-fit">
           <span
-            className="absolute inset-0 rounded-full animate-ping"
+            className="absolute inset-0 animate-ping rounded-2xl"
             style={{ backgroundColor: `${activeColor}25`, transition: 'background-color 1s' }}
           />
           <span
-            className="absolute inset-[-10px] rounded-full opacity-20 blur-xl"
-            style={{ backgroundColor: activeColor, transition: 'background-color 1s' }}
-          />
-          <span
-            className="relative flex items-center justify-center w-16 h-16 rounded-full"
-            style={{ backgroundColor: `${activeColor}18`, transition: 'background-color 1s', border: `1.5px solid ${activeColor}40` }}
+            className="relative flex h-16 w-16 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: `${activeColor}14`, transition: 'background-color 1s', border: `1.5px solid ${activeColor}35` }}
           >
             <Sparkles size={24} style={{ color: activeColor, transition: 'color 1s' }} />
           </span>
         </div>
 
-        <p className="text-base font-bold text-white mb-1">
+        <p className="mb-1 text-base font-black tracking-tight text-slate-950">
           {allDone ? 'Analysis Complete' : 'Deep Analysis Running'}
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-zinc-400">
+          <span className="text-[12px] font-medium text-slate-500">
             {allDone ? 'Preparing results' : 'Processing' + '.'.repeat(dots)}
           </span>
           <span
-            className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+            className="rounded-full px-2 py-0.5 text-[11px] font-bold"
             style={{ color: activeColor, backgroundColor: `${activeColor}18`, transition: 'all 1s' }}
           >
             {pct}%
           </span>
         </div>
+        </div>
       </div>
 
       {/* Progress bar */}
-      <div className="mx-6 h-[3px] bg-zinc-800 rounded-full overflow-hidden mb-6">
+      <div className="mx-6 mb-5 h-1.5 overflow-hidden rounded-full bg-emerald-100/70">
         <div
           className="h-full rounded-full"
           style={{
@@ -450,33 +448,33 @@ function AnalysisLoader({ apiDone, onFinished }: { apiDone: boolean; onFinished:
       </div>
 
       {/* Steps list */}
-      <div className="flex-1 px-4 space-y-1 overflow-hidden">
-        {ANALYSIS_STEPS.map(({ label, color, dimColor }, i) => {
+      <div className="flex-1 space-y-2 overflow-hidden px-5">
+        {ANALYSIS_STEPS.map(({ label, color }, i) => {
           const done = i < clampedStep
           const active = i === clampedStep && !allDone
           return (
             <div
               key={label}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+              className="flex items-center gap-3 rounded-2xl border px-3 py-2.5 shadow-sm transition-all"
               style={{
-                backgroundColor: active ? dimColor : 'transparent',
-                borderLeft: active ? `2px solid ${color}` : '2px solid transparent',
+                backgroundColor: active ? `${color}12` : done || allDone ? '#ffffff' : '#f8fafc',
+                borderColor: active ? `${color}35` : done || allDone ? '#d1fae5' : '#e5e7eb',
                 transition: 'all 0.4s ease',
               }}
             >
-              <span className="shrink-0 w-4 flex items-center justify-center">
+              <span className="flex w-5 shrink-0 items-center justify-center">
                 {done || allDone ? (
                   <CheckCircle2 size={14} style={{ color }} />
                 ) : active ? (
                   <Loader2 size={13} className="animate-spin" style={{ color }} />
                 ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-700" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
                 )}
               </span>
               <span
-                className="text-[12px] flex-1"
+                className="flex-1 text-[12px]"
                 style={{
-                  color: done || allDone ? '#3f3f46' : active ? color : '#27272a',
+                  color: done || allDone ? '#334155' : active ? color : '#94a3b8',
                   fontWeight: active ? 600 : 400,
                   transition: 'all 0.4s ease',
                 }}
@@ -497,10 +495,10 @@ function AnalysisLoader({ apiDone, onFinished }: { apiDone: boolean; onFinished:
       </div>
 
       {/* Footer */}
-      <div className="mx-6 mb-6 mt-4 flex items-start gap-2 pt-4 border-t border-zinc-800">
-        <Zap size={12} className="text-amber-400 mt-px shrink-0" />
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          Deep analysis can take <span className="text-amber-400 font-semibold">2–3 minutes</span>. We&apos;re running a thorough ATS audit — worth the wait.
+      <div className="mx-5 mb-5 mt-4 flex items-start gap-2 rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3">
+        <Zap size={12} className="mt-px shrink-0 text-amber-500" />
+        <p className="text-[11px] leading-relaxed text-amber-800">
+          Deep analysis can take <span className="font-semibold">2-3 minutes</span>. We&apos;re running a thorough ATS audit worth the wait.
         </p>
       </div>
     </div>
@@ -531,28 +529,28 @@ function ReviewChangesSection({
     : `${pendingSuggestions.length} suggestion${pendingSuggestions.length !== 1 ? 's' : ''}`
 
   return (
-    <div className="rounded-2xl border border-zinc-100 bg-white overflow-hidden">
+    <div className="overflow-hidden rounded-[24px] border border-emerald-100/80 bg-white shadow-sm shadow-emerald-950/[0.04]">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-zinc-50 transition-colors"
+        className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-emerald-50/55"
       >
-        <div className="w-9 h-9 rounded-lg bg-zinc-100 flex items-center justify-center shrink-0">
-          <Wand2 size={16} className="text-zinc-600" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700">
+          <Wand2 size={16} />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-zinc-900">Review changes</p>
-          <p className="text-xs text-zinc-500 mt-0.5">{summaryText}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-950">Review changes</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">{summaryText}</p>
         </div>
         {isOpen
-          ? <ChevronUp size={16} className="text-zinc-400 shrink-0" />
-          : <ChevronDown size={16} className="text-zinc-400 shrink-0" />
+          ? <ChevronUp size={16} className="shrink-0 text-slate-400" />
+          : <ChevronDown size={16} className="shrink-0 text-slate-400" />
         }
       </button>
 
       {isOpen && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="space-y-3 border-t border-emerald-100/70 bg-emerald-50/30 px-3 pb-4 pt-3">
           {staleSuggestionCount > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
               {staleSuggestionCount} stale — re-optimize to refresh
             </div>
           )}
@@ -929,61 +927,54 @@ export default function AIInsightsPanel({
 
   if (!isPro) {
     return (
-      <div className="relative flex h-full overflow-hidden bg-[linear-gradient(180deg,#026d32_0%,#015128_42%,#012d17_100%)] text-white">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-20 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-[#7bf1a8]/20 blur-3xl animate-pulse" />
-          <div className="absolute top-24 -right-16 h-36 w-36 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute inset-x-6 top-24 h-px bg-gradient-to-r from-transparent via-white/50 to-transparent animate-pulse" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.14),_transparent_44%)]" />
-        </div>
-
-        <div className="relative flex min-h-full flex-1 flex-col justify-between p-5">
-          <div className="inline-flex items-center gap-2 self-start rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/85 shadow-sm backdrop-blur">
+      <div className="flex h-full overflow-hidden bg-[linear-gradient(180deg,#f1fbf4_0%,#ffffff_34%,#f8faf9_100%)] text-slate-900">
+        <div className="flex min-h-full flex-1 flex-col justify-between p-5">
+          <div className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-700 shadow-sm">
             <Lock size={12} />
             Pro Only
           </div>
 
           <div className="mt-4 space-y-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/60">AI Insights</h3>
-            <p className="text-[24px] font-black tracking-tight leading-[1.03] text-white">
-              Tired of applying and <span className="text-[#9df7bf]">never hearing back</span>?
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-700">AI Insights</h3>
+            <p className="text-[24px] font-black leading-[1.03] tracking-tight text-slate-950">
+              Tired of applying and <span className="text-emerald-700">never hearing back</span>?
             </p>
-            <p className="text-sm leading-relaxed text-white/82">
+            <p className="text-sm leading-relaxed text-slate-600">
               Most rejections happen before a human ever sees your resume. A single missing keyword or weak bullet is enough to get filtered out by ATS software.
             </p>
           </div>
 
-          <div className="mt-4 rounded-[1.5rem] border border-white/12 bg-black/18 p-4 shadow-2xl shadow-black/20 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#b7ffd0]">
+          <div className="mt-4 rounded-[24px] border border-emerald-100 bg-white p-4 shadow-sm shadow-emerald-950/[0.04]">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
               <Sparkles size={12} />
               Unlock With Pro
             </div>
             <div className="mt-3 space-y-2.5">
               {LOCKED_STATE_HIGHLIGHTS.map(point => (
                 <div key={point} className="flex items-start gap-2.5">
-                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-[#9df7bf]" />
-                  <p className="text-[12px] leading-relaxed text-white/88">{point}</p>
+                  <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+                  <p className="text-[12px] font-medium leading-relaxed text-slate-700">{point}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 rounded-[1.5rem] border border-white/12 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),rgba(255,255,255,0.04))] p-4 shadow-lg shadow-black/15">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
-              <Wand2 size={12} className="text-[#9df7bf]" />
+          <div className="mt-4 rounded-[24px] border border-emerald-100 bg-[linear-gradient(180deg,#ffffff_0%,#ecfdf3_100%)] p-4 shadow-sm shadow-emerald-950/[0.04]">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+              <Wand2 size={12} />
               The Hard Truth
             </div>
-            <p className="mt-3 text-sm font-bold leading-snug text-white">
+            <p className="mt-3 text-sm font-bold leading-snug text-slate-950">
               75% of resumes are rejected by ATS before a recruiter ever opens them.
             </p>
-            <p className="mt-2 text-[12px] leading-relaxed text-white/78">
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-600">
               If you&apos;re getting ghosted, it&apos;s probably not you — it&apos;s your resume formatting and missing keywords. Pro catches what you can&apos;t see.
             </p>
           </div>
 
-          <div className="mt-4 rounded-[1.35rem] border border-[#9df7bf]/25 bg-[#d9ffe6] px-4 py-3 text-[#014621] shadow-xl shadow-black/10">
+          <div className="mt-4 rounded-[22px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-950 shadow-sm shadow-emerald-950/[0.04]">
             <div className="flex items-start gap-3">
-              <Zap size={15} className="mt-0.5 shrink-0 text-[#026d32]" />
+              <Zap size={15} className="mt-0.5 shrink-0 text-emerald-700" />
               <p className="text-[12px] font-bold leading-relaxed">
                 Every application you send unreviewed is another chance to get ghosted.
               </p>
@@ -993,13 +984,13 @@ export default function AIInsightsPanel({
           <div className="mt-5">
             <Link
               href="/dashboard/pricing"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3.5 text-sm font-black text-[#015128] shadow-2xl shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-[#e8fff0] active:scale-[0.98] animate-[pulse_2.8s_ease-in-out_infinite]"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3.5 text-sm font-black text-white shadow-[0_18px_38px_rgba(2,109,50,0.22)] transition-all hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98]"
             >
               <Unlock size={16} />
               Unlock Insights + Tailor
             </Link>
 
-            <p className="mt-3 text-center text-[11px] font-medium leading-relaxed text-white/65">
+            <p className="mt-3 text-center text-[11px] font-medium leading-relaxed text-slate-500">
               Stop guessing. Start getting callbacks.
             </p>
           </div>
@@ -1019,11 +1010,11 @@ export default function AIInsightsPanel({
 
   if (!hasStarted && !insights) {
     return (
-      <div className="flex flex-col h-full overflow-y-auto rezoomed-thin-scrollbar">
-        <div className="p-6 flex-1 flex flex-col">
+      <div className="flex h-full flex-col overflow-y-auto bg-[linear-gradient(180deg,#f1fbf4_0%,#ffffff_36%,#f8faf9_100%)] rezoomed-thin-scrollbar">
+        <div className="flex flex-1 flex-col p-5">
           {/* Score preview */}
           {previewScore !== null && (
-            <div className="mb-6 flex flex-col items-center">
+            <div className="mb-5 flex flex-col items-center rounded-[26px] border border-emerald-100 bg-white p-5 shadow-sm shadow-emerald-950/[0.04]">
               <div className="relative">
                 <svg width="120" height="120" viewBox="0 0 100 100" className="-rotate-90">
                   <circle cx="50" cy="50" r="38" fill="none" stroke="#e4e4e7" strokeWidth="6" />
@@ -1037,23 +1028,26 @@ export default function AIInsightsPanel({
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-zinc-800 tracking-tighter leading-none">{previewScore}</span>
-                  <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-0.5">/ 100</span>
+                  <span className="text-3xl font-black leading-none tracking-tighter text-slate-950">{previewScore}</span>
+                  <span className="mt-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400">/ 100</span>
                 </div>
               </div>
-              <p className="mt-3 text-sm font-bold text-zinc-700">
+              <p className="mt-3 text-sm font-bold text-slate-800">
                 {previewScore >= 80 ? 'Looking good!' : previewScore >= 60 ? 'Room to improve' : 'Needs work'}
               </p>
               {previewScore < 80 && (
-                <p className="mt-1 text-xs text-zinc-400">AI can likely boost this by 5–15 points</p>
+                <p className="mt-1 text-xs font-medium text-slate-400">AI can likely boost this by 5–15 points</p>
               )}
             </div>
           )}
 
           {/* CTA */}
-          <div className="text-center mb-6">
-            <h3 className="text-lg font-black text-zinc-900 mb-2">Optimize with AI</h3>
-            <p className="text-sm text-zinc-600 leading-relaxed max-w-[280px] mx-auto">
+          <div className="mb-5 rounded-[24px] border border-emerald-100 bg-white p-5 text-center shadow-sm shadow-emerald-950/[0.04]">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+              <Sparkles size={18} />
+            </div>
+            <h3 className="mb-2 text-lg font-black text-slate-950">Optimize with AI</h3>
+            <p className="mx-auto max-w-[280px] text-sm leading-relaxed text-slate-600">
               One click. AI rewrites weak bullets, fixes formatting, and boosts keywords — only safe, verified changes.
             </p>
           </div>
@@ -1061,7 +1055,7 @@ export default function AIInsightsPanel({
           <button
             onClick={handleStartInsightsClick}
             disabled={!resumeData || isLoading}
-            className="w-full py-4 text-white text-base font-bold rounded-2xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-lg hover:shadow-emerald-600/20"
+            className="w-full rounded-2xl py-4 text-base font-bold text-white shadow-[0_18px_38px_rgba(2,109,50,0.22)] transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg hover:shadow-emerald-600/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
           >
             <span className="flex items-center justify-center gap-2">
@@ -1070,21 +1064,21 @@ export default function AIInsightsPanel({
             </span>
           </button>
 
-          <p className="mt-3 text-xs text-zinc-500 text-center">Takes 1–3 minutes. You can undo any change.</p>
+          <p className="mt-3 text-center text-xs font-medium text-slate-500">Takes 1–3 minutes. You can undo any change.</p>
 
           {/* Tailor nudge */}
           <div className="mt-auto pt-6">
             <button
               onClick={onStartTailoring}
               disabled={!resumeData || isLoading}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+              className="flex w-full items-center gap-3 rounded-[22px] border border-emerald-100 bg-white p-4 text-left shadow-sm shadow-emerald-950/[0.04] transition-all hover:border-emerald-200 hover:bg-emerald-50/55 active:scale-[0.98] disabled:opacity-50"
             >
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 flex items-center justify-center shrink-0">
-                <Target size={18} className="text-white" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                <Target size={18} />
               </div>
               <div>
-                <p className="text-sm font-bold text-zinc-900">Tailor for a specific job</p>
-                <p className="text-xs text-zinc-500 mt-0.5">Match keywords to a job description</p>
+                <p className="text-sm font-bold text-slate-950">Tailor for a specific job</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">Match keywords to a job description</p>
               </div>
             </button>
           </div>
@@ -1100,24 +1094,24 @@ export default function AIInsightsPanel({
   const hasRemainingRoadmap = Boolean(liveRoadmap && liveRoadmap.truthfulCeiling > displayScore)
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto rezoomed-thin-scrollbar">
-      <div className="p-6 flex-1">
+    <div className="flex h-full flex-col overflow-y-auto bg-[linear-gradient(180deg,#f1fbf4_0%,#ffffff_32%,#f8faf9_100%)] rezoomed-thin-scrollbar">
+      <div className="flex-1 p-5">
 
         {toastMessage && (
-          <div className="mb-4 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs font-medium text-zinc-600 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="mb-4 animate-in rounded-2xl border border-emerald-100 bg-white px-4 py-3 text-xs font-semibold text-slate-600 shadow-sm shadow-emerald-950/[0.04] fade-in slide-in-from-top-1 duration-200">
             {toastMessage}
           </div>
         )}
 
         {error ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+          <div className="flex flex-col items-center justify-center gap-4 rounded-[24px] border border-red-100 bg-white px-5 py-12 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-500">
               <span className="text-xl">!</span>
             </div>
-            <p className="text-xs text-zinc-500 text-center leading-relaxed">{error}</p>
+            <p className="text-center text-xs leading-relaxed text-slate-500">{error}</p>
             <button
               onClick={() => void fetchInsights(resumeSignature)}
-              className="px-4 py-2 text-xs font-semibold bg-primary-container text-on-primary-container rounded-lg active:scale-95 transition-all"
+              className="rounded-xl bg-primary-container px-4 py-2 text-xs font-bold text-on-primary-container transition-all active:scale-95"
             >
               Retry
             </button>
@@ -1127,12 +1121,12 @@ export default function AIInsightsPanel({
 
             {/* ── Hero: Score + optimization result ── */}
             <div
-              className="relative rounded-3xl p-[1.5px] overflow-hidden"
+              className="relative overflow-hidden rounded-[26px] p-[1.5px] shadow-sm shadow-emerald-950/[0.04]"
               style={{ background: optimizeResult && optimizeResult.appliedCount > 0
                 ? 'linear-gradient(135deg, #026d3280, #22c55e40, #e4e4e7)'
                 : `linear-gradient(135deg, ${scoreColor(displayScore)}80, ${scoreColor(displayScore)}20, #e4e4e7)` }}
             >
-              <div className="relative flex flex-col items-center p-5 bg-white rounded-[calc(1.5rem-1.5px)] overflow-hidden">
+              <div className="relative flex flex-col items-center overflow-hidden rounded-[calc(1.625rem-1.5px)] bg-white p-5">
                 <div
                   className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 rounded-full opacity-10 blur-2xl pointer-events-none"
                   style={{ backgroundColor: scoreColor(displayScore) }}
@@ -1143,7 +1137,7 @@ export default function AIInsightsPanel({
                   <div className="relative z-10 w-full">
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <CheckCircle2 size={18} className="text-emerald-500" />
-                      <span className="text-base font-bold text-zinc-900">
+                      <span className="text-base font-bold text-slate-950">
                         {optimizeResult.appliedCount} improvement{optimizeResult.appliedCount !== 1 ? 's' : ''} applied
                       </span>
                     </div>
@@ -1151,13 +1145,13 @@ export default function AIInsightsPanel({
                     <div className="flex items-center justify-center gap-5">
                       {/* Before */}
                       <div className="text-center">
-                        <p className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-1">Before</p>
-                        <span className="text-4xl font-black text-zinc-300 tracking-tighter">{optimizeResult.scoreBefore}</span>
+                        <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-500">Before</p>
+                        <span className="text-4xl font-black tracking-tighter text-slate-300">{optimizeResult.scoreBefore}</span>
                       </div>
 
                       {/* Arrow + delta */}
                       <div className="flex flex-col items-center gap-1.5">
-                        <div className="w-8 h-[2px] bg-zinc-200 rounded-full" />
+                        <div className="h-[2px] w-8 rounded-full bg-slate-200" />
                         {optimizeResult.scoreAfter > optimizeResult.scoreBefore && (
                           <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
                             +{optimizeResult.scoreAfter - optimizeResult.scoreBefore}
@@ -1175,11 +1169,11 @@ export default function AIInsightsPanel({
                     </div>
 
                     {optimizeResult.skippedCount > 0 && (
-                      <p className="mt-3 text-xs text-zinc-500 text-center">{optimizeResult.skippedCount} unsafe change{optimizeResult.skippedCount !== 1 ? 's' : ''} skipped</p>
+                      <p className="mt-3 text-center text-xs text-slate-500">{optimizeResult.skippedCount} unsafe change{optimizeResult.skippedCount !== 1 ? 's' : ''} skipped</p>
                     )}
 
                     {insights.summary && (
-                      <p className="mt-3 text-sm text-zinc-600 text-center leading-relaxed px-1">{insights.summary}</p>
+                      <p className="mt-3 px-1 text-center text-sm leading-relaxed text-slate-600">{insights.summary}</p>
                     )}
                   </div>
                 ) : (
@@ -1198,15 +1192,15 @@ export default function AIInsightsPanel({
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ top: 0, bottom: 'auto', height: 112 }}>
-                      <span className="text-3xl font-black text-zinc-900 tracking-tighter leading-none">{displayScore}</span>
-                      <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider mt-1">/ 100</span>
+                      <span className="text-3xl font-black leading-none tracking-tighter text-slate-950">{displayScore}</span>
+                      <span className="mt-1 text-xs font-bold uppercase tracking-wider text-slate-500">/ 100</span>
                     </div>
                     <div className="mt-3 flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: scoreColor(displayScore) }} />
-                      <span className="text-sm font-bold text-zinc-800">{displayLabel}</span>
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: scoreColor(displayScore) }} />
+                      <span className="text-sm font-bold text-slate-800">{displayLabel}</span>
                     </div>
                     {insights.summary && (
-                      <p className="mt-3 text-sm text-zinc-600 text-center leading-relaxed px-1">{insights.summary}</p>
+                      <p className="mt-3 px-1 text-center text-sm leading-relaxed text-slate-600">{insights.summary}</p>
                     )}
                   </div>
                 )}
@@ -1214,7 +1208,7 @@ export default function AIInsightsPanel({
                 {/* Chips */}
                 <div className="mt-3 flex items-center gap-2 flex-wrap justify-center relative z-10">
                   {appliedIds.size > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-bold text-emerald-700">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
                       <CheckCircle2 size={12} className="text-emerald-500" />
                       {appliedIds.size} applied
                     </span>
@@ -1226,7 +1220,7 @@ export default function AIInsightsPanel({
                   <button
                     onClick={handleApplyAllWithResult}
                     disabled={isApplyingAll}
-                    className="mt-4 w-full relative z-10 flex items-center justify-center gap-2 py-3 text-white text-sm font-bold rounded-xl
+                    className="relative z-10 mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white shadow-[0_16px_34px_rgba(2,109,50,0.18)]
                       hover:brightness-110 hover:shadow-lg hover:shadow-primary/20
                       active:scale-[0.98] active:brightness-95
                       transition-all duration-150
@@ -1247,14 +1241,14 @@ export default function AIInsightsPanel({
                 <button
                   onClick={handleRescanClick}
                   disabled={isLoading}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-[22px] border border-emerald-200 bg-emerald-50 p-4 text-left shadow-sm shadow-emerald-950/[0.04] transition-all hover:bg-white active:scale-[0.98] disabled:opacity-50"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center shrink-0">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-600">
                     {isLoading ? <Loader2 size={16} className="text-white animate-spin" /> : <RefreshCw size={16} className="text-white" />}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-emerald-800">Re-optimize</p>
-                    <p className="text-xs text-emerald-700 mt-0.5">Resume changed — run AI again</p>
+                    <p className="mt-0.5 text-xs font-medium text-emerald-700">Resume changed — run AI again</p>
                   </div>
                 </button>
               )}
@@ -1263,14 +1257,14 @@ export default function AIInsightsPanel({
               <button
                 onClick={onStartTailoring}
                 disabled={!resumeData || isLoading}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-[0.98] transition-all text-left disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-[22px] border border-emerald-100 bg-white p-4 text-left shadow-sm shadow-emerald-950/[0.04] transition-all hover:border-emerald-200 hover:bg-emerald-50/55 active:scale-[0.98] disabled:opacity-50"
               >
-                <div className="w-9 h-9 rounded-lg bg-zinc-900 flex items-center justify-center shrink-0">
-                  <Target size={16} className="text-white" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                  <Target size={16} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-zinc-900">Tailor for a job</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">Match keywords to a specific posting</p>
+                  <p className="text-sm font-bold text-slate-950">Tailor for a job</p>
+                  <p className="mt-0.5 text-xs font-medium text-slate-500">Match keywords to a specific posting</p>
                 </div>
               </button>
             </div>
@@ -1289,7 +1283,7 @@ export default function AIInsightsPanel({
             )}
 
             {suggestionsWithLiveImpact.length === 0 && (
-              <p className="text-sm text-zinc-500 text-center py-5 leading-relaxed">
+              <p className="rounded-[22px] border border-emerald-100 bg-white px-5 py-6 text-center text-sm leading-relaxed text-slate-500 shadow-sm shadow-emerald-950/[0.04]">
                 {insights.score >= 80 && !hasRemainingRoadmap
                   ? 'No suggestions — your resume looks good!'
                   : 'No safe auto-fixes found. Try editing manually or tailoring for a specific job.'}
@@ -1298,18 +1292,18 @@ export default function AIInsightsPanel({
 
             {/* ── Evidence blockers (subtle) ── */}
             {liveRoadmap && liveRoadmap.evidenceBlockers.length > 0 && (
-              <details className="group">
-                <summary className="flex items-center gap-2 cursor-pointer py-2 text-xs font-bold uppercase tracking-[0.12em] text-zinc-500 hover:text-zinc-700 transition-colors select-none list-none">
+              <details className="group rounded-[22px] border border-amber-100 bg-white p-4 shadow-sm shadow-amber-950/[0.03]">
+                <summary className="flex cursor-pointer list-none items-center gap-2 select-none text-xs font-bold uppercase tracking-[0.12em] text-amber-700 transition-colors hover:text-amber-800">
                   <ShieldAlert size={14} className="text-amber-500" />
                   <span>What AI can&apos;t fix ({liveRoadmap.evidenceBlockers.length})</span>
                   <ChevronDown size={14} className="ml-auto group-open:hidden" />
                   <ChevronUp size={14} className="ml-auto hidden group-open:block" />
                 </summary>
-                <div className="mt-2 space-y-2 pb-2">
+                <div className="mt-3 space-y-2">
                   {liveRoadmap.evidenceBlockers.slice(0, 4).map(action => (
-                    <div key={action.criterionId} className="rounded-xl border border-amber-100 bg-amber-50/40 px-4 py-3">
-                      <p className="text-sm font-semibold text-zinc-800">{action.title}</p>
-                      <p className="text-xs text-zinc-600 mt-1 leading-relaxed">{action.reason}</p>
+                    <div key={action.criterionId} className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-800">{action.title}</p>
+                      <p className="mt-1 text-xs leading-relaxed text-slate-600">{action.reason}</p>
                     </div>
                   ))}
                 </div>

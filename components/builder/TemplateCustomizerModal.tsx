@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowLeft, Building2, Check, Pipette, Search, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { ArrowLeft, Building2, Check, ListChecks, Palette, Pipette, Rows3, Search, ShieldCheck, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import OrganizationLogoMark from '@/components/builder/OrganizationLogoMark'
 import TemplatePresetThumbnail from '@/components/builder/TemplatePresetThumbnail'
 import UniversalTemplate from '@/components/templates/UniversalTemplate'
@@ -111,16 +111,18 @@ const DENSITY_OPTIONS: Array<TemplateOption<UniversalConfig['density']>> = [
 ]
 
 function SectionCard({
+  id,
   title,
   description,
   children,
 }: {
+  id?: string
   title: string
   description: string
   children: ReactNode
 }) {
   return (
-    <section className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-sm">
+    <section id={id} className="scroll-mt-6 rounded-[24px] border border-zinc-200 bg-white p-4 shadow-sm">
       <div className="mb-4">
         <div className="text-sm font-bold uppercase tracking-[0.18em] text-emerald-700">{title}</div>
         <p className="mt-1 text-sm leading-relaxed text-zinc-500">{description}</p>
@@ -161,6 +163,14 @@ function getAccentFingerprintLabel(config: UniversalConfig) {
 function getDensityFingerprintLabel(config: UniversalConfig) {
   return config.density === 'compressed' ? 'Compressed spacing' : 'Relaxed spacing'
 }
+
+const CUSTOMIZE_NAV_ITEMS = [
+  { id: 'structure', label: 'Structure', targetId: 'customize-structure', Icon: Rows3 },
+  { id: 'advanced', label: 'Advanced', targetId: 'customize-advanced', Icon: SlidersHorizontal },
+  { id: 'typography', label: 'Typography', targetId: 'customize-typography', Icon: null },
+  { id: 'details', label: 'Details', targetId: 'customize-details', Icon: ListChecks },
+  { id: 'color', label: 'Color', targetId: 'customize-color', Icon: Palette },
+] as const
 
 export default function TemplateCustomizerModal({
   isOpen,
@@ -236,6 +246,10 @@ export default function TemplateCustomizerModal({
     onClose()
   }
 
+  function handleCustomizeNav(targetId: string) {
+    document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   if (!isOpen) return null
 
   return (
@@ -284,7 +298,7 @@ export default function TemplateCustomizerModal({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 pb-32 pt-6">
+          <div className={`flex-1 overflow-y-auto pb-32 pt-6 ${activeView === 'customize' ? 'px-0' : 'px-6'}`}>
             {activeView === 'presets' ? (
               <div className="space-y-4">
                 <section className="rounded-[24px] border border-zinc-200 bg-white p-4 shadow-sm">
@@ -364,11 +378,44 @@ export default function TemplateCustomizerModal({
                 </div>
               </div>
             ) : (
-              <div className="space-y-5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
-                  <ShieldCheck size={13} />
-                  ATS Friendly Style Only
-                </div>
+              <div className="flex min-h-full gap-3 px-4">
+                <aside className="sticky top-0 h-fit w-[4.25rem] shrink-0 overflow-hidden rounded-[22px] border border-emerald-100 bg-white/90 p-1.5 shadow-[0_16px_38px_rgba(16,185,129,0.12)] ring-1 ring-white">
+                  <nav aria-label="Customize sections" className="flex flex-col gap-1">
+                    {CUSTOMIZE_NAV_ITEMS.map((item) => {
+                      const Icon = item.Icon
+
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleCustomizeNav(item.targetId)}
+                          className="group flex min-h-[4.65rem] flex-col items-center justify-center gap-1.5 rounded-[17px] px-1 text-center text-slate-500 transition-all hover:bg-emerald-50 hover:text-emerald-800"
+                        >
+                          {Icon ? (
+                            <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 transition-all group-hover:bg-emerald-600 group-hover:text-white group-hover:ring-emerald-600">
+                              <Icon size={17} strokeWidth={2.2} />
+                            </span>
+                          ) : (
+                            <span className="font-serif text-[1.65rem] font-bold leading-none tracking-tight text-emerald-700 transition-colors group-hover:text-emerald-900">
+                              A<span className="text-[1.2rem]">a</span>
+                            </span>
+                          )}
+                          <span className="max-w-full text-[10px] font-bold leading-[1.05] tracking-tight">
+                            {item.label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </nav>
+                </aside>
+
+                <div className="min-w-0 flex-1 space-y-5">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                    <ShieldCheck size={13} />
+                    ATS Friendly Style Only
+                  </div>
+
+                  <div id="customize-templates" className="sr-only" aria-hidden="true" />
 
                 {selectedOrganizationPreset && (
                   <SectionCard
@@ -408,6 +455,7 @@ export default function TemplateCustomizerModal({
                 )}
 
                 <SectionCard
+                  id="customize-structure"
                   title="Structure"
                   description="Adjust hierarchy and scanning rhythm without changing the ATS-safe single-column layout."
                 >
@@ -449,6 +497,7 @@ export default function TemplateCustomizerModal({
                 </SectionCard>
 
                 <SectionCard
+                  id="customize-advanced"
                   title="Advanced"
                   description="Power-user options. Defaults are safe for most ATS workflows."
                 >
@@ -491,6 +540,7 @@ export default function TemplateCustomizerModal({
                 </SectionCard>
 
                 <SectionCard
+                  id="customize-typography"
                   title="Typography"
                   description="Control how prominent the header feels and how tightly the page packs content."
                 >
@@ -546,6 +596,7 @@ export default function TemplateCustomizerModal({
                 </SectionCard>
 
                 <SectionCard
+                  id="customize-details"
                   title="Details"
                   description="Polish bullets, skills formatting, and accent color while keeping the page readable."
                 >
@@ -568,7 +619,7 @@ export default function TemplateCustomizerModal({
                       />
                     </div>
 
-                    <div>
+                    <div id="customize-color" className="scroll-mt-6">
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <ControlHeading title="Accent Color" />
                         <span className="text-[11px] font-semibold text-zinc-500">{activeThemeLabel}</span>
@@ -618,6 +669,7 @@ export default function TemplateCustomizerModal({
                     </div>
                   </div>
                 </SectionCard>
+                </div>
               </div>
             )}
           </div>

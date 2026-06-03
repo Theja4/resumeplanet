@@ -80,7 +80,7 @@ function SortableSkillChip({
       <span
         ref={setNodeRef}
         style={style}
-        className="inline-flex max-w-full items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 ring-2 ring-indigo-200"
+        className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm ring-4 ring-emerald-100/80"
       >
         <input
           autoFocus
@@ -99,13 +99,13 @@ function SortableSkillChip({
             }
           }}
           onPointerDown={(event) => event.stopPropagation()}
-          className="min-w-[80px] max-w-[220px] bg-transparent text-xs text-indigo-800 outline-none"
+          className="min-w-[80px] max-w-[220px] bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
         />
         <button
           type="button"
           onMouseDown={(event) => event.preventDefault()}
           onClick={onRemove}
-          className="text-indigo-400 hover:text-indigo-700"
+          className="rounded-full p-0.5 text-emerald-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
           aria-label={`Remove ${skill}`}
         >
           <X size={10} />
@@ -118,13 +118,13 @@ function SortableSkillChip({
     <span
       ref={setNodeRef}
       style={style}
-      className="inline-flex max-w-full items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+      className="inline-flex min-h-8 max-w-full items-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50/80 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-sm shadow-emerald-950/[0.03] transition-colors hover:border-emerald-200 hover:bg-white"
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="cursor-grab text-indigo-300 transition-colors hover:text-indigo-600 active:cursor-grabbing"
+        className="cursor-grab rounded-md text-emerald-300 transition-colors hover:bg-emerald-50 hover:text-emerald-600 active:cursor-grabbing"
         aria-label={`Drag ${skill}`}
       >
         <GripVertical size={11} />
@@ -132,7 +132,7 @@ function SortableSkillChip({
       <button
         type="button"
         onClick={onStartEdit}
-        className="max-w-[220px] truncate text-left hover:text-indigo-900"
+        className="max-w-[220px] truncate text-left transition-colors hover:text-slate-950"
         title="Click to edit"
       >
         {skill}
@@ -140,7 +140,7 @@ function SortableSkillChip({
       <button
         type="button"
         onClick={onRemove}
-        className="text-indigo-400 hover:text-indigo-700"
+        className="rounded-full p-0.5 text-emerald-400 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
         aria-label={`Remove ${skill}`}
       >
         <X size={10} />
@@ -151,10 +151,10 @@ function SortableSkillChip({
 
 function SkillOverlayChip({ skill }: { skill: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 shadow-lg ring-2 ring-indigo-300 cursor-grabbing">
-      <GripVertical size={11} className="text-indigo-400" />
+    <span className="inline-flex min-h-8 cursor-grabbing items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-xl ring-4 ring-emerald-100">
+      <GripVertical size={11} className="text-emerald-400" />
       <span className="max-w-[220px] truncate">{skill}</span>
-      <X size={10} className="text-indigo-400" />
+      <X size={10} className="text-emerald-400" />
     </span>
   )
 }
@@ -186,28 +186,34 @@ function SortableSectionCard({
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`overflow-hidden rounded-2xl border bg-white shadow-sm shadow-emerald-950/[0.04] transition-all ${
+        isExpanded ? 'border-emerald-200 ring-4 ring-emerald-50' : 'border-slate-200/80 hover:border-emerald-200 hover:shadow-md'
+      }`}
+    >
       {isDeleting ? (
-        <div className="px-4 py-3 flex items-center gap-3">
-          <span className="flex-1 text-sm text-gray-700">Delete this section?</span>
-          <button onClick={onCancelDelete} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={onConfirmDelete} className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600">Delete</button>
+        <div className="flex items-center gap-3 bg-red-50/70 px-4 py-3">
+          <span className="flex-1 text-sm font-semibold text-slate-700">Delete this section?</span>
+          <button onClick={onCancelDelete} className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700">Cancel</button>
+          <button onClick={onConfirmDelete} className="rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-white shadow-sm shadow-red-500/20 transition-colors hover:bg-red-600">Delete</button>
         </div>
       ) : (
-        <div className="flex items-center px-4 py-3 gap-2">
-          <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 shrink-0" tabIndex={-1}>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <button {...attributes} {...listeners} className="grid h-9 w-9 shrink-0 cursor-grab place-items-center rounded-xl border border-slate-100 bg-slate-50 text-slate-300 transition-colors hover:border-emerald-100 hover:bg-emerald-50 hover:text-emerald-600 active:cursor-grabbing" tabIndex={-1}>
             <GripVertical size={16} />
           </button>
-          <div className="flex-1 min-w-0 cursor-pointer" onClick={onToggleExpand}>
-            <div className="text-sm font-medium text-gray-800 truncate">{title || 'Untitled Section'}</div>
-            <div className="text-xs text-gray-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggleExpand}>
+            <div className="truncate text-sm font-bold text-slate-800">{title || 'Untitled Section'}</div>
+            <div className="mt-0.5 text-xs font-medium text-slate-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={onDelete} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-200 transition-colors">
-              <Trash2 size={15} className="text-gray-500 hover:text-red-500" />
+          <div className="flex shrink-0 items-center gap-2">
+            <button onClick={onDelete} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-100 bg-white text-slate-400 transition-colors hover:border-red-100 hover:bg-red-50 hover:text-red-500">
+              <Trash2 size={15} />
             </button>
-            <button onClick={onToggleExpand} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-              {isExpanded ? <ChevronUp size={15} className="text-gray-500" /> : <ChevronDown size={15} className="text-gray-500" />}
+            <button onClick={onToggleExpand} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-100 bg-white text-slate-500 transition-colors hover:border-emerald-100 hover:bg-emerald-50 hover:text-emerald-700">
+              {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
             </button>
           </div>
         </div>
@@ -220,11 +226,11 @@ function SortableSectionCard({
 
 function SectionOverlayCard({ title, skillCount }: { title: string; skillCount: number }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-lg px-4 py-3 flex items-center gap-2 cursor-grabbing">
-      <GripVertical size={16} className="text-gray-400" />
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-gray-800 truncate">{title || 'Untitled Section'}</div>
-        <div className="text-xs text-gray-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
+    <div className="flex cursor-grabbing items-center gap-3 rounded-2xl border border-emerald-200 bg-white px-4 py-3 shadow-xl ring-4 ring-emerald-100">
+      <GripVertical size={16} className="text-emerald-400" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-bold text-slate-800">{title || 'Untitled Section'}</div>
+        <div className="text-xs font-medium text-slate-400">{skillCount} skill{skillCount !== 1 ? 's' : ''}</div>
       </div>
     </div>
   )
@@ -537,9 +543,9 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
 
   function renderSectionEditor(section: SkillSection, sectionIndex: number) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4 rounded-2xl border border-emerald-100/80 bg-gradient-to-b from-white to-emerald-50/35 p-4 shadow-sm shadow-emerald-950/[0.03]">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500">Section Title (Optional)</label>
+          <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.16em] text-emerald-700">Section Title</label>
           <input
             ref={node => {
               titleRefs.current[sectionIndex] = node
@@ -548,7 +554,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
             value={section.title}
             onChange={(e) => updateSection(sectionIndex, { ...section, title: e.target.value })}
             placeholder="Product, Tools, Collaboration..."
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 shadow-sm shadow-slate-950/[0.02] outline-none transition-all placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
           />
         </div>
 
@@ -560,29 +566,31 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
           onDragCancel={() => setActiveDrag(null)}
         >
           <SortableContext items={skillIds(sectionIndex, section.skills)} strategy={rectSortingStrategy}>
-            <div className="flex flex-wrap gap-1.5">
-              {section.skills.map((skill, skillIndex) => {
-                const isEditing =
-                  editingSkill?.sectionIndex === sectionIndex &&
-                  editingSkill.skillIndex === skillIndex
+            <div className="min-h-16 rounded-2xl border border-dashed border-emerald-200/80 bg-white/75 p-3">
+              <div className="flex flex-wrap gap-2">
+                {section.skills.map((skill, skillIndex) => {
+                  const isEditing =
+                    editingSkill?.sectionIndex === sectionIndex &&
+                    editingSkill.skillIndex === skillIndex
 
-                return (
-                  <SortableSkillChip
-                    key={skillId(sectionIndex, skillIndex)}
-                    id={skillId(sectionIndex, skillIndex)}
-                    skill={skill}
-                    sectionIndex={sectionIndex}
-                    skillIndex={skillIndex}
-                    isEditing={isEditing}
-                    draftValue={draftSkill}
-                    onDraftChange={setDraftSkill}
-                    onStartEdit={() => startEditingSkill(sectionIndex, skillIndex, skill)}
-                    onCommitEdit={commitEditingSkill}
-                    onCancelEdit={cancelEditingSkill}
-                    onRemove={() => removeSkill(sectionIndex, skillIndex)}
-                  />
-                )
-              })}
+                  return (
+                    <SortableSkillChip
+                      key={skillId(sectionIndex, skillIndex)}
+                      id={skillId(sectionIndex, skillIndex)}
+                      skill={skill}
+                      sectionIndex={sectionIndex}
+                      skillIndex={skillIndex}
+                      isEditing={isEditing}
+                      draftValue={draftSkill}
+                      onDraftChange={setDraftSkill}
+                      onStartEdit={() => startEditingSkill(sectionIndex, skillIndex, skill)}
+                      onCommitEdit={commitEditingSkill}
+                      onCancelEdit={cancelEditingSkill}
+                      onRemove={() => removeSkill(sectionIndex, skillIndex)}
+                    />
+                  )
+                })}
+              </div>
             </div>
           </SortableContext>
           <DragOverlay dropAnimation={null}>
@@ -592,22 +600,25 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
           </DragOverlay>
         </DndContext>
 
-        <input
-          data-field-path={`skillSections.${sectionIndex}.skills`}
-          value={inputs[sectionIndex] ?? ''}
-          onChange={(e) => setInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault()
-              addSkill(sectionIndex, (inputs[sectionIndex] ?? '').replace(/,$/, ''))
-            }
-          }}
-          onBlur={() => {
-            if (inputs[sectionIndex]?.trim()) addSkill(sectionIndex, inputs[sectionIndex])
-          }}
-          placeholder="Type a skill, press Enter or comma to add"
-          className="w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
+        <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm shadow-slate-950/[0.02] transition-all focus-within:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-100">
+          <Plus size={15} className="shrink-0 text-emerald-500" />
+          <input
+            data-field-path={`skillSections.${sectionIndex}.skills`}
+            value={inputs[sectionIndex] ?? ''}
+            onChange={(e) => setInputs(prev => ({ ...prev, [sectionIndex]: e.target.value }))}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault()
+                addSkill(sectionIndex, (inputs[sectionIndex] ?? '').replace(/,$/, ''))
+              }
+            }}
+            onBlur={() => {
+              if (inputs[sectionIndex]?.trim()) addSkill(sectionIndex, inputs[sectionIndex])
+            }}
+            placeholder="Type a skill, press Enter or comma to add"
+            className="min-w-0 flex-1 bg-transparent py-1 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400"
+          />
+        </div>
       </div>
     )
   }
@@ -616,13 +627,13 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
   if (!isMultiSection) {
     return (
       <div ref={rootRef} className="space-y-4 p-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-[22px] border border-emerald-100 bg-white p-2 shadow-sm shadow-emerald-950/[0.04]">
           {renderSectionEditor(displayedSections[0], 0)}
         </div>
 
         <button
           onClick={addSection}
-          className="flex items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-400 hover:text-indigo-600"
+          className="flex items-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 px-4 py-3 text-sm font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-white"
         >
           <Plus size={14} /> Add skill section
         </button>
@@ -632,7 +643,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
 
   // ── MULTI-SECTION MODE (SubItemList-like) ────────────────────────────────────
   return (
-    <div ref={rootRef} className="space-y-2 p-4">
+    <div ref={rootRef} className="space-y-3 p-4">
       <DndContext
         sensors={sectionSensors}
         collisionDetection={closestCenter}
@@ -659,7 +670,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
                   onCancelDelete={() => setDeletingIndex(null)}
                 />
                 {isExpanded && deletingIndex !== sectionIndex && (
-                  <div className="rounded-b-xl border border-t-0 border-gray-200 bg-gray-50 p-4 -mt-1">
+                  <div className="-mt-1 rounded-b-[22px] border border-t-0 border-emerald-100 bg-emerald-50/45 p-3">
                     {renderSectionEditor(section, sectionIndex)}
                   </div>
                 )}
@@ -679,7 +690,7 @@ export default function SkillsEditor({ data, onChange, focusPath, onFocusHandled
 
       <button
         onClick={addSection}
-        className="w-full border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-400 hover:border-gray-400 hover:text-gray-600 transition-colors flex items-center justify-center gap-1.5"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 py-3 text-sm font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-white"
       >
         <Plus size={14} /> Add skill section
       </button>

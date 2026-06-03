@@ -35,8 +35,8 @@ export default async function DashboardLayout({
         <Sidebar profile={typedProfile} isAffiliate={isAffiliate} />
 
         {/* Main content — offset by sidebar width on md+ */}
-        <div className="relative flex min-h-screen flex-col md:ml-[18.5rem]">
-          <MobileAppBar initials={(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()} />
+        <div className="relative flex min-h-screen flex-col md:ml-[16.75rem]">
+          <MobileAppBar initials={(typedProfile.full_name?.[0] ?? typedProfile.email[0]).toUpperCase()} isPro={proUser} />
 
           {/* Page content */}
           <main className="relative flex-1 px-3 py-5 pb-[calc(7.25rem+env(safe-area-inset-bottom,0px))] md:px-8 md:py-8 md:pb-10 xl:px-10">

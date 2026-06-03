@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { getActivePromotionByCode } from '@/lib/pricing'
 
 // Replaces /api/paddle/validate-promo (removed when Paddle integration was deleted).
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   // 2. Try affiliate codes (DB lookup).
   try {
-    const supabase = await createClient()
+    const supabase = createServiceRoleClient()
     const { data: affiliate, error } = await supabase
       .from('affiliates')
       .select('id, discount_code, discount_percent')

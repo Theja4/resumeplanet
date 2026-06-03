@@ -30,25 +30,25 @@ export default function ReferencesEditor({ data, onChange, focusPath, onFocusHan
   }
 
   return (
-    <div ref={rootRef} className="p-4 space-y-2">
+    <div ref={rootRef} className="space-y-3 bg-gradient-to-b from-emerald-50/30 to-white p-4">
       {data.references.map((ref, i) => (
-        <div key={i} className="flex items-center gap-2">
+        <div key={i} className="flex items-center gap-2 rounded-[1.15rem] border border-zinc-200 bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
           <input
             type="text"
             value={ref}
             data-field-path={`references.${i}`}
             onChange={(e) => updateItem(i, e.target.value)}
             placeholder="Name, Title, Company, email@example.com"
-            className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="min-w-0 flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
           />
-          <button onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0" aria-label="Remove">
+          <button onClick={() => removeItem(i)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500" aria-label="Remove">
             <X size={13} />
           </button>
         </div>
       ))}
       <button
         onClick={addItem}
-        className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-[1rem] border border-dashed border-emerald-200 bg-white/80 py-3 text-sm font-bold text-emerald-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-50 active:scale-[0.99]"
       >
         <Plus size={13} /> Add reference
       </button>

@@ -25,7 +25,7 @@ function InputField({ label, path, value, onChange, placeholder, type = 'text', 
   const inputId = `field-${path.replace(/[^a-zA-Z0-9]+/g, '-')}`
   return (
     <div>
-      <label htmlFor={inputId} className="flex items-center gap-1.5 text-sm font-medium text-gray-600 mb-1.5">
+      <label htmlFor={inputId} className="mb-1.5 flex items-center gap-1.5 text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">
         {labelIcon}
         {label}
       </label>
@@ -38,13 +38,13 @@ function InputField({ label, path, value, onChange, placeholder, type = 'text', 
           maxLength={maxLength}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 pr-9 text-sm font-medium text-zinc-900 shadow-sm outline-none transition-all placeholder:font-normal placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
         />
         {value && (
           <button
             aria-label="Clear field"
             onClick={() => onChange('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
           >
             <X size={14} />
           </button>
@@ -63,8 +63,8 @@ function SortableBulletRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }
   return (
-    <div ref={setNodeRef} style={style} className="flex items-start gap-2 mb-3">
-      <button {...attributes} {...listeners} aria-label="Drag to reorder" className="mt-3 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 shrink-0" tabIndex={-1}>
+    <div ref={setNodeRef} style={style} className="mb-3 flex items-start gap-2 rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm transition-all hover:border-emerald-200">
+      <button {...attributes} {...listeners} aria-label="Drag to reorder" className="mt-2 flex h-8 w-6 shrink-0 cursor-grab items-center justify-center rounded-full text-zinc-300 transition-colors hover:bg-zinc-100 hover:text-zinc-500 active:cursor-grabbing" tabIndex={-1}>
         <GripVertical size={16} />
       </button>
       <AutoGrowTextarea
@@ -72,15 +72,15 @@ function SortableBulletRow({
         value={text}
         maxLength={2000}
         onChange={e => onChange(e.target.value)}
-        className={`flex-1 border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300 ${!isVisible ? 'opacity-50 bg-gray-50' : ''}`}
+        className={`flex-1 resize-none rounded-xl border border-transparent px-3 py-2.5 text-sm leading-relaxed text-zinc-900 outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-300 focus:bg-white focus:ring-4 focus:ring-emerald-100 ${!isVisible ? 'bg-zinc-50 text-zinc-400 opacity-70' : 'bg-zinc-50/60'}`}
         placeholder="Describe what you did and the impact..."
         style={{ whiteSpace: 'pre-wrap' }}
         minHeight={42}
       />
-      <button onClick={onToggleVisibility} className="mt-3 text-gray-400 hover:text-gray-600 shrink-0" title={isVisible ? 'Hide bullet' : 'Show bullet'} aria-label={isVisible ? 'Hide bullet' : 'Show bullet'}>
+      <button onClick={onToggleVisibility} className="mt-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-emerald-50 hover:text-emerald-700" title={isVisible ? 'Hide bullet' : 'Show bullet'} aria-label={isVisible ? 'Hide bullet' : 'Show bullet'}>
         {isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
       </button>
-      <button onClick={onDelete} className="mt-3 text-gray-400 hover:text-red-500 shrink-0" aria-label="Delete bullet">
+      <button onClick={onDelete} className="mt-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-500" aria-label="Delete bullet">
         <Trash2 size={16} />
       </button>
     </div>
@@ -139,7 +139,7 @@ export default function ExperienceItemEditor({ item, pathPrefix, onChange }: Pro
   const summaryId = `field-${pathPrefix.replace(/[^a-zA-Z0-9]+/g, '-')}-summary`
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 rounded-[1.35rem] border border-zinc-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.06)]">
       <div className="grid grid-cols-2 gap-3">
         <InputField label="Title" path={`${pathPrefix}.title`} value={item.title} onChange={v => onChange({ ...item, title: v })} placeholder="Job title" />
         <InputField label="Company" path={`${pathPrefix}.company`} value={item.company} onChange={v => onChange({ ...item, company: v })} placeholder="Company name" />
@@ -155,7 +155,7 @@ export default function ExperienceItemEditor({ item, pathPrefix, onChange }: Pro
 
       {/* Summary optional field */}
       <div>
-        <label htmlFor={summaryId} className="block text-sm font-medium text-gray-600 mb-1.5">Summary (optional)</label>
+        <label htmlFor={summaryId} className="mb-1.5 block text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">Summary (optional)</label>
         <AutoGrowTextarea
           id={summaryId}
           data-field-path={`${pathPrefix}.summary`}
@@ -163,14 +163,19 @@ export default function ExperienceItemEditor({ item, pathPrefix, onChange }: Pro
           maxLength={2000}
           onChange={e => onChange({ ...item, summary: e.target.value })}
           placeholder="Briefly describe your role..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-zinc-900 shadow-sm outline-none transition-all placeholder:text-zinc-400 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
           minHeight={42}
         />
       </div>
 
       {/* Bullets */}
       <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">Highlights</label>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <label className="block text-[12px] font-black uppercase tracking-[0.14em] text-zinc-500">Highlights</label>
+          <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-400">
+            {item.bullets.length} bullets
+          </span>
+        </div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleBulletDragEnd}>
           <SortableContext items={bulletIds} strategy={verticalListSortingStrategy}>
             {item.bullets.map((bullet, bi) => (
@@ -189,7 +194,7 @@ export default function ExperienceItemEditor({ item, pathPrefix, onChange }: Pro
         </DndContext>
         <button
           onClick={addBullet}
-          className="w-full border border-dashed border-gray-300 rounded-lg py-2.5 text-sm font-medium text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center gap-1.5"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/45 py-3 text-sm font-bold text-emerald-700 transition-all hover:border-emerald-300 hover:bg-emerald-50 active:scale-[0.99]"
         >
           <Plus size={14} /> Add highlight
         </button>

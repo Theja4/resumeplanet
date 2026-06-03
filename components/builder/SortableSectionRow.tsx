@@ -39,31 +39,83 @@ const SECTION_CONFIG: Record<string, { label: string; Icon: React.ComponentType<
   references:     { label: 'References',      Icon: Users },
 }
 
+function hasText(value: string | null | undefined) {
+  return Boolean(value?.trim())
+}
+
+function hasExperienceItemData(item: ResumeData['experience'][number]) {
+  return (
+    hasText(item.company) ||
+    hasText(item.title) ||
+    hasText(item.location) ||
+    hasText(item.startDate) ||
+    hasText(item.endDate) ||
+    hasText(item.summary) ||
+    hasText(item.url) ||
+    item.bullets.some(hasText)
+  )
+}
+
+function hasEducationItemData(item: ResumeData['education'][number]) {
+  return (
+    hasText(item.institution) ||
+    hasText(item.degree) ||
+    hasText(item.field) ||
+    hasText(item.startDate) ||
+    hasText(item.endDate) ||
+    hasText(item.graduationDate) ||
+    hasText(item.gpa) ||
+    hasText(item.url)
+  )
+}
+
+function hasProjectItemData(item: ResumeData['projects'][number]) {
+  return (
+    hasText(item.name) ||
+    hasText(item.description) ||
+    hasText(item.url) ||
+    item.bullets?.some(hasText) === true ||
+    item.technologies.some(hasText)
+  )
+}
+
+function hasCertificationItemData(item: ResumeData['certifications'][number]) {
+  return hasText(item.name) || hasText(item.issuer) || hasText(item.date) || hasText(item.url)
+}
+
+function hasAwardItemData(item: ResumeData['awards'][number]) {
+  return hasText(item.title) || hasText(item.issuer) || hasText(item.date) || hasText(item.url)
+}
+
+function hasPublicationItemData(item: ResumeData['publications'][number]) {
+  return hasText(item.title) || hasText(item.publisher) || hasText(item.date) || hasText(item.url)
+}
+
 function sectionHasData(sectionId: string, data: ResumeData): boolean {
   if (sectionId.startsWith('custom_')) {
     const custom = data.customSections?.find(c => c.id === sectionId)
     if (!custom) return false
-    if (custom.type === 'text') return !!custom.text?.trim()
-    if (custom.type === 'tags') return !!custom.tags && custom.tags.length > 0
-    if (custom.type === 'complex') return !!custom.items && custom.items.length > 0
+    if (custom.type === 'text') return hasText(custom.text)
+    if (custom.type === 'tags') return custom.tags?.some(hasText) === true
+    if (custom.type === 'complex') return custom.items?.some(hasExperienceItemData) === true
     if (custom.type === 'pageBreak') return true // marker is always "active"
     return false
   }
 
   switch (sectionId) {
-    case 'contact':        return !!(data.name || data.email || data.phone)
-    case 'summary':        return !!data.summary
-    case 'experience':     return data.experience.length > 0
-    case 'education':      return data.education.length > 0
-    case 'skills':         return getResumeSkills(data).length > 0
-    case 'projects':       return data.projects.length > 0
-    case 'certifications': return data.certifications.length > 0
-    case 'volunteer':      return data.volunteer.length > 0
-    case 'languages':      return data.languages.length > 0
-    case 'interests':      return data.interests.length > 0
-    case 'awards':         return data.awards.length > 0
-    case 'publications':   return data.publications.length > 0
-    case 'references':     return data.references.length > 0
+    case 'contact':        return [data.name, data.email, data.phone, data.location, data.linkedin, data.website, data.currentRole].some(hasText)
+    case 'summary':        return hasText(data.summary)
+    case 'experience':     return data.experience.some(hasExperienceItemData)
+    case 'education':      return data.education.some(hasEducationItemData)
+    case 'skills':         return getResumeSkills(data).some(hasText)
+    case 'projects':       return data.projects.some(hasProjectItemData)
+    case 'certifications': return data.certifications.some(hasCertificationItemData)
+    case 'volunteer':      return data.volunteer.some(hasExperienceItemData)
+    case 'languages':      return data.languages.some(hasText)
+    case 'interests':      return data.interests.some(hasText)
+    case 'awards':         return data.awards.some(hasAwardItemData)
+    case 'publications':   return data.publications.some(hasPublicationItemData)
+    case 'references':     return data.references.some(hasText)
     default:               return false
   }
 }
@@ -285,22 +337,35 @@ export default function SortableSectionRow({
       ref={setNodeRef} 
       id={`section-row-${sectionId}`}
       style={style} 
-      className={`mb-2 last:mb-0 transition-all ${isExpanded ? 'rounded-xl shadow-sm border border-emerald-100/50 bg-surface-container-lowest' : 'rounded-xl hover:bg-zinc-100'}`}
+      className={`relative mb-2 last:mb-0 overflow-hidden rounded-[1.15rem] border transition-all duration-200 ${
+        isExpanded
+          ? 'border-emerald-200 bg-white shadow-[0_18px_38px_rgba(15,23,42,0.08)]'
+          : isHidden
+            ? 'border-transparent bg-white/45 shadow-sm hover:border-zinc-200 hover:bg-white/70'
+            : 'border-white/80 bg-white/78 shadow-[0_10px_26px_rgba(15,23,42,0.045)] hover:-translate-y-0.5 hover:border-emerald-100 hover:bg-white hover:shadow-[0_18px_38px_rgba(16,185,129,0.08)]'
+      }`}
     >
+      {isExpanded && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-lime-300 to-emerald-500" />
+      )}
       {/* Section row header */}
-      <div className={`group flex items-center justify-between px-4 py-3 cursor-pointer transition-all ${isExpanded ? 'text-emerald-700' : 'text-zinc-600'} ${isHidden ? 'opacity-50' : ''}`} onClick={(e) => {
+      <div className={`group flex cursor-pointer items-center justify-between gap-3 px-3 py-3.5 transition-all ${isExpanded ? 'text-emerald-800' : 'text-zinc-700'} ${isHidden ? 'opacity-70' : ''}`} onClick={(e) => {
         // Prevent expand if clicking visibility toggle or drag handle
         if ((e.target as HTMLElement).closest('button[data-action="prevent-expand"]')) return
         onExpand()
       }}>
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
           {/* Drag handle */}
           {!isDragDisabled && (
             <button
               {...attributes}
               {...listeners}
               data-action="prevent-expand"
-              className={`cursor-grab active:cursor-grabbing p-0.5 select-none transition-colors ${isExpanded ? 'text-emerald-300 hover:text-emerald-500' : 'text-zinc-300 hover:text-zinc-500 group-hover:text-zinc-400'}`}
+              className={`flex h-9 w-6 shrink-0 cursor-grab select-none items-center justify-center rounded-full transition-colors active:cursor-grabbing ${
+                isExpanded
+                  ? 'text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600'
+                  : 'text-zinc-300 hover:bg-zinc-100 hover:text-zinc-500 group-hover:text-zinc-400'
+              }`}
               tabIndex={-1}
               aria-label="Drag to reorder"
             >
@@ -309,8 +374,18 @@ export default function SortableSectionRow({
           )}
 
           {/* Icon & Label */}
-          <div className={`flex min-w-0 flex-1 items-center gap-2 transition-opacity ${!hasData && !isExpanded ? 'opacity-35' : ''}`}>
-            <Icon size={18} className={`shrink-0 ${isExpanded ? 'text-primary' : ''}`} />
+          <div className={`flex min-w-0 flex-1 items-center gap-3 transition-opacity ${!hasData && !isExpanded && !isHidden ? 'opacity-60' : ''}`}>
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+              isExpanded
+                ? 'bg-emerald-100 text-emerald-700'
+                : isHidden
+                  ? 'bg-zinc-100 text-zinc-400'
+                  : hasData
+                    ? 'bg-zinc-100 text-zinc-700 group-hover:bg-emerald-50 group-hover:text-emerald-700'
+                    : 'bg-zinc-50 text-zinc-400 group-hover:bg-zinc-100 group-hover:text-zinc-500'
+            }`}>
+              <Icon size={18} className="shrink-0" />
+            </div>
             {isEditingTitle && isCustom ? (
               <input
                 value={label}
@@ -320,36 +395,46 @@ export default function SortableSectionRow({
                 onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingTitle(false) }}
                 onClick={(e) => e.stopPropagation()}
                 data-action="prevent-expand"
-                className="bg-transparent border-none p-0 text-sm font-semibold text-emerald-700 focus:ring-0 w-full placeholder:text-emerald-200"
+                className="w-full border-none bg-transparent p-0 text-sm font-semibold text-emerald-700 placeholder:text-emerald-200 focus:ring-0"
                 placeholder="Section Title"
                 autoFocus
               />
             ) : (
-              <div className="flex-1 flex items-center gap-2 group/title min-w-0 overflow-hidden">
-                <span className={`min-w-0 text-sm break-words ${isExpanded ? 'font-semibold' : 'font-medium'}`}>{label}</span>
-                {isExpanded && isCustom && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setIsEditingTitle(true)
-                    }}
-                    data-action="prevent-expand"
-                    className="p-1 rounded hover:bg-black/5 text-zinc-400 opacity-0 group-hover/title:opacity-100 transition-opacity"
-                    title="Edit Title"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                )}
+              <div className="group/title flex min-w-0 flex-1 flex-col overflow-hidden">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className={`min-w-0 truncate text-[14px] leading-tight ${isExpanded ? 'font-black text-emerald-950' : 'font-semibold'}`}>{label}</span>
+                  {hasHint && (
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]" />
+                  )}
+                  {isExpanded && isCustom && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsEditingTitle(true)
+                      }}
+                      data-action="prevent-expand"
+                      className="rounded-full p-1 text-zinc-400 opacity-0 transition-opacity hover:bg-black/5 group-hover/title:opacity-100"
+                      title="Edit Title"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-1.5">
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    isHidden ? 'bg-zinc-300' : hasData ? 'bg-emerald-500' : 'bg-zinc-300'
+                  }`} />
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
+                    {isHidden ? 'Hidden' : hasData ? 'Ready' : 'Empty'}
+                  </span>
+                </div>
               </div>
-            )}
-            {hasHint && (
-              <span className="h-2 w-2 rounded-full bg-amber-400 shrink-0 ml-1" />
             )}
           </div>
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* Visibility toggle — hidden for page-break markers because a hidden
               page break is an invisible time bomb: the user can't see why their
               pagination is behaving oddly. Page breaks are delete-only. */}
@@ -357,13 +442,17 @@ export default function SortableSectionRow({
             <button
               onClick={toggleVisibility}
               data-action="prevent-expand"
-              className="p-1 rounded-md hover:bg-black/5 transition-colors"
+              className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                isHidden
+                  ? 'bg-amber-50 text-amber-600 hover:bg-amber-100'
+                  : 'bg-zinc-100 text-zinc-400 hover:bg-emerald-50 hover:text-emerald-700'
+              }`}
               title={isHidden ? 'Show section' : 'Hide section'}
               aria-label={isHidden ? 'Show section' : 'Hide section'}
             >
               {isHidden
-                ? <EyeOff size={15} className="text-zinc-400" />
-                : <Eye size={15} className="text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                ? <EyeOff size={15} />
+                : <Eye size={15} className="opacity-75 transition-opacity group-hover:opacity-100" />
               }
             </button>
           )}
@@ -373,7 +462,7 @@ export default function SortableSectionRow({
             <button
               onClick={handleDeleteSection}
               data-action="prevent-expand"
-              className="p-1 rounded-md hover:bg-red-50 text-zinc-300 hover:text-red-500 transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-zinc-300 transition-colors hover:bg-red-50 hover:text-red-500"
               title="Delete Section"
             >
               <Trash2 size={15} />
@@ -381,15 +470,19 @@ export default function SortableSectionRow({
           )}
 
           {/* The Optic "Hover Pill" + Chevron */}
-          <div className="flex items-center gap-1.5 ml-1">
+          <div className="ml-1 flex items-center gap-1.5">
             {!isExpanded && (
-              <span className={`text-[10px] font-bold text-primary uppercase bg-primary-container px-1.5 py-0.5 rounded transition-opacity ${hasData ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase transition-opacity ${
+                hasData
+                  ? 'bg-emerald-100 text-emerald-700 opacity-100'
+                  : 'bg-zinc-100 text-zinc-400 opacity-0 group-hover:opacity-100'
+              }`}>
                 {hasData ? 'Edit' : 'Add'}
               </span>
             )}
             
             <svg 
-              className={`w-4 h-4 text-zinc-300 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} 
+              className={`h-4 w-4 text-zinc-300 transition-transform duration-200 group-hover:text-zinc-500 ${isExpanded ? 'rotate-90 text-emerald-500' : ''}`} 
               viewBox="0 0 24 24" 
               fill="none" 
               stroke="currentColor" 
@@ -403,14 +496,14 @@ export default function SortableSectionRow({
 
       {/* Hidden indicator */}
       {isHidden && !isExpanded && (
-        <div className="px-12 pb-2 text-[11px] text-amber-500 font-medium tracking-tight">
+        <div className="px-[4.6rem] pb-3 text-[11px] font-semibold tracking-tight text-amber-600">
           Hidden from resume output
         </div>
       )}
 
       {/* Expanded editor */}
       {isExpanded && (
-        <div className="border-t border-emerald-50 bg-white bg-opacity-50">
+        <div className="border-t border-emerald-100 bg-gradient-to-b from-emerald-50/35 to-white">
           {renderEditor()}
         </div>
       )}
