@@ -144,7 +144,7 @@ function renderFaqSection(
             FAQ
           </span>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
-            Fast answers for Google applicants
+            Fast answers to common questions
           </p>
         </div>
 
