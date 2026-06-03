@@ -3,6 +3,7 @@ export type Author = {
   title: string
   bio: string
   slug: string
+  avatar?: string
 }
 
 function nameToSlug(name: string) {
@@ -45,6 +46,13 @@ export const AUTHORS: Record<string, Author> = {
     slug: 'james-okafor',
     title: 'Finance & Investment Banking Career Specialist',
     bio: 'James spent 6 years in VP-level recruiting at Goldman Sachs and Morgan Stanley before transitioning to independent career consulting. He specialises in finance sector hiring, front-office resume positioning, and interview preparation for investment banking, asset management, and capital markets roles.',
+  },
+  'Theja Chitturi': {
+    name: 'Theja Chitturi',
+    slug: 'theja-chitturi',
+    title: 'Analyst at ION Group',
+    bio: 'Theja Chitturi is an analyst at ION Group, working at the intersection of financial technology and capital markets. He writes about AI hiring trends, emerging engineering roles, and how candidates can position themselves for high-growth opportunities in tech.',
+    avatar: '/authors/theja-chitturi.jpg',
   },
 }
 
@@ -93,6 +101,8 @@ const SLUG_AUTHOR_MAP: Record<string, string> = {
   'resume-builder-vs-template-which-is-better': 'Sarah Chen',
   'how-to-tailor-your-resume-for-software-engineer-jobs': 'Sarah Chen',
   'how-to-tailor-your-resume-for-data-analyst-jobs': 'Sarah Chen',
+  // Technical hiring trends — Theja Chitturi
+  'forward-deployed-engineer-jobs-salary-and-how-to-land-one': 'Theja Chitturi',
   // Career advice & coaching — Priya Nair
   '10-job-search-tips-strategies-for-2026': 'Priya Nair',
   'how-to-follow-up-on-a-job-application-templates-guide': 'Priya Nair',

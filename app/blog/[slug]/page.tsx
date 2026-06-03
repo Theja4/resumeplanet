@@ -331,6 +331,7 @@ export default async function BlogPostPage({
       name: post.author_name,
       jobTitle: author.title,
       description: author.bio,
+      ...(author.avatar ? { image: `${siteUrl}${author.avatar}` } : {}),
       url: `${siteUrl}/authors/${getAuthorSlug(author)}`,
       worksFor: { '@type': 'Organization', '@id': `${siteUrl}/#organization` },
     },
@@ -457,9 +458,18 @@ export default async function BlogPostPage({
                   className="group flex items-center gap-3 rounded-full transition-colors hover:bg-white/5"
                   rel="author"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-[11px] font-black text-[#022c14] shadow-sm">
-                    {post.author_name.charAt(0)}
-                  </div>
+                  {author.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={author.avatar}
+                      alt={author.name}
+                      className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm ring-1 ring-white/20"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-[11px] font-black text-[#022c14] shadow-sm">
+                      {post.author_name.charAt(0)}
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-black text-white/90 group-hover:text-white">{post.author_name}</p>
                     <p className="text-[11px] text-white/35 group-hover:text-white/55">{author.title}</p>
@@ -558,9 +568,18 @@ export default async function BlogPostPage({
             {/* Author bio card */}
             <div className="blog-load-in rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8" style={entryStyle(0.16)}>
               <div className="flex items-start gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-base font-black text-[#022c14] shadow-sm">
-                  {author.name.charAt(0)}
-                </div>
+                {author.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={author.avatar}
+                    alt={author.name}
+                    className="h-14 w-14 shrink-0 rounded-full object-cover shadow-sm ring-1 ring-zinc-200"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-base font-black text-[#022c14] shadow-sm">
+                    {author.name.charAt(0)}
+                  </div>
+                )}
                 <div>
                   <Link
                     href={`/authors/${getAuthorSlug(author)}`}
