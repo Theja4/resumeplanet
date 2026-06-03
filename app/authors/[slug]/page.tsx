@@ -76,6 +76,7 @@ export default async function AuthorPage({
     name: author.name,
     jobTitle: author.title,
     description: author.bio,
+    ...(author.avatar ? { image: `${siteUrl}${author.avatar}` } : {}),
     url: `${siteUrl}/authors/${getAuthorSlug(author)}`,
     worksFor: { '@type': 'Organization', '@id': `${siteUrl}/#organization` },
   }
@@ -108,9 +109,18 @@ export default async function AuthorPage({
               Author
             </p>
             <div className="mt-4 flex items-start gap-5">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-xl font-black text-[#022c14] shadow-sm">
-                {author.name.charAt(0)}
-              </div>
+              {author.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={author.avatar}
+                  alt={author.name}
+                  className="h-16 w-16 shrink-0 rounded-full object-cover shadow-sm ring-1 ring-zinc-200"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#A3FFB3] to-[#30c06b] text-xl font-black text-[#022c14] shadow-sm">
+                  {author.name.charAt(0)}
+                </div>
+              )}
               <div>
                 <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{author.name}</h1>
                 <p className="mt-2 text-base font-semibold text-[#026d32]">{author.title}</p>

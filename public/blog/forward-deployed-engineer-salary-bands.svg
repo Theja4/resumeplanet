@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="Forward deployed engineer compensation bands, from a broad-market median of $174K to over $1.2M total comp at the top of OpenAI's engineering ladder.">
+  <defs>
+    <linearGradient id="barLight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7fd6a0"/>
+      <stop offset="100%" stop-color="#4cbb7d"/>
+    </linearGradient>
+    <linearGradient id="barMid" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2faa5f"/>
+      <stop offset="100%" stop-color="#0d8a43"/>
+    </linearGradient>
+    <linearGradient id="barDark" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0d8a43"/>
+      <stop offset="100%" stop-color="#024a22"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="60" y="56" font-size="34" font-weight="800" fill="#0b1a10">What forward deployed engineers earn</text>
+  <text x="60" y="90" font-size="20" font-weight="600" fill="#5b6b61">US total compensation &#183; base + equity + bonus, 2025&#8211;26</text>
+
+  <!-- X scale baseline -->
+  <line x1="360" y1="120" x2="360" y2="585" stroke="#e4ebe7" stroke-width="2"/>
+  <g font-size="14" fill="#9aa8a0" font-weight="600" text-anchor="middle">
+    <line x1="540" y1="120" x2="540" y2="585" stroke="#f1f5f2" stroke-width="1"/>
+    <text x="540" y="610">$300K</text>
+    <line x1="720" y1="120" x2="720" y2="585" stroke="#f1f5f2" stroke-width="1"/>
+    <text x="720" y="610">$600K</text>
+    <line x1="900" y1="120" x2="900" y2="585" stroke="#f1f5f2" stroke-width="1"/>
+    <text x="900" y="610">$900K</text>
+    <line x1="1080" y1="120" x2="1080" y2="585" stroke="#f1f5f2" stroke-width="1"/>
+    <text x="1080" y="610">$1.2M</text>
+  </g>
+
+  <!-- Rows -->
+  <g font-size="17" font-weight="700" fill="#0b1a10" text-anchor="end">
+    <text x="344" y="156">Market median (all FDEs)</text>
+    <text x="344" y="231">Anthropic FDE base band</text>
+    <text x="344" y="306">Mid-level, frontier lab</text>
+    <text x="344" y="381">Senior, frontier lab</text>
+    <text x="344" y="456">OpenAI eng. median</text>
+    <text x="344" y="531">OpenAI top of ladder (L6)</text>
+  </g>
+
+  <!-- Bar 1: $174K point -->
+  <rect x="360" y="132" width="104.4" height="34" rx="8" fill="url(#barLight)"/>
+  <text x="476" y="156" font-size="16" font-weight="800" fill="#0b1a10">$174K</text>
+
+  <!-- Bar 2: $200K-$300K -->
+  <rect x="360" y="207" width="180" height="34" rx="8" fill="url(#barLight)"/>
+  <text x="552" y="231" font-size="16" font-weight="800" fill="#0b1a10">$200&#8211;300K base</text>
+
+  <!-- Bar 3: $300K-$450K total -->
+  <rect x="360" y="282" width="270" height="34" rx="8" fill="url(#barMid)"/>
+  <text x="642" y="306" font-size="16" font-weight="800" fill="#0b1a10">$300&#8211;450K</text>
+
+  <!-- Bar 4: $500K+ highlight -->
+  <rect x="360" y="357" width="300" height="34" rx="8" fill="#026d32"/>
+  <polygon points="660,357 690,374 660,391" fill="#026d32"/>
+  <text x="702" y="381" font-size="16" font-weight="800" fill="#026d32">$500K+</text>
+
+  <!-- Bar 5: $590K -->
+  <rect x="360" y="432" width="354" height="34" rx="8" fill="url(#barDark)"/>
+  <text x="726" y="456" font-size="16" font-weight="800" fill="#0b1a10">$590K</text>
+
+  <!-- Bar 6: $1.22M -->
+  <rect x="360" y="507" width="732" height="34" rx="8" fill="url(#barDark)"/>
+  <text x="1104" y="531" font-size="16" font-weight="800" fill="#0b1a10">$1.22M</text>
+
+  <!-- Footnote -->
+  <text x="60" y="650" font-size="14" fill="#9aa8a0">Sources: Indeed &amp; FDE Pulse (market median), Anthropic job postings, Paraform (frontier-lab bands), Levels.fyi (OpenAI). Total comp unless marked &#8220;base&#8221;.</text>
+</svg>

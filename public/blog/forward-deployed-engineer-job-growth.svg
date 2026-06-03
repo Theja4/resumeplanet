@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="Forward deployed engineer job postings surged from an index of 100 in January 2025 to roughly 5,330 by April 2026.">
+  <defs>
+    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d8a43" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#0d8a43" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0d8a43"/>
+      <stop offset="100%" stop-color="#026d32"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="#ffffff"/>
+  <rect width="1200" height="675" fill="url(#bg)" opacity="0"/>
+
+  <!-- Title -->
+  <text x="120" y="56" font-size="34" font-weight="800" fill="#0b1a10">Forward deployed engineer job postings</text>
+  <text x="120" y="90" font-size="20" font-weight="600" fill="#5b6b61">Indexed to January 2025 = 100 &#183; roughly a 53&#215; jump in 15 months</text>
+
+  <!-- Gridlines + Y labels -->
+  <g font-size="15" fill="#9aa8a0" font-weight="600">
+    <line x1="120" y1="560" x2="1140" y2="560" stroke="#e4ebe7" stroke-width="1.5"/>
+    <text x="104" y="565" text-anchor="end">0</text>
+    <line x1="120" y1="478.2" x2="1140" y2="478.2" stroke="#eef3f0" stroke-width="1"/>
+    <text x="104" y="483" text-anchor="end">1,000</text>
+    <line x1="120" y1="396.4" x2="1140" y2="396.4" stroke="#eef3f0" stroke-width="1"/>
+    <text x="104" y="401" text-anchor="end">2,000</text>
+    <line x1="120" y1="314.5" x2="1140" y2="314.5" stroke="#eef3f0" stroke-width="1"/>
+    <text x="104" y="319" text-anchor="end">3,000</text>
+    <line x1="120" y1="232.7" x2="1140" y2="232.7" stroke="#eef3f0" stroke-width="1"/>
+    <text x="104" y="237" text-anchor="end">4,000</text>
+    <line x1="120" y1="150.9" x2="1140" y2="150.9" stroke="#eef3f0" stroke-width="1"/>
+    <text x="104" y="155" text-anchor="end">5,000</text>
+  </g>
+
+  <!-- Area + line -->
+  <path d="M120,551.8 L324,507.4 L528,463.5 L732,347.3 L936,236.8 L1140,123.9 L1140,560 L120,560 Z" fill="url(#area)"/>
+  <path d="M120,551.8 L324,507.4 L528,463.5 L732,347.3 L936,236.8 L1140,123.9" fill="none" stroke="url(#line)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Data points -->
+  <g>
+    <circle cx="120" cy="551.8" r="6" fill="#026d32"/>
+    <circle cx="324" cy="507.4" r="6" fill="#026d32"/>
+    <circle cx="528" cy="463.5" r="6" fill="#026d32"/>
+    <circle cx="732" cy="347.3" r="6" fill="#026d32"/>
+    <circle cx="936" cy="236.8" r="6" fill="#026d32"/>
+    <circle cx="1140" cy="123.9" r="8" fill="#026d32" stroke="#ffffff" stroke-width="3"/>
+  </g>
+
+  <!-- Anchor callouts -->
+  <g font-weight="700">
+    <text x="324" y="495" font-size="16" fill="#026d32" text-anchor="middle">643*</text>
+    <rect x="1010" y="80" width="178" height="34" rx="17" fill="#030f07"/>
+    <text x="1099" y="103" font-size="17" fill="#A3FFB3" text-anchor="middle" font-weight="800">5,330 (+5,230%)</text>
+  </g>
+
+  <!-- X labels -->
+  <g font-size="16" fill="#5b6b61" font-weight="600" text-anchor="middle">
+    <text x="120" y="592">Jan &#8217;25</text>
+    <text x="324" y="592">Apr &#8217;25</text>
+    <text x="528" y="592">Jul &#8217;25</text>
+    <text x="732" y="592">Oct &#8217;25</text>
+    <text x="936" y="592">Jan &#8217;26</text>
+    <text x="1140" y="592">Apr &#8217;26</text>
+  </g>
+
+  <!-- Footnote -->
+  <text x="120" y="645" font-size="14" fill="#9aa8a0">* Real anchors: Indeed FDE postings, Apr 2025 &amp; Apr 2026. Curve indexed to Jan 2025 = 100. Sources: Indeed, Paraform, LinkedIn, 2025&#8211;26.</text>
+</svg>
