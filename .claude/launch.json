@@ -7,6 +7,16 @@
       "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "jobposted-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/dr.chandinibuddha/jobposted/apps/web && exec ./node_modules/.bin/next dev -p 3100"
+      ],
+      "port": 3100,
+      "autoPort": true
     }
   ]
 }
