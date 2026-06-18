@@ -8,6 +8,13 @@ interface Props {
   className?: string
 }
 
+const JOBPOSTED_ACCOUNT_URL =
+  process.env.NEXT_PUBLIC_JOBPOSTED_ACCOUNT_URL || 'https://jobposted.app/dashboard/account'
+
+function isJobPostedManagedProvider(provider?: string | null) {
+  return provider === 'jobposted' || provider?.startsWith('jobposted_') === true
+}
+
 export default function ManageSubscriptionButton({ provider, label = 'Manage Subscription', className }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -16,6 +23,11 @@ export default function ManageSubscriptionButton({ provider, label = 'Manage Sub
     setLoading(true)
     setError(null)
     try {
+      if (isJobPostedManagedProvider(provider)) {
+        window.location.href = JOBPOSTED_ACCOUNT_URL
+        return
+      }
+
       if (provider === 'razorpay') {
         setError('Use Cancel Subscription to stop Razorpay renewal. Plan changes are not available here yet.')
         setLoading(false)

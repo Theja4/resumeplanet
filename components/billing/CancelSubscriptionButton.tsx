@@ -8,6 +8,10 @@ interface Props {
   className?: string
 }
 
+function isJobPostedManagedProvider(provider?: string | null) {
+  return provider === 'jobposted' || provider?.startsWith('jobposted_') === true
+}
+
 export default function CancelSubscriptionButton({ provider, className }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -18,6 +22,12 @@ export default function CancelSubscriptionButton({ provider, className }: Props)
     setLoading(true)
     setError(null)
     try {
+      if (isJobPostedManagedProvider(provider)) {
+        setError('This subscription is managed in JobPosted. Open JobPosted billing to cancel.')
+        setLoading(false)
+        return
+      }
+
       const res = await fetch('/api/subscription/cancel', { method: 'POST' })
       const json = await res.json().catch(() => null) as
         | { success?: boolean; error?: string }

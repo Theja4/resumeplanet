@@ -30,6 +30,12 @@ interface AccountProfile {
 }
 
 const INITIAL_NAME_STATE: UpdateNameState = { status: 'idle' }
+const JOBPOSTED_ACCOUNT_URL =
+  process.env.NEXT_PUBLIC_JOBPOSTED_ACCOUNT_URL || 'https://jobposted.app/dashboard/account'
+
+function isJobPostedManagedProvider(provider: string | null) {
+  return provider === 'jobposted' || provider?.startsWith('jobposted_') === true
+}
 
 function formatDate(value: string | null) {
   if (!value) return null
@@ -87,11 +93,12 @@ export default function AccountClient({
   const trimmedName = name.trim()
   const isUnchanged = trimmedName === savedName.trim()
 
-  const isManualProAccess = isPro && profile.subscription_interval == null
+  const isJobPostedManaged = isJobPostedManagedProvider(profile.payment_provider)
+  const isManualProAccess = isPro && profile.subscription_interval == null && !isJobPostedManaged
   const isRazorpay = profile.payment_provider === 'razorpay'
   const isPeriodBound = isPro && (isRazorpay || profile.payment_provider === 'polar')
-  const canManagePortal = isPro && !isManualProAccess && !isRazorpay
-  const canCancel = isPro && !isManualProAccess
+  const canManagePortal = isPro && !isManualProAccess && !isRazorpay && !isJobPostedManaged
+  const canCancel = isPro && !isManualProAccess && !isJobPostedManaged
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 md:space-y-7">
@@ -208,7 +215,9 @@ export default function AccountClient({
               ) : null}
             </div>
             <p className="text-sm text-on-surface-variant">
-              {isManualProAccess
+              {isJobPostedManaged
+                ? 'Included through JobPosted. Manage billing from your JobPosted account.'
+                : isManualProAccess
                 ? 'Pro access is enabled on your account.'
                 : isPro && isPeriodBound && periodEnd
                 ? `Renews on ${periodEnd}.`
@@ -242,6 +251,14 @@ export default function AccountClient({
 
         {isPro && !isManualProAccess ? (
           <div className="mt-5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+            {isJobPostedManaged ? (
+              <a
+                href={JOBPOSTED_ACCOUNT_URL}
+                className="flex items-center justify-center gap-2 rounded-full bg-[#026d32] px-7 py-3 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-[#026d32]/20 transition-all hover:-translate-y-0.5 hover:bg-[#015623]"
+              >
+                Open JobPosted billing <ArrowRight size={14} />
+              </a>
+            ) : null}
             {canManagePortal ? (
               <ManageSubscriptionButton
                 provider={profile.payment_provider}
