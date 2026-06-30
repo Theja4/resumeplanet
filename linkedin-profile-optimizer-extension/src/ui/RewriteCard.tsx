@@ -1,5 +1,6 @@
-import type { ExperienceEntry, ProfileData } from "../adapter/types";
+import type { ProfileData } from "../adapter/types";
 import type { GeneratorType } from "../auth/api";
+import { serializeExperienceForPrompt } from "./serializeExperience";
 
 /**
  * Maps a scoring check ID to a Claude generator and to the section
@@ -26,7 +27,7 @@ export function getRewriteFor(
     case "quantified-bullets":
       return {
         generator: "experience_bullets",
-        currentText: serializeExperience(profile.experience?.value ?? []),
+        currentText: serializeExperienceForPrompt(profile.experience?.value ?? []),
       };
     case "skills-count":
       return {
@@ -38,17 +39,3 @@ export function getRewriteFor(
   }
 }
 
-function serializeExperience(entries: ExperienceEntry[]): string {
-  if (!entries.length) return "";
-  return entries
-    .slice(0, 3)
-    .map((e, i) => {
-      const lines = [
-        `[${i + 1}] ${e.title?.value ?? "(no title)"} — ${e.company?.value ?? "(no company)"}`,
-      ];
-      if (e.description?.value) lines.push(e.description.value);
-      if (e.bullets?.value?.length) lines.push(...e.bullets.value.map((b) => `• ${b}`));
-      return lines.join("\n");
-    })
-    .join("\n\n");
-}

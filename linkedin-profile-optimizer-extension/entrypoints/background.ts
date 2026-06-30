@@ -1,4 +1,5 @@
 import {
+  API_TOKEN_PATH,
   EXTENSION_AUTH_PATH,
   REZOOMED_BASE_URL,
 } from "../src/config/env";
@@ -44,6 +45,34 @@ function buildAuthUrl(requestId: string): string {
   return url.toString();
 }
 
+// Tab-free token refresh. Hits /api/extension/token presenting the current
+// token as a bearer (so the server re-mints it without any cross-site
+// cookie) and also includes credentials so a live web session works too.
+// On any failure we return ok:false and the caller keeps the existing
+// token until a real 401 surfaces the sign-in CTA. This NEVER opens a tab.
+async function silentRefresh(token: string): Promise<AuthResponse> {
+  try {
+    const response = await fetch(`${REZOOMED_BASE_URL}${API_TOKEN_PATH}`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        accept: "application/json",
+        authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      return { ok: false, error: `silent_refresh_${response.status}` };
+    }
+    const data = (await response.json()) as { token?: unknown; expiresAt?: unknown };
+    if (typeof data.token !== "string" || typeof data.expiresAt !== "number") {
+      return { ok: false, error: "silent_refresh_bad_payload" };
+    }
+    return { ok: true, token: data.token, expiresAt: data.expiresAt };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "silent_refresh_failed" };
+  }
+}
+
 async function startSignInFlow(): Promise<AuthResponse> {
   const requestId = crypto.randomUUID();
   const tab = await chrome.tabs.create({ url: buildAuthUrl(requestId), active: true });
@@ -83,6 +112,10 @@ export default defineBackground(() => {
       if (message.type === "AUTH_SIGN_OUT") {
         sendResponse({ ok: true });
         return false;
+      }
+      if (message.type === "AUTH_SILENT_REFRESH") {
+        void silentRefresh(message.token).then(sendResponse);
+        return true;
       }
       void startSignInFlow().then(sendResponse);
       return true;

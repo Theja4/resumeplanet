@@ -1,4 +1,4 @@
-import { Eye, Flame, Lock, LogIn, TrendingDown } from "lucide-react";
+import { Eye, Flame, Lock, LogIn, LogOut, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { loadConfig } from "../adapter/config";
@@ -11,7 +11,7 @@ import { postScan } from "../auth/api";
 import { track } from "../telemetry/events";
 
 import { ThemeProvider, readCachedTheme } from "./theme/useTheme";
-import { Badge, Button, Card, SeverityDot, Tabs, type TabDef } from "./components";
+import { Badge, Button, Card, IconButton, SeverityDot, Tabs, type TabDef } from "./components";
 import { GatingProvider, SignInPrompt, useSignInAction } from "./Gating";
 import { OnboardingTour } from "./OnboardingTour";
 import { ScoreHero } from "./ScoreHero";
@@ -74,6 +74,13 @@ function fieldReadFlag(profile: ProfileData, field: ProfileField): 0 | 1 {
   return 1;
 }
 
+// "Settled" = every tracked field has a definitive value (including an
+// absent/false/0 read). Once true, the staggered re-scans that exist only
+// to catch LinkedIn's lazy-loaded sections have nothing left to find.
+function isProfileSettled(profile: ProfileData): boolean {
+  return HEALTH_TRACKED_FIELDS.every((field) => fieldReadFlag(profile, field) === 1);
+}
+
 function PanelInner() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [targetJobDescription, setTargetJobDescription] = useState("");
@@ -82,6 +89,7 @@ function PanelInner() {
   const latestProfileRef = useRef<ProfileData | null>(null);
   const latestConfigVersionRef = useRef<string>("unknown");
   const healthReportedRef = useRef(false);
+  const pendingRescanTimersRef = useRef<number[]>([]);
 
   const rescan = useCallback(async () => {
     if (!isExtensionContextValid()) return;
@@ -93,6 +101,12 @@ function PanelInner() {
       const next = extractProfileData(document, config);
       latestProfileRef.current = next;
       setProfile(next);
+      // Once the profile has settled, cancel the remaining staggered
+      // re-scans — they'd only repeat the same full-DOM extraction.
+      if (isProfileSettled(next)) {
+        pendingRescanTimersRef.current.forEach((t) => window.clearTimeout(t));
+        pendingRescanTimersRef.current = [];
+      }
       void track({
         name: "scan_run",
         props: {
@@ -110,6 +124,8 @@ function PanelInner() {
     const timers = [800, 2000, 4000, 7500, 12000, 18000].map((delay) =>
       window.setTimeout(() => void rescan(), delay),
     );
+    // Exposed so a settled scan can cancel whatever is still pending.
+    pendingRescanTimersRef.current = timers;
     // Fire the breakage telemetry once per session, after the late
     // re-scans have had time to settle. We use the latest profile state
     // captured by the ref so we report the final outcome, not whichever
@@ -160,6 +176,7 @@ function PanelInner() {
     }, 20000);
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
+      pendingRescanTimersRef.current = [];
       window.clearTimeout(healthTimer);
     };
   }, [rescan]);
@@ -176,7 +193,7 @@ function PanelInner() {
         return;
       }
       if (debounceTimer) window.clearTimeout(debounceTimer);
-      debounceTimer = window.setTimeout(() => void rescan(), 900);
+      debounceTimer = window.setTimeout(() => void rescan(), 1500);
     });
     observer.observe(main, { childList: true, subtree: true });
     const stopTimer = window.setTimeout(() => observer.disconnect(), 30000);
@@ -195,7 +212,7 @@ function PanelInner() {
 
   return (
     <GatingProvider>
-      {({ status, me }) => {
+      {({ status, me, signOut }) => {
         const authed = status === "authed";
         const isPro = authed && me?.plan === "pro";
         const tabs: TabDef<TabId>[] = [
@@ -216,8 +233,18 @@ function PanelInner() {
             onRescan={() => void rescan()}
             dark
             headerMeta={
-              isPro ? (
-                <Badge tone="pro">Pro</Badge>
+              authed ? (
+                <div className="flex items-center gap-1.5">
+                  {isPro ? <Badge tone="pro">Pro</Badge> : null}
+                  <IconButton
+                    size="sm"
+                    title="Sign out"
+                    ariaLabel="Sign out of Rezoomed"
+                    onClick={signOut}
+                  >
+                    <LogOut className="h-[18px] w-[18px]" />
+                  </IconButton>
+                </div>
               ) : null
             }
             bottomNav={
@@ -266,34 +293,44 @@ function PanelInner() {
 }
 
 function PersistScanEffect({ authed, score }: { authed: boolean; score: ScoreResult }) {
+  // The `score` object changes identity on every re-scan (mount + the
+  // staggered timers + each MutationObserver batch) and on every JD
+  // keystroke. Without this guard we'd POST /api/extension/scan and fire
+  // score_shown dozens of times per visit — and once per keystroke while
+  // typing a job description. Debounce the burst, then dedupe on a stable
+  // signature so an identical settled score is persisted only once.
+  const lastSignatureRef = useRef<string | null>(null);
   useEffect(() => {
-    void track({
-      name: "score_shown",
-      props: {
-        score: score.total,
-        readableChecks: score.checks.filter((c) => c.status !== "unread").length,
-        authed,
-      },
-    });
-    if (authed) {
-      void postScan({
-        profileUrl: window.location.href,
-        score: score.total,
-        sections: score.categories,
-      }).catch(() => undefined);
-    }
-    // Mirror to chrome.storage so the popup can show "last scanned" stat.
-    try {
-      chrome?.storage?.local?.set?.({
-        [LAST_SCAN_KEY]: {
-          score: score.total,
-          ts: Date.now(),
-          url: window.location.href,
-        },
+    const readableChecks = score.checks.filter((c) => c.status !== "unread").length;
+    const url = window.location.href;
+    const signature = `${authed ? 1 : 0}:${url}:${score.total}:${readableChecks}`;
+
+    const timer = window.setTimeout(() => {
+      if (lastSignatureRef.current === signature) return;
+      lastSignatureRef.current = signature;
+
+      void track({
+        name: "score_shown",
+        props: { score: score.total, readableChecks, authed },
       });
-    } catch {
-      /* ignore */
-    }
+      if (authed) {
+        void postScan({
+          profileUrl: url,
+          score: score.total,
+          sections: score.categories,
+        }).catch(() => undefined);
+      }
+      // Mirror to chrome.storage so the popup can show "last scanned" stat.
+      try {
+        chrome?.storage?.local?.set?.({
+          [LAST_SCAN_KEY]: { score: score.total, ts: Date.now(), url },
+        });
+      } catch {
+        /* ignore */
+      }
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
   }, [authed, score]);
   return null;
 }

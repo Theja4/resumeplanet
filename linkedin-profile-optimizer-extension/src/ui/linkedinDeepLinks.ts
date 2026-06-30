@@ -78,15 +78,3 @@ export function deepLinkFor(
   const safeSlug = encodeURIComponent(slug);
   return `${LINKEDIN_HOST}${path.replace("{slug}", safeSlug)}`;
 }
-
-/**
- * Backwards-compatible static map for callers that need a stable
- * record (e.g. tests). Reads the slug at module load — for runtime
- * accuracy (slug captured at click time) prefer `deepLinkFor()`.
- */
-export const LINKEDIN_EDIT_URL: Record<GeneratorType, string> = {
-  headline: deepLinkFor("headline") ?? "",
-  about: deepLinkFor("about") ?? "",
-  experience_bullets: deepLinkFor("experience_bullets") ?? "",
-  skills: deepLinkFor("skills") ?? "",
-};

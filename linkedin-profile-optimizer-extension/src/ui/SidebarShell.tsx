@@ -77,6 +77,11 @@ export function SidebarShell({
       setCollapsed(false);
       writeBool(HIDDEN_KEY, false);
       writeBool(COLLAPSED_KEY, false);
+      // One-shot: clear the request so later profile loads (within the
+      // 2-minute window) don't re-open a panel the user has since closed.
+      // Removing it fires onChanged with newValue=undefined, which the
+      // guard above ignores — no loop.
+      chrome?.storage?.local?.remove?.(SIDEBAR_OPEN_REQUEST_KEY);
     };
 
     try {

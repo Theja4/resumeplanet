@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Lock, LogIn, Sparkles } from "lucide-react";
 
-import { signIn } from "../auth/auth";
+import { isLoggedIn, signIn, signOut as authSignOut } from "../auth/auth";
 import { aliasToUser, track } from "../telemetry/events";
-import { fetchMe, HttpError, type MeResponse } from "../auth/api";
+import { fetchMe, type MeResponse } from "../auth/api";
 import { Button, Card } from "./components";
 
 interface GatingState {
   status: "loading" | "anonymous" | "authed";
   me: MeResponse | null;
+  /** Clears the stored token and flips the panel back to anonymous. */
+  signOut: () => void;
 }
 
 interface GatingProps {
@@ -22,28 +24,45 @@ interface GatingProps {
  * gap and Pro CTAs.
  */
 export function GatingProvider({ children }: GatingProps) {
-  const [state, setState] = useState<GatingState>({ status: "loading", me: null });
+  const [state, setState] = useState<{
+    status: GatingState["status"];
+    me: MeResponse | null;
+  }>({ status: "loading", me: null });
 
   useEffect(() => {
     let cancelled = false;
+    let lastFocusCheck = 0;
+    const FOCUS_RECHECK_MS = 60 * 1000;
+
     async function load() {
       try {
         const me = await fetchMe();
         if (cancelled) return;
         await aliasToUser(me.userId);
         setState({ status: "authed", me });
-      } catch (err) {
+      } catch {
         if (cancelled) return;
-        if (err instanceof HttpError && err.status === 401) {
-          setState({ status: "anonymous", me: null });
-        } else {
-          setState({ status: "anonymous", me: null });
-        }
+        // 401 or any other failure: treat as anonymous. The exact status
+        // doesn't change the outcome, so we don't branch on it.
+        setState({ status: "anonymous", me: null });
       }
     }
     void load();
 
-    const onFocus = () => void load();
+    // Re-validate on focus so a sign-in completed in another tab (the auth
+    // tab closing returns focus here) flips the panel to authed, and a Pro
+    // upgrade is picked up. But skip the /me round-trip when there's no
+    // token to validate — otherwise every alt-tab hit the network — and
+    // throttle to once a minute for an already-authed user.
+    const onFocus = () => {
+      void (async () => {
+        if (!(await isLoggedIn())) return;
+        const now = Date.now();
+        if (now - lastFocusCheck < FOCUS_RECHECK_MS) return;
+        lastFocusCheck = now;
+        void load();
+      })();
+    };
     window.addEventListener("focus", onFocus);
     return () => {
       cancelled = true;
@@ -51,7 +70,12 @@ export function GatingProvider({ children }: GatingProps) {
     };
   }, []);
 
-  return <>{children(state)}</>;
+  const signOut = useCallback(() => {
+    setState({ status: "anonymous", me: null });
+    void authSignOut();
+  }, []);
+
+  return <>{children({ ...state, signOut })}</>;
 }
 
 export interface SignInPromptProps {

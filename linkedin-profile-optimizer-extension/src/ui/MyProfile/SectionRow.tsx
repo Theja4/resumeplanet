@@ -12,7 +12,7 @@ import {
 import { Button, Card, StatusPill } from "../components";
 import { track } from "../../telemetry/events";
 import { getRewriteFor } from "../RewriteCard";
-import { LINKEDIN_EDIT_URL } from "../linkedinDeepLinks";
+import { deepLinkFor } from "../linkedinDeepLinks";
 import { type Severity } from "../../scoring/severity";
 import { useRewrite } from "./useRewrite";
 import type { CategoryScore, ScoreResult } from "../../scoring/types";
@@ -401,6 +401,9 @@ function RewriteAction({
     );
   }
 
+  // Resolved at render time so it reflects the current profile slug.
+  const editUrl = deepLinkFor(generator);
+
   return (
     <div className="space-y-2">
       <Button
@@ -458,14 +461,16 @@ function RewriteAction({
             >
               {copied ? "Copied" : "Copy"}
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              href={LINKEDIN_EDIT_URL[generator]}
-              icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
-            >
-              Edit on LinkedIn
-            </Button>
+            {editUrl ? (
+              <Button
+                variant="primary"
+                size="sm"
+                href={editUrl}
+                icon={<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />}
+              >
+                Edit on LinkedIn
+              </Button>
+            ) : null}
             {rw.result ? (
               <span
                 className="ml-auto inline-flex items-center gap-1 text-[12px]"

@@ -547,20 +547,31 @@ async function fetchRemote(): Promise<SelectorConfig | null> {
   }
 }
 
+// loadConfig() is called on every re-scan (mount + the staggered timers +
+// each MutationObserver batch). Without this guard the warm-cache path
+// would fire a background fetch to /api/linkedin/adapter-config on every
+// one of those — a dozen-plus redundant requests per page. We only need
+// to revalidate once per page session.
+let backgroundRefreshTriggered = false;
+
 export async function loadConfig(): Promise<SelectorConfig> {
   const cached = await readCache();
   if (cached) {
-    // Refresh in the background for next scan, but use the cached
-    // config now so the user sees a fast scan.
-    void (async () => {
-      const fresh = await fetchRemote();
-      if (fresh && fresh.version !== cached.config.version) {
-        await writeCache(fresh);
-      }
-    })();
+    // Refresh once per session in the background; subsequent scans reuse
+    // the cached config without re-hitting the network.
+    if (!backgroundRefreshTriggered) {
+      backgroundRefreshTriggered = true;
+      void (async () => {
+        const fresh = await fetchRemote();
+        if (fresh && fresh.version !== cached.config.version) {
+          await writeCache(fresh);
+        }
+      })();
+    }
     return cached.config;
   }
 
+  backgroundRefreshTriggered = true;
   const fresh = await fetchRemote();
   if (fresh) {
     await writeCache(fresh);

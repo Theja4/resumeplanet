@@ -52,6 +52,13 @@ export function extractKeywords(text: string, limit = 35): string[] {
 }
 
 export function containsKeyword(haystack: string, keyword: string): boolean {
-  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = keyword
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    // Match any run of whitespace between words, so a multi-word term like
+    // "product manager" still hits when the profile text joins sections
+    // with a newline or carries a double space ("product  manager").
+    .replace(/\s+/g, "\\s+");
+  if (!escaped) return false;
   return new RegExp(`(^|[^a-z0-9+#.])${escaped}([^a-z0-9+#.]|$)`, "i").test(haystack);
 }

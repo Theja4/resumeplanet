@@ -30,7 +30,14 @@ function readCachedThemeSync(): "light" | "dark" {
 }
 
 export default defineContentScript({
-  matches: ["*://*.linkedin.com/in/*"],
+  // Match every LinkedIn page (not just /in/*) so the script is already
+  // alive when the user soft-navigates (SPA, no full reload) from the
+  // feed/search into their own profile. Injection happens once per hard
+  // page load; subsequent in-app navigations reuse the live script and
+  // are handled by the wxt:locationchange listener in main(). All heavy
+  // work stays gated behind the own-profile check, so nothing renders
+  // until you're actually on your profile.
+  matches: ["*://*.linkedin.com/*"],
   runAt: "document_idle",
   // "manual" means WXT does NOT auto-inject CSS via the manifest or via
   // a runtime fetch. We're responsible for stylesheet placement, which
@@ -38,16 +45,11 @@ export default defineContentScript({
   // the inlined Tailwind output.
   cssInjectionMode: "manual",
   async main(ctx) {
-    if (!isLinkedInProfileUrl(window.location.href)) return;
-
     // Swallow rejections that originate inside our own script (and only
     // ours — we don't want to mask LinkedIn's own bugs). Without this, a
     // transient network blip on a fire-and-forget fetch ends up logged
     // in chrome://extensions as a red "Failed to fetch" entry.
     installUnhandledRejectionGuard();
-
-    const ownProfile = await waitForOwnProfile(document);
-    if (!ownProfile) return;
 
     const ui = await createShadowRootUi(ctx, {
       name: "rezoomed-profile-optimizer",
@@ -88,7 +90,42 @@ export default defineContentScript({
       },
     });
 
-    ui.mount();
+    let mounted = false;
+    // Monotonic token so an in-flight ownership poll from a previous
+    // navigation can't mount the panel after a newer navigation started.
+    let navToken = 0;
+
+    async function syncToLocation(): Promise<void> {
+      const myToken = (navToken += 1);
+      if (!isExtensionContextValid()) return;
+
+      // Always tear down first: leaving the profile, or moving to a
+      // different person's profile via SPA navigation, must never flash a
+      // stale panel scoped to the previous profile.
+      if (mounted) {
+        ui.remove();
+        mounted = false;
+      }
+
+      if (!isLinkedInProfileUrl(window.location.href)) return;
+
+      const ownProfile = await waitForOwnProfile(document);
+      // A newer navigation began while we were polling — let it win.
+      if (myToken !== navToken || !isExtensionContextValid()) return;
+      if (ownProfile) {
+        ui.mount();
+        mounted = true;
+      }
+    }
+
+    await syncToLocation();
+
+    // Re-evaluate on every in-app navigation. WXT dispatches
+    // wxt:locationchange on history.pushState / replaceState / popstate,
+    // which is how LinkedIn's SPA moves between the feed and a profile.
+    ctx.addEventListener(window, "wxt:locationchange", () => {
+      void syncToLocation();
+    });
 
     // Tear the panel down the moment the extension is reloaded or
     // disabled. Without this, the orphaned script keeps firing its

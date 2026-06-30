@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown, FileText, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, FileText, Upload } from "lucide-react";
 
 import {
   fetchConsistency,
@@ -200,7 +200,7 @@ export function ConsistencyGap({ userId, hasResume, profile }: Props) {
         tone="success"
         title="Resume and LinkedIn are aligned"
         description={`Headline, title and top skills match ${consistency.resumeTitle ?? "your resume"}.`}
-        icon={<AlertTriangle className="h-5 w-5" aria-hidden="true" />}
+        icon={<CheckCircle2 className="h-5 w-5" aria-hidden="true" />}
       />
     );
   }

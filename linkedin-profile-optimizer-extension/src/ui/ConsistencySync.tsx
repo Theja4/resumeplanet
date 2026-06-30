@@ -20,11 +20,12 @@ import {
   type MeResponse,
   type SyncFromResumeSection,
 } from "../auth/api";
-import type { ExperienceEntry, ProfileData } from "../adapter/types";
+import type { ProfileData } from "../adapter/types";
 import { track } from "../telemetry/events";
 import { Badge, Button, Card } from "./components";
 import { ProCta } from "./Gating";
-import { LINKEDIN_EDIT_URL } from "./linkedinDeepLinks";
+import { deepLinkFor } from "./linkedinDeepLinks";
+import { serializeExperienceForPrompt } from "./serializeExperience";
 
 interface Props {
   me: MeResponse | null;
@@ -287,7 +288,10 @@ function ProSyncCard({ profile, targetRole, targetJobDescription }: ProSyncProps
 
 function SectionRewriteCard({ section }: { section: SyncFromResumeSection }) {
   const [copied, setCopied] = useState(false);
-  const deepLink = LINKEDIN_EDIT_URL[section.generator];
+  // Resolve the deep link at render time so it always carries the current
+  // profile slug rather than whatever slug was loaded when the module
+  // first evaluated.
+  const deepLink = deepLinkFor(section.generator);
   const displayText =
     section.rewriteLines && section.rewriteLines.length > 0
       ? section.rewriteLines.join("\n")
@@ -420,24 +424,9 @@ function serializeLinkedInCurrent(
   return {
     headline: profile.headline?.value ?? "",
     about: profile.about?.value ?? "",
-    experience_bullets: serializeExperience(profile.experience?.value ?? []),
+    experience_bullets: serializeExperienceForPrompt(profile.experience?.value ?? []),
     skills: (profile.skills?.value ?? []).join("\n"),
   };
-}
-
-function serializeExperience(entries: ExperienceEntry[]): string {
-  if (!entries.length) return "";
-  return entries
-    .slice(0, 3)
-    .map((e, i) => {
-      const lines = [
-        `[${i + 1}] ${e.title?.value ?? "(no title)"} — ${e.company?.value ?? "(no company)"}`,
-      ];
-      if (e.description?.value) lines.push(e.description.value);
-      if (e.bullets?.value?.length) lines.push(...e.bullets.value.map((b) => `• ${b}`));
-      return lines.join("\n");
-    })
-    .join("\n\n");
 }
 
 function deriveErrorMessage(err: unknown): string {
