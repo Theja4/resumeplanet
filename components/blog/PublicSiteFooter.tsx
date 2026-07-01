@@ -2,7 +2,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getOrganizationSameAsLinks } from '@/lib/site'
 import ChromeStoreBadge from '@/components/ChromeStoreBadge'
-import FeaturedBadges from '@/components/FeaturedBadges'
 
 type SocialLink = {
   label: string
@@ -216,8 +215,6 @@ export default function PublicSiteFooter() {
         </div>
       </div>
 
-      {/* ── Featured-on badges (Startup Fame, Findly.tools) ── */}
-      <FeaturedBadges />
     </footer>
   )
 }
