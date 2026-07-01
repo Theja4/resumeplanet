@@ -150,14 +150,6 @@ export default function PublicSiteFooter() {
                 market.
               </p>
 
-              {/* Status indicator */}
-              <div className="inline-flex items-center gap-2.5">
-                <span className="footer-status-dot" />
-                <span className="text-xs font-medium text-zinc-700">
-                  All systems operational
-                </span>
-              </div>
-
               {/* Social icons (only when configured via env) */}
               {socialLinks.length > 0 && (
                 <div className="mt-1 flex items-center gap-2">
