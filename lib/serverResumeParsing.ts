@@ -12,12 +12,13 @@ import pdfjsParser from '@/lib/parsers/pdfjs'
 import claudeParser from '@/lib/parsers/claude'
 import { extractPDFItems, pagesToLines } from '@/lib/pdfExtractor'
 import { extractDocxText } from '@/lib/docxTextExtractor'
+import { hasConfiguredLLMProvider } from '@/lib/claude'
 
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 const PDF_MIME_TYPE = 'application/pdf'
 
 function canUseDeepSeekRepairParser() {
-  return Boolean(process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
+  return hasConfiguredLLMProvider()
 }
 
 function buildParseCandidate(

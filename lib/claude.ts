@@ -1,10 +1,11 @@
-// lib/claude.ts - Refactored for OpenRouter support
-// NOTE: Set ANTHROPIC_MODEL and ANTHROPIC_MODEL_PREMIUM in your environment to
-// point at whatever provider/model slug you actually want OpenRouter to use.
-// The literal defaults below are only a last-resort fallback for local dev;
-// if they 404 in your account, the FALLBACK_CHAIN retries with Gemini.
+// lib/claude.ts - Shared LLM gateway.
+// Microsoft Foundry is the primary provider when configured; OpenRouter remains
+// the secondary provider. The exported Claude-named helpers are retained so the
+// rest of the app does not need to know which provider served a request.
 export const DEEPSEEK_V4_FLASH = 'deepseek/deepseek-v4-flash'
 export const GEMINI_25_FLASH = 'google/gemini-2.5-flash'
+const FOUNDRY_GPT_54_MINI = 'gpt-5.4-mini'
+const FOUNDRY_DEEPSEEK_V4_FLASH = 'DeepSeek-V4-Flash'
 export const CLAUDE_STANDARD = process.env.ANTHROPIC_MODEL || DEEPSEEK_V4_FLASH
 export const CLAUDE_PREMIUM = process.env.ANTHROPIC_MODEL_PREMIUM || DEEPSEEK_V4_FLASH
 
@@ -15,6 +16,174 @@ const FALLBACK_CHAIN = [
 ]
 
 export type AnalyzePipeline = 'free_ats' | 'pro_ats' | 'pro_jd_tailor'
+type LLMProviderName = 'foundry' | 'openrouter'
+
+type ProviderConfig = {
+  name: LLMProviderName
+  baseUrl: string
+  headers: Record<string, string>
+  model: string
+  timeoutMs?: number
+}
+
+function env(...names: string[]) {
+  for (const name of names) {
+    const value = process.env[name]?.trim()
+    if (value) return value
+  }
+  return ''
+}
+
+function normalizeBaseUrl(rawUrl: string, suffix: string) {
+  let withoutTrailingSlash = rawUrl.replace(/\/+$/, '')
+
+  if (suffix === '/openai/v1') {
+    withoutTrailingSlash = withoutTrailingSlash
+      .replace(/\/openai\/v1$/i, '')
+      .replace(/\/api\/projects\/[^/]+$/i, '')
+  }
+
+  return withoutTrailingSlash.endsWith(suffix)
+    ? withoutTrailingSlash
+    : `${withoutTrailingSlash}${suffix}`
+}
+
+function envList(...names: string[]) {
+  return names
+    .flatMap(name => (process.env[name] ?? '').split(','))
+    .map(value => value.trim())
+    .filter(Boolean)
+}
+
+function uniq(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)))
+}
+
+function numberEnv(name: string, fallback: number) {
+  const value = Number(process.env[name])
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+function resolveFoundryModels(requestedModel: string) {
+  const configuredChain = envList(
+    'AZURE_AI_FOUNDRY_MODELS',
+    'AZURE_AI_FOUNDRY_DEPLOYMENTS',
+    'MICROSOFT_FOUNDRY_MODELS',
+    'MICROSOFT_FOUNDRY_DEPLOYMENTS',
+    'FOUNDRY_MODELS',
+    'FOUNDRY_DEPLOYMENTS',
+  )
+  if (configuredChain.length > 0) return uniq(configuredChain)
+
+  const primaryModel = env(
+    'AZURE_AI_FOUNDRY_PRIMARY_MODEL',
+    'AZURE_AI_FOUNDRY_PRIMARY_DEPLOYMENT',
+    'MICROSOFT_FOUNDRY_PRIMARY_MODEL',
+    'MICROSOFT_FOUNDRY_PRIMARY_DEPLOYMENT',
+    'FOUNDRY_PRIMARY_MODEL',
+    'FOUNDRY_PRIMARY_DEPLOYMENT',
+  )
+  const secondaryModel = env(
+    'AZURE_AI_FOUNDRY_SECONDARY_MODEL',
+    'AZURE_AI_FOUNDRY_SECONDARY_DEPLOYMENT',
+    'MICROSOFT_FOUNDRY_SECONDARY_MODEL',
+    'MICROSOFT_FOUNDRY_SECONDARY_DEPLOYMENT',
+    'FOUNDRY_SECONDARY_MODEL',
+    'FOUNDRY_SECONDARY_DEPLOYMENT',
+  )
+  if (primaryModel || secondaryModel) {
+    return uniq([primaryModel, secondaryModel])
+  }
+
+  const standardModel = env(
+    'AZURE_AI_FOUNDRY_MODEL',
+    'AZURE_AI_FOUNDRY_DEPLOYMENT',
+    'MICROSOFT_FOUNDRY_MODEL',
+    'MICROSOFT_FOUNDRY_DEPLOYMENT',
+  )
+  const premiumModel = env(
+    'AZURE_AI_FOUNDRY_MODEL_PREMIUM',
+    'AZURE_AI_FOUNDRY_DEPLOYMENT_PREMIUM',
+    'MICROSOFT_FOUNDRY_MODEL_PREMIUM',
+    'MICROSOFT_FOUNDRY_DEPLOYMENT_PREMIUM',
+  )
+
+  if (requestedModel === CLAUDE_PREMIUM && premiumModel) {
+    return uniq([premiumModel, secondaryModel, standardModel, FOUNDRY_DEEPSEEK_V4_FLASH])
+  }
+  if (requestedModel === CLAUDE_STANDARD && standardModel) {
+    return uniq([standardModel, secondaryModel, premiumModel, FOUNDRY_DEEPSEEK_V4_FLASH])
+  }
+
+  return uniq([standardModel, premiumModel, FOUNDRY_GPT_54_MINI, FOUNDRY_DEEPSEEK_V4_FLASH])
+}
+
+function getProviderOrder(): LLMProviderName[] {
+  const configured = env('LLM_PROVIDER_ORDER', 'AI_PROVIDER_ORDER')
+  if (!configured) return ['foundry', 'openrouter']
+
+  const providers = configured
+    .split(',')
+    .map(provider => provider.trim().toLowerCase())
+    .filter((provider): provider is LLMProviderName => provider === 'foundry' || provider === 'openrouter')
+
+  return providers.length > 0 ? providers : ['foundry', 'openrouter']
+}
+
+function getProviderConfigs(requestedModel: string): ProviderConfig[] {
+  const foundryEndpoint = env('AZURE_AI_FOUNDRY_ENDPOINT', 'MICROSOFT_FOUNDRY_ENDPOINT', 'FOUNDRY_ENDPOINT')
+  const foundryKey = env('AZURE_AI_FOUNDRY_API_KEY', 'MICROSOFT_FOUNDRY_API_KEY', 'FOUNDRY_API_KEY')
+  const foundryModels = resolveFoundryModels(requestedModel)
+
+  const openRouterBaseUrl = env('OPENROUTER_BASE_URL') || 'https://openrouter.ai/api/v1'
+  const openRouterKey = env('OPENROUTER_API_KEY', 'ANTHROPIC_AUTH_TOKEN')
+
+  const available: Partial<Record<LLMProviderName, ProviderConfig[]>> = {}
+
+  if (foundryEndpoint && foundryKey && foundryModels.length > 0) {
+    const primaryTimeoutMs = numberEnv('FOUNDRY_PRIMARY_TIMEOUT_MS', 30000)
+    const secondaryTimeoutMs = numberEnv('FOUNDRY_SECONDARY_TIMEOUT_MS', 45000)
+
+    available.foundry = foundryModels.map((model, index) => ({
+      name: 'foundry',
+      baseUrl: normalizeBaseUrl(foundryEndpoint, '/openai/v1'),
+      model,
+      timeoutMs: index === 0 ? primaryTimeoutMs : secondaryTimeoutMs,
+      headers: {
+        'api-key': foundryKey,
+      },
+    }))
+  }
+
+  if (openRouterKey) {
+    available.openrouter = [{
+      name: 'openrouter',
+      baseUrl: normalizeBaseUrl(openRouterBaseUrl, '/api/v1'),
+      model: requestedModel,
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'HTTP-Referer': env('OPENROUTER_SITE_URL', 'NEXT_PUBLIC_SITE_URL', 'NEXT_PUBLIC_APP_URL') || 'https://rezoomed.com',
+        'X-Title': env('OPENROUTER_APP_TITLE', 'OPENROUTER_SITE_NAME') || 'Rezoomed',
+      },
+    }]
+  }
+
+  return getProviderOrder()
+    .flatMap(provider => available[provider] ?? [])
+    .filter((provider): provider is ProviderConfig => Boolean(provider))
+}
+
+export function hasConfiguredLLMProvider() {
+  return getProviderConfigs(CLAUDE_STANDARD).length > 0
+}
+
+function providerErrorPrefix(provider: LLMProviderName) {
+  return provider === 'foundry' ? 'FOUNDRY_API_ERROR' : 'OPENROUTER_API_ERROR'
+}
+
+function usesMaxCompletionTokens(provider: ProviderConfig) {
+  return provider.name === 'foundry' && /^gpt-5/i.test(provider.model)
+}
 
 const FREE_ATS_SYSTEM = `You are an ATS (Applicant Tracking System) resume scorer. Score the resume strictly.
 
@@ -283,10 +452,7 @@ export async function analyzeResume<T>(
   const userMessage = buildUserMessage(pipeline, resumeText, jdText)
   const system = systemPrompts[pipeline]
 
-  const OPENROUTER_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
-  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
-
-  if (!OPENROUTER_KEY) {
+  if (!hasConfiguredLLMProvider()) {
     return { success: false, error: 'OPENROUTER_API_KEY_MISSING' }
   }
 
@@ -294,47 +460,15 @@ export async function analyzeResume<T>(
 
   for (const model of FALLBACK_CHAIN) {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 120000)
-
-      const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'HTTP-Referer': 'https://rezoomed.com',
-          'X-Title': 'Rezoomed',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: userMessage },
-          ],
-          temperature: 0.3,
-          max_tokens: maxTokens,
-          response_format: { type: 'json_object' },
-        }),
-        signal: controller.signal,
+      const raw = await callClaude({
+        model,
+        system,
+        prompt: userMessage,
+        maxTokens,
+        timeoutMs: 120000,
+        temperature: 0.3,
+        jsonMode: true,
       })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        failures.push({
-          model,
-          reason: `HTTP ${response.status}${errorText ? `: ${errorText.slice(0, 300)}` : ''}`,
-        })
-        continue
-      }
-
-      const data = await response.json()
-      const raw: string = data.choices?.[0]?.message?.content
-      if (!raw) {
-        failures.push({ model, reason: 'EMPTY_RESPONSE' })
-        continue
-      }
 
       let parsed: T
       try {
@@ -373,62 +507,83 @@ export async function callClaude(options: {
 }): Promise<string> {
   const { model, system, prompt, maxTokens = 4096, timeoutMs = 90000, temperature, jsonMode } = options
 
-  const OPENROUTER_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
-  const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN
-
-  if (!OPENROUTER_KEY) {
+  const providers = getProviderConfigs(model)
+  if (providers.length === 0) {
     throw new Error('OPENROUTER_API_KEY_MISSING')
   }
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
-
   const body: Record<string, unknown> = {
-    model,
     messages: [
       { role: 'system', content: system },
       { role: 'user', content: prompt },
     ],
-    max_tokens: Number(maxTokens),
   }
   if (temperature !== undefined) body.temperature = temperature
   if (jsonMode) body.response_format = { type: 'json_object' }
 
-  try {
-    console.log(`[LLM] model=${model} | url=${OPENROUTER_URL}/chat/completions`)
-    const response = await fetch(`${OPENROUTER_URL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENROUTER_KEY}`,
-        'HTTP-Referer': 'https://rezoomed.com',
-        'X-Title': 'Rezoomed',
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
+  const failures: Array<{ provider: LLMProviderName; model: string; reason: string }> = []
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenRouter Error:', errorText)
-      throw new Error(`OPENROUTER_API_ERROR: ${response.status} ${errorText}`)
-    }
+  for (const provider of providers) {
+    const controller = new AbortController()
+    const requestTimeoutMs = Math.min(timeoutMs, provider.timeoutMs ?? timeoutMs)
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs)
 
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
-      throw new Error('OPENROUTER_EMPTY_RESPONSE')
-    }
+    try {
+      const requestBody = {
+        ...body,
+        model: provider.model,
+        [usesMaxCompletionTokens(provider) ? 'max_completion_tokens' : 'max_tokens']: Number(maxTokens),
+      }
 
-    return content
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('CLAUDE_TIMEOUT')
+      console.log(`[LLM] provider=${provider.name} | model=${provider.model} | timeoutMs=${requestTimeoutMs} | url=${provider.baseUrl}/chat/completions`)
+      const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...provider.headers,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        const reason = `${providerErrorPrefix(provider.name)}: ${response.status}${errorText ? ` ${errorText}` : ''}`
+        console.error(`${provider.name} LLM error:`, errorText)
+        failures.push({ provider: provider.name, model: provider.model, reason })
+        continue
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content
+      if (!content) {
+        failures.push({ provider: provider.name, model: provider.model, reason: `${provider.name.toUpperCase()}_EMPTY_RESPONSE` })
+        continue
+      }
+
+      return content
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        failures.push({ provider: provider.name, model: provider.model, reason: 'CLAUDE_TIMEOUT' })
+        continue
+      }
+
+      failures.push({
+        provider: provider.name,
+        model: provider.model,
+        reason: error instanceof Error ? error.message : String(error),
+      })
+      continue
+    } finally {
+      clearTimeout(timeoutId)
     }
-    throw error
-  } finally {
-    clearTimeout(timeoutId)
   }
+
+  if (failures.every(failure => failure.reason === 'CLAUDE_TIMEOUT')) {
+    throw new Error('CLAUDE_TIMEOUT')
+  }
+
+  throw new Error(failures.map(failure => `${failure.provider}/${failure.model}: ${failure.reason}`).join(' | '))
 }
 
 function parseJSON<T>(raw: string): T {
@@ -532,7 +687,7 @@ export async function callClaudeJSONFallback<T>(options: {
     }
   }
 
-  console.error('OpenRouter JSON fallback chain failed:', failures)
+  console.error('LLM JSON fallback chain failed:', failures)
 
   if (failures.length > 0 && failures.every(failure => failure.reason === 'CLAUDE_TIMEOUT')) {
     throw new Error('CLAUDE_TIMEOUT')
