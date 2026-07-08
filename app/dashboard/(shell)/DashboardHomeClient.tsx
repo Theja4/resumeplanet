@@ -557,12 +557,9 @@ function EmptyPreviewGraphic() {
     <div className="relative h-full min-h-[17rem] overflow-hidden rounded-[1.6rem] bg-[linear-gradient(160deg,#0b1220_0%,#0f1f17_100%)] p-6 text-white shadow-[0_28px_60px_rgba(8,15,12,0.4)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_8%,rgba(16,185,129,0.32),transparent_40%),radial-gradient(circle_at_88%_82%,rgba(250,204,21,0.15),transparent_44%)]" />
       <div className="relative flex h-full flex-col gap-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100 ring-1 ring-white/10">
             <Sparkles size={11} className="text-amber-300" /> Resume signal
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-200 ring-1 ring-emerald-300/20">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Live
           </span>
         </div>
 
