@@ -21,6 +21,7 @@ import { detectRequestCountry } from '@/lib/cookie-consent'
 import { getSiteUrl } from '@/lib/site'
 import { DEFAULT_OG_IMAGE, getAbsoluteUrl } from '@/lib/seo'
 import PricingWorkspaceClient from '@/app/dashboard/(shell)/pricing/PricingWorkspaceClient'
+import PricingComparisonSection from './PricingComparisonSection'
 
 const pricingPreviewImage = {
   url: getAbsoluteUrl(DEFAULT_OG_IMAGE.url),
@@ -113,32 +114,26 @@ export default async function PublicPricingPage({
       />
       <main className="px-4 pb-12 pt-24 sm:px-6">
         <div className="mx-auto max-w-[1320px] space-y-5">
-          <DashboardSurface variant="default" className="space-y-4 p-4 sm:p-5">
-            <div className="space-y-2.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary-container/50 bg-primary-container/35 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.22em] text-on-primary-container">
-                Plans & Billing
-              </span>
-              <div className="space-y-1.5">
-                <h1 className="max-w-4xl text-[2.35rem] font-black leading-[0.98] tracking-tight text-on-background sm:text-[3.1rem] xl:max-w-none xl:whitespace-nowrap">
-                  Transparent pricing, live checkout, promo-ready.
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-on-surface-variant">
-                  Compare the free tier with live monthly and annual Pro plans, apply a coupon code, and carry that discount straight into checkout.
-                </p>
-              </div>
-            </div>
+          <div id="pricing-top" className="scroll-mt-28">
+            <DashboardSurface variant="default" className="space-y-4 p-4 sm:p-5">
+              <h1 className="max-w-6xl text-[2.35rem] font-black leading-[0.98] tracking-tight text-on-background sm:text-[clamp(2.7rem,4vw,3.1rem)] lg:whitespace-nowrap">
+                Land that dream job with Rezoomed Pro!
+              </h1>
 
-            <div className="border-t border-black/6 pt-4">
-              <PricingWorkspaceClient
-                autoFillPromo={autoApplyCode}
-                availablePromo={pricingPromo}
-                isPro={false}
-                priceOptions={priceOptions}
-                pricingCountryCode={pricingCountryCode}
-                loginRedirectPath="/dashboard/pricing"
-              />
-            </div>
-          </DashboardSurface>
+              <div className="border-t border-black/6 pt-4">
+                <PricingWorkspaceClient
+                  autoFillPromo={autoApplyCode}
+                  availablePromo={pricingPromo}
+                  isPro={false}
+                  priceOptions={priceOptions}
+                  pricingCountryCode={pricingCountryCode}
+                  loginRedirectPath="/dashboard/pricing"
+                />
+              </div>
+            </DashboardSurface>
+          </div>
+
+          <PricingComparisonSection priceOptions={priceOptions} />
         </div>
       </main>
       <PublicSiteFooter />

@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type ComponentType, type SVGProps } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   ArrowRight,
   BadgeCheck,
-  BrainCircuit,
   Crown,
   FileText,
-  Headphones,
   Loader2,
   Rocket,
   Star,
@@ -261,36 +260,41 @@ function UnlimitedBenefitIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
-function ExportBenefitIcon(props: SVGProps<SVGSVGElement>) {
+function MetadataAnnouncerBenefitIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 48 48" fill="none" aria-hidden="true" {...props}>
       <path
-        className="fill-current opacity-20 transition-all duration-500 group-hover/benefit:fill-orange-300/75 group-hover/benefit:opacity-100"
-        d="M13 9h17l7 7v9.5H13z"
+        className="fill-current opacity-20 transition-all duration-500 group-hover/benefit:fill-amber-300/85 group-hover/benefit:opacity-100"
+        d="M11 8.5h19.5l6.5 6.5v25H11z"
       />
-      <path d="M13 9h17l7 7v9.5H13zM30 9v8h7" stroke="currentColor" strokeWidth="2.6" strokeLinejoin="round" />
       <path
-        className="origin-center transition-transform duration-500 [transform-box:fill-box] group-hover/benefit:translate-y-1"
-        d="M24 17v18M17 29l7 7 7-7"
+        d="M11 8.5h19.5l6.5 6.5v25H11zM30.5 8.5V16H37"
         stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
+        strokeWidth="2.6"
         strokeLinejoin="round"
       />
-      <path d="M14 39h26" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-      <rect
-        className="fill-sky-300 opacity-0 transition-all duration-500 group-hover/benefit:-translate-y-1 group-hover/benefit:opacity-100"
-        x="7"
-        y="26"
-        width="12"
-        height="7"
-        rx="2"
+      <path
+        className="stroke-current opacity-70 transition-all duration-500 group-hover/benefit:stroke-white group-hover/benefit:opacity-100"
+        d="M17 20h10M17 26h14M17 32h8"
+        strokeWidth="2.5"
+        strokeLinecap="round"
       />
       <path
-        className="stroke-white opacity-0 transition-all duration-500 group-hover/benefit:opacity-100"
-        d="M10.5 30h5"
-        strokeWidth="1.7"
+        className="origin-center fill-current opacity-25 transition-all duration-500 [transform-box:fill-box] group-hover/benefit:-translate-y-1 group-hover/benefit:translate-x-1 group-hover/benefit:scale-110 group-hover/benefit:fill-emerald-300 group-hover/benefit:opacity-100"
+        d="M25.5 34.5h9.8l4.7 4.2v-4.2h1.4c1.4 0 2.6-1.1 2.6-2.6v-7.2c0-1.4-1.1-2.6-2.6-2.6H25.5c-1.4 0-2.6 1.1-2.6 2.6v7.2c0 1.4 1.2 2.6 2.6 2.6z"
+      />
+      <path
+        className="transition-all duration-500 group-hover/benefit:-translate-y-1 group-hover/benefit:translate-x-1 group-hover/benefit:stroke-white"
+        d="M28 27h8M28 31h5M39 24.5c1.9-1.6 1.9-4 0-5.6M42.3 27.4c3.7-3.5 3.7-8.6 0-12.1"
+        stroke="currentColor"
+        strokeWidth="2.3"
         strokeLinecap="round"
+      />
+      <circle
+        className="fill-amber-300 opacity-0 transition-all duration-500 group-hover/benefit:-translate-y-1 group-hover/benefit:opacity-100"
+        cx="17"
+        cy="14"
+        r="2.5"
       />
     </svg>
   )
@@ -324,7 +328,7 @@ const BENEFITS: Benefit[] = [
   {
     Icon: AtsBenefitIcon,
     title: 'Advanced ATS analysis',
-    description: 'AI scoring with Claude insights — not just keyword counting.',
+    description: 'AI scoring with Claude insights, not just keyword counting.',
     theme: {
       accent: '#06b6d4',
       glow: 'rgba(6,182,212,0.22)',
@@ -348,7 +352,7 @@ const BENEFITS: Benefit[] = [
   {
     Icon: CoverLetterBenefitIcon,
     title: 'AI cover letters',
-    description: 'Generate matching, recruiter-ready cover letters in seconds.',
+    description: 'Generate matching, recruiter ready cover letters in seconds.',
     theme: {
       accent: '#ec4899',
       glow: 'rgba(236,72,153,0.22)',
@@ -395,15 +399,15 @@ const BENEFITS: Benefit[] = [
     },
   },
   {
-    Icon: ExportBenefitIcon,
-    title: 'PDF + editable DOCX',
-    description: 'Export polished PDF and fully editable Word files.',
+    Icon: MetadataAnnouncerBenefitIcon,
+    title: 'Metadata enhancer',
+    description: 'Clean file titles, authors, and keywords before you apply.',
     theme: {
-      accent: '#ef4444',
-      glow: 'rgba(239,68,68,0.2)',
-      iconActive: 'linear-gradient(135deg,#ef4444,#f97316)',
-      shadow: 'rgba(239,68,68,0.2)',
-      wash: 'rgba(251,113,133,0.14)',
+      accent: '#f59e0b',
+      glow: 'rgba(245,158,11,0.22)',
+      iconActive: 'linear-gradient(135deg,#f59e0b,#16a34a)',
+      shadow: 'rgba(245,158,11,0.2)',
+      wash: 'rgba(250,204,21,0.16)',
     },
   },
 ]
@@ -515,58 +519,112 @@ function LiveCounterStrip({ count }: { count: number }) {
       <span className="text-zinc-400">
         <strong className="text-white">{count.toLocaleString('en-US')}</strong> resumes upgraded this month
       </span>
-      <span className="hidden text-zinc-600 sm:inline">—</span>
+      <span className="hidden text-zinc-600 sm:inline">•</span>
       <span className="hidden font-semibold text-amber-300 sm:inline">your competition is optimizing right now</span>
     </div>
   )
 }
 
-// ─── Left-column feature list ─────────────────────────────────────────────────
+// ─── JobPosted promo card ─────────────────────────────────────────────────────
 
-const PRO_EXTRAS: Array<{
+const JOBPOSTED_FEATURES: Array<{
   Icon: LucideIcon
   title: string
   description: string
 }> = [
   {
-    Icon: FileText,
-    title: 'Metadata enhancer',
-    description: 'Clean PDF titles, authors, and keywords before you apply.',
-  },
-  {
-    Icon: BrainCircuit,
-    title: 'Frontier models',
-    description: 'Stronger scoring and rewrites powered by top AI models.',
-  },
-  {
-    Icon: Headphones,
-    title: 'Priority support',
-    description: 'Faster help when exports, billing, or setup need attention.',
-  },
-  {
     Icon: Rocket,
-    title: '1st to try new features',
-    description: 'Early access to new Pro tools as they ship.',
+    title: 'One click autofill',
+    description: 'Fill applications faster with saved details.',
+  },
+  {
+    Icon: BadgeCheck,
+    title: 'Job tracking',
+    description: 'Track saved roles, status, and next steps.',
+  },
+  {
+    Icon: FileText,
+    title: 'Access to Job board',
+    description: 'Top career sites gathered in one board.',
   },
 ]
 
-function ProExtrasCard() {
+function getMonthlyPriceLabel(monthlyOption: PriceOption | undefined) {
+  if (!monthlyOption) return '$19.99'
+
+  return formatPriceDisplay(monthlyOption.display, monthlyOption).main
+}
+
+function JobPostedCard({ monthlyOption }: { monthlyOption: PriceOption | undefined }) {
+  const monthlyPrice = getMonthlyPriceLabel(monthlyOption)
+
   return (
-    <div className="relative overflow-hidden rounded-[1.5rem] border border-black/10 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
-      <div className="relative flex w-full flex-col gap-4">
-        {PRO_EXTRAS.map(({ Icon, title, description }) => (
-          <div key={title} className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#0b7a3d] shadow-[0_10px_24px_rgba(15,23,42,0.08)]">
-              <Icon size={18} strokeWidth={2.2} />
-            </span>
-            <p className="min-w-0 text-sm leading-5 text-slate-600">
-              <span className="font-black text-slate-900">{title}</span>
-              <span className="text-slate-500"> — {description}</span>
+    <a
+      href="https://jobposted.app"
+      target="_blank"
+      rel="noreferrer"
+      className="group relative flex h-full min-h-[300px] flex-col overflow-hidden rounded-[1.75rem] border border-blue-200/70 bg-[linear-gradient(135deg,#ffffff_0%,#f4faff_42%,#eafbf1_100%)] px-5 py-5 shadow-[0_18px_42px_rgba(15,23,42,0.07)] transition-all duration-300 hover:-translate-y-1 hover:border-blue-400/70 hover:shadow-[0_28px_62px_rgba(37,99,235,0.16)]"
+      aria-label="Open JobPosted landing page"
+    >
+      <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(59,130,246,0.18),transparent_33%),radial-gradient(circle_at_92%_100%,rgba(34,197,94,0.2),transparent_36%)]" />
+      <span className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-blue-200/28 blur-3xl" />
+
+      <div className="relative flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-[0_14px_30px_rgba(37,99,235,0.14)]">
+            <Image
+              src="/jobposted-logo.jpg"
+              alt="JobPosted logo"
+              width={48}
+              height={48}
+              className="h-full w-full object-cover"
+            />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-black tracking-tight text-slate-950">JobPosted</p>
+              <span className="rounded-full border border-rose-100 bg-rose-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-rose-600">
+                New
+              </span>
+            </div>
+            <p className="mt-0.5 max-w-[18rem] text-xs font-semibold leading-5 text-slate-500">
+              A job search command center bundled into your Pro plan.
             </p>
+          </div>
+        </div>
+
+        <div className="text-right">
+          <p className="text-sm font-black text-emerald-700">
+            <span className="mr-1.5 text-xs font-semibold text-slate-400 line-through decoration-1">
+              {monthlyPrice}/mo
+            </span>
+            Free
+          </p>
+          <p className="mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700">
+            Included with Rezoomed Pro
+          </p>
+        </div>
+      </div>
+
+      <div className="relative mt-4 grid flex-1 gap-3 sm:grid-cols-3">
+        {JOBPOSTED_FEATURES.map(({ Icon, title, description }) => (
+          <div key={title} className="flex h-full min-h-[130px] flex-col justify-between rounded-2xl border border-white/75 bg-white/76 px-3.5 py-3.5 transition-colors group-hover:bg-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+              <Icon size={16} strokeWidth={2.3} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-black leading-tight text-slate-900">{title}</p>
+              <p className="mt-1.5 text-[11px] leading-4 text-slate-500">{description}</p>
+            </div>
           </div>
         ))}
       </div>
-    </div>
+
+      <div className="relative mt-4 flex items-center justify-between rounded-2xl border border-blue-100/80 bg-white/64 px-4 py-3 text-xs font-black text-blue-700 transition-colors group-hover:bg-white/82">
+        <span>Open jobposted.app</span>
+        <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+      </div>
+    </a>
   )
 }
 
@@ -734,7 +792,49 @@ export default function ProUpgradeExperience({
   return (
     <div className="space-y-5 pb-28 sm:pb-0">
       <div className="grid gap-5 lg:grid-cols-2">
-        {/* ─── LEFT: plan selector + reviews + price anchor ─────────────────── */}
+        {/* ─── LEFT: highlights + reviews ──────────────────────────────────── */}
+        <div className="flex h-full flex-col gap-5">
+          <div className="rounded-[2rem] border border-black/5 bg-white/85 p-6 shadow-[0_24px_60px_rgba(25,28,29,0.06)] backdrop-blur-xl sm:p-7">
+            <div className="mb-5 flex items-center justify-center gap-2">
+              <Crown size={18} className="text-amber-500" />
+              <h2 className="text-center text-xl font-black tracking-tight text-slate-900">
+                Highlights in Pro
+              </h2>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {BENEFITS.map(({ Icon, title, description, badge, theme }) => (
+                <div
+                  key={title}
+                  style={benefitStyle(theme)}
+                  className="group/benefit relative flex min-h-[92px] items-center gap-3 overflow-hidden rounded-[1.1rem] border border-black/5 bg-slate-50/70 p-3.5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--benefit-accent)] hover:bg-white hover:shadow-[0_18px_40px_var(--benefit-shadow)]"
+                >
+                  <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--benefit-glow),transparent_44%)] opacity-0 transition-opacity duration-300 group-hover/benefit:opacity-100" />
+                  <span className="pointer-events-none absolute inset-y-0 -left-20 w-20 -skew-x-12 bg-[linear-gradient(90deg,transparent,var(--benefit-wash),transparent)] opacity-0 transition-all duration-700 group-hover/benefit:left-full group-hover/benefit:opacity-100" />
+
+                  {badge ? (
+                    <span className="absolute right-2 top-2 z-10 rotate-3 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-black shadow-sm transition-transform duration-300 group-hover/benefit:rotate-0 group-hover/benefit:scale-105">
+                      {badge}
+                    </span>
+                  ) : null}
+
+                  <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--benefit-ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_7px_16px_rgba(15,23,42,0.08)] transition-all duration-300 [background:var(--benefit-icon-bg)] group-hover/benefit:-rotate-3 group-hover/benefit:scale-110 group-hover/benefit:text-white group-hover/benefit:shadow-[0_14px_28px_var(--benefit-shadow)] group-hover/benefit:[background:var(--benefit-icon-active)]">
+                    <Icon className="h-7 w-7 overflow-visible transition-transform duration-300 group-hover/benefit:scale-110" />
+                  </span>
+
+                  <div className="relative min-w-0">
+                    <p className="text-[13px] font-bold leading-tight text-slate-900 transition-colors duration-300 group-hover/benefit:text-[var(--benefit-ink)]">{title}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-slate-500 transition-colors duration-300 group-hover/benefit:text-slate-600">{description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <ReviewsCarousel />
+        </div>
+
+        {/* ─── RIGHT: plan selector + extras + Continue ────────────────────── */}
         <div className="flex h-full flex-col gap-5">
           <div className="space-y-3">
             <div className="grid gap-3 pt-2 sm:grid-cols-2">
@@ -760,89 +860,37 @@ export default function ProUpgradeExperience({
             <PromoCodeInput autoFillCode={autoFillPromo} onApply={handlePromoApply} compact />
           </div>
 
-          <ProExtrasCard />
-          <ReviewsCarousel />
+          <div>
+            {checkoutError ? (
+              <p className="mb-4 text-center text-sm text-red-600">{checkoutError}</p>
+            ) : null}
 
-          {/* Price anchor (FOMO) */}
-          <div className="flex w-full items-center gap-4 rounded-2xl bg-zinc-950 px-6 py-3.5 text-white">
-            <div className="text-center">
-              <p className="text-lg font-black text-red-400 line-through decoration-1">$5.50</p>
-              <p className="text-[9px] text-zinc-500">a coffee</p>
-            </div>
-            <div className="h-8 w-px bg-white/15" />
-            <div className="text-center">
-              <p className="text-lg font-black text-emerald-400">$0.14</p>
-              <p className="text-[9px] text-zinc-500">Pro per day</p>
-            </div>
-            <div className="h-8 w-px bg-white/15" />
-            <p className="text-xs leading-5 text-zinc-300">
-              Every day without Pro is an interview going to someone else.
+            <button
+              onClick={handleContinue}
+              disabled={isLoading || !selectedOption}
+              className="hidden w-full items-center justify-center gap-2 rounded-2xl bg-[#16a34a] px-6 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(22,163,74,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" /> Opening checkout…
+                </>
+              ) : (
+                <>
+                  Continue
+                  <ArrowRight size={18} />
+                </>
+              )}
+            </button>
+
+            <p className="mt-3 hidden items-center justify-center gap-1.5 text-center text-xs text-on-surface-variant sm:flex">
+              <BadgeCheck size={13} className="text-[#026d32]" />
+              Cancel anytime from your account page
             </p>
           </div>
-        </div>
 
-        {/* ─── RIGHT: all benefits + Continue ──────────────────────────────── */}
-        <div className="rounded-[2rem] border border-black/5 bg-white/85 p-6 shadow-[0_24px_60px_rgba(25,28,29,0.06)] backdrop-blur-xl sm:p-7">
-          <div className="mb-5 flex items-center justify-center gap-2">
-            <Crown size={18} className="text-amber-500" />
-            <h2 className="text-center text-xl font-black tracking-tight text-slate-900">
-              Highlights in Pro
-            </h2>
+          <div className="min-h-0 flex-1">
+            <JobPostedCard monthlyOption={monthlyOption} />
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {BENEFITS.map(({ Icon, title, description, badge, theme }) => (
-              <div
-                key={title}
-                style={benefitStyle(theme)}
-                className="group/benefit relative flex min-h-[92px] items-center gap-3 overflow-hidden rounded-[1.1rem] border border-black/5 bg-slate-50/70 p-3.5 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--benefit-accent)] hover:bg-white hover:shadow-[0_18px_40px_var(--benefit-shadow)]"
-              >
-                <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,var(--benefit-glow),transparent_44%)] opacity-0 transition-opacity duration-300 group-hover/benefit:opacity-100" />
-                <span className="pointer-events-none absolute inset-y-0 -left-20 w-20 -skew-x-12 bg-[linear-gradient(90deg,transparent,var(--benefit-wash),transparent)] opacity-0 transition-all duration-700 group-hover/benefit:left-full group-hover/benefit:opacity-100" />
-
-                {badge ? (
-                  <span className="absolute right-2 top-2 z-10 rotate-3 rounded-full bg-amber-400 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-black shadow-sm transition-transform duration-300 group-hover/benefit:rotate-0 group-hover/benefit:scale-105">
-                    {badge}
-                  </span>
-                ) : null}
-
-                <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--benefit-ink)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_7px_16px_rgba(15,23,42,0.08)] transition-all duration-300 [background:var(--benefit-icon-bg)] group-hover/benefit:-rotate-3 group-hover/benefit:scale-110 group-hover/benefit:text-white group-hover/benefit:shadow-[0_14px_28px_var(--benefit-shadow)] group-hover/benefit:[background:var(--benefit-icon-active)]">
-                  <Icon className="h-7 w-7 overflow-visible transition-transform duration-300 group-hover/benefit:scale-110" />
-                </span>
-
-                <div className="relative min-w-0">
-                  <p className="text-[13px] font-bold leading-tight text-slate-900 transition-colors duration-300 group-hover/benefit:text-[var(--benefit-ink)]">{title}</p>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-500 transition-colors duration-300 group-hover/benefit:text-slate-600">{description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {checkoutError ? (
-            <p className="mt-4 text-center text-sm text-red-600">{checkoutError}</p>
-          ) : null}
-
-          <button
-            onClick={handleContinue}
-            disabled={isLoading || !selectedOption}
-            className="mt-5 hidden w-full items-center justify-center gap-2 rounded-2xl bg-[#16a34a] px-6 py-4 text-base font-black text-white shadow-[0_18px_40px_rgba(22,163,74,0.28)] transition-all hover:-translate-y-0.5 hover:bg-[#15803d] disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={18} className="animate-spin" /> Opening checkout…
-              </>
-            ) : (
-              <>
-                Continue
-                <ArrowRight size={18} />
-              </>
-            )}
-          </button>
-
-          <p className="mt-3 hidden items-center justify-center gap-1.5 text-center text-xs text-on-surface-variant sm:flex">
-            <BadgeCheck size={13} className="text-[#026d32]" />
-            Cancel anytime from your account page
-          </p>
         </div>
       </div>
 

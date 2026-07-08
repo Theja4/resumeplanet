@@ -14,6 +14,7 @@ import { headers } from 'next/headers'
 import PricingWorkspaceClient from './PricingWorkspaceClient'
 import ClosePageButton from './ClosePageButton'
 import UpgradePoller from '@/components/shared/UpgradePoller'
+import PricingComparisonSection from '@/app/pricing/PricingComparisonSection'
 import {
   HUMAN_WRITTEN_ORDER,
   getActiveAutoApplyPromotion,
@@ -205,6 +206,10 @@ export default async function PricingPage({
             />
           </div>
         </div>
+
+        {!isPro && (
+          <PricingComparisonSection priceOptions={priceOptions} />
+        )}
 
         {/* Order history */}
         {HUMAN_WRITTEN_SERVICE_ENABLED && paidOrders.length > 0 && (
