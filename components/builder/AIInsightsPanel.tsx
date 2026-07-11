@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { CheckCircle2, ChevronDown, ChevronUp, Loader2, Lock, RefreshCw, ShieldAlert, Sparkles, Target, Unlock, Wand2, Zap } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronUp, Eye, Loader2, Lock, MessageSquarePlus, RefreshCw, ShieldAlert, Sparkles, Target, Unlock, Wand2, Zap } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AIInsightCard from './AIInsightCard'
 import { getInsightSuggestionScoreDelta, hasBreakdownRegression } from '@/lib/ai-insights'
@@ -55,7 +55,9 @@ interface CachedInsights {
   insights: InsightsData
 }
 
-const INSIGHTS_CACHE_VERSION = 7
+// 8 = SCORER_VERSION 3 (expanded verbs/metrics/polish) — matches the server
+// cache version so stale local caches refresh together.
+const INSIGHTS_CACHE_VERSION = 8
 const INSIGHTS_LOCK_TTL_MS = 20000
 const inFlightInsights = new Map<string, Promise<InsightsData>>()
 const browserSessionId =
@@ -891,6 +893,17 @@ export default function AIInsightsPanel({
     setIsApplyingAll(false)
   }
 
+  const handleImpactSuggestions = useCallback((incoming: Suggestion[]) => {
+    if (incoming.length === 0) return
+    setInsights(prev => {
+      if (!prev) return prev
+      const existingIds = new Set(prev.suggestions.map(s => s.id))
+      const merged = [...prev.suggestions, ...incoming.filter(s => !existingIds.has(s.id))]
+      return { ...prev, suggestions: merged }
+    })
+    setToastMessage(`${incoming.length} rewrite${incoming.length === 1 ? '' : 's'} with your numbers ready in Review changes.`)
+  }, [])
+
   function handleRescanClick() {
     if (isLoading || !resumeData) return
     if (!hasStarted) {
@@ -1310,9 +1323,308 @@ export default function AIInsightsPanel({
               </details>
             )}
 
+            {/* ── Impact interview: turn the user's real numbers into rewrites ── */}
+            {resumeData && (
+              <ImpactInterviewSection
+                resumeData={resumeData}
+                onSuggestionsReady={handleImpactSuggestions}
+              />
+            )}
+
+            {/* ── Recruiter skim simulation ── */}
+            {resumeData && <RecruiterSkimSection resumeData={resumeData} />}
+
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Impact interview (evidence elicitation) ────────────────────────────────
+// The AI can't invent metrics — but the user has them. Ask targeted questions
+// about unquantified bullets, then turn the answers into scorer-validated
+// rewrites that flow into the normal Review Changes list.
+
+interface ImpactQuestionItem {
+  id: string
+  bullet: string
+  question: string
+  hint: string
+}
+
+function ImpactInterviewSection({
+  resumeData,
+  onSuggestionsReady,
+}: {
+  resumeData: ResumeData
+  onSuggestionsReady: (suggestions: Suggestion[]) => void
+}) {
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'answering' | 'generating' | 'done'>('idle')
+  const [questions, setQuestions] = useState<ImpactQuestionItem[]>([])
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [error, setError] = useState<string | null>(null)
+  const [acceptedCount, setAcceptedCount] = useState(0)
+
+  async function loadQuestions() {
+    setPhase('loading')
+    setError(null)
+    try {
+      const res = await fetch('/api/ats/impact-interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'questions', resumeData }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to load questions')
+      const items = (json.data?.questions ?? []) as ImpactQuestionItem[]
+      if (items.length === 0) {
+        setError('No unquantified bullets found — your experience bullets already carry concrete impact.')
+        setPhase('idle')
+        return
+      }
+      setQuestions(items)
+      setPhase('answering')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load questions')
+      setPhase('idle')
+    }
+  }
+
+  async function generateRewrites() {
+    const answered = questions
+      .map(q => ({ bullet: q.bullet, question: q.question, answer: (answers[q.id] ?? '').trim() }))
+      .filter(item => item.answer.length >= 2)
+
+    if (answered.length === 0) {
+      setError('Answer at least one question first — even a rough number works.')
+      return
+    }
+
+    setPhase('generating')
+    setError(null)
+    try {
+      const res = await fetch('/api/ats/impact-interview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'rewrite', resumeData, answers: answered }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to generate rewrites')
+
+      const runKey = Date.now().toString(36)
+      const suggestions = ((json.data?.suggestions ?? []) as Suggestion[]).map((item, index) => ({
+        ...item,
+        id: `impact-${runKey}-${index}`,
+      }))
+
+      setAcceptedCount(suggestions.length)
+      setPhase('done')
+      if (suggestions.length > 0) {
+        onSuggestionsReady(suggestions)
+      } else {
+        setError('None of the answers contained a usable fact — try again with rough numbers (team size, volume, frequency).')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate rewrites')
+      setPhase('answering')
+    }
+  }
+
+  return (
+    <div className="rounded-[22px] border border-emerald-100 bg-white p-4 shadow-sm shadow-emerald-950/[0.04]">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+        <MessageSquarePlus size={14} />
+        Add your real numbers
+      </div>
+
+      {phase === 'idle' && (
+        <>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            AI never invents metrics — but you know them. Answer a few quick questions and we&apos;ll rewrite your weakest bullets with your real numbers.
+          </p>
+          <button
+            onClick={loadQuestions}
+            className="mt-3 w-full rounded-2xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-bold text-emerald-800 transition-all hover:bg-emerald-100 active:scale-[0.98]"
+          >
+            Start the 2-minute interview
+          </button>
+        </>
+      )}
+
+      {phase === 'loading' && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+          <Loader2 size={14} className="animate-spin" />
+          Finding bullets that need numbers…
+        </div>
+      )}
+
+      {(phase === 'answering' || phase === 'generating') && (
+        <div className="mt-3 space-y-3">
+          {questions.map(q => (
+            <div key={q.id} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
+              <p className="text-xs leading-relaxed text-slate-500">&ldquo;{q.bullet}&rdquo;</p>
+              <p className="mt-1.5 text-sm font-semibold text-slate-800">{q.question}</p>
+              <input
+                type="text"
+                value={answers[q.id] ?? ''}
+                onChange={e => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                placeholder={q.hint || 'A rough number is fine'}
+                disabled={phase === 'generating'}
+                className="mt-2 w-full rounded-xl border border-emerald-100 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-emerald-300 focus:outline-none disabled:opacity-60"
+              />
+            </div>
+          ))}
+          <button
+            onClick={generateRewrites}
+            disabled={phase === 'generating'}
+            className="w-full rounded-2xl py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+            style={{ background: 'linear-gradient(135deg, #026d32 0%, #19793c 100%)' }}
+          >
+            {phase === 'generating' ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Rewriting with your numbers…
+              </span>
+            ) : (
+              'Generate rewrites'
+            )}
+          </button>
+          <p className="text-center text-[11px] text-slate-400">Skip any question — only answered bullets get rewritten.</p>
+        </div>
+      )}
+
+      {phase === 'done' && acceptedCount > 0 && (
+        <p className="mt-2 text-sm leading-relaxed text-emerald-700">
+          <CheckCircle2 size={14} className="mr-1 inline" />
+          {acceptedCount} rewrite{acceptedCount === 1 ? '' : 's'} added to Review changes below — apply them like any other fix.
+        </p>
+      )}
+
+      {error && <p className="mt-2 text-xs leading-relaxed text-amber-700">{error}</p>}
+    </div>
+  )
+}
+
+// ─── Recruiter skim simulation ──────────────────────────────────────────────
+
+interface RecruiterSkimData {
+  verdict: 'interview' | 'maybe' | 'pass'
+  firstImpression: string
+  perceivedRole: string
+  perceivedSeniority: string
+  signalsRead: string[]
+  signalsMissed: string[]
+  topChanges: Array<{ change: string; why: string }>
+}
+
+const SKIM_VERDICT_STYLES: Record<RecruiterSkimData['verdict'], { label: string; className: string }> = {
+  interview: { label: 'Would keep reading', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  maybe: { label: 'On the fence', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  pass: { label: 'Would move on', className: 'bg-rose-50 text-rose-700 border-rose-200' },
+}
+
+function RecruiterSkimSection({ resumeData }: { resumeData: ResumeData }) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [result, setResult] = useState<RecruiterSkimData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function runSkim() {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/ats/recruiter-skim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.error || 'Skim simulation failed')
+      setResult(json.data as RecruiterSkimData)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Skim simulation failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="rounded-[22px] border border-emerald-100 bg-white p-4 shadow-sm shadow-emerald-950/[0.04]">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+        <Eye size={14} />
+        The 6-second skim
+      </div>
+
+      {!result && (
+        <>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            Recruiters decide in seconds. See exactly what a first skim reads on your resume — and what it misses.
+          </p>
+          <button
+            onClick={runSkim}
+            disabled={isLoading}
+            className="mt-3 w-full rounded-2xl border border-emerald-200 bg-emerald-50 py-2.5 text-sm font-bold text-emerald-800 transition-all hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={14} className="animate-spin" />
+                Simulating the skim…
+              </span>
+            ) : (
+              'Simulate a recruiter skim'
+            )}
+          </button>
+        </>
+      )}
+
+      {result && (
+        <div className="mt-3 space-y-3">
+          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${SKIM_VERDICT_STYLES[result.verdict].className}`}>
+            {SKIM_VERDICT_STYLES[result.verdict].label}
+          </span>
+
+          <p className="text-sm leading-relaxed text-slate-700">{result.firstImpression}</p>
+
+          {(result.perceivedRole || result.perceivedSeniority) && (
+            <p className="text-xs leading-relaxed text-slate-500">
+              Reads as: <span className="font-semibold text-slate-700">{[result.perceivedRole, result.perceivedSeniority].filter(Boolean).join(' · ')}</span>
+            </p>
+          )}
+
+          {result.signalsMissed.length > 0 && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-amber-700">Buried below the skim line</p>
+              <ul className="mt-2 space-y-1.5">
+                {result.signalsMissed.map((signal, index) => (
+                  <li key={index} className="text-xs leading-relaxed text-slate-600">• {signal}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {result.topChanges.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">3 changes that alter the skim</p>
+              {result.topChanges.map((item, index) => (
+                <div key={index} className="rounded-2xl border border-emerald-100 bg-emerald-50/40 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-800">{item.change}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{item.why}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={runSkim}
+            disabled={isLoading}
+            className="w-full rounded-xl border border-emerald-100 bg-white py-2 text-xs font-bold text-slate-500 transition-all hover:bg-emerald-50/60 active:scale-[0.98] disabled:opacity-50"
+          >
+            {isLoading ? 'Re-running…' : 'Re-run after edits'}
+          </button>
+        </div>
+      )}
+
+      {error && <p className="mt-2 text-xs leading-relaxed text-amber-700">{error}</p>}
     </div>
   )
 }

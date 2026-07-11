@@ -7,6 +7,9 @@ export type AIRequestCacheFeature =
   | 'match_pro'
   | 'cover_letter'
   | 'linkedin_rewrite'
+  | 'jd_requirements'
+  | 'recruiter_skim'
+  | 'impact_interview'
 
 interface AIRequestCacheRow<T> {
   payload: {

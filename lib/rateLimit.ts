@@ -13,9 +13,10 @@ type RateLimitScope =
   | 'cover_letter_generate_authenticated'
   | 'metadata_audit_authenticated'
   | 'ats_insights_authenticated'
-  | 'ats_optimise_authenticated'
   | 'ats_tailor_authenticated'
   | 'linkedin_rewrite_authenticated'
+  | 'recruiter_skim_authenticated'
+  | 'impact_interview_authenticated'
 
 // Scopes guarding expensive AI calls. We fail CLOSED on Supabase RPC errors for
 // these to prevent unbounded LLM token spend if the rate-limit RPC is down.
@@ -26,9 +27,10 @@ const AI_SCOPES = new Set<RateLimitScope>([
   'cover_letter_generate_authenticated',
   'metadata_audit_authenticated',
   'ats_insights_authenticated',
-  'ats_optimise_authenticated',
   'ats_tailor_authenticated',
   'linkedin_rewrite_authenticated',
+  'recruiter_skim_authenticated',
+  'impact_interview_authenticated',
 ])
 
 interface ConsumeRateLimitOptions {

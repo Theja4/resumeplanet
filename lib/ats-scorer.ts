@@ -43,7 +43,23 @@ const ROADMAP_TARGET_SCORE = 90
 // 1 = original scoring (pre-2026-05).
 // 2 = synonym matching + project/volunteer evidence + smoothed keyword curve
 //     + stuffing penalty + stop-word filtering.
-export const SCORER_VERSION = 2
+// 3 = expanded action-verb list (shipped/drove/grew/...), broader metric
+//     detection (2M+, "5 million", ratios, comma numbers), and polish
+//     penalties for first-person pronouns and overlong bullets.
+export const SCORER_VERSION = 3
+
+// Prompt-facing description of the deterministic rubric. Single source of
+// truth imported by the AI-suggestion routes so prompts can't drift from the
+// scorer. Update this whenever the thresholds above change.
+export const ATS_SCORER_RUBRIC_GUIDE = `DETERMINISTIC SCORER TARGETS:
+- summary: full credit needs 15-100 words, no more than 4 sentences, and 2+ role/skill terms already present in the resume.
+- exp_verbs: score jumps at 40%, 60%, and 80% of bullets starting with recognized action verbs (large curated list including led, built, shipped, drove, grew, reduced, automated, migrated, negotiated). Rewrite enough weak openings to cross the next threshold, not just one.
+- exp_metrics: score jumps at 1, 3, 5, and 8 bullets with concrete impact. At least one real numeric metric is needed to exceed the no-metric cap. Never invent numbers; use existing numbers or concrete non-numeric outcomes.
+- exp_depth: full credit needs an average of 4+ useful bullets per role, but only add depth when source facts already support it.
+- skills: full credit needs 8+ real skills and clean grouping when possible. Only add skills already evidenced in the resume.
+- keywords: score jumps at 20%, 40%, and 60% of listed skills appearing in experience bullets. Weave supported skills into real work evidence; do not keyword-stuff.
+- polish: avoid first-person voice ("I", "my", "we"), bullets over 40 words, vague filler, and unresolved placeholders.
+- education/contact gaps require user-provided facts. Do not guess missing fields.`
 
 const ROADMAP_BLUEPRINTS: Record<string, RoadmapBlueprint> = {
   contact: {
@@ -150,6 +166,39 @@ const ACTION_VERBS = new Set([
   'executed', 'administered', 'maintained', 'processed', 'resolved', 'organized',
   'consolidated', 'standardized', 'scheduled', 'monitored', 'allocated', 'prioritized',
   'triaged', 'enforced', 'regulated', 'reconciled',
+
+  // Growth / outcome verbs (previously missing — our own prompts recommend
+  // several of these, so the score gate must recognize them)
+  'shipped', 'drove', 'grew', 'cut', 'doubled', 'tripled', 'halved', 'slashed',
+  'decreased', 'expanded', 'raised', 'saved', 'sold', 'closed', 'recovered',
+  'prevented', 'eliminated', 'expedited', 'simplified', 'unified', 'overhauled',
+  'redesigned', 'rebuilt', 'restructured', 'reorganized', 'reengineered',
+  'revitalized', 'converted', 'promoted',
+
+  // People / collaboration
+  'coached', 'hired', 'recruited', 'onboarded', 'staffed', 'interviewed',
+  'motivated', 'inspired', 'aligned', 'engaged', 'liaised', 'moderated',
+  'mediated', 'advised', 'consulted', 'taught', 'lectured', 'hosted',
+
+  // Planning / process
+  'planned', 'defined', 'scoped', 'outlined', 'drafted', 'proposed',
+  'recommended', 'budgeted', 'estimated', 'calculated', 'compiled', 'gathered',
+  'summarized', 'reviewed', 'revised', 'edited', 'wrote', 'translated',
+  'tracked', 'inspected', 'screened', 'selected', 'sourced', 'procured',
+  'purchased', 'supplied', 'distributed', 'dispatched', 'centralized',
+  'formalized', 'instituted', 'structured', 'systematized', 'strategized',
+
+  // Execution / delivery
+  'performed', 'operated', 'installed', 'repaired', 'replaced', 'assembled',
+  'handled', 'fulfilled', 'finalized', 'submitted', 'opened', 'ran', 'held',
+  'brought', 'met', 'piloted', 'pitched', 'marketed', 'publicized',
+  'demonstrated', 'modeled', 'visualized', 'scripted', 'tuned', 'remediated',
+  'troubleshot', 'verified', 'discovered', 'detected', 'solved', 'proved',
+  'synthesized', 'incorporated', 'merged', 'localized', 'customized',
+  'curated', 'cultivated', 'fostered', 'enabled', 'ensured', 'enriched',
+  'targeted', 'qualified', 'ranked', 'sponsored', 'updated', 'navigated',
+  'conceived', 'composed', 'conducted', 'illustrated', 'prepared', 'gained',
+  'earned', 'renegotiated',
 ])
 
 // ─── Filler Phrases ─────────────────────────────────────────────────────────
@@ -173,11 +222,22 @@ const FILLER_PHRASES = [
 // ─── Metric Patterns ────────────────────────────────────────────────────────
 
 const METRIC_PATTERNS = [
-  /\d+%/,
-  /\$\d+/,
-  /\d+\s*(users|clients|teams|customers|employees|members|projects|applications|servers|endpoints|requests|transactions)/i,
+  /\d+(?:\.\d+)?\s*%/,
+  /\$\s?\d/,
+  /[€£₹]\s?\d/,
+  // "2M+ users", "3k requests", "1.2B records" — magnitude-suffixed counts
+  /\b\d+(?:\.\d+)?\s*[kKmMbB]\+?(?=\b|\s|$)/,
+  // Spelled-out magnitudes: "5 million users", "2 billion requests"
+  /\b\d+(?:\.\d+)?\s*(?:million|billion|thousand|lakh|crore)\b/i,
+  // Comma-grouped counts: "10,000 records"
+  /\b\d{1,3}(?:,\d{3})+\b/,
+  // Ratios: "5:1", "3 : 1"
+  /\b\d+\s*:\s*\d+\b/,
+  /\d+\s*(?:\+\s*)?(users|clients|teams|customers|employees|members|projects|applications|servers|endpoints|requests|transactions|accounts|stores|locations|countries|markets|regions|leads|deals|tickets|orders|skus|downloads|installs|subscribers|followers|impressions|views|sessions|visitors|reports|dashboards|campaigns|events|releases|deployments|stakeholders|engineers|developers|agents|vendors|partners|branches|records|documents|pages|articles|posts|calls|meetings|interviews|hires|candidates|students|patients|properties|units|vehicles|machines|devices|sites|stories|features|integrations|pipelines|models|experiments|tests)/i,
   /\d+x\b/i,
-  /\d+\s*(hours|days|weeks|months|minutes)/i,
+  /\d+\s*(hours|days|weeks|months|minutes|quarters|sprints)/i,
+  // Basis/percentage points: "150 bps", "4 percentage points"
+  /\b\d+(?:\.\d+)?\s*(?:bps|basis points|percentage points)\b/i,
 ]
 
 const OUTCOME_PATTERNS = [
@@ -191,6 +251,9 @@ const SCOPE_PATTERNS = [
 
 const VAGUE_TERMS_PATTERN = /\b(various|multiple|several|many|different|miscellaneous|etc\.?)\b/i
 const PLACEHOLDER_PATTERN = /\[[^\]]+\]|\b(?:TBD|to be determined|placeholder)\b/i
+// Recruiters and ATS style guides flag first-person voice in bullets.
+const FIRST_PERSON_PATTERN = /(?:^|\s)(?:I|me|my|mine|we|our|ours)(?=[\s,.;:!?]|$)/i
+const MAX_BULLET_WORDS = 40
 
 // ─── Skill synonym / alias map ──────────────────────────────────────────────
 // Each entry maps a normalized "canonical" key to the list of textual variants
@@ -399,6 +462,24 @@ function bulletHasSkillSignal(bullet: string, skills: string[]): boolean {
     if (!pattern) return false
     return pattern.test(bullet)
   })
+}
+
+// ─── Shared keyword matching (alias-aware) ──────────────────────────────────
+// JD keyword matching must use the same synonym awareness as skill matching,
+// otherwise "Node.js" in a JD reads as missing when the resume says "NodeJS"
+// and users get told to stuff keywords they already have.
+export function textIncludesKeyword(text: string, keyword: string): boolean {
+  const trimmed = keyword.trim()
+  if (!trimmed || !text) return false
+  const pattern = buildSkillMatchPattern(trimmed)
+  if (pattern) return pattern.test(text)
+  return new RegExp(`(?<![A-Za-z0-9])${escapeRegex(trimmed)}(?![A-Za-z0-9])`, 'i').test(text)
+}
+
+// Alias-aware check that a skill/keyword is evidenced anywhere in a body of
+// source text (used to validate AI "add this skill" suggestions).
+export function skillIsEvidencedInText(skill: string, sourceText: string): boolean {
+  return textIncludesKeyword(sourceText, skill)
 }
 
 // Aggregate ALL bullets the candidate can legitimately use to demonstrate a
@@ -1001,6 +1082,20 @@ function scorePolish(data: ResumeData): { score: number; max: number; details: s
   if (stuffed.length > 0) {
     score = Math.max(0, score - 1)
     parts.push(`Possible keyword stuffing: ${stuffed.slice(0, 3).join(', ')}${stuffed.length > 3 ? '…' : ''}`)
+  }
+
+  // First-person voice in bullets (-1, capped). Recruiters flag "I", "my", "we".
+  const firstPersonBullets = bullets.filter(b => FIRST_PERSON_PATTERN.test(b))
+  if (firstPersonBullets.length > 0) {
+    score = Math.max(0, score - 1)
+    parts.push(`${firstPersonBullets.length} bullet(s) use first-person voice ("I", "my", "we") — rewrite in implied first person`)
+  }
+
+  // Overlong bullets (-1, capped). Anything past ~40 words won't survive a skim.
+  const overlongBullets = bullets.filter(b => wordCount(b) > MAX_BULLET_WORDS)
+  if (overlongBullets.length > 0) {
+    score = Math.max(0, score - 1)
+    parts.push(`${overlongBullets.length} bullet(s) exceed ${MAX_BULLET_WORDS} words — split or tighten for skimmability`)
   }
 
   const details = parts.length === 0

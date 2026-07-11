@@ -1,12 +1,13 @@
 import type { ResumeData } from '@/types'
 import type { ResumeParser } from './types'
-import { callClaudeJSON } from '@/lib/claude'
+import { callClaudeJSON, CLAUDE_STANDARD, type JSONSchemaSpec } from '@/lib/claude'
 import { extractPDFText } from '@/lib/pdfExtractor'
 import { extractDocxText } from '@/lib/docxTextExtractor'
 import { syncResumeData } from '@/lib/resume-data'
 import { normalizeText, chunkText, postProcessResume } from './utils'
 
-const DEEPSEEK_RESUME_PARSER_MODEL = 'deepseek/deepseek-v4-flash'
+// Model ids come from lib/claude.ts so routing stays centralized.
+const RESUME_PARSER_MODEL = CLAUDE_STANDARD
 type ResumeArrayField =
   | 'experience'
   | 'education'
@@ -404,6 +405,176 @@ Stanford University — MBA, Business Administration, 2018
 Output:
 {"name":"Jane Doe","email":"jane@email.com","phone":"(555) 123-4567","location":"San Francisco, CA","linkedin":"linkedin.com/in/janedoe","website":"","summary":"Experienced product manager with 8+ years driving growth at SaaS companies.","currentRole":"Senior Product Manager","experience":[{"company":"Acme Inc","title":"Senior Product Manager","location":"Remote","startDate":"01/2021","endDate":"Present","bullets":["Led cross-functional team of 12 to launch checkout redesign, increasing conversion by 18%","Defined quarterly OKRs and roadmap for payments platform serving 2M+ users"]},{"company":"StartupXYZ","title":"Product Manager","location":"San Francisco, CA","startDate":"03/2018","endDate":"12/2020","bullets":["Shipped MVP in 4 months, acquiring 10K users in first quarter"]}],"education":[{"institution":"Stanford University","degree":"MBA","field":"Business Administration","startDate":"","endDate":"","graduationDate":"2018","gpa":""}],"skills":["Product Strategy","SQL","Figma","Jira","A/B Testing"],"skillSections":[{"title":"","tag":"","skills":["Product Strategy","SQL","Figma","Jira","A/B Testing"]}],"certifications":[],"projects":[],"languages":[],"volunteer":[],"interests":[],"awards":[],"publications":[],"references":[],"customSections":[]}`;
 
+// ─── Strict structured-output schema for single-call parsing ────────────────
+// Strict mode requires every property present; the model emits empty strings
+// and arrays for absent sections, which downstream merge/post-process handles.
+
+const EXPERIENCE_ITEM_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['company', 'title', 'location', 'startDate', 'endDate', 'bullets', 'summary'],
+  properties: {
+    company: { type: 'string' },
+    title: { type: 'string' },
+    location: { type: 'string' },
+    startDate: { type: 'string' },
+    endDate: { type: 'string' },
+    bullets: { type: 'array', items: { type: 'string' } },
+    summary: { type: 'string' },
+  },
+} as const
+
+const RESUME_DATA_JSON_SCHEMA: JSONSchemaSpec = {
+  name: 'parsed_resume',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'name', 'email', 'phone', 'location', 'linkedin', 'website', 'summary', 'currentRole',
+      'experience', 'education', 'skills', 'skillSections', 'certifications', 'projects',
+      'languages', 'volunteer', 'interests', 'awards', 'publications', 'references',
+    ],
+    properties: {
+      name: { type: 'string' },
+      email: { type: 'string' },
+      phone: { type: 'string' },
+      location: { type: 'string' },
+      linkedin: { type: 'string' },
+      website: { type: 'string' },
+      summary: { type: 'string' },
+      currentRole: { type: 'string' },
+      experience: { type: 'array', items: EXPERIENCE_ITEM_SCHEMA },
+      volunteer: { type: 'array', items: EXPERIENCE_ITEM_SCHEMA },
+      education: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['institution', 'degree', 'field', 'startDate', 'endDate', 'graduationDate', 'gpa'],
+          properties: {
+            institution: { type: 'string' },
+            degree: { type: 'string' },
+            field: { type: 'string' },
+            startDate: { type: 'string' },
+            endDate: { type: 'string' },
+            graduationDate: { type: 'string' },
+            gpa: { type: 'string' },
+          },
+        },
+      },
+      skills: { type: 'array', items: { type: 'string' } },
+      skillSections: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title', 'tag', 'skills'],
+          properties: {
+            title: { type: 'string' },
+            tag: { type: 'string' },
+            skills: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      certifications: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name', 'issuer', 'date'],
+          properties: {
+            name: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      projects: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name', 'description', 'bullets', 'technologies'],
+          properties: {
+            name: { type: 'string' },
+            description: { type: 'string' },
+            bullets: { type: 'array', items: { type: 'string' } },
+            technologies: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+      awards: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title', 'issuer', 'date'],
+          properties: {
+            title: { type: 'string' },
+            issuer: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      publications: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title', 'publisher', 'date'],
+          properties: {
+            title: { type: 'string' },
+            publisher: { type: 'string' },
+            date: { type: 'string' },
+          },
+        },
+      },
+      languages: { type: 'array', items: { type: 'string' } },
+      interests: { type: 'array', items: { type: 'string' } },
+      references: { type: 'array', items: { type: 'string' } },
+    },
+  },
+}
+
+// Most resumes fit comfortably in one GPT-5.x call — no chunk-merge dedupe
+// risk (duplicated roles, lost bullets). Chunking remains the fallback for
+// oversized documents or single-call failures.
+const SINGLE_CALL_MAX_CHARS = 45000
+
+function finalizeParsedResume(accumulated: ResumeData): ResumeData | null {
+  const finalData = postProcessResume(accumulated) as unknown as ResumeData
+  const hasBasicInfo = finalData.name || finalData.email || finalData.phone
+  const hasContent = finalData.experience.length > 0 || finalData.skills.length > 0 || finalData.projects.length > 0
+  if (!hasBasicInfo && !hasContent) return null
+  return finalData
+}
+
+async function parseSingleCall(normalized: string): Promise<ResumeData | null> {
+  try {
+    const parsed = await callClaudeJSON<Partial<ResumeData>>({
+      model: RESUME_PARSER_MODEL,
+      system: SYSTEM_PROMPT,
+      prompt: `Extract the complete resume data from this resume:\n\n${normalized}`,
+      timeoutMs: 180000,
+      temperature: 0,
+      jsonMode: true,
+      jsonSchema: RESUME_DATA_JSON_SCHEMA,
+      reasoningEffort: 'low',
+      verbosity: 'low',
+      label: 'resume_parser',
+    })
+    if (!parsed) return null
+    const finalData = finalizeParsedResume(syncResumeData(parsed as ResumeData))
+    if (finalData) {
+      console.log(`[AI Parser] Single-call parse succeeded: Name="${finalData.name}", ExpCount=${finalData.experience.length}, SkillCount=${finalData.skills.length}`)
+    }
+    return finalData
+  } catch (error) {
+    console.warn('[AI Parser] Single-call parse failed, falling back to chunked parse:', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 const claudeParser: ResumeParser = {
   async parse(buffer: Buffer, fileType: string): Promise<ResumeData> {
     let rawText = ''
@@ -433,7 +604,13 @@ const claudeParser: ResumeParser = {
     // 1️⃣ Normalize whitespace and bullet groups
     const normalized = normalizeText(rawText)
 
-    // 2️⃣ Chunk text with overlap to preserve context
+    // 2️⃣ Single-call parse first (schema-enforced, no chunk-merge risk)
+    if (normalized.length <= SINGLE_CALL_MAX_CHARS) {
+      const singleCallResult = await parseSingleCall(normalized)
+      if (singleCallResult) return singleCallResult
+    }
+
+    // 3️⃣ Fallback: chunk text with overlap to preserve context
     const maxChunk = Number(process.env.OPENROUTER_MAX_TOKENS) || 12000
     const chunks = chunkText(normalized, maxChunk, 1000)
     
@@ -448,12 +625,17 @@ const claudeParser: ResumeParser = {
 
     const chunkPromises = chunks.map((chunk, i) =>
       callClaudeJSON<Partial<ResumeData>>({
-        model: DEEPSEEK_RESUME_PARSER_MODEL,
+        model: RESUME_PARSER_MODEL,
         system: SYSTEM_PROMPT,
         prompt: `Extract resume data from this chunk (${i+1}/${chunks.length}):\n\n${chunk}`,
         timeoutMs: 180000,
+        // temperature only reaches non-reasoning models; GPT-5.x rejects it
+        // and the gateway strips it there, using reasoningEffort instead.
         temperature: 0,
         jsonMode: true,
+        reasoningEffort: 'low',
+        verbosity: 'low',
+        label: 'resume_parser',
       }).then((partial) => {
         console.log(`[AI Parser] Chunk ${i+1} merged successfully.`)
         return { partial: partial ? syncResumeData(partial as ResumeData) : partial, error: null as null }

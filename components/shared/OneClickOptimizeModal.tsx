@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Lock, X, Zap, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { usePaddleCheckout } from '@/hooks/usePaddleCheckout'
 
@@ -14,6 +14,12 @@ interface OneClickOptimizeModalProps {
   onClose: () => void
   promoDisplay?: ModalPromoDisplay | null
   currentScore?: number | null
+  /**
+   * Real scorer ceiling (roadmap.truthfulCeiling) computed from the user's
+   * actual resume. When provided, the "after" score is honest instead of a
+   * marketing number.
+   */
+  truthfulCeiling?: number | null
 }
 
 // ─── Score Ring ──────────────────────────────────────────────────────────────
@@ -66,37 +72,28 @@ function ScoreRing({
   )
 }
 
-// ─── Live social-proof ticker (Booking.com-style) ────────────────────────────
-
-function useLiveCount(initial: number) {
-  const [count, setCount] = useState(initial)
-  useEffect(() => {
-    const tick = () => {
-      setCount(c => c + Math.floor(Math.random() * 2) + 1)
-    }
-    const id = window.setInterval(tick, 6000 + Math.random() * 6000)
-    return () => clearInterval(id)
-  }, [])
-  return count
-}
-
 // ─── Modal ───────────────────────────────────────────────────────────────────
 
 export default function OneClickOptimizeModal({
   onClose,
   promoDisplay,
   currentScore,
+  truthfulCeiling,
 }: OneClickOptimizeModalProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [selectedInterval, setSelectedInterval] = useState<'monthly' | 'annual'>('annual')
   const [isLoading, setIsLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const { openSubscriptionCheckout } = usePaddleCheckout()
-  const liveCount = useLiveCount(8460)
 
   const score = typeof currentScore === 'number' ? currentScore : 42
   const scoreColor = score >= 70 ? '#026d32' : score >= 50 ? '#ca8a04' : '#ef4444'
-  const potentialScore = Math.min(Math.max(score + 38, 82), 94)
+  // "After" score: the scorer's real truthful ceiling when the caller can
+  // compute it; otherwise the interview threshold as a target — never a
+  // fabricated "+38 points" promise.
+  const potentialScore = typeof truthfulCeiling === 'number' && truthfulCeiling > score
+    ? Math.min(truthfulCeiling, 100)
+    : Math.max(score, 81)
   const scoreGain = potentialScore - score
 
   // Zone label: anything below 81 is the "auto-reject" zone for ATS bots
@@ -179,14 +176,18 @@ export default function OneClickOptimizeModal({
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                     <ArrowRight size={20} className="text-primary" />
                   </div>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                    +{scoreGain} pts
-                  </span>
+                  {scoreGain > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                      up to +{scoreGain} pts
+                    </span>
+                  )}
                 </div>
 
                 {/* After score (locked) */}
                 <div className="flex flex-col items-center gap-1.5">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">After AI fix</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">
+                    {typeof truthfulCeiling === 'number' ? 'Your ceiling' : 'Target'}
+                  </p>
                   <ScoreRing score={potentialScore} size={108} locked />
                   <span className="rounded-full bg-emerald-100 px-3 py-0.5 text-[11px] font-black text-emerald-700">
                     Interview zone
@@ -213,14 +214,11 @@ export default function OneClickOptimizeModal({
               </div>
             </div>
 
-            {/* ── Live social proof ticker ── */}
+            {/* ── How it works (honest) ── */}
             <div className="flex items-center justify-center gap-2 text-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
+              <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
               <span className="text-on-surface-variant">
-                <strong className="text-zinc-800">{liveCount.toLocaleString('en-US')}</strong> job seekers fixed their resume today
+                Every AI fix is <strong className="text-zinc-800">score-verified</strong> before it touches your resume
               </span>
             </div>
 
@@ -274,7 +272,9 @@ export default function OneClickOptimizeModal({
               <Zap size={22} className="text-white" />
             </div>
             <h2 className="text-xl font-black text-white">
-              You&apos;re {scoreGain} points from the interview zone
+              {scoreGain > 0
+                ? `You're ${scoreGain} points from your resume's ceiling`
+                : 'Unlock every AI fix for your resume'}
             </h2>
             <p className="mt-1.5 text-sm text-white/75">
               CAREER50 auto-applied — <span className="font-bold text-yellow-300">50% off</span> today
@@ -282,14 +282,11 @@ export default function OneClickOptimizeModal({
           </div>
 
           <div className="px-7 pb-7 pt-5 space-y-5">
-            {/* ── Social proof ── */}
+            {/* ── Honest mechanism ── */}
             <div className="flex items-center justify-center gap-2 rounded-xl bg-zinc-50 py-2.5 text-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              </span>
+              <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
               <span className="text-on-surface-variant">
-                <strong className="text-zinc-800">{liveCount.toLocaleString('en-US')}</strong> people upgraded today
+                Only <strong className="text-zinc-800">truthful, score-verified</strong> changes — nothing invented
               </span>
             </div>
 

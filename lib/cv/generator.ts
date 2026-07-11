@@ -1,4 +1,4 @@
-import { callClaudeJSONRace } from '@/lib/claude'
+import { callClaudeJSONRace, CLAUDE_PREMIUM, CLAUDE_STANDARD, GEMINI_25_FLASH, type JSONSchemaSpec } from '@/lib/claude'
 import {
   coverLetterSenderFromResumeData,
   normalizeCoverLetterDraft,
@@ -8,19 +8,47 @@ import {
 } from '@/lib/cv/shared'
 import type { ResumeData, TailorIntensity } from '@/types'
 
+// Model ids come from lib/claude.ts so routing stays centralized; the
+// gateway dedupes resolved providers, so overlapping entries cost nothing.
 const CV_ANALYSIS_CHAIN = [
   {
-    model: 'deepseek/deepseek-v4-flash',
+    model: CLAUDE_STANDARD,
     timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000,
   },
-  ...(process.env.ANTHROPIC_MODEL_PREMIUM && process.env.ANTHROPIC_MODEL_PREMIUM !== 'deepseek/deepseek-v4-flash'
-    ? [{ model: process.env.ANTHROPIC_MODEL_PREMIUM, timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000 }]
+  ...(CLAUDE_PREMIUM !== CLAUDE_STANDARD
+    ? [{ model: CLAUDE_PREMIUM, timeoutMs: Number(process.env.CV_PRIMARY_TIMEOUT_MS) || 90000 }]
     : []),
   {
-    model: 'google/gemini-2.5-flash',
+    model: GEMINI_25_FLASH,
     timeoutMs: Number(process.env.CV_FALLBACK_TIMEOUT_MS) || 120000,
   },
 ].filter((entry, index, array) => array.findIndex(candidate => candidate.model === entry.model) === index)
+
+// Strict structured-output schema (enforced on Foundry GPT-5.x). Mirrors the
+// JSON shape in COVER_LETTER_SYSTEM — keep the two in sync.
+const COVER_LETTER_JSON_SCHEMA: JSONSchemaSpec = {
+  name: 'cover_letter_draft',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'roleTitle', 'companyName', 'suggestedSubject', 'greeting', 'openingParagraph',
+      'bodyParagraphs', 'closingParagraph', 'signOff', 'strategySummary', 'fitHighlights',
+    ],
+    properties: {
+      roleTitle: { type: 'string' },
+      companyName: { type: 'string' },
+      suggestedSubject: { type: 'string' },
+      greeting: { type: 'string' },
+      openingParagraph: { type: 'string' },
+      bodyParagraphs: { type: 'array', items: { type: 'string' } },
+      closingParagraph: { type: 'string' },
+      signOff: { type: 'string' },
+      strategySummary: { type: 'string' },
+      fitHighlights: { type: 'array', items: { type: 'string' } },
+    },
+  },
+}
 
 const COVER_LETTER_SYSTEM = `You are Rezoomed Cover Letter Generator, an elite recruiter, hiring manager, and application strategist.
 
@@ -95,8 +123,13 @@ async function requestCoverLetter(prompt: string) {
         model,
         system: COVER_LETTER_SYSTEM,
         prompt,
-        maxTokens: 3500,
+        // Cap covers reasoning tokens + the letter JSON on GPT-5.x.
+        maxTokens: 6000,
         timeoutMs,
+        reasoningEffort: 'low',
+        verbosity: 'low',
+        jsonSchema: COVER_LETTER_JSON_SCHEMA,
+        label: 'cover_letter',
       })
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error)

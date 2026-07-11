@@ -214,8 +214,14 @@ export async function runGenerator(input: GenerateInput): Promise<RewriteResult>
     model: CLAUDE_PREMIUM,
     system,
     prompt,
-    maxTokens: input.generator === 'about' ? 1200 : 800,
+    // On GPT-5.x this cap includes reasoning tokens; the old 800/1200 caps
+    // would starve the visible output. temperature only reaches
+    // non-reasoning fallback models.
+    maxTokens: input.generator === 'about' ? 3000 : 2400,
     temperature: 0.6,
+    reasoningEffort: 'low',
+    verbosity: 'low',
+    label: 'linkedin_rewrite',
   })
 
   const rewrite = (raw.rewrite ?? '').trim()

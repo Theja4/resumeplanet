@@ -14,7 +14,7 @@ import { writeTailorJobTransfer } from '@/lib/tailorJobTransfer'
 import { MAX_RESUME_UPLOAD_LABEL_SPACED } from '@/lib/uploadLimits'
 import { buildResumeTitleLabelMap, getResumeTitleLabel } from '@/lib/resumeTitleLabels'
 import { getResumeSkills, resumeDataToPlainText } from '@/lib/resume-data'
-import { scoreResume } from '@/lib/ats-scorer'
+import { buildATSRoadmap, scoreResume } from '@/lib/ats-scorer'
 import AdBanner from '@/components/shared/AdBanner'
 import OneClickOptimizeModal, { type ModalPromoDisplay } from '@/components/shared/OneClickOptimizeModal'
 import RoadToNinetyPanel from '@/components/ats/RoadToNinetyPanel'
@@ -2014,6 +2014,11 @@ export default function ATSCheckerClient({
           onClose={() => setShowOptimizeModal(false)}
           promoDisplay={promoDisplay}
           currentScore={scanResult?.score ?? null}
+          truthfulCeiling={
+            scanResult?.resumeData
+              ? buildATSRoadmap(scoreResume(scanResult.resumeData)).truthfulCeiling
+              : null
+          }
         />
       )}
       {showIntro && (

@@ -1,4 +1,7 @@
-import { callClaudeJSONFallback, CLAUDE_PREMIUM } from '@/lib/claude'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { callClaudeJSONFallback, CLAUDE_PREMIUM, CLAUDE_STANDARD, type JSONSchemaSpec } from '@/lib/claude'
+import { textIncludesKeyword } from '@/lib/ats-scorer'
+import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache } from '@/lib/aiRequestCache'
 import { getProjectBullets, getResumeSkills } from '@/lib/resume-data'
 import type { ATSResult, ATSSuggestion, ResumeData } from '@/types'
 
@@ -102,8 +105,253 @@ Return JSON matching exactly this schema:
   "industryInsight": "string"
 }`
 
+// Strict structured-output schema (enforced on Foundry GPT-5.x). Mirrors the
+// JSON contract in MATCH_SCORE_SYSTEM — keep the two in sync. `example` is
+// required by strict mode; empty strings are normalized to undefined later.
+const MATCH_SCORE_JSON_SCHEMA: JSONSchemaSpec = {
+  name: 'match_score_assessment',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'requirementAssessments', 'domainAlignment', 'seniorityAlignment', 'evidenceStrength',
+      'matchedKeywords', 'missingKeywords', 'suggestions', 'overallAssessment', 'industryInsight',
+    ],
+    properties: {
+      requirementAssessments: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['requirement', 'priority', 'coverage', 'evidence', 'gapReason'],
+          properties: {
+            requirement: { type: 'string' },
+            priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+            coverage: { type: 'string', enum: ['strong', 'partial', 'none'] },
+            evidence: { type: 'array', items: { type: 'string' } },
+            gapReason: { type: 'string' },
+          },
+        },
+      },
+      domainAlignment: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['score', 'reason'],
+        properties: { score: { type: 'integer' }, reason: { type: 'string' } },
+      },
+      seniorityAlignment: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['score', 'reason'],
+        properties: { score: { type: 'integer' }, reason: { type: 'string' } },
+      },
+      evidenceStrength: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['score', 'reason'],
+        properties: { score: { type: 'integer' }, reason: { type: 'string' } },
+      },
+      matchedKeywords: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['keyword', 'evidence'],
+          properties: { keyword: { type: 'string' }, evidence: { type: 'string' } },
+        },
+      },
+      missingKeywords: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['keyword', 'reason'],
+          properties: { keyword: { type: 'string' }, reason: { type: 'string' } },
+        },
+      },
+      suggestions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['category', 'severity', 'issue', 'fix', 'example'],
+          properties: {
+            category: { type: 'string', enum: ['keywords', 'experience', 'skills', 'summary', 'education', 'formatting'] },
+            severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+            issue: { type: 'string' },
+            fix: { type: 'string' },
+            example: { type: 'string' },
+          },
+        },
+      },
+      overallAssessment: { type: 'string' },
+      industryInsight: { type: 'string' },
+    },
+  },
+}
+
 type MatchPriority = 'critical' | 'high' | 'medium' | 'low'
 type MatchCoverage = 'strong' | 'partial' | 'none'
+
+// ─── Stage 1: JD requirement extraction (cached per JD) ─────────────────────
+// Extracting the requirement set once and freezing it makes re-scores stable:
+// previously every match run re-derived its own 6-12 requirements, so users
+// saw score jitter unrelated to their edits. The frozen set is also shared
+// with the tailor engine so both features target the same view of the JD.
+
+export const JD_REQUIREMENTS_VERSION = 1
+
+export interface JobRequirementSpec {
+  requirement: string
+  priority: MatchPriority
+}
+
+export interface JDRequirementExtraction {
+  roleTitle: string
+  requirements: JobRequirementSpec[]
+  mustHaveKeywords: string[]
+  niceToHaveKeywords: string[]
+}
+
+const JD_EXTRACTION_SYSTEM = `You extract the real hiring requirements from a job description for downstream resume matching.
+
+RULES:
+- Extract the 6-12 requirements that actually decide shortlisting: core responsibilities, must-have skills/tools, domain experience, and seniority level.
+- Skip boilerplate (EEO statements, benefits, company blurb) and generic soft-skill filler unless the JD emphasizes it as a real screen.
+- priority: critical = explicit must-have or core to the role; high = strongly emphasized; medium = clearly wanted; low = nice-to-have.
+- mustHaveKeywords: 5-12 concrete terms (tools, skills, certifications, domains) a screener would scan for.
+- niceToHaveKeywords: up to 8 secondary terms.
+- roleTitle: the job title as stated, or your best short inference.
+- Keep each requirement to one compact sentence. Return ONLY valid JSON.`
+
+const JD_EXTRACTION_SCHEMA: JSONSchemaSpec = {
+  name: 'jd_requirement_extraction',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['roleTitle', 'requirements', 'mustHaveKeywords', 'niceToHaveKeywords'],
+    properties: {
+      roleTitle: { type: 'string' },
+      requirements: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['requirement', 'priority'],
+          properties: {
+            requirement: { type: 'string' },
+            priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+          },
+        },
+      },
+      mustHaveKeywords: { type: 'array', items: { type: 'string' } },
+      niceToHaveKeywords: { type: 'array', items: { type: 'string' } },
+    },
+  },
+}
+
+function normalizeJDExtraction(raw: Partial<JDRequirementExtraction> | null | undefined): JDRequirementExtraction | null {
+  const requirements = (raw?.requirements ?? [])
+    .filter(item => item?.requirement?.trim())
+    .map(item => ({
+      requirement: item.requirement.trim(),
+      priority: (['critical', 'high', 'medium', 'low'] as const).includes(item.priority) ? item.priority : 'medium',
+    }))
+    .slice(0, 12)
+
+  if (requirements.length < 3) return null
+
+  return {
+    roleTitle: raw?.roleTitle?.trim() ?? '',
+    requirements,
+    mustHaveKeywords: (raw?.mustHaveKeywords ?? []).map(k => k?.trim()).filter((k): k is string => Boolean(k)).slice(0, 12),
+    niceToHaveKeywords: (raw?.niceToHaveKeywords ?? []).map(k => k?.trim()).filter((k): k is string => Boolean(k)).slice(0, 8),
+  }
+}
+
+export async function extractJobRequirements(jobDescription: string): Promise<JDRequirementExtraction | null> {
+  try {
+    const raw = await callClaudeJSONFallback<JDRequirementExtraction>({
+      model: CLAUDE_STANDARD,
+      system: JD_EXTRACTION_SYSTEM,
+      prompt: `JOB DESCRIPTION:\n---\n${jobDescription.slice(0, 18000)}\n---\n\nExtract the hiring requirements.`,
+      maxTokens: 6000,
+      timeoutMs: 90000,
+      perModelTimeoutMs: 60000,
+      reasoningEffort: 'medium',
+      verbosity: 'low',
+      jsonSchema: JD_EXTRACTION_SCHEMA,
+      label: 'jd_requirements',
+    })
+    return normalizeJDExtraction(raw)
+  } catch (error) {
+    console.warn('JD requirement extraction failed:', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
+/**
+ * Cached wrapper: one extraction per (user, JD). Failures return null and the
+ * caller proceeds without a frozen requirement set (legacy single-call mode).
+ */
+export async function getCachedJobRequirements({
+  supabase,
+  userId,
+  jobDescription,
+}: {
+  supabase: SupabaseClient
+  userId: string
+  jobDescription: string
+}): Promise<JDRequirementExtraction | null> {
+  const trimmed = jobDescription.trim()
+  if (!trimmed) return null
+
+  const signature = buildAIRequestSignature({
+    feature: 'jd_requirements',
+    version: JD_REQUIREMENTS_VERSION,
+    jobDescription: trimmed,
+  })
+
+  const cached = await readAIRequestCache<JDRequirementExtraction>({
+    supabase,
+    userId,
+    feature: 'jd_requirements',
+    signature,
+    version: JD_REQUIREMENTS_VERSION,
+  })
+  if (cached) return cached
+
+  const extracted = await extractJobRequirements(trimmed)
+  if (extracted) {
+    await writeAIRequestCache({
+      supabase,
+      userId,
+      feature: 'jd_requirements',
+      signature,
+      version: JD_REQUIREMENTS_VERSION,
+      data: extracted,
+    })
+  }
+  return extracted
+}
+
+export function formatRequirementsForPrompt(extraction: JDRequirementExtraction): string {
+  const lines = extraction.requirements.map(
+    (item, index) => `${index + 1}. [${item.priority}] ${item.requirement}`
+  )
+  const parts = [
+    extraction.roleTitle ? `ROLE: ${extraction.roleTitle}` : '',
+    'FIXED REQUIREMENT SET:',
+    ...lines,
+  ]
+  if (extraction.mustHaveKeywords.length > 0) {
+    parts.push(`MUST-HAVE KEYWORDS: ${extraction.mustHaveKeywords.join(', ')}`)
+  }
+  if (extraction.niceToHaveKeywords.length > 0) {
+    parts.push(`NICE-TO-HAVE KEYWORDS: ${extraction.niceToHaveKeywords.join(', ')}`)
+  }
+  return parts.filter(Boolean).join('\n')
+}
 
 interface MatchRequirementAssessment {
   requirement: string
@@ -549,9 +797,9 @@ function buildDeterministicFallback(jobDescription: string, resumeData: ResumeDa
     .map(item => item?.trim())
     .filter(Boolean)
 
-  const lowerEvidence = evidenceSegments.join('\n').toLowerCase()
-  const matchedKeywords = keywords.filter(keyword => lowerEvidence.includes(keyword.toLowerCase()))
-  const missingKeywords = keywords.filter(keyword => !lowerEvidence.includes(keyword.toLowerCase()))
+  const evidenceText = evidenceSegments.join('\n')
+  const matchedKeywords = keywords.filter(keyword => textIncludesKeyword(evidenceText, keyword))
+  const missingKeywords = keywords.filter(keyword => !textIncludesKeyword(evidenceText, keyword))
 
   const requirements: MatchRequirementAssessment[] = keywords.slice(0, 10).map((keyword, index) => ({
     requirement: keyword,
@@ -620,20 +868,29 @@ export async function buildMatchScoreResult({
   resumeData,
   jobDescription,
   pro,
+  fixedRequirements,
 }: {
   resumeData: ResumeData
   jobDescription: string
   pro: boolean
+  /** Frozen requirement set from getCachedJobRequirements — keeps re-scores stable. */
+  fixedRequirements?: JDRequirementExtraction | null
 }): Promise<ATSResult> {
   const deterministicKeywords = extractRelevantKeywords(jobDescription)
   const structuredResumeContext = resumeDataToMatchContext(resumeData)
   const structuredResumeContextLower = structuredResumeContext.toLowerCase()
+  const fixedRequirementBlock = fixedRequirements
+    ? `PRE-EXTRACTED REQUIREMENTS (assess EXACTLY these, keeping the same wording and priority; do not invent new requirements):
+${formatRequirementsForPrompt(fixedRequirements)}
+
+`
+    : ''
   const prompt = `JOB DESCRIPTION:
 ---
 ${jobDescription.slice(0, 18000)}
 ---
 
-DETERMINISTIC KEYWORD HINTS:
+${fixedRequirementBlock}DETERMINISTIC KEYWORD HINTS:
 ${deterministicKeywords.join(', ') || '(none)'}
 
 STRUCTURED RESUME EVIDENCE:
@@ -641,7 +898,7 @@ STRUCTURED RESUME EVIDENCE:
 ${structuredResumeContext}
 ---
 
-Produce an evidence-based match assessment.
+Produce an evidence-based match assessment.${fixedRequirements ? '\nAssess every requirement in the pre-extracted set, in order, one requirementAssessments entry each.' : ''}
 
 Remember:
 - Strong means directly supported by the resume.
@@ -658,10 +915,15 @@ Remember:
       model: CLAUDE_PREMIUM,
       system: MATCH_SCORE_SYSTEM,
       prompt,
-      maxTokens: 7000,
+      // Cap covers reasoning tokens + the assessment JSON on GPT-5.x.
+      maxTokens: 12000,
       timeoutMs: 120000,
-      perModelTimeoutMs: 60000,
+      perModelTimeoutMs: 90000,
       jsonRetryTimeoutMs: 20000,
+      reasoningEffort: 'medium',
+      verbosity: 'low',
+      jsonSchema: MATCH_SCORE_JSON_SCHEMA,
+      label: 'match_score',
     })
 
     const requirements = (raw.requirementAssessments ?? [])
@@ -682,7 +944,7 @@ Remember:
       .filter(item => item?.keyword?.trim() && item?.evidence?.trim())
       .filter(item =>
         isEvidenceSupportedByResume(item.evidence, structuredResumeContextLower) ||
-        structuredResumeContextLower.includes(item.keyword.trim().toLowerCase())
+        textIncludesKeyword(structuredResumeContext, item.keyword)
       )
       .map(item => ({ keyword: item.keyword.trim(), evidence: item.evidence.trim() }))
       .slice(0, 12)

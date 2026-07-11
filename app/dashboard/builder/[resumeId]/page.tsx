@@ -186,6 +186,26 @@ function appendMissingDefaultSectionIds(
   return { primary, sidebar }
 }
 
+// JSON.stringify with recursively sorted object keys. Postgres jsonb does not
+// preserve key order, so comparing a row's jsonb column against local state
+// needs an order-insensitive serialization. Mirrors JSON.stringify semantics:
+// undefined object values are dropped, undefined array elements become null.
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(item => (item === undefined ? 'null' : stableStringify(item))).join(',')}]`
+  }
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>
+    const body = Object.keys(record)
+      .sort()
+      .filter(key => record[key] !== undefined)
+      .map(key => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+      .join(',')
+    return `{${body}}`
+  }
+  return JSON.stringify(value) ?? 'null'
+}
+
 function mergeBuilderVisibilityWithDefaults(
   savedVis: Partial<BuilderVisibility> | null | undefined
 ): BuilderVisibility {
@@ -1413,35 +1433,75 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
         }
       } else {
         const nextUpdatedAt = new Date().toISOString()
-        const expectedUpdatedAt = lastSavedAtRef.current
-
-        let updateQuery = supabase
-          .from('resumes')
-          .update({
-            title: titleSnapshot || 'Untitled Resume',
-            parsed_data: dataSnapshot,
-            ats_score: atsScore,
-            builder_visibility: visibilitySnapshot,
-            template_config: templateConfigSnapshot,
-            updated_at: nextUpdatedAt,
-          })
-          .eq('id', persistedResumeId)
-          .eq('user_id', userId)
 
         // Optimistic concurrency: only update if the row hasn't been written
         // by another tab/device since we last saw it. Empty results signal
         // a conflict.
-        if (expectedUpdatedAt) {
-          updateQuery = updateQuery.eq('updated_at', expectedUpdatedAt)
+        const runUpdate = async (expectedUpdatedAt: string | null) => {
+          let updateQuery = supabase
+            .from('resumes')
+            .update({
+              title: titleSnapshot || 'Untitled Resume',
+              parsed_data: dataSnapshot,
+              ats_score: atsScore,
+              builder_visibility: visibilitySnapshot,
+              template_config: templateConfigSnapshot,
+              updated_at: nextUpdatedAt,
+            })
+            .eq('id', persistedResumeId)
+            .eq('user_id', userId)
+
+          if (expectedUpdatedAt) {
+            updateQuery = updateQuery.eq('updated_at', expectedUpdatedAt)
+          }
+
+          return updateQuery.select('updated_at')
         }
 
-        const { data: updatedRows, error } = await updateQuery.select('updated_at')
+        const firstAttempt = await runUpdate(lastSavedAtRef.current)
+        if (firstAttempt.error) throw firstAttempt.error
+        let updatedRows = firstAttempt.data
 
-        if (error) throw error
+        if (!updatedRows || updatedRows.length === 0) {
+          // Token mismatch isn't always a real conflict: server-side metadata
+          // writes (ATS score sync, AI-insights cache) touch this row and the
+          // updated_at trigger bumps the token even though no resume content
+          // changed. Re-read the row — if its content still matches what this
+          // tab last saw saved, adopt the fresh token and retry once.
+          const { data: currentRow } = await supabase
+            .from('resumes')
+            .select('updated_at, parsed_data, builder_visibility, template_config')
+            .eq('id', persistedResumeId)
+            .eq('user_id', userId)
+            .maybeSingle()
+
+          const rowUpdatedAt =
+            currentRow && typeof currentRow.updated_at === 'string' ? currentRow.updated_at : null
+          const rowContentMatchesLastSave =
+            !!rowUpdatedAt &&
+            stableStringify(syncResumeData((currentRow?.parsed_data as ResumeData | null) ?? {})) ===
+              stableStringify(savedData) &&
+            stableStringify(
+              mergeBuilderVisibilityWithDefaults(
+                currentRow?.builder_visibility as Partial<BuilderVisibility> | null
+              )
+            ) === stableStringify(savedVisibility) &&
+            stableStringify(
+              (currentRow?.template_config as UniversalConfig | null) ?? savedTemplateConfig
+            ) === stableStringify(savedTemplateConfig)
+
+          if (rowContentMatchesLastSave) {
+            lastSavedAtRef.current = rowUpdatedAt
+            const retry = await runUpdate(rowUpdatedAt)
+            if (retry.error) throw retry.error
+            updatedRows = retry.data
+          }
+        }
 
         if (!updatedRows || updatedRows.length === 0) {
           // No row updated — either the row no longer exists OR someone else
-          // wrote it. Surface a conflict so the user knows to refresh.
+          // wrote real content changes. Surface a conflict so the user knows
+          // to refresh.
           setConflictDetected(true)
           throw new Error('CONCURRENT_EDIT_CONFLICT')
         }
@@ -2324,11 +2384,20 @@ function BuilderInner({ resumeId, isPro, profile }: BuilderInnerProps) {
                   // so defer until the lock is clear. forceSave will also
                   // pick up the new title from titleSnapshot.
                   if (saveLockRef.current) return
-                  await supabase
+                  const { data: renamedRows } = await supabase
                     .from('resumes')
                     .update({ title: normalizedTitle || 'Untitled Resume' })
                     .eq('id', persistedResumeId)
                     .eq('user_id', userId)
+                    .select('updated_at')
+                  // This direct write bumps the updated_at concurrency token
+                  // via the DB trigger; adopt the new token so the next
+                  // autosave doesn't mistake our own rename for a foreign
+                  // edit and block saving with the conflict banner.
+                  const renamedAt = renamedRows?.[0]?.updated_at
+                  if (typeof renamedAt === 'string') {
+                    lastSavedAtRef.current = renamedAt
+                  }
                 }}
                 placeholder="Untitled Resume"
                 className={`w-40 rounded-lg border-none px-2 py-1.5 text-sm font-semibold text-emerald-950 outline-none transition-all placeholder:font-normal placeholder:text-emerald-400 lg:w-48 2xl:w-56 ${

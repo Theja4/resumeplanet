@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { callClaudeJSON, CLAUDE_PREMIUM } from '@/lib/claude'
+import { callClaudeJSON, CLAUDE_PREMIUM, type JSONSchemaSpec } from '@/lib/claude'
+import { skillIsEvidencedInText } from '@/lib/ats-scorer'
+import { formatRequirementsForPrompt, getCachedJobRequirements } from '@/lib/match-score'
 import { hasUnresolvedPlaceholderText, startsWithWeakResumePhrase } from '@/lib/ai-insights'
 import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import { isPro } from '@/lib/planUtils'
@@ -135,6 +137,106 @@ Return JSON matching this shape:
 }`
 }
 
+// Strict structured-output schema (enforced on Foundry GPT-5.x). Mirrors the
+// JSON shape in the system prompt — keep the two in sync.
+const TAILOR_ANALYSIS_JSON_SCHEMA: JSONSchemaSpec = {
+  name: 'tailor_analysis',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'intensity', 'matchScore', 'matchTier', 'shortlistingProbability',
+      'overallStrategy', 'honestAssessment', 'tailoredHeadline', 'tailoredSummary',
+      'matchedKeywords', 'missingKeywords', 'skillsPlan', 'sectionFocus',
+      'bulletRewrites', 'bulletOrderPlans',
+    ],
+    properties: {
+      intensity: { type: 'string', enum: ['conservative', 'balanced', 'aggressive', 'overboard'] },
+      matchScore: { type: 'integer' },
+      matchTier: { type: 'string', enum: ['STRONG_FIT', 'MODERATE_FIT', 'STRETCH', 'LONG_SHOT'] },
+      shortlistingProbability: { type: 'string', enum: ['LOW', 'MODERATE', 'HIGH', 'VERY_HIGH'] },
+      overallStrategy: { type: 'string' },
+      honestAssessment: { type: 'string' },
+      tailoredHeadline: { type: 'string' },
+      tailoredSummary: { type: 'string' },
+      matchedKeywords: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['keyword', 'evidence'],
+          properties: { keyword: { type: 'string' }, evidence: { type: 'string' } },
+        },
+      },
+      missingKeywords: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['keyword', 'suggestion'],
+          properties: { keyword: { type: 'string' }, suggestion: { type: 'string' } },
+        },
+      },
+      skillsPlan: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['recommendedOrder', 'add', 'deprioritize', 'rationale'],
+        properties: {
+          recommendedOrder: { type: 'array', items: { type: 'string' } },
+          add: { type: 'array', items: { type: 'string' } },
+          deprioritize: { type: 'array', items: { type: 'string' } },
+          rationale: { type: 'string' },
+        },
+      },
+      sectionFocus: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sectionId', 'priority', 'title', 'reason'],
+          properties: {
+            sectionId: { type: 'string', enum: ['summary', 'skills', 'experience', 'projects', 'education', 'volunteer'] },
+            priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+            title: { type: 'string' },
+            reason: { type: 'string' },
+          },
+        },
+      },
+      bulletRewrites: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sectionId', 'companyOrProject', 'original', 'tailored', 'keywordsHit', 'rationale', 'impact'],
+          properties: {
+            sectionId: { type: 'string', enum: ['experience', 'volunteer', 'projects'] },
+            companyOrProject: { type: 'string' },
+            original: { type: 'string' },
+            tailored: { type: 'string' },
+            keywordsHit: { type: 'array', items: { type: 'string' } },
+            rationale: { type: 'string' },
+            impact: { type: 'string', enum: ['high', 'medium', 'low'] },
+          },
+        },
+      },
+      bulletOrderPlans: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['sectionId', 'companyOrProject', 'orderedOriginalBullets', 'reason'],
+          properties: {
+            sectionId: { type: 'string', enum: ['experience', 'volunteer'] },
+            companyOrProject: { type: 'string' },
+            orderedOriginalBullets: { type: 'array', items: { type: 'string' } },
+            reason: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+}
+
 interface TailorBody {
   resumeData?: ResumeData
   jobDescription?: string
@@ -254,7 +356,32 @@ function hasUnsupportedNumericClaim(beforeText: string, afterText: string, sourc
   return false
 }
 
+// Punctuation/case-insensitive key used to recover model rewrites whose
+// `original` echo drifted slightly from the source bullet. Without this,
+// every paraphrased echo silently discards an otherwise good rewrite.
+function fuzzyBulletKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function buildFuzzyMap(values: string[]) {
+  const map = new Map<string, string>()
+  for (const value of values) {
+    const canonical = normalizeComparableText(value)
+    if (!canonical) continue
+    const key = fuzzyBulletKey(canonical)
+    if (key && !map.has(key)) map.set(key, canonical)
+  }
+  return map
+}
+
 function collectTailorEditableText(data: ResumeData) {
+  const experienceBulletList = data.experience.flatMap(item => item.bullets)
+  const volunteerBulletList = data.volunteer.flatMap(item => item.bullets)
+  const projectTextList = data.projects.flatMap(item => [
+    item.description,
+    ...(item.bullets ?? []),
+  ])
+
   return {
     sourceText: [
       data.currentRole,
@@ -274,34 +401,35 @@ function collectTailorEditableText(data: ResumeData) {
       .map(value => value?.trim())
       .filter(Boolean)
       .join('\n'),
-    experienceBullets: new Set(data.experience.flatMap(item => item.bullets.map(normalizeComparableText))),
-    volunteerBullets: new Set(data.volunteer.flatMap(item => item.bullets.map(normalizeComparableText))),
-    projectTexts: new Set(
-      data.projects.flatMap(item => [
-        item.description,
-        ...(item.bullets ?? []),
-      ].map(normalizeComparableText))
-    ),
+    experienceBullets: new Set(experienceBulletList.map(normalizeComparableText)),
+    volunteerBullets: new Set(volunteerBulletList.map(normalizeComparableText)),
+    projectTexts: new Set(projectTextList.map(normalizeComparableText)),
+    experienceFuzzy: buildFuzzyMap(experienceBulletList),
+    volunteerFuzzy: buildFuzzyMap(volunteerBulletList),
+    projectFuzzy: buildFuzzyMap(projectTextList),
     existingSkills: new Set(getResumeSkills(data).map(skill => skill.toLowerCase().trim())),
   }
 }
 
-function isSupportedRewrite(
-  rewrite: TailorAnalysis['bulletRewrites'][number],
+// Resolve the model's echoed `original` back to the exact source text:
+// exact match first, then the fuzzy key. Returns null when unrecoverable.
+function resolveOriginalText(
+  sectionId: string,
+  original: string,
   evidence: ReturnType<typeof collectTailorEditableText>
-) {
-  const original = normalizeComparableText(rewrite.original ?? '')
-  const tailored = normalizeComparableText(rewrite.tailored ?? '')
+): string | null {
+  const exact =
+    sectionId === 'experience' ? evidence.experienceBullets :
+    sectionId === 'volunteer' ? evidence.volunteerBullets :
+    sectionId === 'projects' ? evidence.projectTexts : null
+  const fuzzy =
+    sectionId === 'experience' ? evidence.experienceFuzzy :
+    sectionId === 'volunteer' ? evidence.volunteerFuzzy :
+    sectionId === 'projects' ? evidence.projectFuzzy : null
 
-  if (!original || !tailored || original === tailored) return false
-  if (hasUnresolvedPlaceholderText(tailored)) return false
-  if (startsWithWeakResumePhrase(tailored)) return false
-  if (hasUnsupportedNumericClaim(original, tailored, evidence.sourceText)) return false
-
-  if (rewrite.sectionId === 'experience') return evidence.experienceBullets.has(original)
-  if (rewrite.sectionId === 'volunteer') return evidence.volunteerBullets.has(original)
-  if (rewrite.sectionId === 'projects') return evidence.projectTexts.has(original)
-  return false
+  if (!exact || !fuzzy) return null
+  if (exact.has(original)) return original
+  return fuzzy.get(fuzzyBulletKey(original)) ?? null
 }
 
 function normalizeTailorAnalysis(
@@ -310,37 +438,82 @@ function normalizeTailorAnalysis(
   resumeData: ResumeData
 ): TailorAnalysis {
   const evidence = collectTailorEditableText(resumeData)
-  const sourceTextLower = evidence.sourceText.toLowerCase()
-  const supportedSkillAdds = (raw?.skillsPlan?.add ?? [])
+
+  const rawSkillAdds = (raw?.skillsPlan?.add ?? [])
     .map(skill => skill?.trim())
     .filter((skill): skill is string => Boolean(skill))
-    .filter(skill => {
-      const lower = skill.toLowerCase()
-      return !evidence.existingSkills.has(lower) && sourceTextLower.includes(lower)
-    })
+  // Alias-aware evidence check: "NodeJS" in the resume supports adding
+  // "Node.js". The old literal-substring check rejected almost every
+  // "honestly implied" skill the prompt allows the model to propose.
+  const supportedSkillAdds = rawSkillAdds.filter(skill =>
+    !evidence.existingSkills.has(skill.toLowerCase()) &&
+    skillIsEvidencedInText(skill, evidence.sourceText)
+  )
 
-  const supportedRewrites = (raw?.bulletRewrites ?? [])
-    .filter(item => item?.sectionId && item?.original && item?.tailored)
-    .filter(item => isSupportedRewrite(item, evidence))
+  let rewritesDroppedNoMatch = 0
+  let rewritesDroppedGuards = 0
+
+  const rawRewrites = (raw?.bulletRewrites ?? []).filter(item => item?.sectionId && item?.original && item?.tailored)
+  const supportedRewrites = rawRewrites
     .map(item => ({
       ...item,
       original: normalizeComparableText(item.original),
       tailored: normalizeComparableText(item.tailored),
     }))
+    .map(item => {
+      if (!item.original || !item.tailored || item.original === item.tailored) {
+        rewritesDroppedGuards += 1
+        return null
+      }
+      if (
+        hasUnresolvedPlaceholderText(item.tailored) ||
+        startsWithWeakResumePhrase(item.tailored) ||
+        hasUnsupportedNumericClaim(item.original, item.tailored, evidence.sourceText)
+      ) {
+        rewritesDroppedGuards += 1
+        return null
+      }
+      const canonical = resolveOriginalText(item.sectionId, item.original, evidence)
+      if (!canonical) {
+        rewritesDroppedNoMatch += 1
+        return null
+      }
+      if (canonical === item.tailored) {
+        rewritesDroppedGuards += 1
+        return null
+      }
+      return { ...item, original: canonical }
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
 
+  let orderBulletsDropped = 0
   const supportedOrderPlans = (raw?.bulletOrderPlans ?? [])
     .filter(item => item?.sectionId && Array.isArray(item?.orderedOriginalBullets))
     .map(item => ({
       ...item,
       orderedOriginalBullets: item.orderedOriginalBullets
         .map(normalizeComparableText)
-        .filter(bullet =>
-          item.sectionId === 'experience'
-            ? evidence.experienceBullets.has(bullet)
-            : evidence.volunteerBullets.has(bullet)
-        ),
+        .map(bullet => {
+          const canonical = resolveOriginalText(item.sectionId, bullet, evidence)
+          if (!canonical) orderBulletsDropped += 1
+          return canonical
+        })
+        .filter((bullet): bullet is string => Boolean(bullet)),
     }))
     .filter(item => item.orderedOriginalBullets.length >= 2)
+
+  // Telemetry: how much of the model's output survives validation. A high
+  // droppedNoMatch rate means the model is paraphrasing originals and users
+  // are silently getting fewer suggestions than the model produced.
+  console.log(`[TailorAnalysis:normalize] ${JSON.stringify({
+    rawRewrites: rawRewrites.length,
+    acceptedRewrites: supportedRewrites.length,
+    rewritesDroppedNoMatch,
+    rewritesDroppedGuards,
+    orderBulletsDropped,
+    rawSkillAdds: rawSkillAdds.length,
+    acceptedSkillAdds: supportedSkillAdds.length,
+  })}`)
 
   return {
     intensity,
@@ -485,11 +658,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
+  // Shared JD understanding: reuse the frozen requirement set the match score
+  // uses (cached per user+JD), so tailoring targets the same requirements the
+  // user is being scored against. Non-fatal if extraction fails.
+  const jdRequirements = await getCachedJobRequirements({
+    supabase,
+    userId: user.id,
+    jobDescription,
+  })
+
   const prompt = `USER-SELECTED INTENSITY: ${intensity}
 
 <job_description>
 ${jobDescription.slice(0, 16000)}
 </job_description>
+${jdRequirements ? `
+KEY JD REQUIREMENTS (pre-extracted; these are the hiring signals the match score assesses — prioritize truthful alignment with them):
+${formatRequirementsForPrompt(jdRequirements)}
+` : ''}
 
 <user_resume>
 ${resumeDataToTailorContext(resumeData)}
@@ -519,8 +705,14 @@ Remember:
       model: CLAUDE_PREMIUM,
       system: getTailorSystemPrompt((resumeData.skillSections?.length ?? 0) > 1),
       prompt,
-      maxTokens: 8192,
+      // On GPT-5.x this cap includes reasoning tokens, so it must cover
+      // reasoning + the full tailoring JSON. It's a cap, not a spend.
+      maxTokens: 16000,
       timeoutMs: 180000,
+      reasoningEffort: 'medium',
+      verbosity: 'low',
+      jsonSchema: TAILOR_ANALYSIS_JSON_SCHEMA,
+      label: 'tailor_analysis',
     })
 
     return NextResponse.json<APIResponse<TailorAnalysis>>(

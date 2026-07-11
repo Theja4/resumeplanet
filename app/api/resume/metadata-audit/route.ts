@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { callClaudeJSON } from '@/lib/claude'
+import { callClaudeJSON, CLAUDE_STANDARD, GEMINI_25_FLASH } from '@/lib/claude'
 import { isPro } from '@/lib/planUtils'
 import { extractPDFItems, extractPDFMetadata, pagesToLines } from '@/lib/pdfExtractor'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
@@ -27,10 +27,8 @@ export interface MetadataAuditResult {
   candidateName: string | null
 }
 
-const METADATA_AUDIT_MODELS = [
-  'deepseek/deepseek-v4-flash',
-  'google/gemini-2.5-flash',
-] as const
+// Model ids come from lib/claude.ts so routing stays centralized.
+const METADATA_AUDIT_MODELS = [CLAUDE_STANDARD, GEMINI_25_FLASH] as const
 
 // ── LLM System Prompt ─────────────────────────────────────────────────────────
 
@@ -102,8 +100,12 @@ async function callMetadataAuditWithFallback(
         model,
         system,
         prompt,
-        maxTokens: 1000,
-        timeoutMs: model === 'deepseek/deepseek-v4-flash' ? 120000 : 45000,
+        // Cap covers reasoning tokens + the audit JSON on GPT-5.x.
+        maxTokens: 3000,
+        timeoutMs: model === CLAUDE_STANDARD ? 120000 : 45000,
+        reasoningEffort: 'low',
+        verbosity: 'low',
+        label: 'metadata_audit',
       })
     } catch (error) {
       failures.push({

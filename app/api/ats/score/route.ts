@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase/server'
 import { buildAIRequestSignature, readAIRequestCache, writeAIRequestCache, type AIRequestCacheFeature } from '@/lib/aiRequestCache'
 import { getRemainingFreeScans, isPro } from '@/lib/planUtils'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
-import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
-import { buildMatchScoreResult } from '@/lib/match-score'
+import { buildATSRoadmap, scoreResume, textIncludesKeyword, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import { buildMatchScoreResult, getCachedJobRequirements } from '@/lib/match-score'
 import { parseResumeText } from '@/lib/resumeParser'
 import { getProjectBullets, getResumeSkills, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
 import { countWords } from '@/lib/text'
@@ -30,7 +30,9 @@ interface ScoreBody {
   analysisMode?: 'ats' | 'match'
 }
 
-const ATS_SCORE_CACHE_VERSION = 1
+// 2 = SCORER_VERSION 3 (expanded verbs/metrics/polish) + alias-aware keyword
+// matching — cached scores computed under the old rules must refresh.
+const ATS_SCORE_CACHE_VERSION = 2
 
 const KEYWORD_STOPWORDS = new Set([
   'about', 'across', 'after', 'also', 'and', 'any', 'are', 'based', 'been', 'being', 'build',
@@ -90,14 +92,10 @@ function resumeDataToText(data: ResumeData | null): string {
   return resumeDataToPlainText(data)
 }
 
-function escapeRegex(str: string) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
+// Alias-aware matching from the scorer: "Node.js" in a JD matches "NodeJS"
+// in the resume instead of being reported as a missing keyword.
 function includesKeyword(text: string, keyword: string) {
-  if (!keyword.trim()) return false
-  const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`, 'i')
-  return pattern.test(text)
+  return textIncludesKeyword(text, keyword)
 }
 
 function averagePercent(items: Array<{ score: number; max: number }>) {
@@ -261,7 +259,7 @@ function weakAreaToSuggestion(area: WeakArea, breakdown: ScorerResult['breakdown
   }
 }
 
-function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData, scorerResult: ScorerResult) {
+function buildKeywordAnalysis(jobKeywords: string[], data: ResumeData) {
   const evidenceText = getResumeEvidenceText(data)
 
   if (jobKeywords.length > 0) {
@@ -345,7 +343,7 @@ function buildATSResult(
   jobDescription?: string
 ): ATSResult {
   const jobKeywords = extractRelevantKeywords(jobDescription ?? '')
-  const { presentKeywords, missingKeywords, keywordAnalysis } = buildKeywordAnalysis(jobKeywords, data, scorerResult)
+  const { presentKeywords, missingKeywords, keywordAnalysis } = buildKeywordAnalysis(jobKeywords, data)
   const breakdown = scorerResult.breakdown
 
   const baseSuggestions = scorerResult.weakAreas
@@ -570,11 +568,22 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     }
   }
 
+  // Stage 1 (match mode): frozen per-JD requirement set, cached so repeated
+  // scores against the same JD assess the same requirements — no jitter.
+  const fixedRequirements = isMatchMode && user
+    ? await getCachedJobRequirements({
+        supabase,
+        userId: user.id,
+        jobDescription: jobDescription?.trim() ?? '',
+      })
+    : null
+
   const normalizedResult = isMatchMode
     ? await buildMatchScoreResult({
         resumeData: scoringData,
         jobDescription: jobDescription?.trim() ?? '',
         pro,
+        fixedRequirements,
       })
     : buildATSResult(scoreResume(scoringData), scoringData, pro, jobDescription)
 
@@ -597,11 +606,14 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     savedScoreId = savedScore?.id ?? ''
 
     if (resumeId && !isMatchMode) {
+      // Deliberately don't touch updated_at: it's the builder's optimistic
+      // concurrency token, and a score sync isn't a content edit. Bumping it
+      // here made any open builder tab think another device edited the
+      // resume and blocked its saves.
       await supabase
         .from('resumes')
         .update({
           ats_score: normalizedResult.score,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', resumeId)
         .eq('user_id', user.id)

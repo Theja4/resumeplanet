@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'crypto'
 import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
 import { createClient } from '@/lib/supabase/server'
-import { callClaudeJSON } from '@/lib/claude'
+import { callClaudeJSONFallback, CLAUDE_STANDARD, type JSONSchemaSpec } from '@/lib/claude'
 import { isPro } from '@/lib/planUtils'
 import {
   applyInsightSuggestionToResumeData,
@@ -11,24 +11,46 @@ import {
   startsWithWeakResumePhrase,
 } from '@/lib/ai-insights'
 import { getEducationDateLabel, getResumeSkills, normalizeSkillSections, resumeDataToPlainText, syncResumeData } from '@/lib/resume-data'
-import { buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
+import { ATS_SCORER_RUBRIC_GUIDE, buildATSRoadmap, scoreResume, type ScorerResult, type WeakArea } from '@/lib/ats-scorer'
 import type { Profile, APIResponse, ATSScoreRoadmap, ResumeData } from '@/types'
 
-const INSIGHTS_CACHE_VERSION = 7
-const SUGGESTION_MODELS = [
-  'deepseek/deepseek-v4-flash',
-  'google/gemini-2.5-flash',
-]
+// 8 = SCORER_VERSION 3 (expanded verbs/metrics/polish) — cached insights
+// computed against the old rubric must refresh.
+const INSIGHTS_CACHE_VERSION = 8
 
-const ATS_SCORER_RUBRIC_GUIDE = `DETERMINISTIC SCORER TARGETS:
-- summary: full credit needs 15-100 words, no more than 4 sentences, and 2+ role/skill terms already present in the resume.
-- exp_verbs: score jumps at 40%, 60%, and 80% of bullets starting with recognized action verbs. Rewrite enough weak openings to cross the next threshold, not just one.
-- exp_metrics: score jumps at 1, 3, 5, and 8 bullets with concrete impact. At least one real numeric metric is needed to exceed the no-metric cap. Never invent numbers; use existing numbers or concrete non-numeric outcomes.
-- skills: full credit needs 8+ real skills and clean grouping when possible. Only add skills already evidenced in the resume context.
-- keywords: score jumps at 20%, 40%, and 60% of listed skills appearing in experience bullets. Weave supported skills into real work evidence; do not keyword-stuff.
-- education/contact gaps require user-provided facts. Do not guess missing fields.`
+// Strict structured-output schema (enforced on Foundry GPT-5.x). Mirrors the
+// OUTPUT FORMAT block in SUGGESTION_SYSTEM — keep the two in sync.
+const SUGGESTIONS_JSON_SCHEMA: JSONSchemaSpec = {
+  name: 'ats_insight_suggestions',
+  schema: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['suggestions'],
+    properties: {
+      suggestions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['criterionId', 'type', 'title', 'beforeText', 'afterText', 'sectionHint', 'estimatedPoints', 'reasoning'],
+          properties: {
+            criterionId: { type: 'string' },
+            type: { type: 'string', enum: ['action-verb', 'metric', 'keyword', 'format', 'section'] },
+            title: { type: 'string' },
+            beforeText: { type: 'string' },
+            afterText: { type: 'string' },
+            sectionHint: { type: 'string', enum: ['experience', 'summary', 'skills', 'education', 'projects'] },
+            estimatedPoints: { type: 'number' },
+            reasoning: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+}
 
 // ── LLM System Prompt — suggestions only, no scoring ──────────────────────
+// (Rubric description is imported from lib/ats-scorer.ts so it can't drift.)
 
 const SUGGESTION_SYSTEM = `You are a senior resume strategist optimizing for real shortlist odds, not cosmetic score inflation.
 
@@ -349,32 +371,25 @@ function generateSummaryFromScorer(result: ScorerResult): string {
   return `Resume needs significant improvement. Priority areas: ${weakNames}.`
 }
 
-async function callSuggestionsWithFallback(
-  models: string[],
+async function callSuggestions(
   system: string,
   prompt: string,
   maxTokens: number
 ): Promise<LLMSuggestionsResponse> {
-  const failures: Array<{ model: string; reason: string }> = []
-
-  for (const model of models) {
-    try {
-      return await callClaudeJSON<LLMSuggestionsResponse>({
-        model,
-        system,
-        prompt,
-        maxTokens,
-        timeoutMs: 180000,
-      })
-    } catch (error) {
-      failures.push({
-        model,
-        reason: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
-
-  throw new Error(`All suggestion models failed: ${JSON.stringify(failures)}`)
+  // Model routing (Foundry tiers + OpenRouter fallbacks) is centralized in
+  // lib/claude.ts; this route just declares the standard tier.
+  return callClaudeJSONFallback<LLMSuggestionsResponse>({
+    model: CLAUDE_STANDARD,
+    system,
+    prompt,
+    maxTokens,
+    timeoutMs: 180000,
+    perModelTimeoutMs: 90000,
+    reasoningEffort: 'low',
+    verbosity: 'low',
+    jsonSchema: SUGGESTIONS_JSON_SCHEMA,
+    label: 'ats_insights',
+  })
 }
 
 // ── Route Handler ─────────────────────────────────────────────────────────
@@ -516,12 +531,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const userPrompt = buildSuggestionPrompt(actionableWeakAreas, resumeData, scorerResult)
 
     try {
-      const llmResult = await callSuggestionsWithFallback(
-        SUGGESTION_MODELS,
-        SUGGESTION_SYSTEM,
-        userPrompt,
-        4500
-      )
+      // Budget covers reasoning tokens + up to 12 suggestion patches on GPT-5.x.
+      const llmResult = await callSuggestions(SUGGESTION_SYSTEM, userPrompt, 9000)
 
       suggestions = validateSuggestionsCumulatively(
         llmResult.suggestions ?? [],
