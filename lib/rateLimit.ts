@@ -128,6 +128,40 @@ export async function consumeRateLimit({
   }
 }
 
+interface RefundRateLimitOptions {
+  request: NextRequest
+  scope: RateLimitScope
+  windowSeconds: number
+  userId?: string | null
+}
+
+/**
+ * Give back a token consumed by `consumeRateLimit` when the request produced no
+ * result due to a server-side failure (provider timeout/error, all AI providers
+ * unavailable). Identifier + windowSeconds must match the original consume so
+ * the refund targets the same fixed window. Best-effort: a failed refund only
+ * means the user keeps a spent token, so it never throws.
+ */
+export async function refundRateLimit({
+  request,
+  scope,
+  windowSeconds,
+  userId,
+}: RefundRateLimitOptions): Promise<void> {
+  const identifier = userId ? `user:${userId}` : `ip:${getClientIp(request)}`
+  const supabase = createServiceRoleClient()
+
+  const { error } = await supabase.rpc('refund_api_rate_limit', {
+    p_scope: scope,
+    p_identifier_hash: hashIdentifier(identifier),
+    p_window_seconds: windowSeconds,
+  })
+
+  if (error) {
+    console.error(`Rate limit refund RPC failed scope=${scope}:`, error)
+  }
+}
+
 export function createRateLimitResponse(
   result: RateLimitResult,
   error = 'RATE_LIMITED'

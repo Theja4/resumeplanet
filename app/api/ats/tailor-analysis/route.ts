@@ -6,7 +6,7 @@ import { formatRequirementsForPrompt, getCachedJobRequirements } from '@/lib/mat
 import { hasUnresolvedPlaceholderText, startsWithWeakResumePhrase } from '@/lib/ai-insights'
 import { getResumeSkills, syncResumeData } from '@/lib/resume-data'
 import { isPro } from '@/lib/planUtils'
-import { consumeRateLimit, createRateLimitResponse } from '@/lib/rateLimit'
+import { consumeRateLimit, createRateLimitResponse, refundRateLimit } from '@/lib/rateLimit'
 import { countWords } from '@/lib/text'
 import type { APIResponse, Profile, ResumeData, TailorAnalysis, TailorIntensity } from '@/types'
 
@@ -242,6 +242,14 @@ interface TailorBody {
   jobDescription?: string
   intensity?: TailorIntensity
 }
+
+// Tailor analysis is the most expensive AI call we run (CLAUDE_PREMIUM,
+// 16000 tokens, 180s timeout). Cap per pro user, but only count attempts that
+// actually produce a result — a failed AI call refunds its token (see the
+// catch block) so a flaky provider can't burn a user's whole hourly budget.
+const TAILOR_RATE_SCOPE = 'ats_tailor_authenticated' as const
+const TAILOR_RATE_LIMIT = 80
+const TAILOR_RATE_WINDOW_SECONDS = 60 * 60
 
 function normalizeResumeData(data: Partial<ResumeData> | null | undefined): ResumeData {
   return syncResumeData({
@@ -567,13 +575,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 
-  // Tailor analysis is the most expensive AI call we run (CLAUDE_PREMIUM,
-  // 8192 tokens, 180s timeout). Limit to 20/hour per pro user.
   const rateLimit = await consumeRateLimit({
     request,
-    scope: 'ats_tailor_authenticated',
-    limit: 20,
-    windowSeconds: 60 * 60,
+    scope: TAILOR_RATE_SCOPE,
+    limit: TAILOR_RATE_LIMIT,
+    windowSeconds: TAILOR_RATE_WINDOW_SECONDS,
     userId: user.id,
   })
 
@@ -722,6 +728,16 @@ Remember:
   } catch (error) {
     console.error('Tailor analysis error:', error)
     const msg = error instanceof Error ? error.message : String(error)
+
+    // The user got no result because the AI stack failed (provider timeout,
+    // Foundry 429, all providers down). Give back the token so retries against
+    // a flaky provider don't burn their hourly budget into a RATE_LIMITED wall.
+    await refundRateLimit({
+      request,
+      scope: TAILOR_RATE_SCOPE,
+      windowSeconds: TAILOR_RATE_WINDOW_SECONDS,
+      userId: user.id,
+    })
 
     // Surface specific error codes so the UI can show useful retry guidance.
     if (msg === 'CLAUDE_TIMEOUT') {
