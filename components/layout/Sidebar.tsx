@@ -3,12 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { logout } from '@/app/dashboard/(shell)/actions'
-import { Analytics } from '@/lib/analytics'
 import { HUMAN_WRITTEN_SERVICE_ENABLED } from '@/lib/featureFlags'
-import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
 import { isPro as checkIsPro } from '@/lib/planUtils'
-import { getAvatarColor, getInitials } from '@/lib/avatar'
 import type { Profile } from '@/types'
 import {
   LayoutGrid,
@@ -19,12 +15,13 @@ import {
   Pencil,
   Target,
   UserRound,
-  CircleHelp,
-  LogOut,
   Wand2,
   Handshake,
   Globe2,
   Puzzle,
+  ClipboardList,
+  Briefcase,
+  ArrowRight,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -36,6 +33,26 @@ type NavItem = {
   builderMode?: 'tailor'
   external?: boolean
 }
+
+// JobPosted lives at a separate app. Point at each destination directly so an
+// existing JobPosted session opens the selected page; its app handles sign-in.
+const JOBPOSTED_URL = (process.env.NEXT_PUBLIC_JOBPOSTED_URL || 'https://jobposted.app').replace(/\/$/, '')
+
+function jobPostedHref(path: string): string {
+  return `${JOBPOSTED_URL}${path}`
+}
+
+type JobPostedItem = {
+  label: string
+  Icon: LucideIcon
+  path: string
+}
+
+const JOBPOSTED_ITEMS: JobPostedItem[] = [
+  { label: 'Autofill', Icon: Wand2, path: '/autofill' },
+  { label: 'Job Board', Icon: Briefcase, path: '/dashboard/jobs' },
+  { label: 'Job Tracker', Icon: ClipboardList, path: '/dashboard/tracker' },
+]
 
 function buildNavItems(showAffiliate: boolean, isPro: boolean): NavItem[] {
   return [
@@ -178,54 +195,44 @@ export default function Sidebar({ profile, isAffiliate }: SidebarProps) {
             </Link>
           )
         })}
+
+        {/* JobPosted — separate app */}
+        <a
+          href={JOBPOSTED_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open the Job Posted home page"
+          className="group mt-3 mb-1 flex items-center gap-2 rounded-xl px-2.5 py-1 transition-colors hover:bg-[#f2f6ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1d5fe0]/35"
+        >
+          <Image
+            src="/jobposted-logo.jpg"
+            alt="Job Posted logo"
+            width={22}
+            height={22}
+            className="h-[22px] w-[22px] rounded-md object-contain ring-1 ring-[#1d5fe0]/15"
+          />
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#1d5fe0]">Job Posted</span>
+          <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full text-[#1d5fe0] transition-transform group-hover:translate-x-0.5" aria-hidden="true">
+            <ArrowRight size={14} strokeWidth={2.2} />
+          </span>
+        </a>
+        {JOBPOSTED_ITEMS.map(({ label, Icon, path }) => (
+          <a
+            key={label}
+            href={jobPostedHref(path)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${label} in Job Posted`}
+            className="group flex w-full items-center gap-2.5 rounded-[1rem] border border-[#1d5fe0]/10 bg-[#f2f6ff] px-2.5 py-2 text-left text-[#24436f] transition-all duration-200 hover:border-[#1d5fe0]/20 hover:bg-[#e8f0ff] hover:text-[#1d5fe0]"
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#e4edff] text-[#1d5fe0] shadow-[0_8px_18px_rgba(29,95,224,0.08)] transition-colors group-hover:bg-white">
+              <Icon size={16} strokeWidth={1.9} />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[13px]">{label}</span>
+          </a>
+        ))}
       </nav>
 
-      {/* Bottom section */}
-      <div className="mt-2 border-t border-outline-variant/10 pt-2">
-        <div className="flex items-center gap-1.5 rounded-[1.1rem] bg-surface-container-low/70 px-2 py-2">
-          <Link
-            href="/dashboard/account"
-            prefetch
-            title="Account & billing"
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-[0.9rem] px-1 py-0.5 transition hover:bg-white"
-          >
-            <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold uppercase ${getAvatarColor(profile.full_name, profile.email)}`}>
-              {getInitials(profile.full_name, profile.email)}
-            </div>
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-xs font-bold text-on-surface">
-                {profile.full_name ?? profile.email.split('@')[0]}
-              </span>
-              <span className="inline-flex w-fit items-center rounded-full bg-white/90 px-1.5 py-0.5 text-[9px] font-medium capitalize text-on-surface-variant ring-1 ring-black/5">
-                {profile.plan}
-              </span>
-            </div>
-          </Link>
-          <Link
-            href="/dashboard/contact"
-            prefetch
-            title="Help"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white hover:text-on-surface"
-          >
-            <CircleHelp size={14} />
-          </Link>
-          <form
-            action={logout}
-            onSubmit={() => {
-              clearWorkspaceSessionDrafts()
-              Analytics.reset()
-            }}
-          >
-            <button
-              type="submit"
-              title="Log out"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white hover:text-on-surface"
-            >
-              <LogOut size={14} />
-            </button>
-          </form>
-        </div>
-      </div>
     </aside>
   )
 }

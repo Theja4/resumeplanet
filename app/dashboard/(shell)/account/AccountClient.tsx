@@ -10,13 +10,17 @@ import {
   KeyRound,
   LifeBuoy,
   Loader2,
+  LogOut,
   Mail,
   Sparkles,
 } from 'lucide-react'
+import { logout } from '@/app/dashboard/(shell)/actions'
 import { DashboardPageIntro, DashboardSurface } from '@/components/layout/DashboardSurface'
 import CancelSubscriptionButton from '@/components/billing/CancelSubscriptionButton'
 import ManageSubscriptionButton from '@/components/billing/ManageSubscriptionButton'
+import { Analytics } from '@/lib/analytics'
 import { getAvatarColor, getInitials } from '@/lib/avatar'
+import { clearWorkspaceSessionDrafts } from '@/lib/sessionDrafts'
 import { updateProfileName, type UpdateNameState } from './actions'
 
 interface AccountProfile {
@@ -306,15 +310,32 @@ export default function AccountClient({
       <SectionCard
         icon={<KeyRound size={18} strokeWidth={2} />}
         title="Security"
-        description="Update your password with a secure reset link."
+        description="Update your password or securely sign out of your account."
       >
-        <Link
-          href="/auth/forgot-password"
-          className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-6 py-2.5 text-xs font-bold text-on-surface transition-all hover:-translate-y-0.5 hover:border-black/20"
-        >
-          Change password
-          <ArrowRight size={14} />
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/auth/forgot-password"
+            className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-6 py-2.5 text-xs font-bold text-on-surface transition-all hover:-translate-y-0.5 hover:border-black/20"
+          >
+            Change password
+            <ArrowRight size={14} />
+          </Link>
+          <form
+            action={logout}
+            onSubmit={() => {
+              clearWorkspaceSessionDrafts()
+              Analytics.reset()
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-6 py-2.5 text-xs font-bold text-red-700 transition-all hover:-translate-y-0.5 hover:border-red-300 hover:bg-red-100"
+            >
+              <LogOut size={14} />
+              Log out
+            </button>
+          </form>
+        </div>
       </SectionCard>
     </div>
   )
