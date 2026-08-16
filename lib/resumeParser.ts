@@ -1,4 +1,5 @@
 import type { ResumeData, ExperienceItem } from '@/types'
+import { normalizeCompanyName } from '@/lib/bulletSanitizer'
 import { normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import { pagesToLines, type ExtractedPage } from './pdfExtractor'
 import { BULLET_RE } from '@/lib/parsers/utils'
@@ -405,6 +406,24 @@ function inferBulletsFromUnmarkedExperienceLines(lines: string[]): string[] {
   return inferred
 }
 
+/**
+ * True when a line is nothing but the entry's own company or title. Those lines
+ * are header text that this entry has already captured into its fields, so
+ * repeating them as a bullet is always a segmentation artifact.
+ */
+function isResolvedHeaderEcho(line: string, company: string, title: string): boolean {
+  const normalizedLine = normalizeCompanyName(line)
+  if (!normalizedLine) return true
+
+  const normalizedCompany = normalizeCompanyName(company)
+  if (normalizedCompany && normalizedLine === normalizedCompany) return true
+
+  const normalizedTitle = normalizeCompanyName(title)
+  if (normalizedTitle && normalizedLine === normalizedTitle) return true
+
+  return false
+}
+
 function looksLikeRoleFragment(line: string): boolean {
   const trimmed = line.trim()
   if (!trimmed) return false
@@ -560,10 +579,38 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
     return jobs
   }
 
+  // Pass 1b: for each date line, find where its header block starts by scanning
+  // backward. Stop at: the previous date line, a bullet line, or a narrative
+  // line. Computed up front because job N's forward scan must stop where job
+  // N+1's header begins — otherwise the next entry's title/company lines get
+  // swallowed into the previous entry's last bullet.
+  const headerStartIndices: number[] = []
+  for (let di = 0; di < dateIndices.length; di++) {
+    const dateIdx = dateIndices[di]
+    const prevDateIdx = dateIndices[di - 1] ?? -1
+    let scanBack = dateIdx - 1
+    let firstHeaderIdx = dateIdx
+
+    while (scanBack > prevDateIdx) {
+      const backLine = lines[scanBack]
+      const backTrimmed = backLine?.trim() ?? ''
+      if (!backTrimmed) { scanBack--; continue }
+      if (isBulletLine(backLine)) break
+      if (looksLikeNarrativeLine(backTrimmed)) break
+      firstHeaderIdx = scanBack
+      scanBack--
+    }
+
+    headerStartIndices.push(firstHeaderIdx)
+  }
+
   // Pass 2: for each date line, extract job block
   for (let di = 0; di < dateIndices.length; di++) {
     const dateIdx = dateIndices[di]
-    const nextDateIdx = dateIndices[di + 1] ?? lines.length
+    // Bound the forward scan by the NEXT entry's header start, not its date
+    // line, so header lines sitting between the two dates stay with the entry
+    // they belong to.
+    const nextDateIdx = headerStartIndices[di + 1] ?? lines.length
 
     const dateLine = lines[dateIdx].trim()
     const dates = extractDateRange(dateLine)
@@ -578,19 +625,12 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       .replace(/[-–—|,]+/g, ' ')
       .trim()
 
-    // Look backward from the date line to find title/company header lines.
-    // Stop at: the previous date line, a bullet line, or the section start.
-    const prevDateIdx = dateIndices[di - 1] ?? -1
+    // Header lines for this entry: everything from its header start up to the
+    // date line (blank lines skipped). Range computed in pass 1b.
     const headerLines: string[] = []
-    let scanBack = dateIdx - 1
-    while (scanBack > prevDateIdx) {
-      const backLine = lines[scanBack]
-      const backTrimmed = backLine?.trim() ?? ''
-      if (!backTrimmed) { scanBack--; continue }
-      if (isBulletLine(backLine)) break  // hit previous job's bullets
-      if (looksLikeNarrativeLine(backTrimmed)) break
-      headerLines.unshift(backTrimmed)
-      scanBack--
+    for (let i = headerStartIndices[di]; i < dateIdx; i++) {
+      const headerTrimmed = lines[i]?.trim() ?? ''
+      if (headerTrimmed) headerLines.push(headerTrimmed)
     }
 
     const headerFields = inferHeaderFields(headerLines)
@@ -642,6 +682,7 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
     }
 
     // If we got no company from header, a non-bullet line after the date (before bullets) may be the company
+    let companyLineIndex = -1
     if (!company && afterDateNonBullets.length > 0) {
       const companyCandidate = afterDateNonBullets[0]
       if (
@@ -650,6 +691,7 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
       ) {
         const parsedCompany = extractCompanyAndLocation(companyCandidate)
         company = parsedCompany.company
+        companyLineIndex = 0
         if (!location && parsedCompany.location) {
           location = parsedCompany.location
         }
@@ -657,7 +699,16 @@ function parseJobLines(lines: string[]): ExperienceItem[] {
     }
 
     if (bullets.length === 0 && afterDateNonBullets.length > 0) {
-      bullets.push(...inferBulletsFromUnmarkedExperienceLines(afterDateNonBullets))
+      // A line already consumed as the company must not be re-read as a bullet.
+      // inferBulletsFromUnmarkedExperienceLines only skips leading lines of 4
+      // words or fewer, so without this a company like "Northwind Global
+      // Technology Solutions Private Limited" became the entry's first bullet
+      // and later lines were glued onto it.
+      const bulletSourceLines = afterDateNonBullets.filter((line, index) => {
+        if (index === companyLineIndex) return false
+        return !isResolvedHeaderEcho(line, company, title)
+      })
+      bullets.push(...inferBulletsFromUnmarkedExperienceLines(bulletSourceLines))
     }
 
     if (title || bullets.length > 0) {

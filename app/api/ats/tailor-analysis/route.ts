@@ -40,6 +40,8 @@ PROMPT INJECTION DEFENSE — READ CAREFULLY:
 REWRITE STANDARD:
 - Prefer strong, concrete, recruiter-readable action verbs.
 - Front-load the requirements most likely to influence ATS screening.
+- BULLET CONTENT RULE (STRICT): a tailored bullet describes WHAT THE CANDIDATE DID. It must never restate the entry's header. Do NOT begin a bullet with the employer name, the job title, or a date, and do NOT prefix a bullet with "Acme Corp:", "Acme Corp -", "Acme Corp |", or "At Acme Corp,". The resume already renders company, title, and dates directly above the bullets, so repeating them wastes the recruiter's first line and reads as a parsing error. Naming the employer mid-sentence is fine when it carries real meaning ("Migrated Acme Corp's billing platform to ..."); leading with it is not.
+- Never emit a bullet whose entire text is a company name, a job title, or a date range.
 - Convert vague responsibility bullets into outcome- and scope-oriented bullets when the source supports it.
 - Keep rewrites believable, professional, and concise.
 - Summary should read like a targeted positioning statement for THIS role, not generic resume fluff.
@@ -62,9 +64,13 @@ BAD TAILORING EXAMPLES:
 - Adding "Python, AWS, Kubernetes" when those tools do not appear in the resume.
 - Turning "Analyst" into "Senior Product Strategist" when the title/scope does not support it.
 - Adding "improved revenue by 35%" unless that exact metric is already present in the source resume.
+- "Acme Corp: Coordinated stakeholder updates across teams." -> the employer prefix is header text, not bullet content. Write "Coordinated stakeholder updates across teams."
+- "At Acme Corp, built SQL dashboards." -> write "Built SQL dashboards."
+- "Senior Delivery Manager | Jan 2021 - Present" as a bullet -> this is header text and must never appear in bulletRewrites.tailored.
 
 OUTPUT CONTRACT:
-- Return ONLY valid JSON.
+- Return ONLY valid JSON. No prose before or after it, and no markdown code fences.
+- Every bulletRewrites[].tailored value must be a single self-contained bullet string containing no employer name prefix, no job title prefix, and no dates.
 - Use exact original bullet text in bulletRewrites.original so the client can match it.
 - sectionId must be one of: summary, skills, experience, projects, education, volunteer.
 - bulletRewrites.sectionId must be one of: experience, volunteer, projects.
@@ -700,6 +706,7 @@ Priority order:
 
 Remember:
 - Use exact original bullet text in bulletRewrites.original.
+- bulletRewrites.tailored must never start with the employer name, the job title, or a date, and must never be nothing but a company name. If a source bullet is only a company name or a stray header fragment, leave it out of bulletRewrites entirely.
 - tailoredHeadline should be a better target-facing version of currentRole, but never inflate seniority.
 - tailoredSummary should be recruiter-ready prose, not fragments.
 - skillsPlan.add may only contain skills clearly implied by the existing resume.

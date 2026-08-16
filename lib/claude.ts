@@ -361,12 +361,28 @@ export async function callClaude(options: LLMCallOptions & { model: string }): P
   throwAggregatedFailures(failures, options.label)
 }
 
+// Matches a fenced block anywhere in the response, not just at the very start.
+// Models that ignore "return only JSON" typically wrap the payload in a fence
+// AND add a sentence of preamble; anchoring at ^ missed those, and the
+// brace-scan fallback then picked up any stray `{` in the prose.
+const FENCED_BLOCK_RE = /```(?:json|jsonc|javascript)?\s*\r?\n?([\s\S]*?)```/i
+
+export function extractJSONPayload(raw: string): string {
+  // Strip BOM and zero-width characters some providers prepend.
+  const normalized = raw.replace(/^\uFEFF/, '').replace(/[\u200B-\u200D]/g, '').trim()
+
+  const fenced = FENCED_BLOCK_RE.exec(normalized)?.[1]?.trim()
+  if (fenced) return fenced
+
+  // Unterminated fence (response truncated before the closing ```).
+  const openFence = /```(?:json|jsonc|javascript)?\s*\r?\n?/i.exec(normalized)
+  if (openFence) return normalized.slice(openFence.index + openFence[0].length).trim()
+
+  return normalized
+}
+
 function parseJSON<T>(raw: string): T {
-  const cleaned = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim()
+  const cleaned = extractJSONPayload(raw)
 
   try {
     return JSON.parse(cleaned) as T

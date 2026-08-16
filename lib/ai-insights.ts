@@ -1,4 +1,5 @@
 import { scoreResume, type ScorerResult } from '@/lib/ats-scorer'
+import { sanitizeGeneratedBullet } from '@/lib/bulletSanitizer'
 import { getResumeSkills, normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import type { ResumeData } from '@/types'
 
@@ -87,7 +88,11 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
     for (const exp of updated.experience) {
       const exactIndex = exp.bullets.indexOf(beforeText)
       if (exactIndex !== -1) {
-        exp.bullets[exactIndex] = afterText
+        // Strip any employer/title echo the model prefixed onto its rewrite;
+        // if nothing survives, leave the user's bullet alone.
+        const sanitized = sanitizeGeneratedBullet(afterText, { company: exp.company, title: exp.title })
+        if (!sanitized) return data
+        exp.bullets[exactIndex] = sanitized
         return updated
       }
     }
@@ -95,7 +100,10 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
     for (const exp of updated.experience) {
       const partialIndex = exp.bullets.findIndex(bullet => bullet.includes(beforeText))
       if (partialIndex !== -1) {
-        exp.bullets[partialIndex] = exp.bullets[partialIndex].replace(beforeText, afterText)
+        const replaced = exp.bullets[partialIndex].replace(beforeText, afterText)
+        const sanitized = sanitizeGeneratedBullet(replaced, { company: exp.company, title: exp.title })
+        if (!sanitized) return data
+        exp.bullets[partialIndex] = sanitized
         return updated
       }
     }
@@ -142,7 +150,9 @@ export function applyInsightSuggestionToResumeData<T extends InsightSuggestionLi
     for (const project of updated.projects) {
       const descriptionReplacement = replaceIfPresent(project.description, beforeText, afterText)
       if (descriptionReplacement.changed) {
-        project.description = descriptionReplacement.value
+        const sanitized = sanitizeGeneratedBullet(descriptionReplacement.value, { company: project.name })
+        if (!sanitized) return data
+        project.description = sanitized
         return updated
       }
 

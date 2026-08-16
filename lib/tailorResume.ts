@@ -1,4 +1,5 @@
 import { scoreResume } from '@/lib/ats-scorer'
+import { sanitizeGeneratedBullet } from '@/lib/bulletSanitizer'
 import { getProjectBullets, getResumeSkills, normalizeSkillSections, splitSkillInput, syncResumeData } from '@/lib/resume-data'
 import type { ExperienceItem, ResumeData, TailorAnalysis } from '@/types'
 
@@ -176,14 +177,57 @@ function applyBulletRewritesToItems(
 
       const bulletIndex = item.bullets.findIndex(bullet => bullet.trim() === rewrite.original.trim())
       if (bulletIndex !== -1) {
-        item.bullets[bulletIndex] = rewrite.tailored.trim()
-        changed = true
+        // Strip any employer/title echo the model prefixed onto its rewrite.
+        // When nothing survives (the "rewrite" was just the company name), keep
+        // the user's original bullet rather than blanking the slot.
+        const sanitized = sanitizeGeneratedBullet(rewrite.tailored.trim(), {
+          company: item.company,
+          title: item.title,
+        })
+        if (sanitized) {
+          item.bullets[bulletIndex] = sanitized
+          changed = true
+        }
         break
       }
     }
   }
 
   return changed
+}
+
+/**
+ * Clean header echoes out of an entry's bullet list. Only called for entries in
+ * a section the tailor actually rewrote or reordered — a section the user asked
+ * it to touch — so it never silently edits untouched parts of the resume.
+ */
+function sanitizeExperienceItems(items: ExperienceItem[]) {
+  for (const item of items) {
+    const context = { company: item.company, title: item.title }
+    const nextBullets: string[] = []
+    const keptIndexes: number[] = []
+
+    item.bullets.forEach((bullet, index) => {
+      const sanitized = sanitizeGeneratedBullet(bullet, context)
+      if (!sanitized) return
+      nextBullets.push(sanitized)
+      keptIndexes.push(index)
+    })
+
+    if (nextBullets.length === item.bullets.length && nextBullets.every((bullet, index) => bullet === item.bullets[index])) {
+      continue
+    }
+
+    item.bullets = nextBullets
+
+    // bulletVisibility is index-aligned with bullets, so dropped bullets have
+    // to drop their visibility flags too or every later bullet inherits the
+    // wrong one.
+    if (Array.isArray(item.bulletVisibility)) {
+      const visibility = item.bulletVisibility
+      item.bulletVisibility = keptIndexes.map(index => visibility[index] ?? true)
+    }
+  }
 }
 
 function reorderBullets(items: ExperienceItem[], plans: TailorAnalysis['bulletOrderPlans'], sectionId: 'experience' | 'volunteer') {
@@ -228,8 +272,13 @@ function applyProjectRewrites(data: ResumeData, rewrites: TailorAnalysis['bullet
     for (const project of data.projects) {
       if (!sameEntity(project.name, rewrite.companyOrProject)) continue
 
+      // Projects have no employer, so the project name is the header text a
+      // model would echo.
+      const sanitized = sanitizeGeneratedBullet(rewrite.tailored.trim(), { company: project.name })
+      if (!sanitized) continue
+
       if (project.description.trim() === rewrite.original.trim()) {
-        project.description = rewrite.tailored.trim()
+        project.description = sanitized
         changed = true
         break
       }
@@ -237,10 +286,10 @@ function applyProjectRewrites(data: ResumeData, rewrites: TailorAnalysis['bullet
       const bulletIndex = getProjectBullets(project).findIndex(bullet => bullet.trim() === rewrite.original.trim())
       if (bulletIndex !== -1) {
         const bullets = [...getProjectBullets(project)]
-        bullets[bulletIndex] = rewrite.tailored.trim()
+        bullets[bulletIndex] = sanitized
         project.bullets = bullets
         if (!project.description.trim() || project.description.trim() === rewrite.original.trim()) {
-          project.description = rewrite.tailored.trim()
+          project.description = sanitized
         }
         changed = true
         break
@@ -287,6 +336,10 @@ function applyScopeMutations(
     const reorderedExperience = reorderBullets(next.experience, analysis.bulletOrderPlans, 'experience')
     const rewroteExperience = applyBulletRewritesToItems(next.experience, analysis.bulletRewrites, 'experience')
     if (rewroteExperience || reorderedExperience) {
+      // Reordering surfaces header echoes the parser left behind: a bare
+      // company-name bullet is invisible mid-list but gets swept to the end as
+      // a trailing bullet, so it reads as something the tailor added.
+      sanitizeExperienceItems(next.experience)
       changed = true
     }
   }
@@ -295,6 +348,7 @@ function applyScopeMutations(
     const reorderedVolunteer = reorderBullets(next.volunteer, analysis.bulletOrderPlans, 'volunteer')
     const rewroteVolunteer = applyBulletRewritesToItems(next.volunteer, analysis.bulletRewrites, 'volunteer')
     if (rewroteVolunteer || reorderedVolunteer) {
+      sanitizeExperienceItems(next.volunteer)
       changed = true
     }
   }

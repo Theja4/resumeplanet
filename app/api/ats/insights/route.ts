@@ -117,6 +117,8 @@ Rejected:
 - afterText or reasoning that says a fact was inferred, implied, likely, or assumed.
 - keyword stuffing, e.g. appending unrelated tools to a bullet just because they are in the skills list.
 - cosmetic synonym swaps that do not make the line more specific, more credible, or more likely to score higher.
+- afterText that starts with the employer name, the job title, or a date, or that is prefixed with "Company:", "Company -", "Company |", or "At Company,". The resume renders company, title, and dates directly above the bullets. Naming the employer mid-sentence is fine when it carries meaning.
+- afterText whose entire text is a company name, a job title, or a date range.
 
 OUTPUT FORMAT:
 Return ONLY valid JSON matching this schema. No markdown fences. No explanation.
